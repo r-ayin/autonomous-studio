@@ -1,0 +1,26 @@
+{
+  "tasks": [
+    {
+      "id": "53e6f6f8",
+      "cron": "43 * * * *",
+      "prompt": "AUTONOMOUS_HEARTBEAT L3 (hourly deep check) v2.1 — Agent Isolation Mode:\n1. Use Agent tool to spawn a sub-agent:\n   - subagent_type: \"general-purpose\"\n   - description: \"L3 deep check + lookout\"\n   - prompt: \"You are the autodev-engine v2.1 isolated decision agent. FIRST, Read .claude/skills/autonomous-engine/decision-agent-prompt.md — that is your complete operating manual. Your context is clean (no conversation history). Activation: L3 hourly deep check. Tasks: (a) Read decision-log.jsonl FULL file, identify patterns. (b) Read decision-patterns.md — extract new patterns. (c) Run §1.5 Active Scout Protocol: git status, project health, cross-project diagnosis. (d) WebSearch 1-2 cutting-edge methodologies relevant to active projects. (e) Write findings to calibration.json (update l3_findings). (f) If unarchived case-*.json files exist, summarize into decision-archive.md. (g) Output <decision>JSON</decision> + max 3 lines summary. If no significant findings, set action_level=OBSERVE.\"\n2. If no significant findings: output \"<!-- L3 OK -->\" and STOP.\n3. Keep output focused.",
+      "createdAt": 1781529785604,
+      "lastFiredAt": 1781614370785,
+      "recurring": true,
+      "createdBySessionId": "7feba777-ef4f-487a-b907-9d892bf37909",
+      "createdByPid": 5904,
+      "createdByProcStart": "639171521697257410"
+    },
+    {
+      "id": "0a291b1f",
+      "cron": "23,53 * * * *",
+      "prompt": "AUTONOMOUS_HEARTBEAT L2 (30min) v2.1 — Agent Isolation Mode:\n1. Quick pre-check: Read .claude/decisions/calibration.json → if cooldown.current_consecutive >= 3, output \"<!-- HB COOL -->\" and STOP.\n2. Quick pre-check: Read .claude/memory/autonomous-state.md → if GOAL_STATUS is \"paused\", output \"<!-- HB SKIP: paused -->\" and STOP. If goal_achieved or no goal → CONTINUE (scout mode).\n3. If pre-checks pass: Use Agent tool to spawn a sub-agent:\n   - subagent_type: \"general-purpose\"\n   - description: \"L2 scout scan\"\n   - prompt: \"You are the autodev-engine v2.1 isolated decision agent. FIRST, Read .claude/skills/autonomous-engine/decision-agent-prompt.md — that is your complete operating manual. Your context is clean (no conversation history). Activation: L2 heartbeat 30-min. Read decision-log.jsonl (last 30 lines), calibration.json, autonomous-state.md. If GOAL_STATUS is achieved or absent, run §1.5 Active Scout Protocol. If active goal exists, run full §1 seven-phase framework. Output <decision>JSON</decision> + max 3 lines summary.\"\n4. If the sub-agent returns action_level >= ACT_NOTIFY and confidence >= 71, execute the recommended actions.\n5. If sub-agent returns SUGGEST → append findings to autonomous-suggestions.md.\n6. If nothing to do: output \"<!-- HB OK -->\" and STOP.\n7. Keep response minimal.",
+      "createdAt": 1781536095148,
+      "lastFiredAt": 1781616216395,
+      "recurring": true,
+      "createdBySessionId": "7feba777-ef4f-487a-b907-9d892bf37909",
+      "createdByPid": 5904,
+      "createdByProcStart": "639171521697257410"
+    }
+  ]
+}

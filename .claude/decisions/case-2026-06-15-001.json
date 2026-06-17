@@ -1,0 +1,81 @@
+{
+  "id": "case-2026-06-15-001",
+  "timestamp": "2026-06-15T06:20:00Z",
+  "session_id": "961037da-ab25-461a-a873-e8eacdeae88c",
+  "trigger": {
+    "type": "user_initiated",
+    "classification": "meta",
+    "context": "用户手动激活 autonomous-engine Skill 进行演示验证"
+  },
+  "decision": {
+    "summary": "首次激活自主决策引擎，执行完整七阶段循环演示，验证引擎基础设施可用性",
+    "domain": "infrastructure",
+    "phase": "stage_3_autonomous",
+    "project": "infrastructure",
+    "action_taken": "1) 运行 OBSERVE→MATCH→RESEARCH→DECIDE 四阶段; 2) WebSearch 获取 2026 年前沿自主编码 Agent 方法论; 3) 写入首个决策案例 JSON; 4) 更新引擎状态文件",
+    "rationale": "用户要求看到引擎实际运行效果。当前处于基础设施搭建阶段，pattern 匹配到 protocol_bootstrap。网络搜索确认了架构方向与 2026 年前沿趋势一致（递归自修改系统、分层认知循环、惊喜加权学习）。"
+  },
+  "pattern": {
+    "pattern_type": "similar_situation",
+    "matched_case_ids": ["protocol_bootstrap"],
+    "match_strength": 0.72,
+    "pattern_signature": "infrastructure:plan:infrastructure:engine_bootstrap"
+  },
+  "research": {
+    "queries_performed": ["autonomous coding agent self-learning decision engine architecture 2026"],
+    "key_findings": [
+      "2026 年前沿共识：认知循环 Perceive→Recall→Plan→Act→Verify→Learn 成为标准架构",
+      "Sprout: 递归委托 + git-backed genome 自进化",
+      "Genesis-Agent: 5层记忆 + 惊喜加权保留 + 66项确定性检查",
+      "MOSS: 源码级自改写（区别于文本层进化）",
+      "Socratic-SWE: 历史解决痕迹蒸馏为 Agent Skills，SWE-bench 50.40%",
+      "Agent Evolver: 与本引擎最相似——project-local skills + 模式提取 + 自主偏好学习"
+    ],
+    "sources": [
+      "https://github.com/prime-radiant-inc/sprout",
+      "https://browse-export.arxiv.org/abs/2603.09716",
+      "https://browse-export.arxiv.org/abs/2605.22794",
+      "https://browse-export.arxiv.org/abs/2606.07412",
+      "https://github.com/adhd8k/agent-evolver"
+    ],
+    "methodology_alignment": "Cognitive Loop + Pattern Extraction + Calibration Learning"
+  },
+  "confidence": {
+    "total_score": 88,
+    "breakdown": {
+      "pattern_match": 18,
+      "web_corroboration": 25,
+      "risk_assessment": 20,
+      "user_preference_alignment": 25
+    },
+    "level": "act_silent",
+    "autonomous_action_permitted": true
+  },
+  "outcome": {
+    "status": "pending_verification",
+    "user_feedback": "",
+    "lessons_learned": [
+      "ScheduleWakeup 无法在常规对话中使用，仅 /loop 模式支持——需调整 L1 层设计",
+      "CronCreate 心跳可正常工作，L2(7min)+L3(60min) 是实际生效的自主循环",
+      "引擎手动激活后 OBSERVE→MATCH→RESEARCH→DECIDE→ACT→REPORT 循环跑通",
+      "与 Agent Evolver 架构高度相似——project-local skills + 模式提取 + 信心校准",
+      "下一步应参考 MOSS 的故障回放验证和 Socratic-SWE 的痕迹蒸馏"
+    ]
+  },
+  "links": {
+    "related_cases": [],
+    "checkpoint_ref": "checkpoint_2026-06-15T06-20-00Z.json",
+    "memory_refs": ["autonomous-state.md", "decision-patterns.md"],
+    "project_files_changed": [
+      ".claude/hooks/decision-observer.py",
+      ".claude/skills/autonomous-engine/SKILL.md",
+      ".claude/decisions/calibration.json",
+      "CLAUDE.md"
+    ]
+  },
+  "evolution": {
+    "created_at": "2026-06-15T06:20:00Z",
+    "updated_at": "2026-06-15T06:20:00Z",
+    "history": []
+  }
+}

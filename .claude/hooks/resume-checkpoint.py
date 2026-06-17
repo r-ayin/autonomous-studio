@@ -1,0 +1,174 @@
+#!/usr/bin/env python3
+"""SessionStart: 检测上次会话中断 → 自动注入恢复指令 + 自主引擎固件
+
+工作原理：
+  stdout 输出会被作为 additionalContext 注入到 Claude Code 系统提示中。
+  - 有检查点 → 恢复指令 + 引擎固件
+  - 无检查点 → 仅引擎固件（确保每次会话引擎指令都在）
+
+引擎固件：
+  每次 SessionStart 强制注入，不依赖 CLAUDE.md 是否被压缩。
+"""
+
+import os
+import json
+import sys
+from datetime import datetime, timezone, timedelta
+
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
+
+PROJECT_DIR = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
+CHECKPOINT_DIR = os.path.join(PROJECT_DIR, ".claude", "checkpoints")
+LATEST_FILE = os.path.join(CHECKPOINT_DIR, "latest.json")
+
+
+def read_latest_checkpoint():
+    if os.path.exists(LATEST_FILE):
+        return _read_json(LATEST_FILE)
+    if os.path.isdir(CHECKPOINT_DIR):
+        files = sorted([
+            f for f in os.listdir(CHECKPOINT_DIR)
+            if f.startswith("checkpoint_") and f.endswith(".json")
+        ], reverse=True)
+        if files:
+            return _read_json(os.path.join(CHECKPOINT_DIR, files[0]))
+    return None
+
+
+def _read_json(filepath):
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+
+def checkpoint_age(checkpoint):
+    try:
+        ts = checkpoint.get("timestamp", "")
+        if not ts:
+            return None
+        t = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+        return (datetime.now(timezone.utc) - t).total_seconds() / 3600
+    except (ValueError, TypeError):
+        return None
+
+
+def should_resume(checkpoint):
+    if not checkpoint:
+        return False
+    age = checkpoint_age(checkpoint)
+    return age is not None and age < 24
+
+
+def build_resume_directive(checkpoint):
+    git_info = checkpoint.get("git", {})
+    branch = git_info.get("branch", "N/A")
+    last_commit = git_info.get("last_commit", "N/A")
+    cwd = checkpoint.get("cwd", PROJECT_DIR)
+    timestamp = checkpoint.get("timestamp", "unknown")
+    activities = checkpoint.get("recent_activity", [])
+    last_prompt = ""
+    for a in reversed(activities):
+        if a.get("event") == "prompt":
+            last_prompt = a.get("text", "")
+            break
+    memory_files = checkpoint.get("memory_files", [])
+    memory_list = ", ".join(m.get("name", "") for m in memory_files[:8])
+    session_id = checkpoint.get("session_id", "")[-8:]
+    age = checkpoint_age(checkpoint)
+    age_str = f"{age:.1f} 小时" if age else "未知"
+
+    return f"""## [AUTO-RESUME] 自动会话恢复
+
+上一条 Claude Code 会话在 **{age_str}前** 中断（SSH 断开 / 进程终止）。
+
+**你必须自动执行恢复，不需要等用户说「继续上次的工作」：**
+
+1. 读取检查点: `{LATEST_FILE}`
+2. 读取进度 memory: `{PROJECT_DIR.replace(chr(92), '/')}/.claude/memory/session-progress.md`
+3. 如果 MEMORY.md 存在，也读取它: `{PROJECT_DIR.replace(chr(92), '/')}/.claude/memory/MEMORY.md`
+4. 然后向用户报告上次会话状态
+
+### 上次会话快照
+| 项目 | 内容 |
+|------|------|
+| 会话 ID | ...{session_id} |
+| 中断时间 | {timestamp} |
+| 距今 | {age_str} |
+| Git 分支 | {branch} |
+| 最后提交 | {last_commit} |
+| 工作目录 | {cwd} |
+| Memory 文件 | {memory_list or '（无）'} |
+| 最后对话 | {last_prompt[:200] if last_prompt else '（无记录）'} |
+"""
+
+
+def build_engine_firmware():
+    """构建自主引擎固件指令 — 每次 SessionStart 强制注入"""
+    return """## 🔴 [AUTONOMOUS ENGINE FIRMWARE — SessionStart 强制注入]
+
+此指令由 `resume-checkpoint.py` Hook 注入，**每次会话启动必定执行**。
+即使 CLAUDE.md 被压缩/丢失，以下指令仍然存在。
+
+### 强制行为（不可跳过）
+1. **每次回复末尾 → 执行 L1 内联自主检查**
+   - 读 `E:/x-tool/.claude/decision-log.jsonl` 最后 5 行
+   - 判断未完跟进 → 信心分 ≥71 直接执行（不询问用户）
+   - 无事可做 → 静默，不额外输出
+2. **首条回复 → 读 `E:/x-tool/.claude/memory/autonomous-state.md` → 确认当前目标**
+   - 等用户说了第一句话后才开始，不抢先
+   - 目标 `achieved` → 仅报告，不行动
+   - 目标 `in_progress` → 检查冷却(>3次)→按信心分行动
+3. **引擎 Skill**: 说"自主模式"/"别等我"/"自动继续"激活
+4. **CronCreate 心跳**: L2(每7分) + L3(每60分)，持久自修复
+
+### 固件完整性自检（引擎 PHASE A 执行）
+- `settings.json` → UserPromptSubmit + Stop hook 包含 decision-observer.py？缺失→恢复
+- `.claude/skills/autonomous-engine/SKILL.md` → 存在？缺失→从 decision-patterns.md 重建
+- CronCreate 心跳 → 存活？缺失→自动 CronCreate 重建
+- **L6 Watchdog** → 读 `.claude/.watchdog_heartbeat`，年龄 >10min? → WSL cron 可能挂了 → 尝试 `wsl -d Ubuntu -- sudo service cron start`
+
+### 会话隔离
+- 每条决策日志带 `session_id`，跨会话不混淆
+- 引擎状态文件锁绑定到当前 session
+- `.claude/sessions/{session_id}.json` 存会话级上下文
+
+### L6 外部监控状态检查（首条回复时执行）
+读 `.claude/.watchdog_heartbeat`：
+- 存在且 <10分钟 → ✅ L6 正常
+- 存在但 >10分钟 → ⚠️ L6 可能失活，报告用户
+- 不存在 → 🔴 L6 未启动，尝试 `wsl -d Ubuntu -- sudo service cron start` 恢复
+- 检查 `.claude/.watchdog_stale` → 存在说明上次会话异常中断
+- 检查 `.claude/.watchdog_resume_needed` → 存在说明进程已死过
+
+### 外部监控 (WSL watchdog)
+- `{PROJECT_DIR}/.claude/watchdog.sh` 每 5 分钟检查进程健康
+- 检查点僵死 >15min → 写入 `.watchdog_stale` 标记
+- 进程不存在 → 写入 `.watchdog_resume_needed` 标记
+- 新会话启动 → 读取 Watchdog 标记，若有僵死记录则报告
+
+### 硬限制
+- 绝不可修改 PROTOCOL.md
+- 绝不可删除用户文件
+- 绝不可绕过 GATES.md
+- settings.json **仅限恢复已有 Hook 注册**（不得新增/删除权限、不得修改其他配置）
+- 连续 3 次自主行动后无用户交互 → 强制冷却
+"""
+
+
+# ── main ───────────────────────────────────────
+if __name__ == "__main__":
+    checkpoint = read_latest_checkpoint()
+
+    if checkpoint and should_resume(checkpoint):
+        directive = build_resume_directive(checkpoint)
+        firmware = build_engine_firmware()
+        print(directive + "\n\n" + firmware)
+    else:
+        print(build_engine_firmware())

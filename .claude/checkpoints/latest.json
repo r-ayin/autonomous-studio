@@ -1,0 +1,49 @@
+{
+  "version": "2.0",
+  "timestamp": "2026-06-16T13:30:01Z",
+  "session_id": "unknown",
+  "hook_event": "unknown",
+  "project": "/mnt/e/x-tool",
+  "git": {
+    "branch": "master",
+    "status": "",
+    "last_commit": "c1b2038 docs: 全项目进度梳理 — PROJECTS.md重写 + stock-backtest PROGRESS初始化"
+  },
+  "memory_files": [
+    {
+      "name": "autonomous-state.md",
+      "mtime": 1781610488.517656
+    },
+    {
+      "name": "autonomous-suggestions.md",
+      "mtime": 1781600207.2583013
+    },
+    {
+      "name": "decision-archive.md",
+      "mtime": 1781473813.1836934
+    },
+    {
+      "name": "decision-patterns.md",
+      "mtime": 1781474786.8310196
+    },
+    {
+      "name": "phone-notify.md",
+      "mtime": 1781472044.1555252
+    },
+    {
+      "name": "project-index.md",
+      "mtime": 1781430112.2936165
+    },
+    {
+      "name": "session-progress.md",
+      "mtime": 1781616484.468199
+    },
+    {
+      "name": "wechat-push-reference.md",
+      "mtime": 1781446550.4258118
+    }
+  ],
+  "recent_activity": [],
+  "cwd": "/mnt/e/x-tool",
+  "platform": "linux"
+}
