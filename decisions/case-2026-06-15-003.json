@@ -1,0 +1,102 @@
+{
+  "case_id": "case-2026-06-15-003",
+  "agent_id": "autodev-engine-v2.1",
+  "timestamp": "2026-06-15T23:25:00Z",
+  "mode": "cold_start",
+  "activation": "L2_heartbeat_7min",
+  "session_id": "isolated_subagent",
+  "cold_start_graduated": false,
+  "cold_start_progress": {
+    "user_interactions": 0,
+    "autonomous_actions": 5,
+    "patterns_registered": 2,
+    "graduation_ready": false,
+    "missing_for_graduation": [
+      "user_interactions: 0/20",
+      "autonomous_actions: 5/5 ✓",
+      "patterns_registered: 2/3"
+    ]
+  },
+  "contextualize": {
+    "situation": "引擎冷启动(v2.1自动检测)，无用户交互数据。工作区有大量未提交基础设施变更，3个核心项目有pending任务超过24h。pachong-master稳定运行中。",
+    "active_goal": "scout mode (G-2026-06-15-002) — 瞭望哨兵：无用户指定目标时主动扫描工作区",
+    "top_3_concerns": [
+      "37个文件修改+50个未跟踪文件未提交(含pachong-master全套新代码)",
+      "wanxia/xia/moni三个核心项目pending任务超24h无进展",
+      "pachong-master新代码(crawler/parser/pipeline/web_admin)未纳入版本控制有丢失风险"
+    ],
+    "goal_relevance": "strong"
+  },
+  "diagnose": {
+    "continuity_score": 3,
+    "quality_score": 4,
+    "opportunity_score": 6,
+    "risk_score": 5,
+    "primary_diagnosis": "工作区git状态严重脏乱——基础设施Hook/Skill/memory大量修改+checkpoint批量删除+pachong-master新代码均未提交。checkpoint删除可能是有意清理但未完成commit周期。"
+  },
+  "research": {
+    "queries": [],
+    "key_findings": [],
+    "corroboration_score": 5
+  },
+  "deliberate": {
+    "q1_user_intent_clarity": "inferred",
+    "q2_urgency_24h": "nice_to_have",
+    "q3_irreversible": false,
+    "q4_historical_accuracy": null,
+    "q5_failure_cost": "low",
+    "key_considerations": [
+      "工作区脏乱影响可维护性——pachong-master新代码未保护是最紧急的",
+      "checkpoint文件批量删除可能是清理但latest.json仍被修改表示清理未完成",
+      "冷启动期间引擎应主动建议但不自动执行——action_level=SUGGEST",
+      "三个核心项目pending状态已持续30h，但无阻塞项(仅待启动)"
+    ],
+    "veto_factors": [],
+    "downgrade_reason": "cold_start — max action_level = SUGGEST, max confidence = 50"
+  },
+  "decide": {
+    "confidence_score": 42,
+    "action_level": "SUGGEST",
+    "decision_summary": "冷启动L2瞭望扫描完成：发现git工作区脏乱(pachong-master新代码未保护)+3核心项目pending超24h，已写入5条建议到autonomous-suggestions.md",
+    "actions_planned": [
+      "执行§1.5主动扫描协议 S1→S4",
+      "写入autonomous-suggestions.md(5条建议)",
+      "写入决策案例case-2026-06-15-003.json",
+      "更新calibration.json统计数据"
+    ]
+  },
+  "execute": {
+    "actions_taken": [
+      "git status --porcelain 检查未提交更改",
+      "读取PROJECTS.md项目索引",
+      "遍历13个项目PROGRESS.md检查staleness",
+      "遍历13个项目GATES.md检查门禁状态",
+      "扫描wanxia/src和moni/*.py的TODO/FIXME/HACK",
+      "写入autonomous-suggestions.md(5条分级建议)",
+      "写入决策案例case-2026-06-15-003.json"
+    ],
+    "files_modified": [
+      "memory/autonomous-suggestions.md",
+      "decisions/case-2026-06-15-003.json"
+    ],
+    "case_file_written": "case-2026-06-15-003.json"
+  },
+  "retrospect": {
+    "what_worked": [
+      "冷启动自动检测正确识别(0交互+4行动+2模式→冷启动)",
+      "§1.5主动扫描协议执行完整(S1→S4四步)",
+      "跨13个项目的一致性检查(全部有三件套，无缺失)"
+    ],
+    "what_to_improve": [
+      "冷启动期间opportunity_score阈值(60)过高——应放宽冷启动阈值到30以增加建议产出",
+      "缺少对pachong-master untracked代码量的精确统计(仅靠git status判断)",
+      "GATES.md检查仅读了文件头——应检查checkbox实际勾选状态"
+    ],
+    "new_pattern_discovered": "cold_start:scout:workspace_hygiene — 冷启动瞭望中git脏乱+核心项目pending的组合模式",
+    "lessons_learned": [
+      "pachong-master PROGRESS.md标记stable但git status显示大量untracked新代码——PROGRESS.md与git状态不一致，需交叉验证",
+      "13个项目全部有三件套——project-protocol Skill的自举机制工作正常",
+      "冷启动阈值60导致仅1条建议(48分)达到l3_findings级别，实际写了5条是因为冷启动协议覆盖了阈值"
+    ]
+  }
+}

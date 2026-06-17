@@ -1,0 +1,151 @@
+{
+  "description": "x-tool 工作区 - 全插件开发环境",
+  "env": {
+    "SLASH_COMMAND_TOOL_CHAR_BUDGET": "40000"
+  },
+  "skillOverrides": {
+    "code-review": "on",
+    "simplify": "on",
+    "security-review": "on",
+    "verify": "on",
+    "run": "on",
+    "specify": "on",
+    "clarify": "on",
+    "survey": "on",
+    "design": "on",
+    "sequences": "on",
+    "data-model": "on",
+    "api": "on",
+    "plan-tests": "on",
+    "tasks": "on",
+    "decide-adr": "on",
+    "agent-review-panel": "on",
+    "devils-advocate": "on",
+    "perspectives": "on",
+    "consensus": "on",
+    "implement": "on",
+    "fix": "on",
+    "review": "on",
+    "ship": "on",
+    "start": "on",
+    "flow": "on",
+    "flow-planning": "on",
+    "flow-execution": "on",
+    "flow-completion": "on",
+    "security-auditor": "on",
+    "architecture-critic": "on",
+    "performance-analyst": "on",
+    "challenge": "on",
+    "review-pr": "on",
+    "commit": "on",
+    "commit-push-pr": "on",
+    "ralph-v2": "on",
+    "ralph-bridge": "on",
+    "apilookup": "on",
+    "deepthink": "on",
+    "tracer": "on",
+    "elegant-design": "on",
+    "typed-holes-refactor": "on",
+    "context7": "name-only",
+    "golembot": "name-only",
+    "questboard": "name-only",
+    "claude-brain": "name-only",
+    "loop": "name-only",
+    "deep-research": "name-only",
+    "init": "name-only",
+    "claude-api": "name-only",
+    "update-config": "name-only",
+    "fewer-permission-prompts": "name-only",
+    "anti-slop": "name-only",
+    "classify-size": "name-only",
+    "docgen": "name-only",
+    "glossary": "name-only",
+    "roadmap": "name-only",
+    "flow-setup": "name-only",
+    "flow-sync-status": "name-only",
+    "plan-review-integrator": "name-only",
+    "discover-agentic": "name-only",
+    "discover-api": "name-only",
+    "discover-cicd": "name-only",
+    "discover-cryptography": "name-only",
+    "discover-data": "name-only",
+    "discover-database": "name-only",
+    "discover-debugging": "name-only",
+    "discover-distributed": "name-only",
+    "discover-engineering": "name-only",
+    "discover-frontend": "name-only",
+    "discover-infra": "name-only",
+    "discover-math": "name-only",
+    "discover-mcp": "name-only",
+    "discover-ml": "name-only",
+    "discover-mobile": "name-only",
+    "discover-networking": "name-only",
+    "discover-product": "name-only",
+    "discover-research": "name-only",
+    "discover-security": "name-only",
+    "discover-systems-theory": "name-only",
+    "discover-testing": "name-only",
+    "discover-wasm": "name-only",
+    "discover-zig": "name-only",
+    "luban": "on"
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/decision-observer.py\" 2>&1",
+            "async": true
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/protocol-check.py\" 2>&1"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/protocol-check.py\" 2>&1"
+          }
+        ]
+      },
+      {
+        "matcher": "AskUserQuestion",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/notify-phone.py\" 2>&1"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/decision-observer.py\" 2>&1"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [],
+    "SessionStart": [],
+    "SessionEnd": []
+  }
+}

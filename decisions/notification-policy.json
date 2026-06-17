@@ -1,0 +1,159 @@
+{
+  "$schema": "notification-policy/1.0",
+  "version": "1.0",
+  "description": "分级通知策略配置 — 定义各事件的通知级别、通道选择和免打扰时段",
+
+  "notification_levels": {
+    "CRITICAL": {
+      "description": "关键通知 — 震动+声音+弹窗",
+      "behavior": {
+        "vibrate": true,
+        "sound": true,
+        "popup": true,
+        "badge": true
+      },
+      "channels": ["dingtalk", "ntfy", "tunnel"],
+      "retry_on_failure": true,
+      "max_retries": 3
+    },
+    "IMPORTANT": {
+      "description": "重要通知 — 静默+角标",
+      "behavior": {
+        "vibrate": false,
+        "sound": false,
+        "popup": false,
+        "badge": true
+      },
+      "channels": ["dingtalk", "ntfy"],
+      "retry_on_failure": true,
+      "max_retries": 2
+    },
+    "INFO": {
+      "description": "信息通知 — 仅日志",
+      "behavior": {
+        "vibrate": false,
+        "sound": false,
+        "popup": false,
+        "badge": false
+      },
+      "channels": ["log"],
+      "retry_on_failure": false,
+      "max_retries": 0
+    }
+  },
+
+  "event_mapping": {
+    "route_correction": {
+      "description": "路线修正",
+      "level": "CRITICAL",
+      "dingtalk_template": "⚠️ **路线修正建议**\n\n当前阶段: {stage}\n健康度: {score}/10\n\n**问题**: {issue}\n**建议**: {suggestion}",
+      "ntfy_priority": "max",
+      "tunnel_priority": "high"
+    },
+    "deploy_ready": {
+      "description": "部署准备就绪",
+      "level": "IMPORTANT",
+      "dingtalk_template": "🚀 **部署准备就绪**\n\n应用: {app_name}\n构建: 成功（{build_id}）\n准入: 通过（{check_items}）\n计划: {batch_count} 批次",
+      "ntfy_priority": "high",
+      "tunnel_priority": "high"
+    },
+    "build_success": {
+      "description": "构建成功",
+      "level": "INFO",
+      "dingtalk_template": "✅ 构建成功: {app_name}（{build_id}）",
+      "ntfy_priority": "default",
+      "tunnel_priority": "default"
+    },
+    "test_failure": {
+      "description": "测试失败",
+      "level": "IMPORTANT",
+      "dingtalk_template": "❌ **测试失败**\n\n任务: {task_name}\n失败用例: {failed_cases}\n错误信息: {error_message}",
+      "ntfy_priority": "high",
+      "tunnel_priority": "high"
+    },
+    "cooldown_triggered": {
+      "description": "冷却触发",
+      "level": "CRITICAL",
+      "dingtalk_template": "🛑 **冷却机制触发**\n\n原因: {reason}\n连续自主行动: {count}\n冷却时长: {duration} 分钟",
+      "ntfy_priority": "max",
+      "tunnel_priority": "max"
+    },
+    "worker_conflict": {
+      "description": "Worker 冲突",
+      "level": "IMPORTANT",
+      "dingtalk_template": "⚠️ **并行 Worker 冲突**\n\n冲突文件: {conflict_files}\n涉及 Worker: {workers}\n\n请审阅冲突并决定合并策略。",
+      "ntfy_priority": "high",
+      "tunnel_priority": "high"
+    },
+    "draft_ready": {
+      "description": "草稿就绪",
+      "level": "IMPORTANT",
+      "dingtalk_template": "📝 **草稿已生成**\n\n阶段: {stage}\n文件: {artifact}\n\n请审阅后确认继续。",
+      "ntfy_priority": "default",
+      "tunnel_priority": "default"
+    },
+    "verification_passed": {
+      "description": "验证通过",
+      "level": "INFO",
+      "dingtalk_template": "✅ 验证通过: {task_name}（{test_count} 个用例）",
+      "ntfy_priority": "default",
+      "tunnel_priority": "default"
+    },
+    "deployment_batch_complete": {
+      "description": "部署批次完成",
+      "level": "IMPORTANT",
+      "dingtalk_template": "🚀 **部署批次完成**\n\n应用: {app_name}\n批次: {batch_index}/{total_batches}\n观察结果: {observation}",
+      "ntfy_priority": "high",
+      "tunnel_priority": "high"
+    }
+  },
+
+  "channel_config": {
+    "dingtalk": {
+      "enabled": true,
+      "webhook_env": "DINGTALK_WEBHOOK",
+      "secret_env": "DINGTALK_SECRET",
+      "default_at_mobiles": [],
+      "default_at_user_ids": [],
+      "description": "钉钉自定义机器人 Webhook"
+    },
+    "ntfy": {
+      "enabled": true,
+      "server": "https://ntfy.sh",
+      "topic_env": "NTFY_TOPIC",
+      "description": "ntfy.sh 推送通知服务"
+    },
+    "tunnel": {
+      "enabled": true,
+      "host": "127.0.0.1",
+      "port": 9999,
+      "timeout": 2,
+      "description": "SSH 反向隧道 → Termux"
+    },
+    "log": {
+      "enabled": true,
+      "output": "stderr",
+      "description": "仅输出到标准错误流（调试用）"
+    }
+  },
+
+  "do_not_disturb": {
+    "enabled": false,
+    "timezone": "Asia/Shanghai",
+    "schedule": [
+      {
+        "start": "23:00",
+        "end": "07:00",
+        "description": "夜间免打扰时段"
+      }
+    ],
+    "critical_override": true,
+    "description": "免打扰时段配置。CRITICAL 级别通知不受免打扰限制（critical_override=true）。"
+  },
+
+  "fallback_strategy": {
+    "description": "当首选通道失败时的降级策略",
+    "order": ["dingtalk", "ntfy", "tunnel", "log"],
+    "log_always": true
+  }
+}

@@ -1,0 +1,266 @@
+{
+  "$schema": "x-tool-model-profiles/1.0",
+  "version": "1.0",
+  "lastUpdated": "2026-06-17T00:00:00Z",
+  "description": "AI 模型能力画像 — 按任务类型选择最优模型",
+
+  "models": {
+    "qwen3.7-max": {
+      "id": "qwen3.7-max",
+      "name": "Qwen 3.7 Max",
+      "provider": "alibaba",
+      "capabilities": {
+        "reasoning": 95,
+        "coding": 85,
+        "creativity": 80,
+        "multimodal": 70,
+        "speed": 60,
+        "cost": 40
+      },
+      "description": "强推理模型，适合复杂逻辑分析、路线研判、需求探索",
+      "maxTokens": 131072,
+      "costPer1KTokens": 0.04,
+      "recommended": ["requirements-exploration", "route-correction", "strategic-review", "complex-debugging"]
+    },
+    "qwen3.7-plus": {
+      "id": "qwen3.7-plus",
+      "name": "Qwen 3.7 Plus",
+      "provider": "alibaba",
+      "capabilities": {
+        "reasoning": 88,
+        "coding": 90,
+        "creativity": 75,
+        "multimodal": 65,
+        "speed": 75,
+        "cost": 25
+      },
+      "description": "均衡模型，推理与编码能力兼备，适合日常开发任务",
+      "maxTokens": 131072,
+      "costPer1KTokens": 0.02,
+      "recommended": ["code-development", "tech-plan", "verification"]
+    },
+    "qwen3.7-turbo": {
+      "id": "qwen3.7-turbo",
+      "name": "Qwen 3.7 Turbo",
+      "provider": "alibaba",
+      "capabilities": {
+        "reasoning": 70,
+        "coding": 75,
+        "creativity": 70,
+        "multimodal": 50,
+        "speed": 95,
+        "cost": 10
+      },
+      "description": "低成本高速模型，适合简单任务和批量操作",
+      "maxTokens": 32768,
+      "costPer1KTokens": 0.005,
+      "recommended": ["status-check", "file-operations", "simple-queries", "format-validation"]
+    },
+    "qwen3.7-creative": {
+      "id": "qwen3.7-creative",
+      "name": "Qwen 3.7 Creative",
+      "provider": "alibaba",
+      "capabilities": {
+        "reasoning": 75,
+        "coding": 65,
+        "creativity": 95,
+        "multimodal": 85,
+        "speed": 65,
+        "cost": 35
+      },
+      "description": "强创意模型，适合文案生成、PRD 撰写、内容创作",
+      "maxTokens": 131072,
+      "costPer1KTokens": 0.03,
+      "recommended": ["prd-writing", "content-generation", "copy-writing", "documentation"]
+    },
+    "qwen3.7-coder": {
+      "id": "qwen3.7-coder",
+      "name": "Qwen 3.7 Coder",
+      "provider": "alibaba",
+      "capabilities": {
+        "reasoning": 80,
+        "coding": 98,
+        "creativity": 60,
+        "multimodal": 40,
+        "speed": 70,
+        "cost": 30
+      },
+      "description": "强编码模型，专精代码生成、重构、Bug 修复",
+      "maxTokens": 65536,
+      "costPer1KTokens": 0.025,
+      "recommended": ["code-development", "code-review", "refactoring", "bug-fix"]
+    },
+    "qwen3.7-lite": {
+      "id": "qwen3.7-lite",
+      "name": "Qwen 3.7 Lite",
+      "provider": "alibaba",
+      "capabilities": {
+        "reasoning": 60,
+        "coding": 55,
+        "creativity": 55,
+        "multimodal": 40,
+        "speed": 98,
+        "cost": 5
+      },
+      "description": "最低成本模型，适合心跳检测、状态读取等极简单任务",
+      "maxTokens": 8192,
+      "costPer1KTokens": 0.002,
+      "recommended": ["heartbeat", "status-read", "file-exists-check", "simple-notification"]
+    }
+  },
+
+  "taskTypeMapping": {
+    "requirements-exploration": {
+      "primary": "qwen3.7-max",
+      "fallback": "qwen3.7-plus",
+      "reason": "需求探索需要深度推理和战略研判能力"
+    },
+    "route-correction": {
+      "primary": "qwen3.7-max",
+      "fallback": "qwen3.7-plus",
+      "reason": "路线修正需要全局一致性和机会成本评估"
+    },
+    "strategic-review": {
+      "primary": "qwen3.7-max",
+      "fallback": "qwen3.7-plus",
+      "reason": "L3 战略审查需要多维分析和跨项目洞察"
+    },
+    "prd-writing": {
+      "primary": "qwen3.7-creative",
+      "fallback": "qwen3.7-plus",
+      "reason": "PRD 撰写需要创意表达能力和结构化输出"
+    },
+    "content-generation": {
+      "primary": "qwen3.7-creative",
+      "fallback": "qwen3.7-plus",
+      "reason": "内容创作需要丰富的语言表达和场景构建能力"
+    },
+    "code-development": {
+      "primary": "qwen3.7-coder",
+      "fallback": "qwen3.7-plus",
+      "reason": "代码开发需要精确的语法理解和代码生成能力"
+    },
+    "tech-plan": {
+      "primary": "qwen3.7-plus",
+      "fallback": "qwen3.7-max",
+      "reason": "技术方案需要推理和编码的均衡能力"
+    },
+    "code-review": {
+      "primary": "qwen3.7-coder",
+      "fallback": "qwen3.7-plus",
+      "reason": "代码审查需要深入的代码理解能力"
+    },
+    "verification": {
+      "primary": "qwen3.7-plus",
+      "fallback": "qwen3.7-coder",
+      "reason": "验证需要理解测试逻辑和代码行为"
+    },
+    "status-check": {
+      "primary": "qwen3.7-turbo",
+      "fallback": "qwen3.7-lite",
+      "reason": "状态检查是简单读取操作，无需复杂推理"
+    },
+    "heartbeat": {
+      "primary": "qwen3.7-lite",
+      "fallback": "qwen3.7-turbo",
+      "reason": "心跳检测是最简单的定时任务"
+    },
+    "file-operations": {
+      "primary": "qwen3.7-turbo",
+      "fallback": "qwen3.7-lite",
+      "reason": "文件操作是机械性任务"
+    },
+    "complex-debugging": {
+      "primary": "qwen3.7-max",
+      "fallback": "qwen3.7-coder",
+      "reason": "复杂调试需要推理 + 编码双重能力"
+    },
+    "refactoring": {
+      "primary": "qwen3.7-coder",
+      "fallback": "qwen3.7-plus",
+      "reason": "重构需要精确的代码理解和安全变更能力"
+    },
+    "bug-fix": {
+      "primary": "qwen3.7-coder",
+      "fallback": "qwen3.7-plus",
+      "reason": "Bug 修复需要精确定位和代码变更能力"
+    },
+    "documentation": {
+      "primary": "qwen3.7-creative",
+      "fallback": "qwen3.7-plus",
+      "reason": "文档撰写需要良好的表达和结构化能力"
+    },
+    "simple-queries": {
+      "primary": "qwen3.7-turbo",
+      "fallback": "qwen3.7-lite",
+      "reason": "简单查询无需复杂推理"
+    },
+    "format-validation": {
+      "primary": "qwen3.7-turbo",
+      "fallback": "qwen3.7-lite",
+      "reason": "格式验证是规则匹配任务"
+    }
+  },
+
+  "costEstimation": {
+    "unit": "元/千 tokens",
+    "estimates": {
+      "requirements-exploration": {
+        "avgTokensPerSession": 15000,
+        "avgCostPerSession": 0.60,
+        "model": "qwen3.7-max"
+      },
+      "prd-writing": {
+        "avgTokensPerSession": 12000,
+        "avgCostPerSession": 0.36,
+        "model": "qwen3.7-creative"
+      },
+      "code-development": {
+        "avgTokensPerSession": 20000,
+        "avgCostPerSession": 0.50,
+        "model": "qwen3.7-coder"
+      },
+      "tech-plan": {
+        "avgTokensPerSession": 18000,
+        "avgCostPerSession": 0.36,
+        "model": "qwen3.7-plus"
+      },
+      "verification": {
+        "avgTokensPerSession": 8000,
+        "avgCostPerSession": 0.16,
+        "model": "qwen3.7-plus"
+      },
+      "code-review": {
+        "avgTokensPerSession": 10000,
+        "avgCostPerSession": 0.25,
+        "model": "qwen3.7-coder"
+      },
+      "heartbeat": {
+        "avgTokensPerSession": 2000,
+        "avgCostPerSession": 0.004,
+        "model": "qwen3.7-lite"
+      },
+      "status-check": {
+        "avgTokensPerSession": 3000,
+        "avgCostPerSession": 0.015,
+        "model": "qwen3.7-turbo"
+      }
+    },
+    "dailyBudgetWarning": 50,
+    "dailyBudgetHardLimit": 100,
+    "monthlyBudgetWarning": 1000,
+    "monthlyBudgetHardLimit": 2000
+  },
+
+  "fallbackChain": {
+    "description": "模型不可用时的降级链，按优先级依次尝试",
+    "chains": {
+      "qwen3.7-max": ["qwen3.7-plus", "qwen3.7-coder", "qwen3.7-turbo"],
+      "qwen3.7-plus": ["qwen3.7-coder", "qwen3.7-turbo"],
+      "qwen3.7-coder": ["qwen3.7-plus", "qwen3.7-turbo"],
+      "qwen3.7-creative": ["qwen3.7-plus", "qwen3.7-turbo"],
+      "qwen3.7-turbo": ["qwen3.7-lite"],
+      "qwen3.7-lite": []
+    }
+  }
+}

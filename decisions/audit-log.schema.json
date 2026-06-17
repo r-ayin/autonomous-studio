@@ -1,0 +1,262 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Audit Log Entry",
+  "description": "审计日志事件格式规范。记录所有敏感操作和关键系统事件，用于安全审计和合规检查。",
+  "type": "object",
+  "required": ["id", "timestamp", "userId", "action", "resource", "result", "ip"],
+
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "审计事件唯一标识，格式: audit-{YYYYMMDD}-{HHmmss}-{random}",
+      "pattern": "^audit-\\d{8}-\\d{6}-[a-zA-Z0-9]{6}$",
+      "examples": ["audit-20260617-103045-abc123"]
+    },
+
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "事件发生时间 (ISO 8601)"
+    },
+
+    "userId": {
+      "type": "string",
+      "description": "操作用户标识（工号/邮箱/内部 ID）",
+      "examples": ["zhangsan", "engine"]
+    },
+
+    "userRole": {
+      "type": "string",
+      "description": "操作用户角色",
+      "enum": ["product", "developer", "tester", "ops", "reviewer", "admin", "engine"],
+      "examples": ["developer"]
+    },
+
+    "action": {
+      "type": "string",
+      "description": "操作类型",
+      "enum": [
+        "create", "read", "update", "delete",
+        "deploy", "rollback",
+        "permission_change", "role_change",
+        "config_change", "secret_access",
+        "login", "logout",
+        "model_switch", "cost_threshold_exceeded",
+        "compliance_check", "compliance_violation",
+        "stage_transition", "decision_made",
+        "file_write", "file_delete",
+        "pipeline_trigger", "pipeline_cancel"
+      ],
+      "examples": ["deploy"]
+    },
+
+    "resource": {
+      "type": "object",
+      "description": "操作目标资源",
+      "required": ["type", "identifier"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "资源类型",
+          "enum": ["file", "artifact", "deployment", "config", "permission", "secret", "pipeline", "model", "session"],
+          "examples": ["deployment"]
+        },
+        "identifier": {
+          "type": "string",
+          "description": "资源标识符（路径/ID/名称）",
+          "examples": [".planning/prd.md", "app-123", "pipeline-456"]
+        },
+        "previousValue": {
+          "type": "string",
+          "description": "修改前的值（用于 update/delete 操作）"
+        },
+        "newValue": {
+          "type": "string",
+          "description": "修改后的值（用于 create/update 操作）"
+        }
+      }
+    },
+
+    "result": {
+      "type": "string",
+      "description": "操作结果",
+      "enum": ["success", "failure", "denied", "timeout", "partial"],
+      "examples": ["success"]
+    },
+
+    "ip": {
+      "type": "string",
+      "description": "操作来源 IP 地址",
+      "format": "ipv4",
+      "examples": ["192.168.1.100"]
+    },
+
+    "sensitive": {
+      "type": "boolean",
+      "description": "是否为敏感操作（删除/部署/权限变更等）",
+      "default": false,
+      "examples": [true]
+    },
+
+    "sensitiveLevel": {
+      "type": "string",
+      "description": "敏感级别",
+      "enum": ["none", "low", "medium", "high", "critical"],
+      "default": "none",
+      "examples": ["high"]
+    },
+
+    "details": {
+      "type": "object",
+      "description": "操作详细信息",
+      "properties": {
+        "reason": {
+          "type": "string",
+          "description": "操作原因"
+        },
+        "approvalId": {
+          "type": "string",
+          "description": "审批单 ID（敏感操作需要审批）"
+        },
+        "affectedUsers": {
+          "type": "array",
+          "description": "受影响的用户列表",
+          "items": { "type": "string" }
+        },
+        "errorMessage": {
+          "type": "string",
+          "description": "错误信息（失败时）"
+        },
+        "duration": {
+          "type": "integer",
+          "description": "操作耗时（毫秒）"
+        }
+      }
+    },
+
+    "metadata": {
+      "type": "object",
+      "description": "额外元数据",
+      "properties": {
+        "userAgent": {
+          "type": "string",
+          "description": "客户端标识"
+        },
+        "sessionId": {
+          "type": "string",
+          "description": "会话 ID"
+        },
+        "requestId": {
+          "type": "string",
+          "description": "请求追踪 ID"
+        },
+        "tags": {
+          "type": "array",
+          "description": "标签列表",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  },
+
+  "sensitiveActionRules": {
+    "description": "敏感操作标记规则",
+    "rules": [
+      {
+        "actions": ["delete", "file_delete"],
+        "level": "high",
+        "reason": "删除操作不可逆，需要审计追踪"
+      },
+      {
+        "actions": ["deploy", "rollback"],
+        "level": "critical",
+        "reason": "部署/回滚影响生产环境，需要严格审计"
+      },
+      {
+        "actions": ["permission_change", "role_change"],
+        "level": "critical",
+        "reason": "权限变更影响系统安全，需要严格审计"
+      },
+      {
+        "actions": ["secret_access"],
+        "level": "critical",
+        "reason": "密钥访问涉及敏感信息，需要严格审计"
+      },
+      {
+        "actions": ["config_change"],
+        "level": "medium",
+        "reason": "配置变更可能影响系统行为"
+      },
+      {
+        "actions": ["model_switch"],
+        "level": "low",
+        "reason": "模型切换影响成本和输出质量"
+      }
+    ]
+  },
+
+  "retentionPolicy": {
+    "description": "日志保留策略",
+    "rules": [
+      {
+        "level": "critical",
+        "retentionDays": 365,
+        "description": "关键敏感操作日志保留 1 年"
+      },
+      {
+        "level": "high",
+        "retentionDays": 180,
+        "description": "高敏感操作日志保留 6 个月"
+      },
+      {
+        "level": "medium",
+        "retentionDays": 90,
+        "description": "中等敏感操作日志保留 90 天"
+      },
+      {
+        "level": "low",
+        "retentionDays": 90,
+        "description": "低敏感操作日志保留 90 天"
+      },
+      {
+        "level": "none",
+        "retentionDays": 30,
+        "description": "普通操作日志保留 30 天"
+      }
+    ],
+    "defaultRetentionDays": 90,
+    "archiveFormat": "gzip",
+    "archivePath": "decisions/audit-archive/"
+  },
+
+  "examples": [
+    {
+      "id": "audit-20260617-103045-abc123",
+      "timestamp": "2026-06-17T10:30:45Z",
+      "userId": "zhangsan",
+      "userRole": "ops",
+      "action": "deploy",
+      "resource": {
+        "type": "deployment",
+        "identifier": "app-123",
+        "previousValue": null,
+        "newValue": "v2.1.0"
+      },
+      "result": "success",
+      "ip": "192.168.1.100",
+      "sensitive": true,
+      "sensitiveLevel": "critical",
+      "details": {
+        "reason": "日常发布",
+        "approvalId": "cr-456",
+        "affectedUsers": ["all-users"],
+        "duration": 120000
+      },
+      "metadata": {
+        "sessionId": "session-abc",
+        "requestId": "req-789",
+        "tags": ["deployment", "production"]
+      }
+    }
+  ]
+}
