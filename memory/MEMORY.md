@@ -1,0 +1,8 @@
+- [会话进度追踪](session-progress.md) — SSH 断开后恢复工作上下文的核心 memory
+- [项目索引](project-index.md) — 5 个核心项目 + 辅助项目的完整地图
+- [微信推送可复用方案](wechat-push-reference.md) — Hermes CLI MEDIA:语法 + WeixinAdapter SDK，全项目复用
+- [手机系统通知方案](phone-notify.md) — ntfy.sh 推送 Android 通知，Stop/AskUserQuestion hook 触发
+- [决策档案](decision-archive.md) — 全部工作区决策 + 276 条对话历史 + 8 个关键案例完整记录
+- [引擎状态](autonomous-state.md) — 自主决策引擎运行状态、冷却计数、活跃项目
+- [引擎建议队列](autonomous-suggestions.md) — 引擎在 SUGGEST 级别时的待审查建议
+- [决策模式库](decision-patterns.md) — 从 8 个案例中提取的可复用决策模式

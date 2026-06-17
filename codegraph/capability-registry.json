@@ -1,0 +1,166 @@
+{
+  "version": "1.0.1",
+  "last_scan": "2026-06-18T00:50:00Z",
+  "scan_method": "codegraph --help + subcommand parsing",
+  "mcp_tools": [
+    {
+      "name": "codegraph_explore",
+      "description": "探索代码区域：返回相关符号源码+调用路径，单次调用替代 grep+read 组合",
+      "capability_tags": ["symbol_lookup", "call_path", "source_read", "area_exploration"],
+      "engine_value": "替代 grep+read 组合获取结构化代码上下文"
+    },
+    {
+      "name": "codegraph_node",
+      "description": "查看单个符号：源码+调用者/被调用者链，或读取文件含行号和依赖",
+      "capability_tags": ["caller_callee", "symbol_detail", "dependency_trace", "file_read"],
+      "engine_value": "追踪单个函数/类的完整调用关系+文件内容"
+    }
+  ],
+  "cli_commands": [
+    {
+      "name": "init",
+      "description": "在项目目录初始化 CodeGraph 并构建初始索引",
+      "capability_tags": ["project_setup", "index_build"],
+      "engine_value": "项目索引初始化，冷启动前置条件",
+      "options": ["--force", "--verbose"]
+    },
+    {
+      "name": "index",
+      "description": "索引项目所有文件",
+      "capability_tags": ["index_build", "full_scan"],
+      "engine_value": "全量重建索引",
+      "options": ["--force", "--quiet", "--verbose"]
+    },
+    {
+      "name": "sync",
+      "description": "同步自上次索引以来的变更（增量更新）",
+      "capability_tags": ["incremental_update", "watcher"],
+      "engine_value": "保持索引与代码同步",
+      "options": ["--quiet"]
+    },
+    {
+      "name": "status",
+      "description": "显示索引状态和统计信息（文件数/符号数/语言分布）",
+      "capability_tags": ["index_health", "statistics", "project_metrics"],
+      "engine_value": "量化项目代码规模，辅助模型选择和复杂度判断",
+      "options": ["--json"]
+    },
+    {
+      "name": "query",
+      "description": "基于 FTS5 全文搜索符号",
+      "capability_tags": ["symbol_search", "fts5", "fulltext"],
+      "engine_value": "快速定位符号位置，支持按类型过滤",
+      "options": ["--path", "--limit", "--kind", "--json"]
+    },
+    {
+      "name": "explore",
+      "description": "探索代码区域：相关符号源码+调用路径一键获取",
+      "capability_tags": ["symbol_lookup", "call_path", "source_read", "area_exploration"],
+      "engine_value": "结构化代码探索，替代多次 grep+read",
+      "options": ["--path", "--max-files"]
+    },
+    {
+      "name": "node",
+      "description": "查看单个符号的源码+调用者/被调用者追踪，或文件读取模式",
+      "capability_tags": ["caller_callee", "symbol_detail", "dependency_trace", "file_read"],
+      "engine_value": "精确追踪单个函数/类的完整依赖关系",
+      "options": ["--path", "--file", "--offset", "--limit", "--symbols-only"]
+    },
+    {
+      "name": "files",
+      "description": "显示项目文件结构（tree/flat/grouped），含语言和符号数元数据",
+      "capability_tags": ["structure", "navigation", "project_map"],
+      "engine_value": "项目结构快照，替代 tree + wc -l 组合",
+      "options": ["--path", "--filter", "--pattern", "--format", "--max-depth", "--no-metadata", "--json"]
+    },
+    {
+      "name": "daemon",
+      "description": "管理 CodeGraph 后台守护进程（查看/停止）",
+      "capability_tags": ["daemon_management"],
+      "engine_value": "后台自动同步管理",
+      "options": []
+    },
+    {
+      "name": "unlock",
+      "description": "移除阻止索引的过期锁文件",
+      "capability_tags": ["lock_management", "recovery"],
+      "engine_value": "索引故障恢复",
+      "options": []
+    },
+    {
+      "name": "callers",
+      "description": "查找调用特定符号的所有函数/方法（反向依赖追踪）",
+      "capability_tags": ["caller_trace", "reverse_dependency", "impact_analysis"],
+      "engine_value": "反向依赖追踪：谁依赖了这个符号？",
+      "options": ["--path", "--limit", "--json"]
+    },
+    {
+      "name": "callees",
+      "description": "查找特定符号调用的所有函数/方法（正向依赖追踪）",
+      "capability_tags": ["callee_trace", "forward_dependency"],
+      "engine_value": "正向依赖追踪：这个符号依赖了谁？",
+      "options": ["--path", "--limit", "--json"]
+    },
+    {
+      "name": "impact",
+      "description": "分析修改某符号的影响面（可控制遍历深度）",
+      "capability_tags": ["impact_analysis", "change_blast_radius", "refactoring_safety"],
+      "engine_value": "自主行动前评估修改风险；影响面过大时降级决策",
+      "options": ["--path", "--depth", "--json"]
+    },
+    {
+      "name": "affected",
+      "description": "查找受修改文件影响的测试文件",
+      "capability_tags": ["test_impact", "coverage_hint", "test_selection"],
+      "engine_value": "自动定位受影响测试，修改后精准跑测试",
+      "options": ["--path", "--stdin", "--depth", "--filter", "--json", "--quiet"]
+    },
+    {
+      "name": "install",
+      "description": "将 CodeGraph MCP server 安装到 AI Agent（Claude Code/Cursor/Codex CLI/opencode/Hermes/Gemini CLI/Antigravity/Kiro）",
+      "capability_tags": ["agent_setup", "mcp_registration"],
+      "engine_value": "Agent 接入管理",
+      "options": ["--target", "--location", "--yes", "--no-permissions", "--print-config"]
+    },
+    {
+      "name": "uninstall",
+      "description": "从 AI Agent 中移除 CodeGraph",
+      "capability_tags": ["agent_setup", "mcp_registration"],
+      "engine_value": "Agent 接入管理",
+      "options": ["--target", "--location", "--yes"]
+    },
+    {
+      "name": "telemetry",
+      "description": "显示或修改匿名使用遥测设置",
+      "capability_tags": ["config"],
+      "engine_value": "遥测管理",
+      "options": []
+    },
+    {
+      "name": "upgrade",
+      "description": "更新 CodeGraph 到最新版本（或指定版本）",
+      "capability_tags": ["self_update"],
+      "engine_value": "版本管理；触发融合层自动刷新",
+      "options": ["--check", "--force"]
+    }
+  ],
+  "language_support": [
+    "typescript", "javascript", "python", "go", "rust", "java", "kotlin",
+    "swift", "objective-c", "c", "cpp", "csharp", "ruby", "php", "scala",
+    "elixir", "erlang", "haskell", "ocaml", "lua", "zig", "bash",
+    "sql", "json", "yaml", "toml", "markdown"
+  ],
+  "framework_support": [
+    "react", "next.js", "vue", "svelte", "angular",
+    "express", "fastify", "koa", "nest.js",
+    "fastapi", "django", "flask",
+    "gin", "echo", "fiber",
+    "axum", "actix", "rocket",
+    "spring", "laravel", "rails"
+  ],
+  "key_options": {
+    "json_output": ["status", "query", "callers", "callees", "impact", "affected", "files"],
+    "path_select": ["init", "index", "sync", "status", "query", "explore", "node", "callers", "callees", "impact", "affected", "files", "unlock"],
+    "depth_control": ["impact", "affected"]
+  }
+}

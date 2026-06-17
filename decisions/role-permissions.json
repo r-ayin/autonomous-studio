@@ -1,0 +1,278 @@
+{
+  "$schema": "x-tool-role-permissions/1.0",
+  "version": "1.0",
+  "lastUpdated": "2026-06-17T00:00:00Z",
+  "description": "角色权限配置 — 定义各角色在 autonomous_studio 中的操作权限和协作规则",
+
+  "roles": {
+    "product": {
+      "name": "产品",
+      "description": "负责需求定义、PRD 撰写、验收标准制定",
+      "permissions": {
+        "allowed_operations": [
+          "create_requirements",
+          "edit_requirements",
+          "create_prd",
+          "edit_prd",
+          "define_acceptance_criteria",
+          "review_tech_plan",
+          "approve_prd",
+          "reject_prd",
+          "suggest_modifications",
+          "view_all_artifacts",
+          "create_test_cases",
+          "manage_priorities",
+          "define_mvp_scope"
+        ],
+        "denied_operations": [
+          "modify_code",
+          "deploy_to_production",
+          "change_infrastructure",
+          "manage_permissions"
+        ],
+        "owned_artifacts": [
+          ".planning/requirements.md",
+          ".planning/prd.md",
+          ".planning/test-cases.md"
+        ]
+      },
+      "notification_preferences": {
+        "prd_review_requested": "immediate",
+        "requirements_change": "immediate",
+        "stage_transition": "daily_digest",
+        "route_correction": "immediate",
+        "deployment_start": "daily_digest",
+        "deployment_complete": "immediate"
+      }
+    },
+
+    "developer": {
+      "name": "开发",
+      "description": "负责技术方案设计、代码实现、代码审查",
+      "permissions": {
+        "allowed_operations": [
+          "create_tech_plan",
+          "edit_tech_plan",
+          "write_code",
+          "modify_code",
+          "create_branch",
+          "commit_code",
+          "review_code",
+          "approve_code_review",
+          "reject_code_review",
+          "run_tests",
+          "fix_bugs",
+          "refactor_code",
+          "view_all_artifacts",
+          "suggest_requirements_change",
+          "suggest_prd_change"
+        ],
+        "denied_operations": [
+          "approve_prd",
+          "deploy_to_production",
+          "change_infrastructure",
+          "manage_permissions",
+          "delete_artifacts"
+        ],
+        "owned_artifacts": [
+          ".planning/tech-plan.md",
+          "src/**",
+          "test/**"
+        ]
+      },
+      "notification_preferences": {
+        "tech_plan_review_requested": "immediate",
+        "code_review_requested": "immediate",
+        "test_failure": "immediate",
+        "requirements_change": "daily_digest",
+        "prd_change": "daily_digest",
+        "deployment_start": "daily_digest"
+      }
+    },
+
+    "tester": {
+      "name": "测试",
+      "description": "负责验证测试、质量把关、缺陷管理",
+      "permissions": {
+        "allowed_operations": [
+          "run_verification",
+          "create_test_cases",
+          "edit_test_cases",
+          "execute_e2e_tests",
+          "report_bugs",
+          "verify_bug_fixes",
+          "approve_verification",
+          "reject_verification",
+          "view_all_artifacts",
+          "suggest_code_change",
+          "suggest_requirements_change"
+        ],
+        "denied_operations": [
+          "modify_code",
+          "approve_prd",
+          "deploy_to_production",
+          "change_infrastructure",
+          "manage_permissions",
+          "delete_artifacts"
+        ],
+        "owned_artifacts": [
+          ".planning/test-cases.md",
+          "e2e/**",
+          "test/**"
+        ]
+      },
+      "notification_preferences": {
+        "verification_requested": "immediate",
+        "bug_reported": "immediate",
+        "code_ready_for_test": "immediate",
+        "test_failure": "immediate",
+        "deployment_start": "daily_digest"
+      }
+    },
+
+    "ops": {
+      "name": "运维",
+      "description": "负责部署操作、环境管理、监控告警",
+      "permissions": {
+        "allowed_operations": [
+          "trigger_deployment",
+          "monitor_deployment",
+          "rollback_deployment",
+          "manage_environments",
+          "view_logs",
+          "view_metrics",
+          "configure_alerts",
+          "approve_deployment",
+          "reject_deployment",
+          "view_all_artifacts",
+          "suggest_infrastructure_change"
+        ],
+        "denied_operations": [
+          "modify_code",
+          "approve_prd",
+          "approve_tech_plan",
+          "manage_permissions",
+          "delete_artifacts"
+        ],
+        "owned_artifacts": [
+          ".planning/deploy-plan.md",
+          "deploy/**",
+          "scripts/deploy/**"
+        ]
+      },
+      "notification_preferences": {
+        "deployment_requested": "immediate",
+        "build_success": "immediate",
+        "build_failure": "immediate",
+        "pre_check_result": "immediate",
+        "deployment_complete": "immediate",
+        "alert_triggered": "immediate"
+      }
+    },
+
+    "reviewer": {
+      "name": "评审",
+      "description": "负责跨阶段评审、质量把控、合规检查",
+      "permissions": {
+        "allowed_operations": [
+          "review_all_artifacts",
+          "approve_stage",
+          "reject_stage",
+          "request_changes",
+          "run_compliance_check",
+          "view_all_artifacts",
+          "suggest_any_change"
+        ],
+        "denied_operations": [
+          "modify_code",
+          "deploy_to_production",
+          "manage_permissions",
+          "delete_artifacts"
+        ],
+        "owned_artifacts": []
+      },
+      "notification_preferences": {
+        "stage_complete": "immediate",
+        "review_requested": "immediate",
+        "compliance_check_result": "immediate"
+      }
+    },
+
+    "admin": {
+      "name": "管理员",
+      "description": "拥有所有权限，负责系统配置和权限管理",
+      "permissions": {
+        "allowed_operations": [
+          "all"
+        ],
+        "denied_operations": [],
+        "owned_artifacts": [
+          "decisions/role-permissions.json",
+          "decisions/audit-log.jsonl"
+        ]
+      },
+      "notification_preferences": {
+        "all": "immediate"
+      }
+    }
+  },
+
+  "crossRoleCollaboration": {
+    "description": "跨角色协作规则",
+    "rules": [
+      {
+        "name": "需求到技术方案交接",
+        "from": "product",
+        "to": "developer",
+        "trigger": "prd 确认完成",
+        "process": "产品确认 PRD → 通知开发 → 开发评审 PRD 技术可行性 → 提出修改建议或确认接收"
+      },
+      {
+        "name": "开发到测试交接",
+        "from": "developer",
+        "to": "tester",
+        "trigger": "代码开发完成并提交",
+        "process": "开发完成代码 → 自动触发测试 → 测试执行验证 → 通过则进入评审，失败则回退开发"
+      },
+      {
+        "name": "测试到部署交接",
+        "from": "tester",
+        "to": "ops",
+        "trigger": "验证通过",
+        "process": "测试通过 → 通知运维 → 运维执行部署前检查 → 部署"
+      },
+      {
+        "name": "跨角色评审",
+        "from": "any",
+        "to": "reviewer",
+        "trigger": "任何阶段完成",
+        "process": "阶段完成 → 自动通知评审角色 → 评审角色独立审查 → 输出评审意见"
+      },
+      {
+        "name": "冲突升级",
+        "from": "any",
+        "to": "admin",
+        "trigger": "跨角色意见分歧无法解决",
+        "process": "记录分歧 → 各方陈述理由 → 管理员裁决 → 执行裁决结果"
+      }
+    ]
+  },
+
+  "conflictResolution": {
+    "description": "冲突解决机制",
+    "votingMechanism": {
+      "enabled": true,
+      "quorum": 3,
+      "threshold": 0.67,
+      "process": [
+        "发起投票: 任一角色对争议项发起投票",
+        "收集意见: 所有相关角色在 24 小时内投票 (approve/reject/abstain)",
+        "计算结果: approve 比例 ≥ 67% → 通过; < 33% → 否决; 33%-67% → 管理员裁决",
+        "执行结果: 根据投票结果执行对应操作",
+        "记录归档: 投票过程和结果写入 team-decision-log"
+      ],
+      "timeout": "24h",
+      "escalation": "超时未达法定人数 → 自动升级到管理员裁决"
+    }
+  }
+}

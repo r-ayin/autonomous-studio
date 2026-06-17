@@ -1,0 +1,145 @@
+{
+  "_description": "引擎触点注册表 —— 引擎中所有可以通过外部代码智能增强的位置。每个触点定义了它在引擎中的位置、触发条件、需要的能力、以及没有 CodeGraph 时的降级策略。",
+  "_update_policy": "additive: 新增触点无障碍；删除/禁用触点需设 auto_adapt=false。能力标签变更时自动重新匹配。",
+  "touchpoints": [
+    {
+      "id": "TP-01",
+      "name": "自主行动冲击面门禁",
+      "category": "safety_gate",
+      "priority": "critical",
+      "location": "decision-agent-prompt.md → §1 DECIDE → 执行前预检",
+      "description": "引擎信心≥71准备执行可逆操作时，先用 CodeGraph 评估修改影响面。影响面过大则降级为 SUGGEST。",
+      "trigger": "引擎进入 DECIDE 阶段且 action_level ∈ {ACT_SILENT, ACT_NOTIFY}",
+      "needed_capabilities": ["impact_analysis", "change_blast_radius"],
+      "codegraph_call": "impact <target_symbol> --json --depth 2",
+      "thresholds": {
+        "ACT_SILENT_max_impact": 3,
+        "ACT_NOTIFY_max_impact": 10,
+        "on_exceed": "downgrade_to_SUGGEST"
+      },
+      "auto_adapt": true,
+      "fallback": "若无 CodeGraph → git diff --stat 估算影响文件数，影响>5 个文件降级"
+    },
+    {
+      "id": "TP-02",
+      "name": "L3 路线健康度客观化 — E1 产出物质量",
+      "category": "diagnostics",
+      "priority": "high",
+      "location": "decision-agent-prompt.md → §②E → E1 产出物内在质量",
+      "description": "用 CodeGraph 提取实际实现的符号，与 spec 声明的 API 比对，计算覆盖率，替代纯主观评估。",
+      "trigger": "L3 研判轨激活，执行 §②E E1 评分",
+      "needed_capabilities": ["symbol_search", "statistics", "caller_trace"],
+      "codegraph_call": "query+status → 提取实际符号 → 比对 spec → 覆盖率评分",
+      "thresholds": {
+        "coverage_100": 3,
+        "coverage_ge_80": 2,
+        "coverage_ge_50": 1,
+        "coverage_lt_50": 0
+      },
+      "auto_adapt": true,
+      "fallback": "若无 CodeGraph → 退化为 grep 关键类名计数估算覆盖率"
+    },
+    {
+      "id": "TP-03",
+      "name": "L3 路线健康度客观化 — E2 跨阶段一致性",
+      "category": "diagnostics",
+      "priority": "high",
+      "location": "decision-agent-prompt.md → §②E → E2 跨阶段一致性",
+      "description": "用 CodeGraph 比对 data-model.md 声明的实体 vs 实际 schema/类型定义，检测漂移。",
+      "trigger": "L3 研判轨激活，执行 §②E E2 评分",
+      "needed_capabilities": ["symbol_search", "symbol_detail", "dependency_trace"],
+      "codegraph_call": "query <model_entity> → 对比 data-model.md 声明",
+      "thresholds": {
+        "all_matched": 3,
+        "minor_drift": 2,
+        "major_drift": 1,
+        "completely_divergent": 0
+      },
+      "auto_adapt": true,
+      "fallback": "若无 CodeGraph → grep 实体名在代码中出现次数，存在即视为一致"
+    },
+    {
+      "id": "TP-04",
+      "name": "跨项目依赖感知",
+      "category": "cross_project",
+      "priority": "high",
+      "location": "decision-agent-prompt.md → §1.5 主动扫描 → S2 跨项目诊断",
+      "description": "用 CodeGraph 跨项目追踪调用链，检测共享依赖冲突、API 契约违反、重复造轮子。",
+      "trigger": "L2 主动扫描 S2 跨项目诊断",
+      "needed_capabilities": ["caller_trace", "symbol_lookup", "dependency_trace"],
+      "codegraph_call": "对 4 个项目分别 callers/callees → 比对共享符号的版本一致性",
+      "thresholds": {
+        "conflict_detected": "写入 suggestions.md 提醒"
+      },
+      "auto_adapt": true,
+      "fallback": "若无 CodeGraph → import 语句 grep 模糊匹配跨项目引用"
+    },
+    {
+      "id": "TP-05",
+      "name": "冷启动项目预分析",
+      "category": "bootstrapping",
+      "priority": "medium",
+      "location": "decision-agent-prompt.md → §0.2 轨道B → CS-SCAN",
+      "description": "冷启动阶段用 CodeGraph 快速建立项目认知地图（文件结构+符号统计+语言分布）。",
+      "trigger": "引擎冷启动 CS-SCAN 阶段",
+      "needed_capabilities": ["structure", "statistics", "project_metrics", "project_map"],
+      "codegraph_call": "files --json + status --json → 项目结构+规模快照",
+      "thresholds": {},
+      "auto_adapt": true,
+      "fallback": "若无 CodeGraph → find + wc -l + file 命令组合估算"
+    },
+    {
+      "id": "TP-06",
+      "name": "变更影响测试定位",
+      "category": "verification",
+      "priority": "medium",
+      "location": "decision-agent-prompt.md → §1 EXECUTE → 执行后验证",
+      "description": "自主修改代码后，用 CodeGraph 定位受影响的测试文件，精准运行而非全量跑。",
+      "trigger": "引擎完成自主代码修改后",
+      "needed_capabilities": ["test_impact", "coverage_hint", "test_selection"],
+      "codegraph_call": "affected <changed_files> --json → 运行受影响测试",
+      "thresholds": {
+        "affected_test_count_0": "跳过测试（无覆盖）",
+        "affected_test_count_le_5": "全部运行",
+        "affected_test_count_gt_5": "运行前5个+取样"
+      },
+      "auto_adapt": true,
+      "fallback": "若无 CodeGraph → 按文件名模糊匹配查找测试文件"
+    },
+    {
+      "id": "TP-07",
+      "name": "模型选择动态优化",
+      "category": "optimization",
+      "priority": "low",
+      "location": "SKILL.md → Step 4 Agent spawn → 模型选择",
+      "description": "根据 CodeGraph 提供的项目规模/复杂度数据动态选择子代理模型。",
+      "trigger": "每次 spawn 决策子代理前",
+      "needed_capabilities": ["statistics", "impact_analysis", "project_metrics"],
+      "codegraph_call": "status --json → 文件数/符号数 → 匹配模型画像",
+      "thresholds": {
+        "small_project_le_100_files": "便宜模型（sonnet）",
+        "medium_100_500_files": "默认模型",
+        "large_gt_500_files": "强推理模型（opus）"
+      },
+      "auto_adapt": true,
+      "fallback": "若无 CodeGraph → 默认模型不变，不动态调整"
+    },
+    {
+      "id": "TP-08",
+      "name": "索引健康监控",
+      "category": "infrastructure",
+      "priority": "low",
+      "location": "L3 研判轨 → 基础设施自检",
+      "description": "L3 自检时检查 CodeGraph 索引健康度：索引是否过期？daemon 是否存活？",
+      "trigger": "L3 研判轨基础设施自检",
+      "needed_capabilities": ["index_health", "daemon_management"],
+      "codegraph_call": "status --json → 检查 last_sync 时间，>1h 则 sync",
+      "thresholds": {
+        "stale_gt_1h": "触发 codegraph sync",
+        "daemon_dead": "重启 daemon"
+      },
+      "auto_adapt": true,
+      "fallback": "若无 CodeGraph → 跳过此检查"
+    }
+  ]
+}
