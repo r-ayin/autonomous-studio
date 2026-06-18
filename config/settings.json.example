@@ -98,11 +98,24 @@
             "type": "command",
             "command": "python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/decision-observer.py\" 2>&1",
             "async": true
+          },
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/discovery-gate.py\" 2>&1"
           }
         ]
       }
     ],
     "PreToolUse": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/discovery-gate.py\" 2>&1"
+          }
+        ]
+      },
       {
         "matcher": "Edit|Write",
         "hooks": [
@@ -139,7 +152,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/decision-observer.py\" 2>&1"
+            "command": "python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/discovery-gate.py\" 2>&1; python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/decision-observer.py\" 2>&1"
           }
         ]
       }
