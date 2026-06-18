@@ -323,6 +323,22 @@ def do_commit(repo_name: str, repo_path: str, is_subrepo: bool,
         print(f"  [AUTO-COMMIT] ✅ {repo_name}: {len(changes)} 文件已提交",
               file=sys.stderr)
 
+    # 🚀 自动推送子仓库到 origin（x-tool 父仓库除外，不在此列表）
+    try:
+        rc_branch, branch, _ = git(resolved, ["rev-parse", "--abbrev-ref", "HEAD"])
+        if rc_branch == 0 and branch:
+            rc_remote, remote, _ = git(resolved, ["remote", "get-url", "origin"])
+            if rc_remote == 0:
+                rc_push, _, push_err = git(resolved, ["push", "origin", branch], timeout=60)
+                if rc_push == 0:
+                    if not suppress_output:
+                        print(f"  [AUTO-PUSH] ✅ {repo_name}: → origin/{branch}", file=sys.stderr)
+                else:
+                    if not suppress_output:
+                        print(f"  [AUTO-PUSH] ⚠️ {repo_name}: push 失败 — {push_err[:100]}", file=sys.stderr)
+    except Exception:
+        pass  # push 失败不阻塞
+
     return True
 
 
