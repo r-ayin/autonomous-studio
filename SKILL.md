@@ -9,6 +9,7 @@ description: >-
   决策引擎、继续开发、不用等我、你自己做、auto-continue、studio auto on、继续、
   接下来做什么、下一步、studio、全链路、开发流程、从需求到上线、项目状态。
 model: sonnet
+repository: https://code.alibaba-inc.com/qunbu/autonomous-studio
 ---
 
 # Autonomous Studio — 调度器模式 v3.0
