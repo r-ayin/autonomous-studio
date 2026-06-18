@@ -29,6 +29,7 @@ if sys.platform == "win32":
 PROJECT_DIR = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
 LOG_FILE = os.path.join(PROJECT_DIR, ".claude", "decision-log.jsonl")
 STATE_FILE = os.path.join(PROJECT_DIR, ".claude", "memory", "autonomous-state.md")
+STUDIO_STATUS_FILE = os.path.join(PROJECT_DIR, "planning", "status.json")
 
 # ── 辅助函数 ────────────────────────────────────────────
 
@@ -55,18 +56,113 @@ def safe_append_jsonl(filepath: str, record: dict):
     except Exception:
         pass  # 静默失败
 
-def classify_user_input(prompt: str) -> str:
+def safe_read_json(filepath: str) -> dict:
+    """安全读取 JSON 文件，失败返回空字典"""
+    try:
+        with open(filepath, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return {}
+
+
+def safe_write_json(filepath: str, data: dict):
+    """安全写入 JSON 文件"""
+    try:
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+        with open(filepath, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except Exception:
+        pass
+
+
+def read_studio_status() -> dict:
+    """读取 Studio status.json，不存在时返回空"""
+    return safe_read_json(STUDIO_STATUS_FILE)
+
+
+def is_studio_draft_pending(status: dict) -> bool:
+    """检查是否有待确认的 DRAFT 产物"""
+    engine = status.get("engine", {})
+    draft = engine.get("draftPending", {})
+    return bool(draft.get("stage")) and not draft.get("confirmed", False)
+
+
+def confirm_studio_draft(status: dict, prompt: str) -> bool:
+    """
+    更新 Studio status.json 中的 DRAFT 确认状态。
+    返回 True 表示确认成功，False 表示无需更新。
+    """
+    engine = status.get("engine", {})
+    draft = engine.get("draftPending", {})
+    if not draft.get("stage") or draft.get("confirmed", False):
+        return False
+
+    confirmed_stage = draft["stage"]
+
+    # 推进阶段映射
+    stage_advance_map = {
+        "requirements": "prd",
+        "prd": "tech-plan",
+        "tech-plan": "development",
+        "development": "verification",
+        "verification": "review",
+        "review": "deployment",
+    }
+    next_stage = stage_advance_map.get(confirmed_stage, status.get("currentStage"))
+
+    # 更新 status.json
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    status["lastUpdated"] = now
+    if confirmed_stage not in status.get("completedStages", []):
+        status.setdefault("completedStages", []).append(confirmed_stage)
+    status["currentStage"] = next_stage
+
+    engine["draftPending"] = {"stage": None, "artifact": None, "createdAt": None, "confirmed": False}
+    engine["blockedReasons"] = [r for r in engine.get("blockedReasons", []) if "待用户审阅" not in r]
+    engine["nextActionHint"] = f"已确认 {confirmed_stage}，引擎将在下次心跳自动推进至 {next_stage}"
+    engine["lastEngineAction"] = now
+    engine["lastEngineResult"] = f"stage_confirm: {confirmed_stage} → {next_stage}"
+    engine["consecutiveHeartbeatsBlocked"] = 0
+
+    stageConfidence = engine.get("stageConfidence", {})
+    stageConfidence[confirmed_stage] = stageConfidence.get(confirmed_stage, 80)
+    engine["stageConfidence"] = stageConfidence
+
+    status["engine"] = engine
+    safe_write_json(STUDIO_STATUS_FILE, status)
+    return True
+
+
+def classify_user_input(prompt: str, studio_status: dict = None) -> str:
     """
     用轻量正则对用户输入做快速分类。
-    分类: plan | code | debug | review | meta | question | feedback | chat
+    分类: stage_confirm | plan | code | debug | review | meta | question | feedback | chat
+
+    stage_confirm（新增，解决冲突6: DRAFT确认机制）:
+      当 Studio 有待确认的 DRAFT 产物时，检测用户的确认信号
     """
     if not prompt or len(prompt.strip()) < 2:
         return "chat"
 
-    p = prompt.lower()
+    p = prompt.lower().strip()
 
-    # feedback（仅当消息是纯反馈时匹配——短消息 + 以反馈词开头）
-    if len(prompt.strip()) < 20 and re.search(r'^(好[的了呀啊]?|yes|ok|no|不行|可以|同意|继续|go\s*ahead|approve|拒绝|行吧|嗯|哦|对的?)$', p.strip()):
+    # stage_confirm: Studio DRAFT 确认检测（优先级最高）
+    # 只有当 Studio 有 draftPending 时才激活此分类
+    if studio_status and is_studio_draft_pending(studio_status):
+        confirm_patterns = (
+            r'^(没问题|ok[!！]?|好[的了呀啊!！]?|可以|同意|确认|通过|继续|没有问题'
+            r'|approve|confirmed?|looks?\s*good|lgtm|ship\s*it|proceed'
+            r'|方案\s*ok|方案没问题|prd\s*ok|没啥问题|可以了)'
+        )
+        if re.search(confirm_patterns, p):
+            return "stage_confirm"
+
+    # stop_auto: 紧急制动（解决冲突5的安全机制）
+    if re.search(r'(停(下来)?|暂停|stop\s*auto|关闭自动|别自动|不要自动推进)', p):
+        return "stop_auto"
+
+    # feedback（短消息纯反馈）
+    if len(p) < 20 and re.search(r'^(yes|ok|no|不行|go\s*ahead|拒绝|行吧|嗯|哦|对的?)$', p):
         return "feedback"
 
     # plan：规划/设计/方案
@@ -188,19 +284,40 @@ def write_session_context(session_id: str, data: dict):
 # ── 主逻辑 ──────────────────────────────────────────────
 
 def handle_user_prompt_submit(data: dict):
-    """UserPromptSubmit: 记录用户输入模式 + 会话隔离"""
-    # Claude Code 传入的字段名可能是 "prompt" 或 "user_prompt"
+    """UserPromptSubmit: 记录用户输入模式 + Studio 阶段确认检测 + 会话隔离"""
     prompt = data.get("prompt", "") or data.get("user_prompt", "") or data.get("message", "")
     session_id = data.get("session_id", "unknown")
+
+    # 读取 Studio 状态（用于 stage_confirm 检测）
+    studio_status = read_studio_status()
+    classification = classify_user_input(prompt, studio_status)
+
+    # ── Studio 阶段确认处理（解决冲突6）──────────────────
+    stage_confirmed = None
+    if classification == "stage_confirm" and studio_status:
+        if confirm_studio_draft(studio_status, prompt):
+            stage_confirmed = studio_status.get("engine", {}).get("draftPending", {}).get("stage")
+
+    # ── 紧急制动处理（解决冲突5）──────────────────
+    if classification == "stop_auto" and studio_status:
+        engine = studio_status.get("engine", {})
+        engine["autoAdvance"] = False
+        engine["blockedReasons"] = engine.get("blockedReasons", []) + ["用户主动停止自动推进"]
+        engine["nextActionHint"] = "自动驾驶已暂停。说"继续自动"或"auto on"重新启用"
+        studio_status["engine"] = engine
+        studio_status["lastUpdated"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        safe_write_json(STUDIO_STATUS_FILE, studio_status)
 
     record = {
         "type": "user_input",
         "session_id": session_id,
-        "classification": classify_user_input(prompt),
+        "classification": classification,
         "project_hint": extract_project_hint(prompt),
         "prompt_length": len(prompt),
         "prompt_preview": prompt[:300] if len(prompt) > 300 else prompt,
     }
+    if stage_confirmed:
+        record["studio_stage_confirmed"] = stage_confirmed
     safe_append_jsonl(LOG_FILE, record)
 
     # 会话隔离：记录本会话的用户输入历史
@@ -215,7 +332,7 @@ def handle_user_prompt_submit(data: dict):
     write_session_context(session_id, {
         "session_id": session_id,
         "type": "user_session",
-        "last_input_type": record["classification"],
+        "last_input_type": classification,
         "last_project": record["project_hint"],
         "input_count": existing_count + 1,
     })
@@ -257,6 +374,20 @@ def handle_stop(data: dict):
     phase = record["phase"]
     decisions = record["decision_count"]
 
+    # 读取 Studio 状态（用于 L1 内联感知，解决遗漏I）
+    studio_status = read_studio_status()
+    studio_stage = None
+    studio_hint = None
+    if studio_status and studio_status.get("locked"):
+        studio_stage = studio_status.get("currentStage")
+        studio_hint = studio_status.get("engine", {}).get("nextActionHint")
+        # L1 内联检查: 更新 stageConfidence 时间戳
+        engine = studio_status.get("engine", {})
+        engine["lastEngineAction"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        studio_status["engine"] = engine
+        studio_status["lastUpdated"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        safe_write_json(STUDIO_STATUS_FILE, studio_status)
+
     # 尝试从日志中获取当前项目（从末尾向前读最后 20 行，避免加载整个文件）
     active_project = "unknown"
     try:
@@ -297,6 +428,22 @@ def handle_stop(data: dict):
         f"**使用工具**: {', '.join(tools_used) if tools_used else '无'} | **决策点**: {decisions}",
         "[ISOLATION] 日志和状态绑定到此 session_id，跨会话不混淆",
     ]
+
+    # Studio 阶段状态注入（L1 内联感知，解决遗漏I）
+    if studio_stage:
+        context_parts.extend([
+            "",
+            f"**Studio 当前阶段**: {studio_stage} | **自动推进**: {'开启' if studio_status.get('engine', {}).get('autoAdvance', True) else '⏸暂停'}",
+        ])
+        if studio_hint:
+            context_parts.append(f"**下一步**: {studio_hint}")
+        draft_pending = studio_status.get("engine", {}).get("draftPending", {})
+        if draft_pending.get("stage") and not draft_pending.get("confirmed"):
+            context_parts.append(f"⏳ **待确认**: {draft_pending.get('artifact', '产出物')} 草稿等待你审阅")
+        correction_pending = studio_status.get("engine", {}).get("routeHealth", {}).get("correctionPending", False)
+        if correction_pending:
+            summary = studio_status.get("engine", {}).get("routeHealth", {}).get("correctionSummary", "")
+            context_parts.append(f"⚠️ **路线修正待处理**: {summary}")
 
     # 如果是在代码阶段，给出具体提示
     if phase == "stage_1_coding" and active_project != "unknown":

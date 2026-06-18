@@ -316,7 +316,7 @@ Q5: 行动失败的代价有多大？
   7. 成功 → git commit（如适用）+ 清理备份分支
 
 执行后必做：
-  1. 写决策案例 → decisions/case-YYYY-MM-DD-NNN.json
+  1. 写决策案例 → .claude/decisions/case-YYYY-MM-DD-NNN.json
   2. 更新 calibration.json（pattern accuracy 调整）
   3. 更新 autonomous-state.md（时间戳 + 行动计数）
   4. 如果修改了项目文件 → 更新 PROGRESS.md
@@ -566,7 +566,7 @@ HARD_CONSTRAINTS = {
 由于每次激活你是**全新的子代理**（没有上一轮的对话记忆），你必须通过文件系统来保持状态连续性：
 
 ```
-上次决策的结论  → 读 decisions/case-YYYY-MM-DD-NNN.json（按时间戳找最新的）
+上次决策的结论  → 读 .claude/decisions/case-YYYY-MM-DD-NNN.json（按时间戳找最新的）
 冷却计数        → 读 calibration.json → cooldown.current_consecutive
 当前目标        → 读 autonomous-state.md → GOAL_STATUS
 上次学到了什么  → 读 decision-patterns.md → 最近更新的 pattern

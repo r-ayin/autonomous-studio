@@ -1,0 +1,155 @@
+{
+  "_description": "集成规则引擎 —— 定义「引擎何时调用 CodeGraph 的什么能力」。规则引用 capability 标签而非硬编码命令名，CodeGraph 更新时自动适配。",
+  "_evaluation_order": "顺序评估，第一条匹配的规则生效。规则 ID 越小优先级越高。",
+  "_update_policy": "CodeGraph 能力变化时自动重新评估所有规则的条件匹配。新增能力触发新规则自动注册。",
+  "rules": [
+    {
+      "id": "R-001",
+      "name": "ACT前冲击面门禁",
+      "priority": "critical",
+      "when": {
+        "engine_phase": "DECIDE",
+        "action_level": ["ACT_SILENT", "ACT_NOTIFY"],
+        "capability_available": "impact_analysis",
+        "condition": "target_symbol != null"
+      },
+      "then": {
+        "touchpoint": "TP-01",
+        "codegraph_command": "impact",
+        "args_template": "{target_symbol} --json --depth 2",
+        "decision_logic": "impact.symbols_count <= 3 → ACT_SILENT; <= 10 → ACT_NOTIFY; > 10 → SUGGEST"
+      },
+      "on_capability_missing": "fallback_to_touchpoint_fallback"
+    },
+    {
+      "id": "R-002",
+      "name": "L3 E1 产出物质量客观评分",
+      "priority": "high",
+      "when": {
+        "engine_phase": "RESEARCH",
+        "activation_mode": "heartbeat_l3",
+        "capability_available": "statistics",
+        "condition": ".planning/ 存在 spec 或 PRD 文件"
+      },
+      "then": {
+        "touchpoint": "TP-02",
+        "codegraph_command": "pipeline: query+status",
+        "args_template": "先 status --json 获取总符号数 → 对 spec 声明的每个关键实体 query --json → 计算覆盖率",
+        "decision_logic": "覆盖率映射到 0-3 分（见 TP-02 thresholds）"
+      },
+      "on_capability_missing": "fallback_to_subjective_assessment"
+    },
+    {
+      "id": "R-003",
+      "name": "L3 E2 跨阶段一致性检查",
+      "priority": "high",
+      "when": {
+        "engine_phase": "RESEARCH",
+        "activation_mode": "heartbeat_l3",
+        "capability_available": "symbol_search",
+        "condition": "data-model.md 或 openapi.yaml 存在"
+      },
+      "then": {
+        "touchpoint": "TP-03",
+        "codegraph_command": "pipeline: query per entity",
+        "args_template": "对 data-model.md 每个实体 query --kind class --json → 比对字段一致性",
+        "decision_logic": "全匹配=3, 小漂移=2, 大漂移=1, 完全偏离=0"
+      },
+      "on_capability_missing": "fallback_to_grep_approximation"
+    },
+    {
+      "id": "R-004",
+      "name": "跨项目依赖检测",
+      "priority": "high",
+      "when": {
+        "engine_phase": "SCAN",
+        "scan_step": "S2_cross_project",
+        "capability_available": "caller_trace",
+        "condition": "项目数 >= 2"
+      },
+      "then": {
+        "touchpoint": "TP-04",
+        "codegraph_command": "pipeline: callers per project",
+        "args_template": "对每个项目的关键导出符号 callers --json --path <project> → 比对共享依赖",
+        "decision_logic": "冲突检测 → 写入 autonomous-suggestions.md"
+      },
+      "on_capability_missing": "fallback_to_import_grep"
+    },
+    {
+      "id": "R-005",
+      "name": "冷启动项目认知地图",
+      "priority": "medium",
+      "when": {
+        "engine_mode": "cold_start",
+        "engine_phase": "SCAN",
+        "capability_available": "structure",
+        "condition": "项目尚未被 codegraph init"
+      },
+      "then": {
+        "touchpoint": "TP-05",
+        "codegraph_command": "pipeline: files+status",
+        "args_template": "files --json && status --json → 写入冷启动知识库",
+        "decision_logic": "信息收集，不触发行动"
+      },
+      "on_capability_missing": "fallback_to_filesystem_tools"
+    },
+    {
+      "id": "R-006",
+      "name": "变更后精准测试",
+      "priority": "medium",
+      "when": {
+        "engine_phase": "EXECUTE",
+        "execution_result": "success",
+        "capability_available": "test_impact",
+        "condition": "本次修改了源文件且项目有测试目录"
+      },
+      "then": {
+        "touchpoint": "TP-06",
+        "codegraph_command": "affected",
+        "args_template": "affected <changed_files> --json → bash 运行返回的测试文件",
+        "decision_logic": "≤5个测试全部运行，>5个取前5+随机采样"
+      },
+      "on_capability_missing": "fallback_to_filename_heuristic"
+    },
+    {
+      "id": "R-007",
+      "name": "模型选择优化",
+      "priority": "low",
+      "when": {
+        "engine_phase": "DECIDE",
+        "capability_available": "statistics",
+        "condition": "每次 spawn 子代理前"
+      },
+      "then": {
+        "touchpoint": "TP-07",
+        "codegraph_command": "status",
+        "args_template": "status --json --path <project> → 根据 total_files 选模型",
+        "decision_logic": "≤100文件→sonnet, 100-500→默认, >500→opus"
+      },
+      "on_capability_missing": "use_default_model"
+    },
+    {
+      "id": "R-008",
+      "name": "索引健康自检",
+      "priority": "low",
+      "when": {
+        "engine_phase": "SCAN",
+        "activation_mode": "heartbeat_l3",
+        "capability_available": "index_health",
+        "condition": "codegraph 已安装"
+      },
+      "then": {
+        "touchpoint": "TP-08",
+        "codegraph_command": "status",
+        "args_template": "status --json → 检查 last_sync → >1h 则 sync",
+        "decision_logic": "陈旧索引自动同步"
+      },
+      "on_capability_missing": "skip_check"
+    }
+  ],
+  "auto_registration": {
+    "description": "当 CodeGraph 更新带来新能力标签时，自动检查是否存在未匹配的触点需要此能力",
+    "enabled": true,
+    "matching_logic": "遍历 engine-touchpoints.json 中 auto_adapt=true 的触点 → 检查是否有 capability_registry 新标签满足触点 needed_capabilities → 满足则自动创建新规则"
+  }
+}

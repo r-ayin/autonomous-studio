@@ -43,4 +43,4 @@
 1. P0: pachong-master cebpubservice 502 — 住宅代理
 2. P2: pachong-master curl-cffi + Playwright Firefox — 一条命令
 3. P1: moni WFO 评估运行（需 Qlib 数据就绪）
-<!-- auto-saved 2026-06-16T13:30:04Z -->
+<!-- auto-saved 2026-06-17T17:28:43Z -->

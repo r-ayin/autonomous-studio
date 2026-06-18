@@ -74,12 +74,46 @@ Windows 开机自启:
 powershell -ExecutionPolicy Bypass -File watchdog/watchdog-boot.ps1
 ```
 
-## 步骤 6：验证
+## 步骤 6：(可选) CodeGraph 融合层
+
+```bash
+# 部署 CodeGraph 配置
+cp -r .claude/codegraph "$CLAUDE_PROJECT_DIR/.claude/"
+
+# 部署 CodeGraph 同步 Hook
+cp .claude/hooks/codegraph-sync.py "$CLAUDE_PROJECT_DIR/.claude/hooks/"
+
+# 部署路线健康度评分器
+cp scripts/route-health-scorer.py "$CLAUDE_PROJECT_DIR/scripts/"
+```
+
+## 步骤 7：(可选) 扩展技能
+
+```bash
+# 部署需要的扩展技能（按需选择）
+for skill in memory prod-deploy serial-agent-handoff agents-map zujianfuyon demand-discovery idea-exploration pm-spec; do
+  cp -r ".claude/skills/$skill" "$CLAUDE_PROJECT_DIR/.claude/skills/" 2>/dev/null
+done
+
+# 部署发现门禁
+cp .claude/hooks/discovery-gate.py "$CLAUDE_PROJECT_DIR/.claude/hooks/"
+cp .claude/hooks/auto-commit.py "$CLAUDE_PROJECT_DIR/.claude/hooks/"
+cp .claude/hooks/check-planning-status.sh "$CLAUDE_PROJECT_DIR/.claude/hooks/"
+
+# 部署决策基础设施
+cp .claude/decisions/notification-policy.json "$CLAUDE_PROJECT_DIR/.claude/decisions/"
+cp .claude/decisions/model-profiles.json "$CLAUDE_PROJECT_DIR/.claude/decisions/"
+cp .claude/decisions/role-permissions.json "$CLAUDE_PROJECT_DIR/.claude/decisions/"
+```
+
+## 步骤 8：验证
 
 ```bash
 python .claude/hooks/decision-observer.py --help
-ls .claude/skills/autonomous-engine/SKILL.md
+ls SKILL.md
 ls .claude/decisions/calibration.json
+ls .claude/codegraph/capability-registry.json
+ls .claude/hooks/discovery-gate.py
 ```
 
 启动 Claude Code -> 观察 SessionStart 输出 -> 说"初始化项目"验证 protocol-check。

@@ -1,0 +1,16 @@
+# 运行时状态文件 — 不纳入版本控制
+.claude/checkpoints/
+.claude/sessions/
+.claude/.watchdog_heartbeat
+.claude/.watchdog_stale
+.claude/.watchdog_resume_needed
+.claude/.last_phone_notify
+.claude/decision-log.jsonl
+.claude/scheduled_tasks.json
+planning/status.json
+
+# Node/Python
+node_modules/
+__pycache__/
+*.pyc
+.env

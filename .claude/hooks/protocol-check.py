@@ -101,6 +101,33 @@ def main():
 
     result = check_and_bootstrap(project_name, project_dir)
 
+    # ★ Studio 融合：检查 planning/ 目录完整性（解决遗漏H）
+    status_file = os.path.join(project_dir, "planning", "status.json")
+    if os.path.exists(status_file):
+        try:
+            import json as _json
+            with open(status_file, "r", encoding="utf-8") as f:
+                status = _json.load(f)
+            if status.get("locked"):
+                stage = status.get("currentStage", "unknown")
+                # 检查当前阶段所需的产出物
+                stage_artifacts = {
+                    "prd": ["planning/prd.md", "planning/requirements.md"],
+                    "tech-plan": ["planning/prd.md", "planning/test-cases.md"],
+                    "development": ["planning/tech-plan.md"],
+                    "verification": ["planning/test-cases.md"],
+                }
+                required = stage_artifacts.get(stage, [])
+                missing_artifacts = [
+                    a for a in required
+                    if not os.path.exists(os.path.join(project_dir, a))
+                ]
+                if missing_artifacts:
+                    msg = f"[STUDIO] ⚠️ 阶段 {stage} 缺少产出物: {missing_artifacts}"
+                    sys.stderr.write(msg + "\n")
+        except Exception:
+            pass
+
     if result["ok"]:
         if result["action"] == "bootstrapped":
             msg = f"[PROTOCOL] 🚀 '{project_name}' 三件套已自动生成: {result['created']}"

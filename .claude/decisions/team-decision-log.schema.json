@@ -1,0 +1,213 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Team Decision Log Entry",
+  "description": "多用户团队协作决策日志格式规范。每条记录代表一个用户对某项决策的审阅意见。",
+  "type": "object",
+  "required": ["id", "timestamp", "sessionId", "user", "decision", "targetRef"],
+
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "决策记录唯一标识，格式: team-decision-{YYYY-MM-DD}-{userId}-{NNN}",
+      "pattern": "^team-decision-\\d{4}-\\d{2}-\\d{2}-[\\w-]+-\\d{3}$",
+      "examples": ["team-decision-2026-06-17-zhangsan-001"]
+    },
+
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "决策记录创建时间 (ISO 8601)"
+    },
+
+    "sessionId": {
+      "type": "string",
+      "description": "关联的会话 ID，用于追踪同一讨论上下文中的所有决策",
+      "examples": ["session-abc123"]
+    },
+
+    "user": {
+      "type": "object",
+      "description": "操作用户身份信息",
+      "required": ["userId", "nick", "role"],
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "用户唯一标识（工号/邮箱/内部 ID）",
+          "examples": ["zhangsan", "123456"]
+        },
+        "nick": {
+          "type": "string",
+          "description": "用户昵称/花名",
+          "maxLength": 50,
+          "examples": ["张三", "三哥"]
+        },
+        "role": {
+          "type": "string",
+          "description": "用户角色",
+          "enum": ["product", "developer", "tester", "ops", "reviewer", "admin"],
+          "examples": ["product"]
+        },
+        "department": {
+          "type": "string",
+          "description": "所属部门（可选）",
+          "examples": ["前端团队", "基础架构"]
+        }
+      }
+    },
+
+    "decision": {
+      "type": "object",
+      "description": "决策内容",
+      "required": ["type", "targetStage", "summary"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "决策类型",
+          "enum": ["approve", "reject", "modify", "suggest", "comment", "escalate"],
+          "examples": ["approve"]
+        },
+        "targetStage": {
+          "type": "string",
+          "description": "决策针对的阶段",
+          "enum": ["planning", "requirements", "prd", "tech-plan", "development", "verification", "review", "deployment"],
+          "examples": ["prd"]
+        },
+        "summary": {
+          "type": "string",
+          "description": "决策摘要（一行描述）",
+          "maxLength": 200
+        },
+        "details": {
+          "type": "string",
+          "description": "决策详细说明（可选）"
+        },
+        "confidence": {
+          "type": "integer",
+          "description": "决策信心分 (0-100)",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "relatedDecisions": {
+          "type": "array",
+          "description": "关联的其他决策 ID 列表",
+          "items": { "type": "string" }
+        }
+      }
+    },
+
+    "targetRef": {
+      "type": "object",
+      "description": "决策目标引用",
+      "required": ["artifactPath"],
+      "properties": {
+        "artifactPath": {
+          "type": "string",
+          "description": "被决策的产出物路径",
+          "examples": [".planning/prd.md", ".planning/tech-plan.md"]
+        },
+        "artifactVersion": {
+          "type": "string",
+          "description": "产出物版本号/commit hash",
+          "examples": ["abc123def"]
+        },
+        "lineRange": {
+          "type": "object",
+          "description": "针对的具体行范围（可选）",
+          "properties": {
+            "start": { "type": "integer" },
+            "end": { "type": "integer" }
+          }
+        }
+      }
+    },
+
+    "attachments": {
+      "type": "array",
+      "description": "附加材料（截图、文档链接等）",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": { "type": "string", "enum": ["image", "link", "file", "comment"] },
+          "url": { "type": "string" },
+          "description": { "type": "string" }
+        }
+      }
+    },
+
+    "outcome": {
+      "type": "object",
+      "description": "决策执行结果",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["pending", "accepted", "rejected", "merged", "superseded"],
+          "description": "决策处理状态"
+        },
+        "resolvedBy": {
+          "type": "string",
+          "description": "解决者 userId"
+        },
+        "resolvedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "解决时间"
+        },
+        "resolutionNote": {
+          "type": "string",
+          "description": "解决说明"
+        }
+      }
+    },
+
+    "metadata": {
+      "type": "object",
+      "description": "额外元数据",
+      "properties": {
+        "ip": {
+          "type": "string",
+          "description": "操作来源 IP（审计用）"
+        },
+        "userAgent": {
+          "type": "string",
+          "description": "客户端标识"
+        },
+        "tags": {
+          "type": "array",
+          "description": "标签列表",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  },
+
+  "examples": [
+    {
+      "id": "team-decision-2026-06-17-zhangsan-001",
+      "timestamp": "2026-06-17T10:30:00Z",
+      "sessionId": "session-abc123",
+      "user": {
+        "userId": "zhangsan",
+        "nick": "张三",
+        "role": "product",
+        "department": "产品团队"
+      },
+      "decision": {
+        "type": "approve",
+        "targetStage": "prd",
+        "summary": "PRD 整体通过，用户故事描述清晰",
+        "details": "7 项完整度标准均已满足，MVP 切分合理。建议在 P1 阶段补充异常处理场景。",
+        "confidence": 85
+      },
+      "targetRef": {
+        "artifactPath": ".planning/prd.md",
+        "artifactVersion": "abc123def"
+      },
+      "outcome": {
+        "status": "accepted",
+        "resolvedBy": "engine",
+        "resolvedAt": "2026-06-17T10:35:00Z",
+        "resolutionNote": "已标记 PRD 为已审阅"
+      }
+    }
+  ]
+}

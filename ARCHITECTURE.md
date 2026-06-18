@@ -22,7 +22,8 @@ graph TB
         IS["incremental-save.py"]
     end
     subgraph L3["L3: Skill Layer"]
-        AE["autonomous-engine"]
+        AE["autonomous-studio<br/>v3.0"]
+        CG["CodeGraph<br/>融合层"]
         PP["project-protocol"]
         RB["ralph-bridge"]
     end
@@ -61,7 +62,7 @@ graph TB
 | resume-checkpoint.py | latest.json | stdout (additionalContext) | SessionStart |
 | notify-phone.py | phone-notify.json | ntfy.sh, TCP :9999 | Stop, PostToolUse |
 | watchdog.sh | checkpoints/, process | .watchdog_heartbeat | WSL cron 5min |
-| autonomous-engine | decision-log, calibration | case-*.json, calibration | CronCreate L2/L3 |
+| autonomous-studio | decision-log, calibration, codegraph | case-*.json, calibration | CronCreate L2/L3 |
 
 ## 决策引擎七阶段循环
 

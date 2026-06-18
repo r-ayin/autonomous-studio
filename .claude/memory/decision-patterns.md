@@ -67,3 +67,47 @@ metadata:
 - **典型响应**: ntfy.sh → Android app → 系统通知栏
 - **关键决策**: AskUserQuestion 永不去抖，因为用户决策是极重要场景
 - **参考案例**: 决策档案案例 6
+
+---
+
+## Studio 融合流程模式（v3.0 新增）
+
+### Pattern: studio_prd_confirmation
+- **签名前缀**: `studio:prd:*:draft_pending`
+- **触发条件**: PRD 草稿生成后（draftPending.stage="prd"），用户未确认
+- **典型响应**: L2 心跳检测到 draftPending.confirmed=false → 静默等待（不重复生成）
+- **用户确认模式**: "没问题"/"OK"/"继续" → decision-observer.py stage_confirm → 推进阶段
+- **关键规则**: 确认前不推进 currentStage；生成后不重复调用 pm-spec
+- **自主跟进**: 确认后下次 L2 自动推进到 tech-plan 阶段
+
+### Pattern: studio_route_correction
+- **签名前缀**: `studio:route:*:health_low`
+- **触发条件**: L3 研判 route_health_score < 5（路线偏差）
+- **典型响应**: RC-1 回溯 → RC-2 外部研究 → RC-3 审议 → RC-4 SUGGEST 修正建议
+- **关键规则**: 路线修正永远是 SUGGEST，不自动修改任何文件；用户确认后才执行
+- **超时规则**: correctionPending 超 3 次心跳无响应 → 自动降级为建议（不持续阻断）
+- **信心映射**: route_health_score 直接映射到 confidence（score×10）
+
+### Pattern: studio_multi_worker_execution
+- **签名前缀**: `studio:development:*:serial_handoff`
+- **触发条件**: tech-plan.md 确认后，进入代码开发阶段
+- **典型响应**: 先查 component-index.md → 可选 ensure-repo → spawn serial-agent-handoff
+- **关键规则**: 整个 serial-agent-handoff 会话计为 1 次自主行动（不是 per-worker）
+- **handoff 文件**: 创建后路径写入 status.json.engine.stageArtifacts.handoffFile
+- **每个 worker prompt 必含**: "You are not alone. Do not revert edits made by others."
+
+### Pattern: studio_verification_mode_select
+- **签名前缀**: `studio:verification:*:e2e_mode`
+- **触发条件**: 代码开发完成，进入验证阶段
+- **典型响应**: 读 status.json.taskType → 选择验证模式
+  - new-feature/enhancement → 模式A：全量（按 test-cases.md 逐条）
+  - bug-fix/style → 模式B：定点（git diff 相关）+ 冒烟测试
+- **失败处理**: 最多回退 ④ 3 次，第3次仍失败 → SUGGEST（等用户介入）
+- **E2E 路径**: /home/admin/.local/bin/playwright
+
+### Pattern: studio_l3_strategic_review
+- **签名前缀**: `studio:l3:*:strategic_review`
+- **触发条件**: L3 每次激活（不受 autoAdvance 影响）
+- **典型响应**: S-0 降频豁免 → S-1 一致性 → S-2 机会成本 → S-3 技术债 → S-4 跨项目
+- **关键规则**: locked=true 时强制将 consecutive_no_delta 归零（防止 L3 降频）
+- **输出**: route_health_score 写入 status.json.engine.routeHealth
