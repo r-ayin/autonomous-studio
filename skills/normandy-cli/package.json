@@ -1,0 +1,11 @@
+{
+  "name": "normandy-cli",
+  "version": "0.20.0",
+  "description": "将自然语言的 Normandy 平台运维问题翻译成正确的 `normandy` CLI 命令，并给出简短、可直接复制的命令模板。只要用户在问 auth 登录、登录状态、OAuth fallback、app 应用查询、app-group 应用分组、host 主机查询与登录与容器文件浏览与 Pod 暂停/恢复、host diagnose 机器诊断/GPU诊断/pod诊断、app-env 环境、order 工单、quota 额度/配额/额度账号/额度统计/组织管理员、log 日志查询/SLS日志/Pod日志、resource 资源搜索、trait 应用特性/限流/熔断/降级/灰度等治理能力查询、cert 证书查询/证书过期/证书托管/TLS探测/顶级域/域名报备、VIP/域名/专线等网络资源、阿里云账号管理（aliyun-account/sub-account/role/user-group）、CLI 升级，或任意 `aliyun-*` 云资源查询应该用什么 Normandy 命令，即使用户没有显式提到 \"CLI\" 或 \"normandy\"，也应使用这个 skill。当用户提到\"查应用\"、\"查机器\"、\"查工单\"、\"查 ECS/RDS/Redis/NLB\"、\"登录主机\"、\"暂停Pod\"、\"恢复Pod\"、\"pod暂停\"、\"pod恢复\"、\"查 VIP\"、\"怎么升级 normandy-cli\"、\"机器异常\"、\"诊断事件\"、\"GPU诊断\"、\"pod诊断\"、\"查日志\"、\"SLS日志\"、\"Pod日志\"、\"容器日志\"、\"看文件\"、\"看目录\"、\"查特性\"、\"trait\"、\"限流规则\"、\"熔断规则\"、\"降级规则\"、\"应用导入了哪些特性\"、\"查证书\"、\"证书过期\"、\"证书托管\"、\"TLS探测\"、\"顶级域\"、\"域名报备\"、\"DNS TXT\"等运维操作时，也应触发。默认把业务命令视为可直接执行，不要把 `normandy auth login` 当成所有业务命令的前置步骤；只有在明确需要 OAuth 修复、用户主动要求登录、或真实执行后收到认证失败信号时，才引导到 `auth status` / `auth login`。",
+  "publishConfig": {
+    "registry": "https://contextlab.alibaba-inc.com/skill"
+  },
+  "aoneKit": {
+    "generated": true
+  }
+}

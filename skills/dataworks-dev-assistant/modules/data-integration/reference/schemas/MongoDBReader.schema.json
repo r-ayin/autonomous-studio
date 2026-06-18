@@ -1,0 +1,87 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MongoDB Reader Schema",
+  "description": "MongoDB reader configuration for DataWorks Data Integration",
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "DIReaderBase.schema.json"
+    }
+  ],
+  "properties": {
+    "stepType": {
+      "const": "mongodb",
+      "description": "MongoDB reader type"
+    },
+    "parameter": {
+      "type": "object",
+      "properties": {
+        "datasource": {
+          "type": "string",
+          "description": "Datasource name in DataWorks"
+        },
+        "collectionName": {
+          "type": "string",
+          "description": "MongoDB collection name"
+        },
+        "query": {
+          "type": "string",
+          "description": "MongoDB query filter"
+        },
+        "hint": {
+          "type": "string",
+          "description": "MongoDB query hint"
+        },
+        "batchSize": {
+          "type": "integer",
+          "description": "Number of records fetched per batch"
+        },
+        "cursorTimeoutInMs": {
+          "type": "integer",
+          "description": "MongoDB cursor timeout in milliseconds"
+        },
+        "splitFactor": {
+          "type": "integer",
+          "description": "Split factor for parallel reads"
+        },
+        "useSplitVector": {
+          "type": "boolean",
+          "description": "Whether to use splitVector for task splitting"
+        },
+        "column": {
+          "type": "array",
+          "description": "MongoDB column definitions",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "MongoDB document field name"
+              },
+              "type": {
+                "type": "string",
+                "description": "Target column type"
+              },
+              "splitter": {
+                "type": "string",
+                "description": "Splitter used for array serialization"
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": true
+          }
+        }
+      },
+      "required": [
+        "datasource",
+        "collectionName",
+        "column"
+      ],
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

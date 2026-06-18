@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DI Reader Base Schema",
+  "description": "Common properties for all DataWorks Data Integration readers",
+  "type": "object",
+  "properties": {
+    "stepType": {
+      "type": "string",
+      "description": "Reader type identifier (e.g., mysql, odps, clickhouse, etc.)"
+    },
+    "parameter": {
+      "type": "object",
+      "description": "Reader-specific parameters",
+      "properties": {
+        "datasource": {
+          "type": "string",
+          "description": "Datasource name in DataWorks"
+        },
+        "guid": {
+          "type": "string",
+          "description": "Unique identifier for the datasource"
+        }
+      },
+      "additionalProperties": true
+    },
+    "name": {
+      "const": "Reader",
+      "description": "Reader name"
+    },
+    "category": {
+      "const": "reader",
+      "description": "Reader category"
+    }
+  },
+  "required": [
+    "stepType",
+    "parameter",
+    "name",
+    "category"
+  ],
+  "additionalProperties": true
+}

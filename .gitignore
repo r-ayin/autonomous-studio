@@ -14,3 +14,9 @@ node_modules/
 __pycache__/
 *.pyc
 .env
+
+# 凭据与敏感配置（skills 中的服务器密钥等）
+**/servers.json
+**/config/servers.json
+**/*.key
+**/*.pem

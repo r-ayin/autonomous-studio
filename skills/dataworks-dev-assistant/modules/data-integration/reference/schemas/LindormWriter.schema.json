@@ -1,0 +1,66 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Lindorm Writer Schema",
+  "description": "Lindorm writer configuration for DataWorks Data Integration",
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "DIWriterBase.schema.json"
+    }
+  ],
+  "properties": {
+    "stepType": {
+      "const": "lindorm",
+      "description": "Lindorm writer type"
+    },
+    "parameter": {
+      "type": "object",
+      "properties": {
+        "datasource": {
+          "type": "string"
+        },
+        "columns": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "selects": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "table": {
+          "type": "string"
+        },
+        "writeMode": {
+          "type": "string"
+        },
+        "batchSize": {
+          "type": "integer"
+        },
+        "preSql": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "postSql": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "encoding": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "datasource"
+      ],
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

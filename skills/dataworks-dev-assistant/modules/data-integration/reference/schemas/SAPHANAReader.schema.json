@@ -1,0 +1,73 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SAPHANA Reader Schema",
+  "description": "SAP HANA reader configuration for DataWorks Data Integration",
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "DIReaderBase.schema.json"
+    }
+  ],
+  "properties": {
+    "stepType": {
+      "const": "saphana",
+      "description": "SAP HANA reader type"
+    },
+    "parameter": {
+      "type": "object",
+      "properties": {
+        "column": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "connection": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "datasource": {
+                "type": "string"
+              },
+              "table": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1
+              },
+              "querySql": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "datasource",
+              "table"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "where": {
+          "type": "string"
+        },
+        "splitPk": {
+          "type": "string"
+        },
+        "encoding": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "column",
+        "connection"
+      ],
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

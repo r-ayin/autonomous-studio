@@ -1,0 +1,83 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Datahub Reader Schema",
+  "description": "Datahub reader configuration for DataWorks Data Integration",
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "DIReaderBase.schema.json"
+    }
+  ],
+  "properties": {
+    "stepType": {
+      "const": "datahub",
+      "description": "Datahub reader type"
+    },
+    "parameter": {
+      "type": "object",
+      "properties": {
+        "endpoint": {
+          "type": "string"
+        },
+        "accessId": {
+          "type": "string"
+        },
+        "accessKey": {
+          "type": "string"
+        },
+        "project": {
+          "type": "string"
+        },
+        "topic": {
+          "type": "string"
+        },
+        "batchSize": {
+          "type": "integer"
+        },
+        "beginDateTime": {
+          "type": "string"
+        },
+        "beginDatetime": {
+          "type": "string"
+        },
+        "endDateTime": {
+          "type": "string"
+        },
+        "endDatetime": {
+          "type": "string"
+        },
+        "column": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "endpoint",
+        "accessId",
+        "accessKey",
+        "project",
+        "topic",
+        "column"
+      ],
+      "anyOf": [
+        {
+          "required": [
+            "beginDateTime",
+            "endDateTime"
+          ]
+        },
+        {
+          "required": [
+            "beginDatetime",
+            "endDatetime"
+          ]
+        }
+      ],
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

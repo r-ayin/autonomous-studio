@@ -1,0 +1,4 @@
+interface:
+  display_name: "Demand Discovery"
+  short_description: "把模糊想法聊透并输出 SPEC-ready 需求"
+  default_prompt: "帮我把这个想法聊透，扩展边界、压实假设，并在成熟后输出 SPEC。"

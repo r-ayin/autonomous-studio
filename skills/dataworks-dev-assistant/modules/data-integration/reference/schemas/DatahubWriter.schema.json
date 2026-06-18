@@ -1,0 +1,88 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Datahub Writer Schema",
+  "description": "Datahub writer configuration for DataWorks Data Integration",
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "DIWriterBase.schema.json"
+    }
+  ],
+  "properties": {
+    "stepType": {
+      "const": "datahub",
+      "description": "Datahub writer type"
+    },
+    "parameter": {
+      "type": "object",
+      "properties": {
+        "datasource": {
+          "type": "string"
+        },
+        "topic": {
+          "type": "string"
+        },
+        "maxRetryCount": {
+          "type": "integer"
+        },
+        "maxCommitSize": {
+          "type": "integer"
+        },
+        "accessId": {
+          "type": "string"
+        },
+        "accessKey": {
+          "type": "string"
+        },
+        "endpoint": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "project": {
+          "type": "string"
+        },
+        "mode": {
+          "type": "string"
+        },
+        "parseContent": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "topic"
+      ],
+      "anyOf": [
+        {
+          "required": [
+            "datasource"
+          ]
+        },
+        {
+          "required": [
+            "accessId",
+            "accessKey",
+            "project",
+            "mode",
+            "parseContent"
+          ],
+          "anyOf": [
+            {
+              "required": [
+                "endpoint"
+              ]
+            },
+            {
+              "required": [
+                "endPoint"
+              ]
+            }
+          ]
+        }
+      ],
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

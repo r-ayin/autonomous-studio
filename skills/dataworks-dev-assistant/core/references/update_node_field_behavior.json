@@ -1,0 +1,140 @@
+{
+  "generated_at": "2026-04-21 10:15:24",
+  "project_id": 14255,
+  "sandbox_uuid": "4853244077033541310",
+  "total": 9,
+  "verified": 9,
+  "issue": 0,
+  "results": [
+    {
+      "aspect": "schedule",
+      "status": "verified",
+      "expected_paths": [
+        "trigger.cron"
+      ],
+      "changed_paths": [
+        "trigger.cron"
+      ],
+      "missing_changes": [],
+      "unexpected_changes": [],
+      "value_check_ok": true,
+      "value_errors": []
+    },
+    {
+      "aspect": "rerun",
+      "status": "verified",
+      "expected_paths": [
+        "rerunInterval",
+        "rerunTimes"
+      ],
+      "changed_paths": [
+        "rerunInterval",
+        "rerunTimes"
+      ],
+      "missing_changes": [],
+      "unexpected_changes": [],
+      "value_check_ok": true,
+      "value_errors": []
+    },
+    {
+      "aspect": "recurrence",
+      "status": "verified",
+      "expected_paths": [
+        "recurrence"
+      ],
+      "changed_paths": [
+        "recurrence"
+      ],
+      "missing_changes": [],
+      "unexpected_changes": [],
+      "value_check_ok": true,
+      "value_errors": []
+    },
+    {
+      "aspect": "instance_mode",
+      "status": "verified",
+      "expected_paths": [
+        "instanceMode"
+      ],
+      "changed_paths": [
+        "instanceMode"
+      ],
+      "missing_changes": [],
+      "unexpected_changes": [],
+      "value_check_ok": true,
+      "value_errors": []
+    },
+    {
+      "aspect": "rerun_mode",
+      "status": "verified",
+      "expected_paths": [
+        "rerunMode"
+      ],
+      "changed_paths": [
+        "rerunMode"
+      ],
+      "missing_changes": [],
+      "unexpected_changes": [],
+      "value_check_ok": true,
+      "value_errors": []
+    },
+    {
+      "aspect": "timeout",
+      "status": "verified",
+      "expected_paths": [
+        "timeout",
+        "timeoutUnit"
+      ],
+      "changed_paths": [
+        "timeout",
+        "timeoutUnit"
+      ],
+      "missing_changes": [],
+      "unexpected_changes": [],
+      "value_check_ok": true,
+      "value_errors": []
+    },
+    {
+      "aspect": "priority",
+      "status": "verified",
+      "expected_paths": [
+        "priority"
+      ],
+      "changed_paths": [
+        "priority"
+      ],
+      "missing_changes": [],
+      "unexpected_changes": [],
+      "value_check_ok": true,
+      "value_errors": []
+    },
+    {
+      "aspect": "autoparse",
+      "status": "verified",
+      "expected_paths": [
+        "autoParse"
+      ],
+      "changed_paths": [
+        "autoParse"
+      ],
+      "missing_changes": [],
+      "unexpected_changes": [],
+      "value_check_ok": true,
+      "value_errors": []
+    },
+    {
+      "aspect": "parameters",
+      "status": "verified",
+      "expected_paths": [
+        "script.parameters"
+      ],
+      "changed_paths": [
+        "script.parameters"
+      ],
+      "missing_changes": [],
+      "unexpected_changes": [],
+      "value_check_ok": true,
+      "value_errors": []
+    }
+  ]
+}

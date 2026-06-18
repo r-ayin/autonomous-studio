@@ -1,0 +1,279 @@
+# 数据源元数据
+#
+# 每种数据源的参数模式、默认值、特殊规则。
+# spec_builder 读取本文件 + JSON schema 共同决定如何构造配置。
+#
+# param_mode:
+#   toplevel  — parameter 下直接放 datasource/table（大多数数据源）
+#   connection — parameter.connection[] 数组模式
+#   both — schema 声明了 oneOf，两种都支持；prefer 字段指定优先使用哪种
+#
+# entity_label: 该数据源中"表"的叫法（用于 stdout 提示），默认"表"
+# defaults: 构造 spec 时自动填入的默认值（用户可覆盖）
+# auto_fields: 从 API 自动获取的字段
+
+# ─── 关系型数据库 ──────────────────────────────────────────────
+
+mysql:
+  step_type: mysql
+  roles: [reader, writer]
+  reader:
+    param_mode: both
+    prefer: toplevel
+    defaults: {}
+    auto_fields:
+      splitPk: from_api
+  writer:
+    param_mode: toplevel
+    defaults:
+      writeMode: insert
+
+postgresql:
+  step_type: postgresql
+  roles: [reader, writer]
+  reader:
+    param_mode: toplevel
+    auto_fields:
+      splitPk: from_api
+  writer:
+    param_mode: toplevel
+    defaults: {}
+
+oracle:
+  step_type: oracle
+  roles: [reader, writer]
+  reader:
+    param_mode: toplevel
+    auto_fields:
+      splitPk: from_api
+  writer:
+    param_mode: toplevel
+    defaults: {}
+
+sqlserver:
+  step_type: sqlserver
+  roles: [reader, writer]
+  reader:
+    param_mode: both
+    prefer: toplevel
+    auto_fields:
+      splitPk: from_api
+  writer:
+    param_mode: toplevel
+    defaults: {}
+
+drds:
+  step_type: drds
+  roles: [reader, writer]
+  reader:
+    param_mode: toplevel
+  writer:
+    param_mode: toplevel
+    defaults: {}
+
+tddl:
+  step_type: tddl
+  roles: [reader]
+  reader:
+    param_mode: toplevel
+    defaults:
+      masterSlave: only_slave
+
+# ─── 大数据 / 数仓 ────────────────────────────────────────────
+
+odps:
+  step_type: odps
+  roles: [reader, writer]
+  reader:
+    param_mode: toplevel
+  writer:
+    param_mode: toplevel
+    defaults:
+      truncate: true
+      isCompress: false
+      emptyAsNull: true
+      consistencyCommit: true
+
+holo:
+  step_type: holo
+  roles: [reader, writer]
+  reader:
+    param_mode: toplevel
+  writer:
+    param_mode: toplevel
+    defaults:
+      writeMode: insert
+
+hive:
+  step_type: hive
+  roles: [reader, writer]
+  reader:
+    param_mode: toplevel
+  writer:
+    param_mode: toplevel
+    defaults:
+      writeMode: append
+
+starrocks:
+  step_type: starrocks
+  roles: [reader, writer]
+  reader:
+    param_mode: toplevel
+  writer:
+    param_mode: toplevel
+    defaults: {}
+
+clickhouse:
+  step_type: clickhouse
+  roles: [reader]
+  reader:
+    param_mode: both
+    prefer: toplevel
+
+doris:
+  step_type: doris
+  roles: [writer]
+  writer:
+    param_mode: toplevel
+    defaults: {}
+
+selectdb:
+  step_type: selectdb
+  roles: [writer]
+  writer:
+    param_mode: toplevel
+    defaults: {}
+
+ads:
+  step_type: ads
+  roles: [writer]
+  writer:
+    param_mode: toplevel
+    defaults:
+      writeMode: insert
+
+# ─── NoSQL / KV ────────────────────────────────────────────────
+
+mongodb:
+  step_type: mongodb
+  entity_label: Collection
+  roles: [reader, writer]
+  reader:
+    param_mode: toplevel
+    table_field: collectionName
+  writer:
+    param_mode: toplevel
+    table_field: collectionName
+    defaults: {}
+
+redis:
+  step_type: redis
+  roles: [writer]
+  writer:
+    param_mode: toplevel
+    defaults: {}
+
+lindorm:
+  step_type: lindorm
+  roles: [reader, writer]
+  reader:
+    param_mode: toplevel
+  writer:
+    param_mode: toplevel
+    defaults: {}
+
+ots:
+  step_type: ots
+  roles: [reader, writer]
+  reader:
+    param_mode: toplevel
+  writer:
+    param_mode: toplevel
+    defaults: {}
+
+elasticsearch:
+  step_type: elasticsearch
+  entity_label: Index
+  roles: [reader, writer]
+  reader:
+    param_mode: toplevel
+    table_field: index
+  writer:
+    param_mode: toplevel
+    table_field: index
+    defaults: {}
+
+# ─── 消息队列 ─────────────────────────────────────────────────
+
+kafka:
+  step_type: kafka
+  entity_label: Topic
+  roles: [reader]
+  reader:
+    param_mode: toplevel
+    table_field: topic
+
+datahub:
+  step_type: datahub
+  entity_label: Topic
+  roles: [reader, writer]
+  reader:
+    param_mode: toplevel
+    table_field: topic
+  writer:
+    param_mode: toplevel
+    table_field: topic
+    defaults: {}
+
+# ─── 文件存储 ──────────────────────────────────────────────────
+
+oss:
+  step_type: oss
+  entity_label: 文件路径
+  roles: [reader, writer]
+  reader:
+    param_mode: toplevel
+    table_field: null
+  writer:
+    param_mode: toplevel
+    table_field: null
+    defaults:
+      writeMode: truncate
+
+ftp:
+  step_type: ftp
+  entity_label: 文件路径
+  roles: [reader, writer]
+  reader:
+    param_mode: toplevel
+    table_field: null
+  writer:
+    param_mode: toplevel
+    table_field: null
+    defaults:
+      writeMode: truncate
+
+# ─── SAP ───────────────────────────────────────────────────────
+
+saphana:
+  step_type: saphana
+  roles: [reader, writer]
+  reader:
+    param_mode: toplevel
+  writer:
+    param_mode: toplevel
+    defaults: {}
+
+# ─── 测试/调试 ────────────────────────────────────────────────
+
+stream:
+  step_type: stream
+  entity_label: Stream
+  roles: [reader, writer]
+  reader:
+    param_mode: toplevel
+    table_field: null
+  writer:
+    param_mode: toplevel
+    table_field: null
+    defaults: {}

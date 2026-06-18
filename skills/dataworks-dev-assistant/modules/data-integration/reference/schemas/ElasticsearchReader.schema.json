@@ -1,0 +1,141 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Elasticsearch Reader Schema",
+  "description": "Elasticsearch reader configuration for DataWorks Data Integration",
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "DIReaderBase.schema.json"
+    }
+  ],
+  "properties": {
+    "stepType": {
+      "const": "elasticsearch",
+      "description": "Elasticsearch reader type"
+    },
+    "parameter": {
+      "type": "object",
+      "properties": {
+        "datasource": {
+          "type": "string"
+        },
+        "endpoint": {
+          "type": "string"
+        },
+        "username": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        },
+        "index": {
+          "type": "string"
+        },
+        "type": {
+          "type": "string"
+        },
+        "column": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "scroll": {
+          "type": "string"
+        },
+        "pageSize": {
+          "type": "integer"
+        },
+        "search": {
+          "oneOf": [
+            {
+              "type": "object",
+              "additionalProperties": true
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        "strictMode": {
+          "type": "boolean"
+        },
+        "sort": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ]
+        },
+        "retryCount": {
+          "type": "integer"
+        },
+        "connTimeOut": {
+          "type": "integer"
+        },
+        "readTimeOut": {
+          "type": "integer"
+        },
+        "multiThread": {
+          "type": "boolean"
+        },
+        "preemptiveAuth": {
+          "type": "boolean"
+        },
+        "retrySleepTime": {
+          "oneOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        "discovery": {
+          "type": "boolean"
+        },
+        "compression": {
+          "type": "boolean"
+        },
+        "dateFormat": {
+          "type": "string"
+        },
+        "full": {
+          "type": "boolean"
+        },
+        "multi": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "index",
+        "column",
+        "scroll",
+        "search"
+      ],
+      "oneOf": [
+        {
+          "required": [
+            "datasource"
+          ]
+        },
+        {
+          "required": [
+            "endpoint"
+          ]
+        }
+      ],
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

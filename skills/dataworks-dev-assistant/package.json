@@ -1,0 +1,11 @@
+{
+  "name": "dataworks-dev-assistant",
+  "version": "0.19.0",
+  "description": "DataWorks 助手 —— 操作 DataWorks 平台的 agent skill。搜表、查血缘、看代码、任务运维、数据集成、治理、质量检查。当用户提到以下任何内容时必须使用本 skill：表、搜表、血缘、分区、上下游、数据来源、任务、我的任务、任务列表、任务有哪些、失败实例、运行情况、运维、巡检、重跑、终止、强制终止、杀实例、冻结任务、解冻任务、批量重跑失败、工作流重跑、告警、告警诊断、报错、调度失败、节点、节点代码、代码、源码、查代码、工作空间、项目列表、同步任务、DI、数据集成、数据源、SQL执行、补数据、冒烟测试、基线、甘特图、治理、治理评分、扫描器、资源治理、质量、DQC、规则、专辑、数据资产。即使用户只说了”任务”或”我的任务有哪些”也应触发本 skill。当工作目录存在 bff_client.py 或 .dataworks/session_state.json 时也应优先加载本 skill。所有写操作必须先请求用户确认，收到”确认”后才能执行。",
+  "publishConfig": {
+    "registry": "https://contextlab.alibaba-inc.com/skill"
+  },
+  "aoneKit": {
+    "generated": true
+  }
+}

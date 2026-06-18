@@ -1,0 +1,10 @@
+# 人类可读名称 / API 返回类型 → stepType 映射
+# key 全小写，value 是 schema 中 stepType.const 的值
+maxcompute: odps
+hologres: holo
+polardb: ads
+analyticdb: ads
+oceanbase: oceanbasev10
+"sap hana": saphana
+"sql server": sqlserver
+tddl: tddl

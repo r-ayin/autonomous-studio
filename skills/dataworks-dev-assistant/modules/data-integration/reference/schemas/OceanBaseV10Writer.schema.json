@@ -1,0 +1,82 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OceanBaseV10 Writer Schema",
+  "description": "OceanBase V1.0 writer configuration for DataWorks Data Integration",
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "DIWriterBase.schema.json"
+    }
+  ],
+  "properties": {
+    "stepType": {
+      "enum": [
+        "oceanbasev10",
+        "apsaradb_for_OceanBase"
+      ],
+      "description": "OceanBase writer type"
+    },
+    "parameter": {
+      "type": "object",
+      "properties": {
+        "column": {
+          "type": "array",
+          "description": "Column names to write to the table",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "datasource": {
+          "type": "string",
+          "description": "Datasource name in DataWorks"
+        },
+        "table": {
+          "type": "string",
+          "description": "Table name to write to"
+        },
+        "preSql": {
+          "type": "array",
+          "description": "SQL statements to execute before writing data",
+          "items": {
+            "type": "string"
+          }
+        },
+        "postSql": {
+          "type": "array",
+          "description": "SQL statements to execute after writing data",
+          "items": {
+            "type": "string"
+          }
+        },
+        "obWriteMode": {
+          "type": "string",
+          "description": "OceanBase writer mode"
+        },
+        "batchSize": {
+          "type": "integer",
+          "description": "Batch size for insert operations"
+        },
+        "username": {
+          "type": "string",
+          "description": "Database username"
+        },
+        "password": {
+          "type": "string",
+          "description": "Database password"
+        },
+        "jdbcUrl": {
+          "type": "string",
+          "description": "JDBC connection URL"
+        }
+      },
+      "required": [
+        "column",
+        "datasource",
+        "table"
+      ],
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

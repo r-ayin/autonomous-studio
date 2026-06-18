@@ -1,0 +1,61 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Kafka Reader Schema",
+  "description": "Kafka reader configuration for DataWorks Data Integration",
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "DIReaderBase.schema.json"
+    }
+  ],
+  "properties": {
+    "stepType": {
+      "const": "kafka",
+      "description": "Kafka reader type"
+    },
+    "parameter": {
+      "type": "object",
+      "properties": {
+        "datasource": {
+          "type": "string",
+          "description": "Datasource name in DataWorks"
+        },
+        "topic": {
+          "type": "string",
+          "description": "Kafka topic name"
+        },
+        "column": {
+          "type": "array",
+          "description": "Kafka metadata columns",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "beginType": {
+          "type": "string",
+          "description": "Kafka begin position type"
+        },
+        "endType": {
+          "type": "string",
+          "description": "Kafka end position type"
+        },
+        "beginDateTime": {
+          "type": "string",
+          "description": "Kafka begin datetime in yyyyMMddHHmmss format"
+        },
+        "endDateTime": {
+          "type": "string",
+          "description": "Kafka end datetime in yyyyMMddHHmmss format"
+        }
+      },
+      "required": [
+        "datasource",
+        "topic",
+        "column"
+      ],
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

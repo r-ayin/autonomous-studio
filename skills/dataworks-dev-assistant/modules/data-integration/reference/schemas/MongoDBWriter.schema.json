@@ -1,0 +1,86 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MongoDB Writer Schema",
+  "description": "MongoDB writer configuration for DataWorks Data Integration",
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "DIWriterBase.schema.json"
+    }
+  ],
+  "properties": {
+    "stepType": {
+      "const": "mongodb",
+      "description": "MongoDB writer type"
+    },
+    "parameter": {
+      "type": "object",
+      "properties": {
+        "datasource": {
+          "type": "string",
+          "description": "Datasource name in DataWorks"
+        },
+        "collectionName": {
+          "type": "string",
+          "description": "MongoDB collection name"
+        },
+        "column": {
+          "type": "array",
+          "description": "MongoDB column definitions",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "MongoDB document field name"
+              },
+              "type": {
+                "type": "string",
+                "description": "MongoDB column type"
+              },
+              "splitter": {
+                "type": "string",
+                "description": "Splitter used when writing array values"
+              },
+              "format": {
+                "type": "string",
+                "description": "Date format pattern"
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "writeMode": {
+          "type": "object",
+          "description": "MongoDB write mode configuration",
+          "properties": {
+            "isReplace": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ],
+              "description": "Whether to replace existing rows by replaceKey"
+            },
+            "replaceKey": {
+              "type": "string",
+              "description": "Business key used for replace semantics"
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "datasource",
+        "collectionName",
+        "column"
+      ],
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

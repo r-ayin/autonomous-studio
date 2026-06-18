@@ -1,0 +1,1 @@
+{"name":"generate-image","version":"0.2.0","description":"使用 GPT Image 模型生成图片。当用户要求创建、生成、绘制图片或插图时，使用此技能调用 generate_image.py 脚本来生成图片并保存到本地。支持自定义图片尺寸、质量等参数。","publishConfig":{"registry":"https://contextlab.alibaba-inc.com/skill"}}

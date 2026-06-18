@@ -1,0 +1,102 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FTP Reader Schema",
+  "description": "FTP reader configuration for DataWorks Data Integration",
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "DIReaderBase.schema.json"
+    }
+  ],
+  "properties": {
+    "stepType": {
+      "const": "ftp",
+      "description": "FTP reader type"
+    },
+    "parameter": {
+      "type": "object",
+      "properties": {
+        "datasource": {
+          "type": "string",
+          "description": "Datasource name in DataWorks"
+        },
+        "path": {
+          "type": "array",
+          "description": "FTP file paths to read",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "column": {
+          "type": "array",
+          "description": "FTP reader column definitions",
+          "minItems": 1,
+          "items": {
+            "oneOf": [
+              {
+                "const": "*"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "description": "Column type"
+                  },
+                  "index": {
+                    "type": "integer",
+                    "description": "Source column index"
+                  },
+                  "value": {
+                    "description": "Constant column value"
+                  },
+                  "format": {
+                    "type": "string",
+                    "description": "Date format pattern"
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": true
+              }
+            ]
+          }
+        },
+        "fieldDelimiter": {
+          "type": "string",
+          "description": "Field delimiter in the file"
+        },
+        "encoding": {
+          "type": "string",
+          "description": "File encoding"
+        },
+        "nullFormat": {
+          "type": "string",
+          "description": "Null value representation"
+        },
+        "compress": {
+          "type": "string",
+          "description": "Compression type"
+        },
+        "skipHeader": {
+          "type": "string",
+          "description": "Whether the file contains a header row"
+        },
+        "fileFormat": {
+          "type": "string",
+          "description": "File format"
+        }
+      },
+      "required": [
+        "datasource",
+        "path",
+        "column",
+        "fieldDelimiter"
+      ],
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

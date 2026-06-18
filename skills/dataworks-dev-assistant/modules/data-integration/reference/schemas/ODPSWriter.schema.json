@@ -1,0 +1,91 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ODPS Writer Schema",
+  "description": "MaxCompute (ODPS) writer configuration for DataWorks Data Integration",
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "DIWriterBase.schema.json"
+    }
+  ],
+  "properties": {
+    "stepType": {
+      "const": "odps",
+      "description": "MaxCompute writer type"
+    },
+    "parameter": {
+      "type": "object",
+      "properties": {
+        "datasource": {
+          "type": "string"
+        },
+        "table": {
+          "type": "string"
+        },
+        "schema": {
+          "type": "string"
+        },
+        "partition": {
+          "type": "string",
+          "description": "Partition of the table, formatted as 'pt=v1,region=v2'"
+        },
+        "truncate": {
+          "type": "boolean"
+        },
+        "compress": {
+          "type": "boolean"
+        },
+        "column": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "emptyAsNull": {
+          "type": "boolean"
+        },
+        "preSql": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "postSql": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "consistencyCommit": {
+          "type": "boolean"
+        },
+        "tunnelQuota": {
+          "type": "string"
+        },
+        "overLengthRule": {
+          "type": "string",
+          "enum": [
+            "truncate",
+            "setNull",
+            "keepOn"
+          ]
+        },
+        "maxOdpsFieldLength": {
+          "type": "integer"
+        },
+        "maxFieldLength": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "datasource",
+        "table",
+        "column",
+        "truncate"
+      ],
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

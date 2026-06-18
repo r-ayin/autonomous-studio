@@ -1,0 +1,11 @@
+{
+  "name": "memory",
+  "version": "0.13.0",
+  "description": "面向 AI Agent 的跨平台持久个人记忆能力，用于让 Agent 主动检索和保存用户偏好、\n身份背景、项目上下文、历史决策、编码风格、沟通风格和工作流习惯。\n当用户提到“我/之前/上次/继续/以后/按我的习惯/这个项目”等上下文信号，\n或明确要求记住、保存、回忆、搜索、更新、删除记忆时，应使用个人记忆能力。\n默认通过本 Skill 自带的 scripts/user-memory 执行。\n仅当用户明确指定 workspaceId 并要求操作协作空间记忆时，才使用 scripts/space-memory。\n",
+  "publishConfig": {
+    "registry": "https://contextlab.alibaba-inc.com/skill"
+  },
+  "aoneKit": {
+    "generated": true
+  }
+}

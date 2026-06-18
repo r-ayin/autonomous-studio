@@ -1,0 +1,177 @@
+{
+  "generated_at": "2026-04-21 13:51:31",
+  "project_id": 14255,
+  "stats": {
+    "total": 20,
+    "full_lifecycle_verified": 3,
+    "deploy_dev_ok": 3,
+    "deploy_prod_ok": 3,
+    "create_failed": 2,
+    "deploy_dev_failed": 15,
+    "deploy_prod_failed": 0
+  },
+  "results": [
+    {
+      "command": "DATAX",
+      "status": "deploy_dev_failed",
+      "uuid": "5771113497174716288",
+      "name": "_e2e_lifecycle_datax_1776744072",
+      "error": "overall=Fail, ['BUILD_PACKAGE=Success', 'DEV_CHECK=Success', 'DEV=Fail', 'PROD_CHECK=Init', 'PROD=Init']",
+      "phase": "deploy_dev_poll"
+    },
+    {
+      "command": "DI",
+      "status": "full_lifecycle_verified",
+      "uuid": "5419211456770220095",
+      "name": "_e2e_lifecycle_di_1776744197",
+      "deploy_dev_ok": true,
+      "task_id": 309854019,
+      "deploy_prod_ok": true,
+      "final_deploy_status": "DeployedProd"
+    },
+    {
+      "command": "FLINK_SQL_STREAM",
+      "status": "deploy_dev_failed",
+      "uuid": "8705055104408119875",
+      "name": "_e2e_lifecycle_flink_sql_stream_1776744236",
+      "error": "overall=Fail, ['BUILD_PACKAGE=Fail', 'DEV_CHECK=Init', 'DEV=Init', 'PROD_CHECK=Init', 'PROD=Init']",
+      "phase": "deploy_dev_poll"
+    },
+    {
+      "command": "FLINK_SQL_BATCH",
+      "status": "deploy_dev_failed",
+      "uuid": "6296559962177972134",
+      "name": "_e2e_lifecycle_flink_sql_batch_1776747238",
+      "error": "overall=Fail, ['BUILD_PACKAGE=Fail', 'DEV_CHECK=Init', 'DEV=Init', 'PROD_CHECK=Init', 'PROD=Init']",
+      "phase": "deploy_dev_poll"
+    },
+    {
+      "command": "FLINK_PYTHON_STREAM",
+      "status": "deploy_dev_failed",
+      "uuid": "6377669221097749627",
+      "name": "_e2e_lifecycle_flink_python_stream_1776748983",
+      "error": "exception occurs：path=[/ide/createDeployment]，api=openapi_createDeployment，remoteCode=0x5083000000000006，remoteMessage=[Failed to parse FlinkPythonArtifact: illegal fieldName input 112, offset 1, char",
+      "phase": "deploy_dev_submit"
+    },
+    {
+      "command": "FLINK_PYTHON_BATCH",
+      "status": "deploy_dev_failed",
+      "uuid": "7265249755438938174",
+      "name": "_e2e_lifecycle_flink_python_batch_1776748985",
+      "error": "exception occurs：path=[/ide/createDeployment]，api=openapi_createDeployment，remoteCode=0x5083000000000006，remoteMessage=[Failed to parse FlinkPythonArtifact: illegal fieldName input 112, offset 1, char",
+      "phase": "deploy_dev_submit"
+    },
+    {
+      "command": "HOLOGRES_SYNC_DATA",
+      "status": "deploy_dev_failed",
+      "uuid": "8822055923178990840",
+      "name": "_e2e_lifecycle_hologres_sync_data_1776748986",
+      "error": "overall=Fail, ['BUILD_PACKAGE=Fail', 'DEV_CHECK=Init', 'DEV=Init', 'PROD_CHECK=Init', 'PROD=Init']",
+      "phase": "deploy_dev_poll"
+    },
+    {
+      "command": "HOLOGRES_SYNC_DDL",
+      "status": "deploy_dev_failed",
+      "uuid": "7971376543392727039",
+      "name": "_e2e_lifecycle_hologres_sync_ddl_1776749111",
+      "error": "overall=Fail, ['BUILD_PACKAGE=Fail', 'DEV_CHECK=Init', 'DEV=Init', 'PROD_CHECK=Init', 'PROD=Init']",
+      "phase": "deploy_dev_poll"
+    },
+    {
+      "command": "PAI_FLOW",
+      "status": "create_failed",
+      "error": "exception occurs：path=[/ide/createNodeSimple]，api=openapi_createNode，remoteCode=0x5083000000000000，remoteMessage=[系统错误]",
+      "phase": "create"
+    },
+    {
+      "command": "ADB_SPARK",
+      "status": "deploy_dev_failed",
+      "uuid": "5637424009296897624",
+      "name": "_e2e_lifecycle_adb_spark_1776749235",
+      "error": "overall=Fail, ['BUILD_PACKAGE=Fail', 'DEV_CHECK=Init', 'DEV=Init', 'PROD_CHECK=Init', 'PROD=Init']",
+      "phase": "deploy_dev_poll"
+    },
+    {
+      "command": "ADB_SPARK_SQL",
+      "status": "deploy_dev_failed",
+      "uuid": "7367582258693952514",
+      "name": "_e2e_lifecycle_adb_spark_sql_1776749359",
+      "error": "overall=Fail, ['BUILD_PACKAGE=Fail', 'DEV_CHECK=Init', 'DEV=Init', 'PROD_CHECK=Init', 'PROD=Init']",
+      "phase": "deploy_dev_poll"
+    },
+    {
+      "command": "HTTP",
+      "status": "full_lifecycle_verified",
+      "uuid": "7200918539002329523",
+      "name": "_e2e_lifecycle_http_1776749484",
+      "deploy_dev_ok": true,
+      "task_id": 309854154,
+      "deploy_prod_ok": true,
+      "final_deploy_status": "DeployedProd"
+    },
+    {
+      "command": "CONTROLLER_ASSIGNMENT",
+      "status": "full_lifecycle_verified",
+      "uuid": "6391377841064159518",
+      "name": "_e2e_lifecycle_controller_assignment_1776749518",
+      "deploy_dev_ok": true,
+      "task_id": 309854155,
+      "deploy_prod_ok": true,
+      "final_deploy_status": "DeployedProd"
+    },
+    {
+      "command": "CONTROLLER_BRANCH",
+      "status": "create_failed",
+      "error": "exception occurs：path=[/ide/createNodeSimple]，api=openapi_createNode，remoteCode=0x5083000000000000，remoteMessage=[系统错误]",
+      "phase": "create"
+    },
+    {
+      "command": "CONTROLLER_CYCLE",
+      "status": "deploy_dev_failed",
+      "uuid": "6900118985579350130",
+      "name": "_e2e_lifecycle_controller_cycle_1776749552",
+      "error": "overall=Fail, ['BUILD_PACKAGE=Fail', 'DEV_CHECK=Init', 'DEV=Init', 'PROD_CHECK=Init', 'PROD=Init']",
+      "phase": "deploy_dev_poll"
+    },
+    {
+      "command": "CONTROLLER_TRAVERSE",
+      "status": "deploy_dev_failed",
+      "uuid": "9140963585964480965",
+      "name": "_e2e_lifecycle_controller_traverse_1776749677",
+      "error": "overall=Fail, ['BUILD_PACKAGE=Success', 'DEV_CHECK=Success', 'DEV=Fail', 'PROD_CHECK=Init', 'PROD=Init']",
+      "phase": "deploy_dev_poll"
+    },
+    {
+      "command": "CONTROLLER_JOIN",
+      "status": "deploy_dev_failed",
+      "uuid": "7160712587407069810",
+      "name": "_e2e_lifecycle_controller_join_1776749803",
+      "error": "overall=Fail, ['BUILD_PACKAGE=Fail', 'DEV_CHECK=Init', 'DEV=Init', 'PROD_CHECK=Init', 'PROD=Init']",
+      "phase": "deploy_dev_poll"
+    },
+    {
+      "command": "EMR_SPARK",
+      "status": "deploy_dev_failed",
+      "uuid": "6096186442523024266",
+      "name": "_e2e_lifecycle_emr_spark_1776749927",
+      "error": "overall=Fail, ['BUILD_PACKAGE=Fail', 'DEV_CHECK=Init', 'DEV=Init', 'PROD_CHECK=Init', 'PROD=Init']",
+      "phase": "deploy_dev_poll"
+    },
+    {
+      "command": "EMR_HIVE",
+      "status": "deploy_dev_failed",
+      "uuid": "8498255968912648303",
+      "name": "_e2e_lifecycle_emr_hive_1776750051",
+      "error": "overall=Fail, ['BUILD_PACKAGE=Fail', 'DEV_CHECK=Init', 'DEV=Init', 'PROD_CHECK=Init', 'PROD=Init']",
+      "phase": "deploy_dev_poll"
+    },
+    {
+      "command": "EMR_SHELL",
+      "status": "deploy_dev_failed",
+      "uuid": "7455847967025437468",
+      "name": "_e2e_lifecycle_emr_shell_1776750350",
+      "error": "overall=Fail, ['BUILD_PACKAGE=Fail', 'DEV_CHECK=Init', 'DEV=Init', 'PROD_CHECK=Init', 'PROD=Init']",
+      "phase": "deploy_dev_poll"
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SelectDB Writer Schema",
+  "description": "SelectDB writer configuration for DataWorks Data Integration",
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "DIWriterBase.schema.json"
+    }
+  ],
+  "properties": {
+    "stepType": {
+      "const": "selectdb",
+      "description": "SelectDB writer type"
+    },
+    "parameter": {
+      "type": "object",
+      "properties": {
+        "datasource": {
+          "type": "string",
+          "description": "Datasource name in DataWorks"
+        },
+        "table": {
+          "type": "string",
+          "description": "Target SelectDB table name"
+        },
+        "column": {
+          "type": "array",
+          "description": "Columns written to SelectDB",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "datasource",
+        "table",
+        "column"
+      ],
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

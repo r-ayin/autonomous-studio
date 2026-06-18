@@ -1,0 +1,85 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ODPS Reader Schema",
+  "description": "MaxCompute (ODPS) reader configuration for DataWorks Data Integration",
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "DIReaderBase.schema.json"
+    }
+  ],
+  "properties": {
+    "stepType": {
+      "const": "odps",
+      "description": "MaxCompute reader type"
+    },
+    "parameter": {
+      "type": "object",
+      "properties": {
+        "datasource": {
+          "type": "string"
+        },
+        "table": {
+          "type": "string"
+        },
+        "schema": {
+          "type": "string"
+        },
+        "partition": {
+          "oneOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          ]
+        },
+        "column": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "isCompress": {
+          "type": "boolean"
+        },
+        "enableWhere": {
+          "type": "boolean"
+        },
+        "where": {
+          "type": "string"
+        },
+        "preSql": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "postSql": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "tunnelQuota": {
+          "type": "string"
+        },
+        "successOnNoPartition": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "datasource",
+        "table",
+        "column"
+      ],
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

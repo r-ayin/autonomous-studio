@@ -1,0 +1,93 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DRDS Reader Schema",
+  "description": "DRDS reader configuration for DataWorks Data Integration",
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "DIReaderBase.schema.json"
+    }
+  ],
+  "properties": {
+    "stepType": {
+      "const": "drds",
+      "description": "DRDS reader type"
+    },
+    "parameter": {
+      "type": "object",
+      "properties": {
+        "column": {
+          "type": "array",
+          "description": "Column names to read from the table",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "where": {
+          "type": "string",
+          "description": "SQL WHERE clause for filtering data"
+        },
+        "datasource": {
+          "type": "string",
+          "description": "Datasource name in DataWorks"
+        },
+        "table": {
+          "type": "string",
+          "description": "Table name to read from"
+        },
+        "splitPk": {
+          "type": "string",
+          "description": "Column name used for data sharding"
+        },
+        "fetchSize": {
+          "type": "integer",
+          "description": "Number of rows fetched per batch"
+        },
+        "querySql": {
+          "type": "string",
+          "description": "Custom SQL query for reading data"
+        },
+        "checkSlave": {
+          "type": "boolean",
+          "description": "Whether to check slave status"
+        },
+        "connectionTimeOut": {
+          "type": "integer",
+          "description": "Connection timeout in milliseconds"
+        },
+        "username": {
+          "type": "string",
+          "description": "Database username"
+        },
+        "password": {
+          "type": "string",
+          "description": "Database password"
+        },
+        "jdbcUrl": {
+          "type": "string",
+          "description": "JDBC connection URL"
+        },
+        "haveKerberos": {
+          "type": "boolean",
+          "description": "Whether Kerberos authentication is enabled"
+        },
+        "kerberosPrincipal": {
+          "type": "string",
+          "description": "Kerberos principal"
+        },
+        "kerberosKeytabFilePath": {
+          "type": "string",
+          "description": "Kerberos keytab file path"
+        }
+      },
+      "required": [
+        "column",
+        "datasource",
+        "table"
+      ],
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

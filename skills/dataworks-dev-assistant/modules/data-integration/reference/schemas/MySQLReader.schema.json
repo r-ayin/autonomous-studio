@@ -1,0 +1,104 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MySQL Reader Schema",
+  "description": "MySQL reader configuration for DataWorks Data Integration",
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "DIReaderBase.schema.json"
+    }
+  ],
+  "properties": {
+    "stepType": {
+      "const": "mysql",
+      "description": "MySQL reader type"
+    },
+    "parameter": {
+      "type": "object",
+      "properties": {
+        "column": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "datasource": {
+          "type": "string"
+        },
+        "table": {
+          "type": "string"
+        },
+        "connection": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "datasource": {
+                "type": "string"
+              },
+              "table": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1
+              },
+              "querySql": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1
+              }
+            },
+            "required": [
+              "datasource"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "where": {
+          "type": "string"
+        },
+        "splitPk": {
+          "type": "string"
+        },
+        "fetchSize": {
+          "type": "integer"
+        },
+        "querySql": {
+          "type": "string"
+        },
+        "getAllColumnMethod": {
+          "type": "string",
+          "enum": [
+            "SQL_WHERE_1_EQ_2",
+            "DATABASE_METADATA"
+          ]
+        },
+        "selectedDatabase": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "column"
+      ],
+      "oneOf": [
+        {
+          "required": [
+            "datasource",
+            "table"
+          ]
+        },
+        {
+          "required": [
+            "connection"
+          ]
+        }
+      ],
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

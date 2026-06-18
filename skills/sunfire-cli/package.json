@@ -1,0 +1,11 @@
+{
+  "name": "sunfire-cli",
+  "version": "0.4.0",
+  "description": "Sunfire 可观测平台 CLI（sf 命令）使用助手。覆盖指标查询（PromQL）、报警管理、调用链分析、日志查询、变更事件、应急事件、应用拓扑、业务监控、Dashboard、AuthX 鉴权状态检查与安装升级等全链路可观测能力。当用户提到以下场景时触发：查指标/PromQL查询/查报警/查告警/查Trace/查调用链/查日志/查变更/查故障单/查应急事件/查应用资源/排查HSF异常/分析性能/查监控大盘/sf命令/sf鉴权/sf auth status/sf登录/sf安装。即使用户没有明确提到\"sf\"命令，只要涉及 Sunfire 可观测平台的查询与分析操作，均应使用此技能。",
+  "publishConfig": {
+    "registry": "https://contextlab.alibaba-inc.com/skill"
+  },
+  "aoneKit": {
+    "generated": true
+  }
+}

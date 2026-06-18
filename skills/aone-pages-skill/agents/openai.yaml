@@ -1,0 +1,4 @@
+interface:
+  display_name: "Aone Pages"
+  short_description: "Aone Pages 部署与文档工作流"
+  default_prompt: "使用 $aone-pages 部署、排查或编写 Aone Pages 静态站点文档。"

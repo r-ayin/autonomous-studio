@@ -1,0 +1,28 @@
+{
+  "version": "0.2.15",
+  "env": "public",
+  "auth": {
+    "token_required": true,
+    "endpoint_source": "endpoints_json",
+    "headers": {}
+  },
+  "features": {
+    "data_map_search": true,
+    "billing_query": true,
+    "cross_region": true,
+    "async_task": true
+  },
+  "error_messages": {
+    "no_token": "⚠️ BFF_TOKEN 未设置！\n\n请按以下步骤配置：\n  1. 访问 https://dw.alibaba-inc.com/dmc/skill-auth 获取个人 Token\n  2. 将 Token 写入配置文件：\n\n     mkdir -p ~/.dataworks\n     cat > ~/.dataworks/.env << 'EOF'\n     BFF_TOKEN=<粘贴你的 token>\n     BFF_ENDPOINT=http://bff.dw.alibaba-inc.com\n     EOF\n\n  配置完成后重新运行即可。",
+    "no_endpoint": "⚠️ BFF_ENDPOINT 未设置！请在 ~/.dataworks/.env 中配置：\n  方式1：BFF_ENDPOINT=https://your-endpoint.com\n  方式2：BFF_ENV=cn-beijing（从字典选择）"
+  },
+  "defaults": {
+    "preferred_datasources": {
+      "reader": {},
+      "writer": {
+        "odps": "odps_first",
+        "maxcompute": "odps_first"
+      }
+    }
+  }
+}

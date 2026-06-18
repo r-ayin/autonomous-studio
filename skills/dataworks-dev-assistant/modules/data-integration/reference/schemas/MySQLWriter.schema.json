@@ -1,0 +1,84 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MySQL Writer Schema",
+  "description": "MySQL writer configuration for DataWorks Data Integration",
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "DIWriterBase.schema.json"
+    }
+  ],
+  "properties": {
+    "stepType": {
+      "const": "mysql",
+      "description": "MySQL writer type"
+    },
+    "parameter": {
+      "type": "object",
+      "properties": {
+        "datasource": {
+          "type": "string"
+        },
+        "table": {
+          "type": "string"
+        },
+        "column": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "writeMode": {
+          "type": "string",
+          "enum": [
+            "insert",
+            "replace",
+            "update"
+          ]
+        },
+        "nullMode": {
+          "type": "string",
+          "enum": [
+            "writeNull",
+            "skipNull"
+          ]
+        },
+        "skipNullColumn": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "preSql": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "postSql": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "batchSize": {
+          "type": "integer"
+        },
+        "updateColumn": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "datasource",
+        "table",
+        "column"
+      ],
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

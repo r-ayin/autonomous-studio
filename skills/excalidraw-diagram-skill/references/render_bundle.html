@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #ffffff; overflow: hidden; }
+    #root { display: inline-block; }
+    #root svg { display: block; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script src="_excalidraw_bundle.js"></script>
+  <script>
+    var exportToSvg = ExcalidrawLib.exportToSvg;
+
+    window.renderDiagram = async function(jsonData) {
+      try {
+        var data = typeof jsonData === "string" ? JSON.parse(jsonData) : jsonData;
+        var elements = data.elements || [];
+        var appState = data.appState || {};
+        var files = data.files || {};
+
+        appState.viewBackgroundColor = appState.viewBackgroundColor || "#ffffff";
+        appState.exportWithDarkMode = false;
+
+        var svg = await exportToSvg({
+          elements: elements,
+          appState: Object.assign({}, appState, { exportBackground: true }),
+          files: files,
+        });
+
+        var root = document.getElementById("root");
+        root.innerHTML = "";
+        root.appendChild(svg);
+
+        window.__renderComplete = true;
+        return { success: true };
+      } catch (err) {
+        window.__renderComplete = true;
+        return { success: false, error: err.message };
+      }
+    };
+
+    window.__moduleReady = true;
+  </script>
+</body>
+</html>

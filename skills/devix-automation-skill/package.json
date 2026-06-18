@@ -1,0 +1,12 @@
+{
+  "name": "devix-automation-skill",
+  "version": "0.2.0",
+  "description": "通过 CloudCLI REST API 创建、查看、修改、删除、暂停/恢复自动化定时任务（cron job），\n支持 DingTalk 群聊/私聊通知。每当用户提到定时任务、自动化、cron、周期执行、\n定期运行、每天/每周/每小时执行、scheduled task 时，务必使用本 Skill——\n即使用户没有明确说\"创建定时任务\"。禁止使用 Claude Code 内置的\nCronCreate/CronDelete/CronList 工具，所有定时任务操作必须通过本 Skill 完成。\n",
+  "publishConfig": {
+    "registry": "https://contextlab.alibaba-inc.com/skill"
+  },
+  "changelog": "补充环境变量描述",
+  "aoneKit": {
+    "generated": true
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "DI Writer Base Schema",
+  "description": "Common properties for all DataWorks Data Integration writers",
+  "type": "object",
+  "properties": {
+    "stepType": {
+      "type": "string",
+      "description": "Writer type identifier (e.g., odps, mysql, clickhouse, etc.)"
+    },
+    "parameter": {
+      "type": "object",
+      "description": "Writer-specific parameters",
+      "properties": {
+        "datasource": {
+          "type": "string",
+          "description": "Datasource name in DataWorks"
+        },
+        "guid": {
+          "type": "string",
+          "description": "Unique identifier for the datasource"
+        }
+      },
+      "additionalProperties": true
+    },
+    "name": {
+      "const": "Writer",
+      "description": "Writer name"
+    },
+    "category": {
+      "const": "writer",
+      "description": "Writer category"
+    }
+  },
+  "required": [
+    "stepType",
+    "parameter",
+    "name",
+    "category"
+  ],
+  "additionalProperties": true
+}

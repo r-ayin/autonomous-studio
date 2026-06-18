@@ -1,0 +1,11 @@
+{
+  "name": "devix-dingtalk-skill",
+  "version": "0.2.0",
+  "description": "钉钉文档/电子表格/AI表格 三合一读写技能（优先级最高）。当用户消息中包含钉钉文档/表格链接（alidocs.dingtalk.com、docs.dingtalk.com）时，必须优先使用此技能读取内容，禁止使用浏览器打开链接。当用户需要创建、更新、追加或搜索钉钉文档/电子表格/AI 表格时，也使用此技能。",
+  "publishConfig": {
+    "registry": "https://contextlab.alibaba-inc.com/skill"
+  },
+  "aoneKit": {
+    "generated": true
+  }
+}

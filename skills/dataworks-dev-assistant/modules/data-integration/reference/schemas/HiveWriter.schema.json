@@ -1,0 +1,122 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Hive Writer Schema",
+  "description": "Hive writer configuration for DataWorks Data Integration",
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "DIWriterBase.schema.json"
+    }
+  ],
+  "properties": {
+    "stepType": {
+      "const": "hive",
+      "description": "Hive writer type"
+    },
+    "parameter": {
+      "type": "object",
+      "properties": {
+        "column": {
+          "type": "array",
+          "description": "Column names to write to the table",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "table": {
+          "type": "string",
+          "description": "Hive table name"
+        },
+        "partition": {
+          "type": "string",
+          "description": "Partition specification (e.g., pt_d=20250101)"
+        },
+        "writeMode": {
+          "type": "string",
+          "description": "Write mode: truncate or append",
+          "enum": [
+            "truncate",
+            "append"
+          ]
+        },
+        "datasource": {
+          "type": "string",
+          "description": "Hive datasource name"
+        },
+        "defaultFS": {
+          "type": "string",
+          "description": "Default HDFS filesystem"
+        },
+        "username": {
+          "type": "string",
+          "description": "Hive username"
+        },
+        "password": {
+          "type": "string",
+          "description": "Hive password"
+        },
+        "jdbcUrl": {
+          "type": "string",
+          "description": "Hive JDBC connection URL"
+        },
+        "haveKerberos": {
+          "type": "boolean",
+          "description": "Whether Kerberos authentication is enabled"
+        },
+        "kerberosPrincipal": {
+          "type": "string",
+          "description": "Kerberos principal"
+        },
+        "kerberosKeytabFilePath": {
+          "type": "string",
+          "description": "Kerberos keytab file path"
+        },
+        "compress": {
+          "type": "boolean",
+          "description": "Whether to compress data during transfer"
+        },
+        "encoding": {
+          "type": "string",
+          "description": "Character encoding"
+        },
+        "fieldDelimiter": {
+          "type": "string",
+          "description": "Field delimiter"
+        },
+        "nullFormat": {
+          "type": "string",
+          "description": "Null value format"
+        },
+        "hiveConfig": {
+          "type": "object",
+          "description": "Hive extended configuration",
+          "properties": {
+            "hiveCommand": {
+              "type": "string"
+            },
+            "jdbcUrl": {
+              "type": "string"
+            },
+            "username": {
+              "type": "string"
+            },
+            "password": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "column",
+        "table",
+        "datasource",
+        "writeMode",
+        "hiveConfig"
+      ],
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

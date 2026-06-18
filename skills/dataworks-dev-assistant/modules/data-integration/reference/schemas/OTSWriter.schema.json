@@ -1,0 +1,140 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OTS Writer Schema",
+  "description": "OTS (Table Store) writer configuration for DataWorks Data Integration",
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "DIWriterBase.schema.json"
+    }
+  ],
+  "properties": {
+    "stepType": {
+      "const": "ots",
+      "description": "OTS writer type"
+    },
+    "parameter": {
+      "type": "object",
+      "properties": {
+        "datasource": {
+          "type": "string",
+          "description": "Datasource name in DataWorks"
+        },
+        "table": {
+          "type": "string",
+          "description": "OTS table name"
+        },
+        "newVersion": {
+          "type": "string",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "description": "Whether to use the new OTS writer"
+        },
+        "mode": {
+          "type": "string",
+          "description": "OTS write mode"
+        },
+        "isTimeseriesTable": {
+          "type": "string",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "description": "Whether the target table is a timeseries table"
+        },
+        "timeunit": {
+          "type": "string",
+          "description": "Time unit for timeseries writes"
+        },
+        "primaryKey": {
+          "type": "array",
+          "description": "Primary key definitions for OTS writes",
+          "items": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "additionalProperties": true
+              }
+            ]
+          }
+        },
+        "column": {
+          "type": "array",
+          "description": "OTS column definitions",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Column name"
+              },
+              "type": {
+                "type": "string",
+                "description": "Column type"
+              },
+              "is_timeseries_tag": {
+                "type": "string",
+                "enum": [
+                  "true",
+                  "false"
+                ],
+                "description": "Whether the column is a timeseries tag"
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "writeMode": {
+          "type": "string",
+          "enum": [
+            "PutRow",
+            "UpdateRow"
+          ],
+          "description": "OTS writer mode"
+        },
+        "enableAutoIncrement": {
+          "type": "string",
+          "enum": [
+            "true",
+            "false"
+          ],
+          "description": "Whether to enable auto increment primary key support"
+        },
+        "requestTotalSizeLimitation": {
+          "type": "integer",
+          "description": "Maximum request size"
+        },
+        "columnNamePrefixFilter": {
+          "type": "string",
+          "description": "Prefix filter used in multiVersion mode"
+        }
+      },
+      "required": [
+        "datasource",
+        "table"
+      ],
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

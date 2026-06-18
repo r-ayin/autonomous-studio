@@ -1,0 +1,108 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ClickHouse Writer Schema",
+  "description": "ClickHouse writer configuration for DataWorks Data Integration",
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "DIWriterBase.schema.json"
+    }
+  ],
+  "properties": {
+    "stepType": {
+      "const": "clickhouse",
+      "description": "ClickHouse writer type"
+    },
+    "parameter": {
+      "type": "object",
+      "properties": {
+        "column": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "connection": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "table": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1
+              },
+              "jdbcUrl": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "table",
+              "jdbcUrl"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "username": {
+          "type": "string"
+        },
+        "password": {
+          "type": "string"
+        },
+        "preSql": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "postSql": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "writeMode": {
+          "type": "string",
+          "enum": [
+            "insert",
+            "replace"
+          ]
+        },
+        "batchSize": {
+          "oneOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        "batchByteSize": {
+          "oneOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        "encoding": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "column",
+        "connection",
+        "username",
+        "password"
+      ],
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

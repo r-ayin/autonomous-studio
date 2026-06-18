@@ -1,0 +1,109 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Loghub Reader Schema",
+  "description": "Loghub reader configuration for DataWorks Data Integration",
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "DIReaderBase.schema.json"
+    }
+  ],
+  "properties": {
+    "stepType": {
+      "enum": [
+        "loghub",
+        "LogHub"
+      ],
+      "description": "Loghub reader type"
+    },
+    "parameter": {
+      "type": "object",
+      "properties": {
+        "datasource": {
+          "type": "string"
+        },
+        "endpoint": {
+          "type": "string"
+        },
+        "endPoint": {
+          "type": "string"
+        },
+        "accessId": {
+          "type": "string"
+        },
+        "accessKey": {
+          "type": "string"
+        },
+        "project": {
+          "type": "string"
+        },
+        "logstore": {
+          "type": "string"
+        },
+        "batchSize": {
+          "oneOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        "column": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "beginDateTime": {
+          "type": "string"
+        },
+        "endDateTime": {
+          "type": "string"
+        },
+        "fieldDelimiter": {
+          "type": "string"
+        },
+        "query": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "logstore",
+        "column",
+        "beginDateTime",
+        "endDateTime"
+      ],
+      "anyOf": [
+        {
+          "required": [
+            "datasource"
+          ]
+        },
+        {
+          "required": [
+            "accessId",
+            "accessKey",
+            "project"
+          ],
+          "anyOf": [
+            {
+              "required": [
+                "endpoint"
+              ]
+            },
+            {
+              "required": [
+                "endPoint"
+              ]
+            }
+          ]
+        }
+      ],
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

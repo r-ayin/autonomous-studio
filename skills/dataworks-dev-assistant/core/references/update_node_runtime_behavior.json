@@ -1,0 +1,32 @@
+{
+  "generated_at": "2026-04-21 11:06:09",
+  "project_id": 14255,
+  "sandbox_uuid": "6470015216364131653",
+  "sandbox_task_id": "309830955",
+  "sandbox_name": "_e2e_runtime_sandbox_shell",
+  "status": "blocked_by_environment",
+  "framework_ready": true,
+  "total": 3,
+  "verified": 0,
+  "blocker": {
+    "summary": "/workbench/smoke 在当前客户端环境调用失败",
+    "error_codes": ["1203110021", "500120"],
+    "error_samples": [
+      "exception occurs：path=[/workbench/smoke]，api=wb_smoke，remoteMessage=[调用调度API服务异常]",
+      "远程服务器返回了非json的内容: <!-- 302 Location: http://err.ta..."
+    ],
+    "repro_tried": [
+      "新部署 sandbox (taskId=309830955) → 失败",
+      "已存在的老 DIDE_SHELL (uuid=8754884827034752567) → 302 认证重定向",
+      "skill 自带 smoke_test.py → 同样失败"
+    ],
+    "likely_cause": "客户端与 scheduler API 之间的鉴权/代理层问题（非脚本 bug）"
+  },
+  "scenarios_defined": ["timeout_kill", "rerun_count", "parameter_substitute"],
+  "note": "Phase 2 框架完整。解决 smoke API blocker 后，一条命令即可产出 runtime_verified：  python tools/verify_runtime_behavior.py --project-id 14255 --uuid 6470015216364131653 --task-id 309830955",
+  "results": [
+    {"scenario": "timeout_kill", "status": "smoke_submit_failed"},
+    {"scenario": "rerun_count", "status": "smoke_submit_failed"},
+    {"scenario": "parameter_substitute", "status": "smoke_submit_failed"}
+  ]
+}

@@ -1,0 +1,104 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MetaQ Reader Schema",
+  "description": "MetaQ reader configuration for DataWorks Data Integration",
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "DIReaderBase.schema.json"
+    }
+  ],
+  "properties": {
+    "stepType": {
+      "enum": [
+        "metaq",
+        "MetaQ"
+      ]
+    },
+    "parameter": {
+      "type": "object",
+      "properties": {
+        "accessId": {
+          "type": "string"
+        },
+        "accessKey": {
+          "type": "string"
+        },
+        "consumerId": {
+          "type": "string"
+        },
+        "topicName": {
+          "type": "string"
+        },
+        "subExpression": {
+          "type": "string"
+        },
+        "onsChannel": {
+          "type": "string"
+        },
+        "unitName": {
+          "type": "string"
+        },
+        "instanceName": {
+          "type": "string"
+        },
+        "domainName": {
+          "type": "string"
+        },
+        "contentType": {
+          "type": "string",
+          "enum": [
+            "singlestringcolumn",
+            "text",
+            "json"
+          ]
+        },
+        "beginOffset": {
+          "type": "string",
+          "enum": [
+            "begin",
+            "lastRead"
+          ]
+        },
+        "nullCurrentOffset": {
+          "type": "string",
+          "enum": [
+            "begin",
+            "current"
+          ]
+        },
+        "fieldDelimiter": {
+          "type": "string"
+        },
+        "column": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "beginDateTime": {
+          "type": "string"
+        },
+        "endDateTime": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "accessId",
+        "accessKey",
+        "consumerId",
+        "topicName",
+        "subExpression",
+        "onsChannel",
+        "domainName",
+        "contentType",
+        "nullCurrentOffset",
+        "fieldDelimiter",
+        "column"
+      ],
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

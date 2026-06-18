@@ -1,0 +1,136 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "OSS Reader Schema",
+  "description": "OSS reader configuration for DataWorks Data Integration",
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "DIReaderBase.schema.json"
+    }
+  ],
+  "properties": {
+    "stepType": {
+      "const": "oss",
+      "description": "OSS reader type"
+    },
+    "parameter": {
+      "type": "object",
+      "properties": {
+        "datasource": {
+          "type": "string",
+          "description": "Datasource name in DataWorks"
+        },
+        "column": {
+          "type": "array",
+          "description": "OSS reader column definitions",
+          "minItems": 1,
+          "items": {
+            "oneOf": [
+              {
+                "const": "*"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Column name"
+                  },
+                  "index": {
+                    "oneOf": [
+                      {
+                        "type": "integer"
+                      },
+                      {
+                        "type": "string"
+                      }
+                    ],
+                    "description": "Source column index"
+                  },
+                  "type": {
+                    "type": "string",
+                    "description": "Column type"
+                  },
+                  "format": {
+                    "type": "string",
+                    "description": "Date format pattern"
+                  }
+                },
+                "required": [
+                  "type"
+                ],
+                "additionalProperties": true
+              }
+            ]
+          }
+        },
+        "object": {
+          "type": "array",
+          "description": "OSS object prefixes",
+          "items": {
+            "type": "string"
+          }
+        },
+        "path": {
+          "type": "string",
+          "description": "OSS path used for ORC or Parquet reads"
+        },
+        "fileFormat": {
+          "type": "string",
+          "description": "Input file format"
+        },
+        "parquetSchema": {
+          "type": "string",
+          "description": "Parquet schema definition"
+        },
+        "nullFormat": {
+          "type": "string",
+          "description": "Null value representation"
+        },
+        "compress": {
+          "type": "string",
+          "description": "Compression type"
+        },
+        "skipHeader": {
+          "type": "string",
+          "description": "Whether the file contains a header row"
+        },
+        "encoding": {
+          "type": "string",
+          "description": "File encoding"
+        },
+        "fieldDelimiter": {
+          "type": "string",
+          "description": "Field delimiter"
+        },
+        "fieldDelimiterOrigin": {
+          "type": "string",
+          "description": "Original field delimiter"
+        },
+        "lineDelimiter": {
+          "type": "string",
+          "description": "Line delimiter when fileFormat is text"
+        }
+      },
+      "required": [
+        "datasource",
+        "column"
+      ],
+      "anyOf": [
+        {
+          "required": [
+            "object"
+          ]
+        },
+        {
+          "required": [
+            "path",
+            "fileFormat"
+          ]
+        }
+      ],
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,29 @@
+{
+  "skill_name": "business-writing-coach",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "帮我写一句话发给同事：他们可以先用 PRD Skill 拆需求，卡住再反馈给我，但不要让人感觉我不愿意帮忙。",
+      "expected_output": "A concise workplace-ready sentence that sets self-service and feedback boundaries without sounding cold.",
+      "files": []
+    },
+    {
+      "id": 2,
+      "prompt": "我要写中期述职，我是业务运营助理，最近做了采集插件、质检分析平台和统计工具。不要直接给我一堆 OKR/述职模板，先帮我判断哪些话会有 AI 感，怎么说更像真实工作表达。",
+      "expected_output": "A concise critique of AI-like wording and a few natural workplace phrasing alternatives, not a long structured template.",
+      "files": []
+    },
+    {
+      "id": 3,
+      "prompt": "这是我的分享逐字稿，你帮我复盘表达问题，重点抓口头禅、逻辑跳跃和哪些话会让别人以为都可以来找我兜底。",
+      "expected_output": "An expression review structure focused on scene, logic, filler words, boundary repair, and practice lines.",
+      "files": []
+    },
+    {
+      "id": 4,
+      "prompt": "我要给算法同学说明我改了数据导出字段和口径，不要写长篇背景，要让他们一眼看出来对他们有什么影响，最好能用颜色状态。",
+      "expected_output": "A concise algorithm-facing impact note using status/color labels or a short impact table focused on changes, impact, confirmation needed, and non-impact items.",
+      "files": []
+    }
+  ]
+}

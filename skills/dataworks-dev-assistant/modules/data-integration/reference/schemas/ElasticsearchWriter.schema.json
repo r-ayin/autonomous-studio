@@ -1,0 +1,167 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Elasticsearch Writer Schema",
+  "description": "Elasticsearch writer configuration for DataWorks Data Integration",
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "DIWriterBase.schema.json"
+    }
+  ],
+  "properties": {
+    "stepType": {
+      "const": "elasticsearch",
+      "description": "Elasticsearch writer type"
+    },
+    "parameter": {
+      "type": "object",
+      "properties": {
+        "column": {
+          "type": "array",
+          "description": "Field definitions written to Elasticsearch",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              },
+              "format": {
+                "type": "string"
+              },
+              "origin": {
+                "type": "boolean"
+              },
+              "Timezone": {
+                "type": "string"
+              },
+              "other_params": {
+                "type": "object",
+                "additionalProperties": true
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "additionalProperties": true
+          },
+          "minItems": 1
+        },
+        "datasource": {
+          "type": "string",
+          "description": "Datasource name in DataWorks"
+        },
+        "index": {
+          "type": "string",
+          "description": "Elasticsearch index name"
+        },
+        "type": {
+          "type": "string",
+          "description": "Document type (deprecated in ES 7.x+)"
+        },
+        "endpoint": {
+          "type": "string",
+          "description": "Elasticsearch endpoint URL"
+        },
+        "accessId": {
+          "type": "string",
+          "description": "Access ID for authentication"
+        },
+        "accessKey": {
+          "type": "string",
+          "description": "Access Key for authentication"
+        },
+        "indexType": {
+          "type": "string",
+          "description": "Index type"
+        },
+        "batchSize": {
+          "type": "integer",
+          "description": "Batch size for bulk operations"
+        },
+        "timeout": {
+          "type": "integer",
+          "description": "Request timeout in milliseconds"
+        },
+        "actionType": {
+          "type": "string",
+          "description": "Action type for bulk operations",
+          "enum": [
+            "index",
+            "update"
+          ]
+        },
+        "cleanup": {
+          "type": "boolean",
+          "description": "Whether to delete existing index data before writing"
+        },
+        "alias": {
+          "type": "string"
+        },
+        "settings": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "primaryKeyInfo": {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string"
+            },
+            "column": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "fieldDelimiter": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": true
+        },
+        "retryTimes": {
+          "type": "integer",
+          "description": "Number of retry attempts on failure"
+        },
+        "retryInterval": {
+          "type": "integer",
+          "description": "Retry interval in milliseconds"
+        },
+        "headers": {
+          "type": "object",
+          "description": "Custom HTTP headers",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "ssl": {
+          "type": "boolean",
+          "description": "Whether to use SSL connection"
+        },
+        "nullFormat": {
+          "type": "string",
+          "description": "Representation of null values"
+        },
+        "dateFormat": {
+          "type": "string",
+          "description": "Date format for date fields"
+        },
+        "timeZone": {
+          "type": "string",
+          "description": "Time zone for date parsing"
+        }
+      },
+      "required": [
+        "column",
+        "index",
+        "endpoint",
+        "datasource"
+      ],
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,103 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FTP Writer Schema",
+  "description": "FTP writer configuration for DataWorks Data Integration",
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "DIWriterBase.schema.json"
+    }
+  ],
+  "properties": {
+    "stepType": {
+      "const": "ftp",
+      "description": "FTP writer type"
+    },
+    "parameter": {
+      "type": "object",
+      "properties": {
+        "datasource": {
+          "type": "string",
+          "description": "Datasource name in DataWorks"
+        },
+        "path": {
+          "type": "string",
+          "description": "FTP output directory"
+        },
+        "fileName": {
+          "type": "string",
+          "description": "FTP output file name prefix"
+        },
+        "writeMode": {
+          "type": "string",
+          "enum": [
+            "truncate",
+            "append",
+            "nonConflict"
+          ],
+          "description": "FTP writer mode"
+        },
+        "fieldDelimiter": {
+          "type": "string",
+          "description": "Field delimiter for written files"
+        },
+        "encoding": {
+          "type": "string",
+          "description": "File encoding"
+        },
+        "timeout": {
+          "type": "integer",
+          "description": "Connection timeout in milliseconds"
+        },
+        "singleFileOutput": {
+          "type": "boolean",
+          "description": "Whether to output a single file"
+        },
+        "skipHeader": {
+          "type": "boolean",
+          "description": "Whether to skip writing header"
+        },
+        "compress": {
+          "type": "string",
+          "description": "Compression type"
+        },
+        "nullFormat": {
+          "type": "string",
+          "description": "Null value representation"
+        },
+        "dateFormat": {
+          "type": "string",
+          "description": "Date format pattern"
+        },
+        "fileFormat": {
+          "type": "string",
+          "description": "Output file format"
+        },
+        "header": {
+          "type": "array",
+          "description": "Optional header row",
+          "items": {
+            "type": "string"
+          }
+        },
+        "markDoneFileName": {
+          "type": "string",
+          "description": "Marker file written after job completion"
+        },
+        "escapeChar": {
+          "type": "string",
+          "description": "CSV escape character"
+        }
+      },
+      "required": [
+        "datasource",
+        "path",
+        "fileName",
+        "writeMode",
+        "fieldDelimiter"
+      ],
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,84 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "StarRocks Writer Schema",
+  "description": "StarRocks writer configuration for DataWorks Data Integration",
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "DIWriterBase.schema.json"
+    }
+  ],
+  "properties": {
+    "stepType": {
+      "const": "starrocks",
+      "description": "StarRocks writer type"
+    },
+    "parameter": {
+      "type": "object",
+      "properties": {
+        "selectedDatabase": {
+          "type": "string",
+          "description": "StarRocks database name"
+        },
+        "loadProps": {
+          "type": "object",
+          "description": "StarRocks load properties",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "datasource": {
+          "type": "string",
+          "description": "Datasource name in DataWorks"
+        },
+        "column": {
+          "type": "array",
+          "description": "Columns written to StarRocks",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "loadUrl": {
+          "type": "array",
+          "description": "StarRocks FE load endpoints",
+          "items": {
+            "type": "string"
+          }
+        },
+        "table": {
+          "type": "string",
+          "description": "Target StarRocks table name"
+        },
+        "preSql": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "postSql": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "maxBatchRows": {
+          "type": "integer"
+        },
+        "maxBatchSize": {
+          "type": "integer"
+        },
+        "strategyOnError": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "datasource",
+        "column",
+        "table"
+      ],
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

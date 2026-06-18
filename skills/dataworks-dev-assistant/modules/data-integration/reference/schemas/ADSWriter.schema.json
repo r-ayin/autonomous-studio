@@ -1,0 +1,88 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ADS Writer Schema",
+  "description": "ADS (AnalyticDB for MySQL) writer configuration for DataWorks Data Integration",
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "DIWriterBase.schema.json"
+    }
+  ],
+  "properties": {
+    "stepType": {
+      "const": "ads",
+      "description": "ADS writer type"
+    },
+    "parameter": {
+      "type": "object",
+      "properties": {
+        "partition": {
+          "type": "string",
+          "description": "Target partition name"
+        },
+        "datasource": {
+          "type": "string",
+          "description": "Datasource name in DataWorks"
+        },
+        "column": {
+          "type": "array",
+          "description": "Target column list",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "writeMode": {
+          "type": "string",
+          "description": "ADS write mode"
+        },
+        "batchSize": {
+          "oneOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "description": "Batch size"
+        },
+        "bufferSize": {
+          "oneOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        "table": {
+          "type": "string",
+          "description": "Target table name"
+        },
+        "overWrite": {
+          "type": "string",
+          "enum": [
+            "true",
+            "false"
+          ]
+        },
+        "options.ignoreEmptySource": {
+          "type": "boolean"
+        },
+        "suffix": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "datasource",
+        "column",
+        "writeMode",
+        "table"
+      ],
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

@@ -1,0 +1,57 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "StarRocks Reader Schema",
+  "description": "StarRocks reader configuration for DataWorks Data Integration",
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "DIReaderBase.schema.json"
+    }
+  ],
+  "properties": {
+    "stepType": {
+      "const": "starrocks",
+      "description": "StarRocks reader type"
+    },
+    "parameter": {
+      "type": "object",
+      "properties": {
+        "selectedDatabase": {
+          "type": "string",
+          "description": "StarRocks database name"
+        },
+        "datasource": {
+          "type": "string",
+          "description": "Datasource name in DataWorks"
+        },
+        "column": {
+          "type": "array",
+          "description": "Columns to read from StarRocks",
+          "minItems": 1,
+          "items": {
+            "type": "string"
+          }
+        },
+        "where": {
+          "type": "string",
+          "description": "Filter condition"
+        },
+        "table": {
+          "type": "string",
+          "description": "Table name to read from"
+        },
+        "splitPk": {
+          "type": "string",
+          "description": "Split key used for parallel reads"
+        }
+      },
+      "required": [
+        "datasource",
+        "column",
+        "table"
+      ],
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

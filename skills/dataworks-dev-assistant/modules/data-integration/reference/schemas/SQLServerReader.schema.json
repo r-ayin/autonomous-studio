@@ -1,0 +1,87 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SQL Server Reader Schema",
+  "description": "SQL Server reader configuration for DataWorks Data Integration",
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "DIReaderBase.schema.json"
+    }
+  ],
+  "properties": {
+    "stepType": {
+      "const": "sqlserver",
+      "description": "SQL Server reader type"
+    },
+    "parameter": {
+      "type": "object",
+      "properties": {
+        "column": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "datasource": {
+          "type": "string"
+        },
+        "table": {
+          "type": "string"
+        },
+        "connection": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "datasource": {
+                "type": "string"
+              },
+              "querySql": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "minItems": 1
+              }
+            },
+            "required": [
+              "datasource"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "where": {
+          "type": "string"
+        },
+        "splitPk": {
+          "type": "string"
+        },
+        "fetchSize": {
+          "type": "integer"
+        },
+        "querySql": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "column"
+      ],
+      "oneOf": [
+        {
+          "required": [
+            "datasource",
+            "table"
+          ]
+        },
+        {
+          "required": [
+            "connection"
+          ]
+        }
+      ],
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

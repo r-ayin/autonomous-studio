@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@excalidraw/excalidraw": "^0.18.1",
+    "playwright": "^1.60.0"
+  }
+}

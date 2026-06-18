@@ -1,0 +1,18 @@
+{
+  "mcp_servers": [
+    {
+      "name": "doc-1",
+      "type": "doc",
+      "server_id": "<你的钉钉文档 MCP server_id>",
+      "key": "<你的 key>",
+      "base_url": "https://mcp-gw.dingtalk.com/server/<server_id>"
+    },
+    {
+      "name": "sheet-1",
+      "type": "sheet",
+      "server_id": "<你的钉钉表格 MCP server_id>",
+      "key": "<你的 key>",
+      "base_url": "https://mcp-gw.dingtalk.com/server/<server_id>"
+    }
+  ]
+}

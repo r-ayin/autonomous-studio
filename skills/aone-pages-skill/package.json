@@ -1,0 +1,11 @@
+{
+  "name": "aone-pages-skill",
+  "version": "0.1.0",
+  "description": "Aone Pages 使用工作流，用于创建、部署、配置和排查托管在 Aone Pages 上的静态站点。Use when users publish static sites with Aone Pages, configure Aone CI deploy-pages, choose or adapt APG/Docusaurus templates, bind custom domains, troubleshoot preview/production releases, or answer questions about pages.alibaba-inc.com.",
+  "publishConfig": {
+    "registry": "https://contextlab.alibaba-inc.com/skill"
+  },
+  "aoneKit": {
+    "generated": true
+  }
+}

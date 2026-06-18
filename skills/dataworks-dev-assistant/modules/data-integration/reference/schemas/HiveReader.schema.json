@@ -1,0 +1,89 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Hive Reader Schema",
+  "description": "Hive reader configuration for DataWorks Data Integration",
+  "type": "object",
+  "allOf": [
+    {
+      "$ref": "DIReaderBase.schema.json"
+    }
+  ],
+  "properties": {
+    "stepType": {
+      "const": "hive",
+      "description": "Hive reader type"
+    },
+    "parameter": {
+      "type": "object",
+      "properties": {
+        "column": {
+          "type": "array",
+          "description": "Column names to read from the table",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1
+        },
+        "where": {
+          "type": "string",
+          "description": "SQL WHERE clause for filtering data"
+        },
+        "datasource": {
+          "type": "string",
+          "description": "Datasource name in DataWorks"
+        },
+        "table": {
+          "type": "string",
+          "description": "Table name to read from"
+        },
+        "partition": {
+          "type": "string",
+          "description": "Partition specification"
+        },
+        "fetchSize": {
+          "type": "integer",
+          "description": "Number of rows fetched per batch"
+        },
+        "querySql": {
+          "type": "string",
+          "description": "Custom SQL query for reading data"
+        },
+        "defaultFS": {
+          "type": "string",
+          "description": "Default HDFS filesystem"
+        },
+        "username": {
+          "type": "string",
+          "description": "Hive username"
+        },
+        "password": {
+          "type": "string",
+          "description": "Hive password"
+        },
+        "jdbcUrl": {
+          "type": "string",
+          "description": "Hive JDBC connection URL"
+        },
+        "haveKerberos": {
+          "type": "boolean",
+          "description": "Whether Kerberos authentication is enabled"
+        },
+        "kerberosPrincipal": {
+          "type": "string",
+          "description": "Kerberos principal"
+        },
+        "kerberosKeytabFilePath": {
+          "type": "string",
+          "description": "Kerberos keytab file path"
+        }
+      },
+      "required": [
+        "column",
+        "datasource",
+        "table"
+      ],
+      "additionalProperties": true
+    }
+  },
+  "additionalProperties": true
+}

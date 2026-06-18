@@ -1,0 +1,467 @@
+{
+  "version": "1.0",
+  "generator": "tools/extract_update_contract.py",
+  "source": {
+    "root_dto": "UpdateNodeRequest",
+    "java_repo": "dw_repos/dw_ide/app/datastudio",
+    "spec_schema_repo": "dw_repos/dataworks-spec/schema",
+    "extends_chain": [
+      "UpdateNodeRequest",
+      "BaseNodeCmdRequest",
+      "BaseScheduleDomainCmdRequest",
+      "BaseCmdRequest",
+      "AbstractOrcRequest"
+    ]
+  },
+  "api": {
+    "endpoint": "/ide/vertexes/{uuid}",
+    "method": "PUT",
+    "note": "前端走 /ide/updateVertex（旧），Controller @RequestMapping=/vertexes/{uuid}",
+    "dispatch": "按 vertex type 分派到 UpdateNodeRequest / UpdateFlowRequest / UpdateComponentRequest / UpdateDiJobRequest"
+  },
+  "non_transient_count": 47,
+  "transient_count": 16,
+  "fields": {
+    "uuid": {
+      "type": "string",
+      "source_class": "UpdateNodeRequest",
+      "java_type": "String"
+    },
+    "disableInnerNodeUpdate": {
+      "type": "boolean",
+      "source_class": "UpdateNodeRequest",
+      "java_type": "Boolean"
+    },
+    "containerUuid": {
+      "type": "string",
+      "source_class": "BaseNodeCmdRequest",
+      "java_type": "String"
+    },
+    "decoupleContainer": {
+      "type": "boolean",
+      "source_class": "BaseNodeCmdRequest",
+      "java_type": "Boolean"
+    },
+    "flow": {
+      "type": "object",
+      "java_class": "OrcFlow",
+      "source_class": "BaseNodeCmdRequest",
+      "java_type": "OrcFlow"
+    },
+    "component": {
+      "type": "object",
+      "java_class": "OrcComponent",
+      "source_class": "BaseNodeCmdRequest",
+      "java_type": "OrcComponent"
+    },
+    "fileResources": {
+      "type": "array",
+      "items_java_type": "OrcFileResource",
+      "source_class": "BaseNodeCmdRequest",
+      "java_type": "List<OrcFileResource>",
+      "transient": true,
+      "note": "transient — 服务端内部使用，不参与客户端 body"
+    },
+    "functions": {
+      "type": "array",
+      "items_java_type": "OrcFunction",
+      "source_class": "BaseNodeCmdRequest",
+      "java_type": "List<OrcFunction>",
+      "transient": true,
+      "note": "transient — 服务端内部使用，不参与客户端 body"
+    },
+    "language": {
+      "type": "string",
+      "source_class": "BaseNodeCmdRequest",
+      "java_type": "String",
+      "transient": true,
+      "note": "transient — 服务端内部使用，不参与客户端 body"
+    },
+    "foreach": {
+      "type": "object",
+      "java_class": "SpecForEach",
+      "source_class": "BaseNodeCmdRequest",
+      "java_type": "SpecForEach",
+      "java": "SpecForEach",
+      "note": "for-each 控制节点配置（POJO 定义字段：nodes/array/flow/maxIterations/parallelism）"
+    },
+    "doWhile": {
+      "type": "object",
+      "java_class": "SpecDoWhile",
+      "source_class": "BaseNodeCmdRequest",
+      "java_type": "SpecDoWhile",
+      "java": "SpecDoWhile",
+      "note": "do-while 控制节点配置（POJO 定义字段：nodes/specWhile/flow/maxIterations/parallelism）"
+    },
+    "dqcRule": {
+      "type": "object",
+      "java_class": "OrcDqcRule",
+      "source_class": "BaseNodeCmdRequest",
+      "java_type": "OrcDqcRule"
+    },
+    "recurrence": {
+      "type": "object",
+      "java_class": "OrcNodeRecurrenceType",
+      "source_class": "BaseScheduleDomainCmdRequest",
+      "java_type": "OrcNodeRecurrenceType",
+      "enum": [
+        "Normal",
+        "Skip",
+        "Pause"
+      ]
+    },
+    "instanceMode": {
+      "type": "object",
+      "java_class": "OrcNodeInstanceModeType",
+      "source_class": "BaseScheduleDomainCmdRequest",
+      "java_type": "OrcNodeInstanceModeType",
+      "enum": [
+        "T+1",
+        "Immediately"
+      ]
+    },
+    "rerunMode": {
+      "type": "object",
+      "java_class": "OrcNodeRerunModeType",
+      "source_class": "BaseScheduleDomainCmdRequest",
+      "java_type": "OrcNodeRerunModeType",
+      "enum": [
+        "Allowed",
+        "Denied",
+        "FailureAllowed"
+      ]
+    },
+    "timeout": {
+      "type": "integer",
+      "source_class": "BaseScheduleDomainCmdRequest",
+      "java_type": "Integer"
+    },
+    "timeoutUnit": {
+      "type": "string",
+      "source_class": "BaseScheduleDomainCmdRequest",
+      "java_type": "TimeUnit"
+    },
+    "rerunTimes": {
+      "type": "integer",
+      "source_class": "BaseScheduleDomainCmdRequest",
+      "java_type": "Integer"
+    },
+    "rerunInterval": {
+      "type": "integer",
+      "source_class": "BaseScheduleDomainCmdRequest",
+      "java_type": "Integer"
+    },
+    "priority": {
+      "type": "integer",
+      "source_class": "BaseScheduleDomainCmdRequest",
+      "java_type": "Integer"
+    },
+    "maxInternalConcurrency": {
+      "type": "integer",
+      "source_class": "BaseScheduleDomainCmdRequest",
+      "java_type": "Integer"
+    },
+    "failureStrategy": {
+      "type": "object",
+      "java_class": "FailureStrategy",
+      "source_class": "BaseScheduleDomainCmdRequest",
+      "java_type": "FailureStrategy"
+    },
+    "ignoreBranchConditionSkip": {
+      "type": "boolean",
+      "source_class": "BaseScheduleDomainCmdRequest",
+      "java_type": "Boolean"
+    },
+    "autoParse": {
+      "type": "boolean",
+      "source_class": "BaseScheduleDomainCmdRequest",
+      "java_type": "Boolean"
+    },
+    "trigger": {
+      "type": "object",
+      "java_class": "OrcTrigger",
+      "source_class": "BaseScheduleDomainCmdRequest",
+      "java_type": "OrcTrigger",
+      "nested_schema_ref": "https://dataworks.data.aliyun.com/schemas/1.1.0/trigger.schema.json",
+      "nested_properties": [
+        "id",
+        "type",
+        "cron",
+        "startTime",
+        "endTime",
+        "timezone"
+      ]
+    },
+    "outputs": {
+      "type": "object",
+      "additional": {
+        "key": "String",
+        "value": "List<Object>"
+      },
+      "source_class": "BaseScheduleDomainCmdRequest",
+      "java_type": "Map<String, List<Object>>"
+    },
+    "inputs": {
+      "type": "object",
+      "additional": {
+        "key": "String",
+        "value": "List<Object>"
+      },
+      "source_class": "BaseScheduleDomainCmdRequest",
+      "java_type": "Map<String, List<Object>>"
+    },
+    "dependencies": {
+      "type": "array",
+      "items_java_type": "OrcNodeDependency",
+      "source_class": "BaseScheduleDomainCmdRequest",
+      "java_type": "List<OrcNodeDependency>",
+      "transient": true,
+      "note": "transient — 服务端内部使用，不参与客户端 body"
+    },
+    "subflow": {
+      "type": "object",
+      "java_class": "SpecSubFlow",
+      "source_class": "BaseScheduleDomainCmdRequest",
+      "java_type": "SpecSubFlow",
+      "java": "SpecSubFlow",
+      "note": "子流程配置"
+    },
+    "updateContainerSnapshot": {
+      "type": "boolean",
+      "source_class": "BaseScheduleDomainCmdRequest",
+      "java_type": "Boolean"
+    },
+    "skipNodePermissionCheck": {
+      "type": "boolean",
+      "source_class": "BaseScheduleDomainCmdRequest",
+      "java_type": "Boolean"
+    },
+    "triggerEnabled": {
+      "type": "boolean",
+      "source_class": "BaseScheduleDomainCmdRequest",
+      "java_type": "Boolean"
+    },
+    "inputOutputFullUpdate": {
+      "type": "boolean",
+      "source_class": "BaseScheduleDomainCmdRequest",
+      "java_type": "Boolean"
+    },
+    "strategy": {
+      "type": "object",
+      "java_class": "SpecScheduleStrategy",
+      "source_class": "BaseScheduleDomainCmdRequest",
+      "java_type": "SpecScheduleStrategy"
+    },
+    "name": {
+      "type": "string",
+      "source_class": "BaseCmdRequest",
+      "java_type": "String"
+    },
+    "presetLogicalName": {
+      "type": "string",
+      "source_class": "BaseCmdRequest",
+      "java_type": "String"
+    },
+    "disableDefaultValueWhenCreating": {
+      "type": "boolean",
+      "source_class": "BaseCmdRequest",
+      "java_type": "Boolean"
+    },
+    "owner": {
+      "type": "string",
+      "source_class": "BaseCmdRequest",
+      "java_type": "String"
+    },
+    "description": {
+      "type": "string",
+      "source_class": "BaseCmdRequest",
+      "java_type": "String"
+    },
+    "script": {
+      "type": "object",
+      "java_class": "OrcScript",
+      "source_class": "BaseCmdRequest",
+      "java_type": "OrcScript",
+      "nested_schema_ref": "https://dataworks.data.aliyun.com/schemas/1.1.0/script.schema.json",
+      "nested_properties": [
+        "id",
+        "path",
+        "language",
+        "runtime",
+        "parameters"
+      ]
+    },
+    "runtimeResource": {
+      "type": "object",
+      "java_class": "OrcRuntimeResource",
+      "source_class": "BaseCmdRequest",
+      "java_type": "OrcRuntimeResource",
+      "nested_schema_ref": "https://dataworks.data.aliyun.com/schemas/1.1.0/runtimeResource.schema.json",
+      "nested_properties": [
+        "id",
+        "resourceGroup"
+      ]
+    },
+    "datasource": {
+      "type": "object",
+      "java_class": "OrcDatasource",
+      "source_class": "BaseCmdRequest",
+      "java_type": "OrcDatasource"
+    },
+    "datasets": {
+      "type": "array",
+      "items_java_type": "SpecDataset",
+      "source_class": "BaseCmdRequest",
+      "java_type": "List<SpecDataset>"
+    },
+    "disableCodeParse": {
+      "type": "boolean",
+      "source_class": "BaseCmdRequest",
+      "java_type": "Boolean",
+      "transient": true,
+      "note": "transient — 服务端内部使用，不参与客户端 body"
+    },
+    "disableNameValidate": {
+      "type": "boolean",
+      "source_class": "BaseCmdRequest",
+      "java_type": "Boolean",
+      "transient": true,
+      "note": "transient — 服务端内部使用，不参与客户端 body"
+    },
+    "disableRuntimeResourceGroupValidate": {
+      "type": "boolean",
+      "source_class": "BaseCmdRequest",
+      "java_type": "Boolean",
+      "transient": true,
+      "note": "transient — 服务端内部使用，不参与客户端 body"
+    },
+    "disableNodeSnapshot": {
+      "type": "boolean",
+      "source_class": "BaseCmdRequest",
+      "java_type": "Boolean",
+      "transient": true,
+      "note": "transient — 服务端内部使用，不参与客户端 body"
+    },
+    "disableCommercialRestrictionsValidation": {
+      "type": "boolean",
+      "source_class": "BaseCmdRequest",
+      "java_type": "Boolean",
+      "transient": true,
+      "note": "transient — 服务端内部使用，不参与客户端 body"
+    },
+    "asyncWriteSnapshot": {
+      "type": "boolean",
+      "source_class": "BaseCmdRequest",
+      "java_type": "Boolean",
+      "transient": true,
+      "note": "transient — 服务端内部使用，不参与客户端 body"
+    },
+    "neverMergeSnapshotVersion": {
+      "type": "boolean",
+      "source_class": "BaseCmdRequest",
+      "java_type": "Boolean",
+      "transient": true,
+      "note": "transient — 服务端内部使用，不参与客户端 body"
+    },
+    "ownerCheckWithConfig": {
+      "type": "boolean",
+      "source_class": "BaseCmdRequest",
+      "java_type": "Boolean",
+      "transient": true,
+      "note": "transient — 服务端内部使用，不参与客户端 body"
+    },
+    "requestByUpgrade": {
+      "type": "boolean",
+      "source_class": "BaseCmdRequest",
+      "java_type": "Boolean",
+      "transient": true,
+      "note": "transient — 服务端内部使用，不参与客户端 body"
+    },
+    "vfsFileOverwriteIfExists": {
+      "type": "boolean",
+      "source_class": "BaseCmdRequest",
+      "java_type": "Boolean",
+      "transient": true,
+      "note": "transient — 服务端内部使用，不参与客户端 body"
+    },
+    "defaultParameters": {
+      "type": "boolean",
+      "source_class": "BaseCmdRequest",
+      "java_type": "Boolean",
+      "transient": true,
+      "note": "transient — 服务端内部使用，不参与客户端 body"
+    },
+    "scene": {
+      "type": "string",
+      "source_class": "BaseCmdRequest",
+      "java_type": "String"
+    },
+    "gmtModified": {
+      "type": "string",
+      "source_class": "BaseCmdRequest",
+      "java_type": "Date"
+    },
+    "gmtCreate": {
+      "type": "string",
+      "source_class": "BaseCmdRequest",
+      "java_type": "Date"
+    },
+    "modifier": {
+      "type": "string",
+      "source_class": "BaseCmdRequest",
+      "java_type": "String"
+    },
+    "creator": {
+      "type": "string",
+      "source_class": "BaseCmdRequest",
+      "java_type": "String"
+    },
+    "locker": {
+      "type": "string",
+      "source_class": "BaseCmdRequest",
+      "java_type": "String"
+    },
+    "properties": {
+      "type": "object",
+      "additional": {
+        "key": "String",
+        "value": "Object"
+      },
+      "source_class": "BaseCmdRequest",
+      "java_type": "Map<String, Object>",
+      "transient": true,
+      "note": "transient — 服务端内部使用，不参与客户端 body"
+    },
+    "operationType": {
+      "type": "object",
+      "java_class": "EntityOperationType",
+      "source_class": "AbstractOrcRequest",
+      "java_type": "EntityOperationType"
+    },
+    "olapQuery": {
+      "type": "boolean",
+      "source_class": "AbstractOrcRequest",
+      "java_type": "Boolean"
+    }
+  },
+  "enum_values": {
+    "recurrence": [
+      "Normal",
+      "Skip",
+      "Pause"
+    ],
+    "instanceMode": [
+      "T+1",
+      "Immediately"
+    ],
+    "rerunMode": [
+      "Allowed",
+      "Denied",
+      "FailureAllowed"
+    ],
+    "trigger.type": [
+      "Scheduler",
+      "Manual"
+    ]
+  }
+}
