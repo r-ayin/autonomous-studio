@@ -29,7 +29,9 @@ KNOWN_REPOS = [
     {"name": "moni",           "path": "moni",            "is_subrepo": True},
     {"name": "wanxia",         "path": "wanxia",          "is_subrepo": True},
     {"name": "pachong-master", "path": "pachong-master",  "is_subrepo": True},
-    {"name": "x-tool",         "path": ".",               "is_subrepo": False},
+    # 🚫 x-tool 不属于引擎管辖，不在列表中
+    # 引擎仅管理自身仓库 r-ayin/autonomous-studio 的 commit+push
+    # 各项目仓库由 auto-commit 自动 commit（本地），但 push 由用户手动触发
 ]
 
 # ── 排除规则 ──────────────────────────────────────────
