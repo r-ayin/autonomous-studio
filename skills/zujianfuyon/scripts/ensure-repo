@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# ensure-repo — 克隆或更新组件复用仓库
+# 由 zujianfuyon skill 在每次操作前调用
+set -e
+
+REPO_URL="https://gitlab.alibaba-inc.com/xiqxhq/zujianfuyon.git"
+REPO_DIR="/tmp/zujianfuyon"
+
+if [ -d "$REPO_DIR/.git" ]; then
+  echo "[zujianfuyon] 更新已有仓库..."
+  git -C "$REPO_DIR" pull origin master --ff-only 2>&1 || {
+    echo "[zujianfuyon] pull 失败，可能有本地修改冲突。请检查 /tmp/zujianfuyon 的状态。"
+    exit 1
+  }
+else
+  echo "[zujianfuyon] 首次克隆仓库..."
+  git clone "$REPO_URL" "$REPO_DIR" 2>&1 || {
+    echo "[zujianfuyon] 克隆失败，请检查网络连接。"
+    exit 1
+  }
+fi
+
+echo "[zujianfuyon] 仓库就绪：$REPO_DIR"
