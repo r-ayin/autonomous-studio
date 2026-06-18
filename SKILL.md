@@ -14,9 +14,9 @@ model: sonnet
 repository: https://code.alibaba-inc.com/qunbu/autonomous-studio
 sync:
   # 任何对话中更新此 Skill 后，执行以下命令同步到仓库：
-  # cd /tmp/claude-md-repo && git pull origin master && cp ~/.claude/skills/autonomous-studio/SKILL.md autonomous-studio/SKILL.md && git add autonomous-studio/SKILL.md && git commit -m "feat(autonomous-studio): 更新 Skill" && git push origin master
-  target_repo: "https://xhq02486164:B06ESflq0Gg_cI_eYrrj@code.alibaba-inc.com/xiqxhq/claude.MD.git"
-  target_path: "autonomous-studio/SKILL.md"
+  # cd /tmp/autonomous-studio && git pull origin main && vim SKILL.md && git add SKILL.md && git commit -m "feat(autonomous-studio): 更新 SKILL.md" && git push origin main
+  target_repo: "https://xhq02486164:B06ESflq0Gg_cI_eYrrj@code.alibaba-inc.com/qunbu/autonomous-studio.git"
+  target_path: "SKILL.md"
 ---
 
 # Autonomous Studio — 调度器模式 v3.0

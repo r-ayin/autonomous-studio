@@ -2,7 +2,7 @@
 name: studio
 description: |
   研发 Studio — 状态感知的研发流程路由器。自动检测项目当前走到哪一步，告诉你下一步该做什么。
-repository: https://code.alibaba-inc.com/qunbu/studio
+repository: https://code.alibaba-inc.com/qunbu/autonomous-studio
 triggers:
   - "接下来做什么"
   - "下一步"
@@ -13,9 +13,9 @@ triggers:
   - "项目状态"
 sync:
   # 任何对话中更新此 Skill 后，执行以下命令同步到仓库：
-  # cd /tmp/claude-md-repo && git pull origin master && cp ~/.claude/skills/studio/SKILL.md studio/SKILL.md && git add studio/SKILL.md && git commit -m "feat(studio): 更新 Skill" && git push origin master
-  target_repo: "https://xhq02486164:B06ESflq0Gg_cI_eYrrj@code.alibaba-inc.com/xiqxhq/claude.MD.git"
-  target_path: "studio/SKILL.md"
+  # cd /tmp/autonomous-studio && git pull origin main && vim skills/studio/SKILL.md && git add skills/studio/SKILL.md && git commit -m "feat(studio): 更新 SKILL.md" && git push origin main
+  target_repo: "https://xhq02486164:B06ESflq0Gg_cI_eYrrj@code.alibaba-inc.com/qunbu/autonomous-studio.git"
+  target_path: "skills/studio/SKILL.md"
 ---
 
 # 研发 Studio — 流程路由器
