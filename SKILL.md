@@ -7,9 +7,16 @@ description: >-
   + CodeGraph 融合层 v1.0（代码语义视角·8触点8规则）。
   触发词：自主模式、别等我、自动继续、keep working、autonomous mode、auto-develop、
   决策引擎、继续开发、不用等我、你自己做、auto-continue、studio auto on、继续、
-  接下来做什么、下一步、studio、全链路、开发流程、从需求到上线、项目状态。
+  接下来做什么、下一步、studio、全链路、开发流程、从需求到上线、项目状态、
+  帮我聊需求、这个想法能不能做、写PRD、需求文档、技术方案、plan feature、
+  开始开发、按计划执行、验证一下、跑一下看看、e2e测试、review、代码评审、部署、上线。
 model: sonnet
 repository: https://code.alibaba-inc.com/qunbu/autonomous-studio
+sync:
+  # 任何对话中更新此 Skill 后，执行以下命令同步到仓库：
+  # cd /tmp/claude-md-repo && git pull origin master && cp ~/.claude/skills/autonomous-studio/SKILL.md autonomous-studio/SKILL.md && git add autonomous-studio/SKILL.md && git commit -m "feat(autonomous-studio): 更新 Skill" && git push origin master
+  target_repo: "https://xhq02486164:B06ESflq0Gg_cI_eYrrj@code.alibaba-inc.com/xiqxhq/claude.MD.git"
+  target_path: "autonomous-studio/SKILL.md"
 ---
 
 # Autonomous Studio — 调度器模式 v3.0
@@ -341,6 +348,53 @@ prompt: |
                                     ↑                ↓
                                     └── 验证不通过时回退 ┘
 ```
+
+### 阶段检测算法（status.json 缺失或过时时使用）
+
+当 `planning/status.json` 不存在或不可信时，按以下逆序检测当前阶段：
+
+```
+1. 线上已部署？        → 检查最近的 git tag 或部署记录
+2. 有代码评审记录？    → 检查最近的 git log 是否有 review/CR 相关提交
+3. 有新代码变更？      → 检查 git diff 是否有未提交或最近提交的业务代码
+4. 有技术方案？        → 检查 planning/tech-plan.md 是否存在
+5. 有 PRD？           → 检查 planning/prd.md 是否存在
+6. 有需求描述？        → 检查 planning/requirements.md 是否存在
+7. 都没有             → 从需求探索开始
+```
+
+### 状态报告模板（手动触发时输出）
+
+用户手动触发 studio 时，检测完成后输出：
+
+```
+当前状态：[阶段名]
+已完成：[列出已有的产出物]
+下一步建议：[具体建议，含触发词]
+可跳过的步骤：[如果是小改动，哪些步骤可以跳]
+```
+
+### 各阶段触发词与输入输出
+
+| 阶段 | 触发词 | Skill | 输入 | 产出 | 下一步建议 |
+|---|---|---|---|---|---|
+| ① 需求探索 | "帮我聊需求"、"这个想法能不能做" | `demand-discovery` | 一句话想法 | `planning/requirements.md` | "要不要写 PRD？" |
+| ② 写 PRD | "写 PRD"、"需求文档" | `pm-spec` | requirements.md + 代码库 | prd.md + test-cases.md | "要不要开始开发？" |
+| ③ 代码开发 | "开始开发"、"按计划执行" | `serial-agent-handoff` | prd.json | 可运行代码 + git push | "要不要验证一下？" |
+| ④ 验证 | "验证一下"、"跑一下看看"、"e2e 测试" | `verify` + Playwright | test-cases.md + prd.json | 截图 + E2E 结果 | "要不要做代码评审？" |
+| ⑤ 代码评审 | "review"、"代码评审" | `code-review` + `simplify` | git diff | 问题列表 + 自动修复 | "要不要部署上线？" |
+| ⑥ 上线部署 | "部署"、"上线" | `prod-deploy` | 主分支代码 | 线上版本 | "要不要线上验证？" |
+
+### status.json 更新时机表（强制，不可跳过）
+
+| 完成什么 | currentStage 设为 | completedStages 加入 |
+|---|---|---|
+| 需求探索写完 requirements.md | `"prd"` | `"requirements"` |
+| PRD 写完 prd.md + test-cases.md | `"development"` | `"prd"` |
+| 代码开发完成（所有 P0 done） | `"verification"` | `"development"` |
+| 验证通过 | `"review"` | `"verification"` |
+| 评审通过 | `"deployment"` | `"review"` |
+| 部署完成 | `"done"` | `"deployment"` |
 
 ### ① 需求探索
 - Skill: `demand-discovery`（含 grill-me 压力追问）
