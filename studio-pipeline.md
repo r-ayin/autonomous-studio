@@ -17,9 +17,11 @@
 **分两步产出**：
 
 **Step 2a — 生成 PRD + 测试用例（等待用户确认）**
-- 产出: `planning/prd.md` + `planning/test-cases.md` + 写入钉钉文档（如需评审）
+- 产出: `planning/prd.md` + `planning/prd.html` + `planning/test-cases.md`
 - prd.md 的 description 中已包含技术实现细节（调哪个接口、读写哪张表、用什么样式）
-- **等待用户确认**，不自动推进
+- **prd.html 必须用 pm-spec Skill 生成**，含内置批注系统（支持选中文字批注 + 截图上传 + 编辑批注）
+- 生成后用 `prd-preview-server.js` 启动预览服务器 + `port-mapping` 获取公网链接给用户
+- **等待用户在 HTML 上批注确认**，不自动推进；用户完成批注后读取 `planning/annotations.json`
 
 **Step 2b — 用户确认后，生成 prd.json（结构化任务串）**
 - 从已确认的 prd.md 拆分生成 `planning/prd.json`
