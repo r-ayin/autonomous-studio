@@ -57,7 +57,7 @@ STEP 0: 自动冷启动判定（不依赖手动标记）
     触发条件: 扫描发现可行动项 AND 机会分 >= 60
     
     执行前必须（三步安全检查）:
-      ① python .claude/hooks/save-checkpoint.py
+      ① python hooks/save-checkpoint.py
          → 创建完整检查点 JSON（git 状态 + memory 快照 + 最近活动）
       ② git stash 或 git branch backup-{timestamp}
          → 保存当前工作区状态到独立分支
@@ -155,6 +155,50 @@ STEP 0: 自动冷启动判定（不依赖手动标记）
 
 ---
 
+### 0.4 CodeGraph 融合预检（v3.0 新增·可选增强）
+
+**每次激活时，在进入研判流程前检查 CodeGraph 是否可用：**
+
+```
+CodeGraph 融合预检（< 3 秒，不阻塞主流程）:
+
+  1. 读取 codegraph/capability-registry.json
+     → 不存在？跳过融合预检，引擎正常运行（CodeGraph 未安装或未初始化）
+
+  2. 加载 codegraph/integration-rules.json
+     → 遍历 rules，筛选当前阶段匹配的规则
+
+  3. 加载 codegraph/engine-touchpoints.json
+     → 确认匹配规则对应的触点配置
+
+  4. 根据激活模式选择预检策略:
+     
+     冷启动 → 重点检查 TP-05（项目认知地图）、TP-08（索引健康）
+     L2 主动扫描 → 重点检查 TP-04（跨项目依赖）
+     L3 研判 → 重点检查 TP-02（E1 质量）、TP-03（E2 一致性）、TP-08（索引健康）
+     手动激活 → 全量检查所有触点
+
+  5. 输出决策 JSON 的 codegraph 字段:
+     {
+       "codegraph": {
+         "available": true/false,
+         "version": "1.0.1",
+         "active_touchpoints": ["TP-01", "TP-02", ...],
+         "active_rules": ["R-001", "R-002", ...],
+         "index_health": { "stale": false, "last_sync": "..." }
+       }
+     }
+
+  6. CodeGraph 不可用时的行为:
+     → 引擎降级为纯主观模式
+     → 所有规则走 fallback 策略（见各触点 fallback 字段）
+     → 不写入 codegraph 字段到决策 JSON
+```
+
+**融合预检不在引擎关键路径上——超时 3 秒自动跳过，永远不阻断引擎。**
+
+---
+
 ## 1. 七阶段深度研判框架
 
 ```
@@ -169,19 +213,37 @@ STEP 0: 自动冷启动判定（不依赖手动标记）
 
 ```
 需求输入（按优先级）：
-  1. 读取 decision-log.jsonl 最后 30 行 → 提取最近 3-5 个用户意图
-  2. 读取 autonomous-state.md → 当前目标 + 完成条件 + 进度
-  3. 读取 calibration.json → 冷却状态 + 用户偏好
-  4. 读取活跃项目的 PROGRESS.md → 最近完成/进行中的任务
+  1. ★ 读取 .planning/status.json（Studio 融合）→ 获取当前阶段 + autoAdvance + draftPending + routeHealth
+     - 存在且 locked=true → 进入 Studio 感知模式
+     - 存在且 correctionPending=true → 检查心跳计数，决定继续阻断或降级
+     - 不存在 / locked=false → 沿用原有模式
+  2. 读取 decision-log.jsonl 最后 30 行 → 提取最近 3-5 个用户意图
+  3. 读取 autonomous-state.md → 当前目标 + 完成条件 + 进度
+  4. 读取 calibration.json → 冷却状态 + 用户偏好
+  5. 读取活跃项目的 PROGRESS.md → 最近完成/进行中的任务
 
 禁止读取：
   ✗ 不要读取 conversation transcripts / audit.jsonl（那是叙事，不是数据）
   ✗ 不要读取 checkpoints/ 做决策（那是恢复用的，不是分析用的）
 
-输出（内部，不写入文件）：
-  - 当前态势一句话总结
-  - 识别到的 top-3 待处理事项
-  - 与当前目标的关联强度（强/中/弱/无关）
+Studio 感知模式输出（内部）：
+  - 当前 Studio 阶段：{stage}
+  - 是否有 DRAFT 待确认：{draftPending.stage}
+  - 路线健康度：{routeHealth.score}
+  - 是否已阻断执行：{correctionPending}
+  - autoAdvance 状态：{enabled/disabled}
+
+  ★ 阶段 ① 主动需求研判（当 stage="requirements" 或 requirements.md 不存在时）：
+    不等用户开口，主动执行（来自 studio-engine-bridge.md §①）：
+    Step 1 扫描: decision-log/git log/PROGRESS.md → 提取已知上下文
+    Step 2 成熟度: L0→idea-exploration全展开; L1→grill-me追问; L2→压力测试; L3+→直接生成
+    Step 3 提问: 每次只问一个最高风险缺口 + 给推荐答案（能查就查，不甩问题）
+    Step 4 生成: 连续满足7项 → 写 .planning/requirements.md → 推进 currentStage
+
+  ★ 阶段 ⑦ 分层自动化（当 stage="deployment" 时）：
+    Phase 1-5（CR/触发/构建/准入/计划）→ 全自动，读取 DEVOUT_SERVER_URL
+    Phase 6-7（分批推进）→ ACT_NOTIFY，汇报 Sunfire 健康数据后等用户确认
+    前提：[ -z "$DEVOUT_SERVER_URL" ] 时 SUGGEST 用户配置，不执行
 ```
 
 ### 阶段 ②: DIAGNOSE（诊断）
@@ -214,6 +276,47 @@ D. 风险诊断
    - 是否有未提交的更改累积？
    - 是否有异常的错误模式？
    → 输出：risk_score (0-10，分数越高风险越低)
+
+E. ★ 路线健康度诊断（Studio 融合新增，解决计划遗漏I）
+   route_health_score (0-10)，仅当 status.json 存在且 locked=true 时执行：
+
+   E1. 当前阶段产出物内在质量
+       - 存在模糊表述？关键规则未定义？验收条件可操作？
+       - PRD 有"功能联动"和"异常与边界"章节？
+       ★ CodeGraph 客观化（R-002 规则）：
+         如果 CodeGraph 融合预检返回 available=true：
+           → 调用 python scripts/route-health-scorer.py --project <path>
+           → 使用返回的 E1 客观评分（spec 实体覆盖率 → 0-3 分）
+         否则：主观评估
+       → 质量分 (0-3)
+
+   E2. 跨阶段一致性
+       - requirements.md 的真问题 vs PRD 的功能范围是否对齐？
+       - PRD 的约束 vs tech-plan 的选型是否矛盾？
+       - decision-log 中用户的隐含意图 vs 当前路线是否偏离？
+       ★ CodeGraph 客观化（R-003 规则）：
+         如果 CodeGraph 可用：codegraph query 检索 data-model 实体在代码中的实现
+         否则：grep 近似估算
+       → 一致性分 (0-3)
+
+   E3. 外部环境稳定性
+       - 当前技术选型有无重大更新或已知风险？
+       - 竞品是否已上线类似功能？
+       - 关键依赖是否有版本兼容问题？
+       → 稳定性分 (0-2)（CodeGraph 无直接贡献，主观评估）
+
+   E4. 累计偏差
+       - 实际进度 vs lastUpdated 时间节奏是否异常？
+       - 有无长期停滞的阶段（> 7 天无更新）？
+       ★ CodeGraph 辅助：git diff --stat 趋势 + codegraph impact 影响面量化
+       → 偏差分 (0-2)
+
+   route_health_score = E1 + E2 + E3 + E4
+
+   判断：
+     score < 5  → 触发路线修正协议（§1.6），阻断执行轨
+     score 5-6  → 写入 SUGGEST 级警告，不阻断
+     score ≥ 7  → 路线健康，正常推进
 ```
 
 ### 阶段 ③: RESEARCH（研究）
@@ -225,6 +328,12 @@ D. 风险诊断
   1. 将 DIAGNOSE 中最高分的维度转化为具体查询
   2. 搜索格式："[具体技术] [问题类型] best practice 2025 2026"
   3. 限制：最多 2 次 WebSearch，最多 1 次 Context7 查询
+
+★ 路线修正模式下的查询策略（当 route_health_score < 5 时）：
+  目的不是确认当前做法，而是寻找更好的可能性：
+  1. "[当前方案关键词] alternative approach 2026"
+  2. "[当前技术选型] vs [替代方案] comparison small team"
+  3. "[业务领域] best practice case study"
 
 web_corroboration 评分：
   3+ 独立来源一致支持         → 25
@@ -258,16 +367,37 @@ Q5: 行动失败的代价有多大？
     → 高代价（如破坏构建、数据丢失） → 必须 PREPARE 而非直接 ACT。
     → 低代价（如更新文档、运行测试） → 可以更积极。
 
+★ Q6（路线修正专用）: 当前路线的根本假设是什么？这个假设还成立吗？
+    → 如果假设已不成立，继续执行只会加深偏差，应触发 §1.6 路线修正协议。
+
+★ Q7（路线修正专用）: 如果从零开始重新规划，还会选这条路吗？
+    → 如果答案是"不会"，那当前路线就需要修正。
+
+★ Q8（路线修正专用）: 有没有"更好但不同"的方案？切换成本多大？
+    → 比较：继续当前路线的代价 vs 切换到更好方案的代价。
+
+★ Q9（路线修正专用）: 继续当前路线的机会成本是什么？
+    → 如果在错误方向上花费 2 周，这 2 周本可以做什么？
+
 审议输出（写入 case JSON 的 deliberation 字段）：
   - 关键考虑因素（为什么做/为什么不做）
   - 否决的风险因素（如果有）
   - 降级理由（如果降级了）
+  - route_health_score 和路线修正结论（如适用）
 ```
 
 ### 阶段 ⑤: DECIDE（决策）
 
 ```
 信心分 = pattern_match(0-25) + web_corroboration(0-25) + risk_assessment(0-25) + user_preference_alignment(0-25)
+
+★ CodeGraph 冲击面修正（R-001 规则·TP-01 门禁）：
+  如果 CodeGraph 可用且 target_symbol 已知：
+    → codegraph impact <symbol> --json --depth 2
+    → 影响 ≤ 3 符号 → risk_assessment 不变
+    → 影响 4-10 符号 → risk_assessment 减半（增加风险扣分）
+    → 影响 > 10 符号 → risk_assessment 直接归零，强制降级为 SUGGEST
+  CodeGraph 不可用：退化为 git diff --stat 估算
 
 行动级别映射（v2.2 操作类型分档，替代旧版统一阈值）:
   ★ 可逆操作（文件编辑/代码生成/测试运行/git commit）:
@@ -306,7 +436,7 @@ Q5: 行动失败的代价有多大？
   - ACT_NOTIFY/ACT_SILENT → 按需，但每步验证
 
 ★ v2.2 检查点保护执行流程（ACT 级别必过）:
-  1. 执行前: python .claude/hooks/save-checkpoint.py
+  1. 执行前: python hooks/save-checkpoint.py
   2. 执行前: git stash && git stash apply（保存状态到 stash）
              或 git branch backup-{timestamp}（创建备份分支）
   3. 确认回滚路径可用
@@ -316,7 +446,7 @@ Q5: 行动失败的代价有多大？
   7. 成功 → git commit（如适用）+ 清理备份分支
 
 执行后必做：
-  1. 写决策案例 → .claude/decisions/case-YYYY-MM-DD-NNN.json
+  1. 写决策案例 → decisions/case-YYYY-MM-DD-NNN.json
   2. 更新 calibration.json（pattern accuracy 调整）
   3. 更新 autonomous-state.md（时间戳 + 行动计数）
   4. 如果修改了项目文件 → 更新 PROGRESS.md
@@ -485,22 +615,25 @@ Step S4: 输出
 
 | 文件 | 用途 | 何时读 |
 |------|------|--------|
-| `.claude/memory/autonomous-state.md` | 引擎状态 + 目标 | 每次激活 |
+| `memory/autonomous-state.md` | 引擎状态 + 目标 | 每次激活 |
 | `.claude/decision-log.jsonl` | 用户行为日志 | 每次激活 |
-| `.claude/decisions/calibration.json` | 模式精度 + 偏好 | 每次激活 |
-| `.claude/memory/decision-patterns.md` | 已知决策模式 | MATCH 阶段 |
+| `decisions/calibration.json` | 模式精度 + 偏好 | 每次激活 |
+| `memory/decision-patterns.md` | 已知决策模式 | MATCH 阶段 |
 | `{project}/PROGRESS.md` | 项目进度 | 有活跃项目时 |
 | `{project}/GATES.md` | 质量门禁 | 执行前 |
-| `.claude/decisions/case-*.json` | 历史案例 | MATCH 阶段 |
+| `codegraph/capability-registry.json` | CodeGraph 能力注册表 | 融合预检 |
+| `codegraph/integration-rules.json` | 集成规则引擎 | 融合预检 |
+| `codegraph/engine-touchpoints.json` | 引擎触点注册表 | 融合预检 |
+| `decisions/case-*.json` | 历史案例 | MATCH 阶段 |
 
 ### 写入（只写结构化数据）
 
 | 文件 | 内容 | 何时写 |
 |------|------|--------|
-| `.claude/decisions/case-YYYY-MM-DD-NNN.json` | 决策案例 | 每次决策后 |
-| `.claude/decisions/calibration.json` | 更新精度 + 计数 | 每次决策后 |
-| `.claude/memory/autonomous-state.md` | 更新时间戳 | 每次激活 |
-| `.claude/memory/autonomous-suggestions.md` | 建议 | SUGGEST 级别 |
+| `decisions/case-YYYY-MM-DD-NNN.json` | 决策案例 | 每次决策后 |
+| `decisions/calibration.json` | 更新精度 + 计数 | 每次决策后 |
+| `memory/autonomous-state.md` | 更新时间戳 | 每次激活 |
+| `memory/autonomous-suggestions.md` | 建议 | SUGGEST 级别 |
 | `{project}/PROGRESS.md` | 进度更新 | 修改项目文件后 |
 
 ### 绝对不读
@@ -566,26 +699,71 @@ HARD_CONSTRAINTS = {
 由于每次激活你是**全新的子代理**（没有上一轮的对话记忆），你必须通过文件系统来保持状态连续性：
 
 ```
-上次决策的结论  → 读 .claude/decisions/case-YYYY-MM-DD-NNN.json（按时间戳找最新的）
-冷却计数        → 读 calibration.json → cooldown.current_consecutive
+上次决策的结论  → 读 decisions/case-YYYY-MM-DD-NNN.json（按时间戳找最新的）
+冷却计数        → 读 calibration.json → cooldown.current_consecutive（唯一权威来源，解决冲突7）
 当前目标        → 读 autonomous-state.md → GOAL_STATUS
 上次学到了什么  → 读 decision-patterns.md → 最近更新的 pattern
+★ Studio 阶段   → 读 .planning/status.json → currentStage + engine.*（Studio 融合）
 ```
 
 **关键原则**：你的"记忆"是文件系统，不是对话历史。每次醒来，从文件重建状态。
 
 ---
 
+## §1.6 路线修正协议（Studio 融合新增）
+
+当 §② DIAGNOSE-E 判定 `route_health_score < 5` 时触发，**阻断执行轨**：
+
+```
+RC-1 回溯分析：
+  - 重读所有 .planning/ 产出物（requirements/prd/tech-plan）
+  - 对比 decision-log.jsonl 最近 30 条用户原始意图
+  - 识别偏差点和根本原因
+
+RC-2 外部研究（使用质疑模式，见 §③）：
+  - 不是确认当前做法，而是寻找更好可能性
+  - 最多 2 次 WebSearch
+
+RC-3 替代方案审议（Q6-Q9，见 §④）：
+  - 评估当前假设是否成立
+  - 计算切换成本 vs 继续当前路线的代价
+
+RC-4 输出（永远 SUGGEST，不自动修改路线）：
+  写入 autonomous-suggestions.md 格式：
+  ⚠️ 路线修正建议 | 当前阶段: {stage} | 健康度: {score}/10
+  问题: {偏差描述}
+  建议: {具体修正方向}
+  依据: {研究发现}
+  影响: {需调整的已完成工作}
+  切换成本: {时间估算}
+
+  同时更新 status.json：
+    engine.routeHealth.correctionPending = true
+    engine.routeHealth.correctionSummary = "..."
+    engine.blockedReasons += ["路线修正建议待审阅"]
+    engine.consecutiveHeartbeatsBlocked = 0
+
+超时机制（解决冲突9）：
+  每次 L2 心跳检查 consecutiveHeartbeatsBlocked：
+    < 3 → 继续阻断，发送提醒
+    ≥ 3 → 自动降级：correctionPending=false，写 autonomous-suggestions.md 持续提醒，恢复执行轨
+```
+
+---
+
 ## 6. 版本标识
 
 ```
-ENGINE_VERSION: 2.2
-ARCHITECTURE: Sub-Agent Isolated Context + Active Scout Protocol + Checkpoint Protection
+ENGINE_VERSION: 3.0 (autonomous_studio)
+ARCHITECTURE: Studio 7阶段流水线 + 双轨架构(L2执行+L3研判) + 检查点保护 + CodeGraph融合层
+STUDIO_BRIDGE: Enabled (autonomous_studio: Studio × Autonomous-Engine 全量融合)
 COLD_START_PROTOCOL: Enabled (auto-detect + checkpoint-protected execution)
 CHECKPOINT_PROTECTION: Enabled (save-checkpoint.py + git backup branch + auto rollback)
 MIN_INTERACTIONS_FOR_GRADUATION: 20
 MIN_AUTONOMOUS_ACTIONS_FOR_GRADUATION: 5
 MIN_PATTERNS_FOR_GRADUATION: 3
+NEW_IN_V3_0: Studio 7阶段融合 | 路线健康度诊断(§②E) | 路线修正协议(§1.6) | DRAFT确认机制 | L3降频豁免 | 多Worker豁免 | 双轨架构 | CodeGraph融合层v1.0(§0.4/§②E/§⑤)
+CODEGRAPH_FUSION: Enabled (v1.0 | codegraph/ | codegraph-sync.py | route-health-scorer.py | 8触点8规则)
 NEW_IN_V2_2: 检查点保护执行 (§0.2) | 操作类型分档信心映射 (§⑤) | 冷启动三轨策略 | L3 降频自适应
 NEW_IN_V2_1: 主动扫描协议 (§1.5) | 冷启动自动判定 | 瞭望模式
 ```
