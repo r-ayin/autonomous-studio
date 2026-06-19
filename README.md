@@ -1,4 +1,4 @@
-# autonomous-studio — 自主开发引擎 v5.0
+# autonomous-studio — 自主开发引擎 v5.1
 
 > **三层心跳架构**：Tier 0 Hook（零成本）→ Tier 1 扫描 sonnet（低成本）→ Tier 2 行动 opus（按需）
 > **六阶段 Studio 流水线**：需求探索 → PRD → 开发 → 验证 → 评审 → 部署
@@ -8,7 +8,7 @@
 
 autonomous-studio 是运行在 Claude Code 之上的自主开发引擎。它通过三层心跳架构实现"人不在时 AI 继续干活"——Hook 零成本守护、sonnet 低成本扫描、opus 按需执行。激活后将行为规则注入项目 CLAUDE.md，后续每条消息自动遵循研发流程。
 
-- **版本**：v5.0（三层心跳 + Hook 双轨改造 + 30 Skill 整合）
+- **版本**：v5.1（三层心跳 + 调度保障 + Hook 双轨改造 + 30 Skill 整合）
 - **架构**：调度器模式 — 主会话 spawn 独立子 Agent，零上下文污染
 - **语言**：Markdown（Skill/Prompt）+ Python（Hooks）+ Shell + JavaScript + JSON
 
@@ -147,6 +147,14 @@ ls "$CLAUDE_PROJECT_DIR/.claude/skills/autonomous-engine/SKILL.md"
 4. 不可删除用户文件
 5. 不可绕过门禁
 
+### 子 Agent 调度保障（v5.1 新增）
+
+| 机制 | 来源 | 作用 |
+|------|------|------|
+| **Stuck Detection** | OpenHands stuck_detector | 检测重复动作、反复 debug、无进展空转三种卡住模式，告警注入主会话 |
+| **Lint Guard** | SWE-agent ACI 论文 | Write 操作前自动校验 Python/JSON 语法，语法错误时阻断并返回错误信息 |
+| **输出重试** | — | 子 Agent 返回非结构化内容时，将原始输出作为上下文要求重新格式化，而非直接丢弃 |
+
 ### 七阶段决策循环
 
 OBSERVE → MATCH → RESEARCH → DECIDE → ACT → REPORT → LEARN
@@ -175,6 +183,7 @@ OBSERVE → MATCH → RESEARCH → DECIDE → ACT → REPORT → LEARN
 | [`studio-auto-commit-remind.sh`](./hooks/studio-auto-commit-remind.sh) | 自动提交提醒 |
 | [`studio-prd-validate.sh`](./hooks/studio-prd-validate.sh) | PRD 格式校验 |
 | [`studio-progress-check.sh`](./hooks/studio-progress-check.sh) | 进度检查 |
+| [`studio-lint-guard.sh`](./hooks/studio-lint-guard.sh) | ACI 风格语法守卫（Write 前校验 Python/JSON） |
 
 ### `scripts/` — 心跳辅助脚本
 
@@ -276,7 +285,7 @@ OBSERVE → MATCH → RESEARCH → DECIDE → ACT → REPORT → LEARN
 |------|------|
 | 总文件数 | 636 |
 | Skill 目录 | 30 |
-| Hook 脚本 | 10 + 4（Studio Hook） |
+| Hook 脚本 | 10 + 5（Studio Hook） |
 | 心跳脚本 | 4（precheck / scanner / dispatch / pipeline） |
 | 决策案例 | 25 |
 | 决策基础设施 | 9（Schema / 校准器 / 模型配置 / 通知策略 / 权限） |
@@ -289,10 +298,11 @@ OBSERVE → MATCH → RESEARCH → DECIDE → ACT → REPORT → LEARN
 
 | 版本 | 变更 |
 |------|------|
+| v5.1 | 子 Agent 调度保障：Stuck Detection + Lint Guard + 输出重试机制 |
 | v5.0 | 三层心跳架构（Hook/sonnet/opus）+ Hook 双轨改造 + 30 Skill 整合 |
 | v3.0 | Studio 融合 + CodeGraph + 检查点保护 + Git 回滚 |
 | v2.0 | 六层防护体系 + 七阶段决策循环 |
 
 ---
 
-*最后更新：2026-06-19 · 引擎版本 v5.0（三层心跳 + Hook 双轨 + 30 Skill 整合）*
+*最后更新：2026-06-19 · 引擎版本 v5.1（三层心跳 + 调度保障 + 30 Skill 整合）*
