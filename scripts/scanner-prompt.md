@@ -40,5 +40,5 @@
 - 不执行任何 git 操作（只读）
 - **输出只有 JSON，不要解释、不要 markdown、不要代码块标记**
 - **如果无法判断，返回 `{"needsAction": false, "actionType": "none", "reason": "insufficient data"}`**
-- **违反格式约束的输出会被主会话丢弃**
+- **违反格式约束的输出会被要求重新生成，浪费一次调用**
 - 10 秒内完成
