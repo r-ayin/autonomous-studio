@@ -135,10 +135,12 @@ Read ~/.claude/skills/autonomous-studio/studio-pipeline.md（执行具体阶段�
    → Read scripts/scanner-prompt.md 作为 prompt
    → 返回 JSON: {needsAction, actionType, reason}
    → needsAction=false → 静默退出
+   → ★ 输出校验：如果返回不是合法 JSON 或不含 needsAction 字段 → 丢弃，视为 needsAction=false
 
 3. Tier 2 行动: spawn Agent (model: opus)
    → Read scripts/action-dispatch.md 按 actionType 分发
    → 返回执行结果
+   → ★ 输出校验：如果返回不含 <decision> 标签且超过 500 字符 → 截断为摘要，记录异常
 
 4. 主会话控制器: git commit + status.json + 输出摘要
 ```

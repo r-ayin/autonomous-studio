@@ -241,6 +241,88 @@ def extract_phase(message: str) -> str:
     return "unknown"
 
 
+def detect_stuck_patterns(log_file: str, window: int = 5) -> dict:
+    """
+    分析最近 N 条日志，检测子 Agent 或引擎是否陷入卡住模式。
+    返回 {"stuck": bool, "pattern": str, "details": str}
+
+    检测三种模式（借鉴 OpenHands stuck_detector.py）：
+    1. 重复动作：连续 N 条 phase 和 tool_calls 完全相同
+    2. 反复报错：同一 classification=debug 连续出现 ≥3 次
+    3. 无进展：连续 N 条 assistant_response 的 decision_count=0
+    """
+    result = {"stuck": False, "pattern": "none", "details": ""}
+    try:
+        if not os.path.exists(log_file):
+            return result
+        with open(log_file, "rb") as f:
+            f.seek(0, 2)
+            fsize = f.tell()
+            buf = b""
+            pos = fsize
+            while pos > 0 and buf.count(b"\n") < window * 3:
+                read_size = min(4096, pos)
+                pos -= read_size
+                f.seek(pos)
+                buf = f.read(read_size) + buf
+        lines = buf.decode("utf-8", errors="replace").strip().split("\n")
+        entries = []
+        for line in reversed(lines):
+            try:
+                entry = json.loads(line)
+                entries.append(entry)
+                if len(entries) >= window * 2:
+                    break
+            except Exception:
+                continue
+        entries.reverse()
+
+        responses = [e for e in entries if e.get("type") == "assistant_response"][-window:]
+        inputs = [e for e in entries if e.get("type") == "user_input"][-window:]
+
+        # 模式 1：重复动作（连续 phase + tool_calls 完全相同）
+        if len(responses) >= 3:
+            sigs = [(r.get("phase", ""), tuple(r.get("tool_calls", []))) for r in responses[-3:]]
+            if len(set(sigs)) == 1 and sigs[0] != ("", ()):
+                result = {"stuck": True, "pattern": "repeat_action",
+                          "details": f"连续 {len(sigs)} 次相同动作: phase={sigs[0][0]}, tools={list(sigs[0][1])}"}
+                return result
+
+        # 模式 2：反复 debug（连续 debug 分类 ≥3 次）
+        if len(inputs) >= 3:
+            recent_classes = [i.get("classification") for i in inputs[-3:]]
+            if all(c == "debug" for c in recent_classes):
+                result = {"stuck": True, "pattern": "repeat_debug",
+                          "details": f"连续 {len(recent_classes)} 次 debug 输入，可能陷入排错循环"}
+                return result
+
+        # 模式 3：无进展（连续 N 条 decision_count 全为 0）
+        if len(responses) >= window:
+            if all(r.get("decision_count", 0) == 0 for r in responses[-window:]):
+                result = {"stuck": True, "pattern": "no_progress",
+                          "details": f"连续 {window} 条响应无决策点，引擎可能空转"}
+                return result
+
+    except Exception:
+        pass
+    return result
+
+
+SUGGESTIONS_FILE = os.path.join(PROJECT_DIR, ".claude", "memory", "autonomous-suggestions.md")
+
+
+def append_stuck_warning(stuck_info: dict):
+    """将卡住告警追加到建议队列"""
+    try:
+        os.makedirs(os.path.dirname(SUGGESTIONS_FILE), exist_ok=True)
+        now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        warning = f"\n- [{now}] **STUCK:{stuck_info['pattern']}** — {stuck_info['details']}\n"
+        with open(SUGGESTIONS_FILE, "a", encoding="utf-8") as f:
+            f.write(warning)
+    except Exception:
+        pass
+
+
 def count_decisions(message: str) -> int:
     """统计助手消息中的决策点数量（单次编译正则，一次扫描）"""
     _DECISION_RE = re.compile(
@@ -369,6 +451,11 @@ def handle_stop(data: dict):
         "last_decision_count": record["decision_count"],
     })
 
+    # 1.5 Stuck Detection（借鉴 OpenHands stuck_detector 模式分析）
+    stuck_info = detect_stuck_patterns(LOG_FILE)
+    if stuck_info["stuck"]:
+        append_stuck_warning(stuck_info)
+
     # 2. 构建自主上下文注入
     tools_used = record["tool_calls"]
     phase = record["phase"]
@@ -459,6 +546,14 @@ def handle_stop(data: dict):
         "",
         "[AUTO] 自主循环活跃中 | L2 心跳 7min | 本次回复末尾执行 L1 内联检查",
     ])
+
+    # Stuck 告警注入
+    if stuck_info["stuck"]:
+        context_parts.extend([
+            "",
+            f"⚠️ **STUCK 检测**: {stuck_info['pattern']} — {stuck_info['details']}",
+            "建议：换一个方法试试，或者暂停自主行动等用户指导。",
+        ])
 
     additional_context = "\n".join(context_parts)
 
