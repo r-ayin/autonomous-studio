@@ -208,6 +208,55 @@ import React from 'react';
 import * as echarts from 'echarts';
 ```
 
+## FontAwesome 图标在 WebContainer 中乱码
+
+`@import '@fortawesome/fontawesome-free/css/all.min.css'` 在 WebContainer 中**不可靠**——CSS 文件内部通过相对路径 `../webfonts/fa-solid-900.woff2` 引用字体，WebContainer 的虚拟文件系统无法正确解析这些路径，导致图标显示为方块或乱码。
+
+**正确方案：`@font-face` + `asset/inline` 双管齐下**
+
+webpack.config.js 字体规则必须用 `asset/inline`（base64 嵌入 bundle），不能用 `asset/resource`（生成独立文件）：
+
+```js
+{ test: /\.(woff|woff2|eot|ttf|otf)$/, type: 'asset/inline' },
+{ test: /\.svg$/, type: 'asset/inline' },
+{
+  test: /\.css$/,
+  use: ['style-loader', { loader: 'css-loader', options: { url: true } }, 'postcss-loader'],
+},
+```
+
+CSS 中用 `@font-face` 直接声明，路径指向 node_modules，webpack 会将字体文件 base64 内联：
+
+```css
+@font-face {
+  font-family: "Font Awesome 6 Free";
+  font-weight: 900;
+  font-display: block;
+  src: url('../node_modules/@fortawesome/fontawesome-free/webfonts/fa-solid-900.woff2') format('woff2'),
+       url('../node_modules/@fortawesome/fontawesome-free/webfonts/fa-solid-900.ttf') format('truetype');
+}
+@font-face {
+  font-family: "Font Awesome 6 Free";
+  font-weight: 400;
+  font-display: block;
+  src: url('../node_modules/@fortawesome/fontawesome-free/webfonts/fa-regular-400.woff2') format('woff2'),
+       url('../node_modules/@fortawesome/fontawesome-free/webfonts/fa-regular-400.ttf') format('truetype');
+}
+@font-face {
+  font-family: "Font Awesome 6 Brands";
+  font-weight: 400;
+  font-display: block;
+  src: url('../node_modules/@fortawesome/fontawesome-free/webfonts/fa-brands-400.woff2') format('woff2'),
+       url('../node_modules/@fortawesome/fontawesome-free/webfonts/fa-brands-400.ttf') format('truetype');
+}
+
+.fa, .fas, .fa-solid { font-family: "Font Awesome 6 Free"; font-weight: 900; -webkit-font-smoothing: antialiased; display: inline-block; font-variant: normal; text-rendering: auto; line-height: 1; }
+.far, .fa-regular { font-family: "Font Awesome 6 Free"; font-weight: 400; -webkit-font-smoothing: antialiased; display: inline-block; font-variant: normal; text-rendering: auto; line-height: 1; }
+.fab, .fa-brands { font-family: "Font Awesome 6 Brands"; font-weight: 400; -webkit-font-smoothing: antialiased; display: inline-block; font-variant: normal; text-rendering: auto; line-height: 1; }
+```
+
+**注意**：`entry.js` 中不要 `import '@fortawesome/fontawesome-free/css/all.min.css'`，用上面的 `@font-face` 替代。
+
 ## 常见问题速查
 
 | 症状 | 根因 | 解决 |
@@ -224,6 +273,7 @@ import * as echarts from 'echarts';
 | 发布后样式全丢 | style-loader 在 blob URL 上下文不生效 | 改用 MiniCssExtractPlugin + HTMLInlineCSSWebpackPlugin 内联到 HTML |
 | 发布后白屏（CDN 依赖） | 外部 CDN 被安全网关 Mixed Content 拦截 | 所有依赖 npm install 后本地打包，去掉 CDN `<script>` |
 | 发布后图标不显示 | 字体文件路径在预览环境无法解析 | webpack 字体规则改为 `type: 'asset/inline'`（data URI 嵌入） |
+| FontAwesome 图标乱码/方块 | `@import` FA CSS 后字体相对路径在 WebContainer 虚拟文件系统中断裂 | 不用 `@import`，用 `@font-face` 直接声明 + `asset/inline`（见上方专节） |
 | webpack 配置语法错误 | babel presets 数组缺少逗号 | 检查数组分隔符 |
 | 强制同步 ENOTEMPTY | 文件系统异步删除 bug | 刷新重试，停止 dev server 后重试 |
 | 卡在 90% 不动 | 浏览器缓存 | 清除缓存或无痕模式 |
