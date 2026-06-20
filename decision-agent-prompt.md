@@ -22,10 +22,20 @@ STEP 0: 自动冷启动判定（不依赖手动标记）
   3. 读取 calibration.json → patterns 中已注册的模式数量
 
   判定规则:
-    IF 用户交互行数 < 20 OR total_autonomous_actions < 5 OR patterns 数量 < 3:
-        → 这是**冷启动**。进入 §0.2 冷启动流程。
-    IF 用户交互行数 >= 20 AND total_autonomous_actions >= 5 AND patterns >= 3:
-        → 这是**热运行**。跳过冷启动，直接进入 §1 研判框架。
+    IF calibration.json → sandbox_mode == true:
+      快速毕业路径（沙箱优化）:
+        IF 用户交互行数 >= 5 AND total_autonomous_actions >= 10 AND patterns >= 5:
+          → 这是**热运行**（沙箱快速毕业）
+        IF l3_auto_degrade.consecutive_no_delta >= 5 AND total_autonomous_actions >= 10:
+          → 这是**热运行**（稳定性毕业——引擎已证明可靠运行）
+        OTHERWISE:
+          → 这是**冷启动**。进入 §0.2 冷启动流程。
+    ELSE:
+      标准路径:
+        IF 用户交互行数 < 20 OR total_autonomous_actions < 5 OR patterns 数量 < 3:
+          → 这是**冷启动**。进入 §0.2 冷启动流程。
+        IF 用户交互行数 >= 20 AND total_autonomous_actions >= 5 AND patterns >= 3:
+          → 这是**热运行**。跳过冷启动，直接进入 §1 研判框架。
 
   注意: autonomous-state.md 中的 COLD_START_GRADUATED 标记仅作参考，
   实际判定以上述数据为准。引擎应诚实面对自己的成熟度。
@@ -754,14 +764,15 @@ RC-4 输出（永远 SUGGEST，不自动修改路线）：
 ## 6. 版本标识
 
 ```
-ENGINE_VERSION: 3.0 (autonomous_studio)
-ARCHITECTURE: Studio 7阶段流水线 + 双轨架构(L2执行+L3研判) + 检查点保护 + CodeGraph融合层
+ENGINE_VERSION: 5.0 (autonomous_studio)
+ARCHITECTURE: 三层心跳架构 (Hook/fast model/reasoning model) + Studio 7阶段流水线 + 双轨架构(L2执行+L3研判) + 检查点保护 + CodeGraph融合层
 STUDIO_BRIDGE: Enabled (autonomous_studio: Studio × Autonomous-Engine 全量融合)
-COLD_START_PROTOCOL: Enabled (auto-detect + checkpoint-protected execution)
+COLD_START_PROTOCOL: Enabled (auto-detect + checkpoint-protected execution + sandbox fast graduation)
 CHECKPOINT_PROTECTION: Enabled (save-checkpoint.py + git backup branch + auto rollback)
-MIN_INTERACTIONS_FOR_GRADUATION: 20
-MIN_AUTONOMOUS_ACTIONS_FOR_GRADUATION: 5
-MIN_PATTERNS_FOR_GRADUATION: 3
+MIN_INTERACTIONS_FOR_GRADUATION: 20 (sandbox: 5)
+MIN_AUTONOMOUS_ACTIONS_FOR_GRADUATION: 5 (sandbox: 10)
+MIN_PATTERNS_FOR_GRADUATION: 3 (sandbox: 5)
+NEW_IN_V5_0: 三层心跳架构 (Hook/fast model/reasoning model) | Hook 双轨改造 | 30 Skill 整合 | 硬编码模型清洗 | 沙箱快速毕业 | 子Agent输出校验重试 | Lint Guard
 NEW_IN_V3_0: Studio 7阶段融合 | 路线健康度诊断(§②E) | 路线修正协议(§1.6) | DRAFT确认机制 | L3降频豁免 | 多Worker豁免 | 双轨架构 | CodeGraph融合层v1.0(§0.4/§②E/§⑤)
 CODEGRAPH_FUSION: Enabled (v1.0 | codegraph/ | codegraph-sync.py | route-health-scorer.py | 8触点8规则)
 NEW_IN_V2_2: 检查点保护执行 (§0.2) | 操作类型分档信心映射 (§⑤) | 冷启动三轨策略 | L3 降频自适应
