@@ -6,10 +6,13 @@
 
 | actionType | 走哪条路径 | agent 模型 | 做什么 |
 |---|---|---|---|
-| `develop` | 路径 B（执行型） | opus | 调 serial-agent-handoff 写代码 |
-| `verify` | 路径 B（执行型） | opus | 按 test-cases 跑验证 |
+| `develop` | 路径 B（执行型） | opus（协调）+ sonnet（写代码） | 调 serial-agent-handoff 写代码 |
+| `validate` | 路径 B（执行型） | opus | 单任务三维度 Validator |
+| `prd-review` | 路径 B（执行型） | opus | ③-R 全量 PRD 对照评审 |
+| `verify` | 路径 B（执行型） | opus | 按 test-cases 跑 E2E 验证 |
 | `suggest` | 路径 A（建议型） | opus | 分析状态，输出建议，不动文件 |
 | `advance_stage` | 主会话直接执行 | 无需 agent | 更新 status.json |
+| `archive` | 路径 B（执行型） | opus | 归档 + 生成 retrospective.md |
 
 ## 路径 A：建议型（agent 只想不做）
 
@@ -35,14 +38,62 @@ spawn Agent:
 
 ```
 spawn Agent:
-  model: "opus"
+  model: "opus"  # 协调者，内部调 serial-agent-handoff（写代码用 sonnet）
   description: "Studio 开发执行"
   prompt: |
-    读取 {项目目录}/planning/prd.json。
+    上下文：
+    - 完整 prd.json：{项目目录}/planning/prd.json
+    - PRD 决策记录：{项目目录}/planning/prd-decisions.md
+    - 项目约定：{项目目录}/CLAUDE.md
+
+    任务：
     找到下一个 status=pending 且 priority=P0 的任务。
     调用 serial-agent-handoff Skill 执行开发。
+    写代码时使用 sonnet 模型（serial-agent-handoff 内部配置）。
     完成后更新 prd.json 中该任务的 status=done + completedAt。
     返回：完成的 task id + 标题。
+```
+
+### actionType = validate
+
+```
+spawn Agent:
+  model: "opus"
+  description: "Studio 单任务 Validator"
+  prompt: |
+    上下文（全量，不裁剪）：
+    - 完整 prd.json：{项目目录}/planning/prd.json
+    - PRD 决策记录：{项目目录}/planning/prd-decisions.md
+    - 当前 task id：{task_id}
+    - git diff：{diff内容}
+
+    读 ~/.claude/skills/autonomous-studio/studio-pipeline.md 的 ③-V 部分。
+    按三维度（正确性 + 代码风格 + PRD 一致性）审查。
+    输出标准格式的 Validator 报告。
+    有 ❌ 时：更新 prd.json 该任务 status=pending + notes 写失败原因 + retryCount +1。
+    仅 ⚠️ 时：不阻塞，记录建议。
+    全 ✅ 时：维持 done 状态。
+```
+
+### actionType = prd-review
+
+```
+spawn Agent:
+  model: "opus"
+  description: "Studio ③-R 全量 PRD 对照评审"
+  prompt: |
+    上下文（全量）：
+    - 完整 prd.json：{项目目录}/planning/prd.json
+    - PRD 决策记录：{项目目录}/planning/prd-decisions.md
+    - 测试用例：{项目目录}/planning/test-cases.md
+    - git log（本次功能）：{git_log}
+
+    读 ~/.claude/skills/autonomous-studio/studio-pipeline.md 的 ③-R 部分。
+    检查三件事：完整性 + 集成点 + PRD 决策落地。
+    输出标准格式的全量对照报告。
+    有 ❌ → 返回 needs_fix，列出具体遗漏。
+    只有 ⚠️ → 返回 needs_confirm，输出给用户决定。
+    全 ✅ → 返回 passed。
 ```
 
 ### actionType = verify
@@ -50,12 +101,33 @@ spawn Agent:
 ```
 spawn Agent:
   model: "opus"
-  description: "Studio 验证执行"
+  description: "Studio E2E 验证"
   prompt: |
-    读取 {项目目录}/planning/prd.json 和 test-cases.md。
-    读 ~/.claude/skills/autonomous-studio/studio-pipeline.md 的验证部分（④ 验证）。
-    按规范执行验证。
+    上下文：
+    - 完整 prd.json：{项目目录}/planning/prd.json
+    - 测试用例：{项目目录}/planning/test-cases.md
+
+    读 ~/.claude/skills/autonomous-studio/studio-pipeline.md 的 ④ 验证部分。
+    按规范执行 E2E 验证。
     返回：通过/失败 + 详情。
+```
+
+### actionType = archive
+
+```
+spawn Agent:
+  model: "opus"
+  description: "Studio 归档"
+  prompt: |
+    上下文：
+    - 完整 prd.json：{项目目录}/planning/prd.json
+    - PRD 决策记录：{项目目录}/planning/prd-decisions.md
+    - status.json：{项目目录}/planning/status.json
+
+    读 ~/.claude/skills/autonomous-studio/studio-pipeline.md 的 ⑦ 归档部分。
+    执行归档流程：创建 archive/ 目录、复制 planning/、生成 retrospective.md。
+    扫描 {项目根目录}/archive/*/retrospective.md，提取历史教训标签到 known-pitfalls.md（为下个项目准备）。
+    返回：归档路径 + 教训条数。
 ```
 
 ### actionType = advance_stage
@@ -74,5 +146,7 @@ spawn Agent:
 2. **阶段推进** → 更新 `status.json`
 3. **输出摘要** → `Studio {阶段} @ {时间} | {摘要}`
 4. **建议类** → 追加到 `.claude/autonomous-suggestions.md`
+5. **③-R 返回 needs_fix** → 回到 develop 路径补充实现
+6. **③-R 返回 passed** → advance_stage 到 verification
 
 主会话是唯一有权执行 git 操作和更新 status.json 的角色。

@@ -1,0 +1,58 @@
+[
+  {
+    "id": "eval-01",
+    "description": "用户说'开始开发'但没有 prd.json",
+    "input": "开始开发",
+    "context": "planning/ 目录存在但没有 prd.json",
+    "expect": "拒绝直接开发，检测到没有 prd.json，引导用户先完成 PRD 阶段"
+  },
+  {
+    "id": "eval-02",
+    "description": "用户说'部署上线'但 verification 阶段未通过",
+    "input": "部署上线",
+    "context": "status.json currentStage = development",
+    "expect": "拒绝部署，告知当前在开发阶段，需要先完成验证和评审"
+  },
+  {
+    "id": "eval-03",
+    "description": "用户明确确认 PRD 后应生成 prd.json",
+    "input": "确认了，可以开始开发",
+    "context": "prd.html 已生成，用户刚看完",
+    "expect": "触发 Step 2b，生成 prd.json 并推进 currentStage 到 development"
+  },
+  {
+    "id": "eval-04",
+    "description": "用户模糊表态不算确认",
+    "input": "感觉差不多",
+    "context": "PRD 讨论中",
+    "expect": "不生成 prd.json，提示用户需要明确说'确认/approved/可以了'才能推进"
+  },
+  {
+    "id": "eval-05",
+    "description": "激活 Studio 时阶段检测",
+    "input": "studio",
+    "context": "planning/prd.json 存在，status.json 不存在",
+    "expect": "阶段检测为 development，创建 status.json，报告当前阶段和下一步建议"
+  },
+  {
+    "id": "eval-06",
+    "description": "所有 P0 任务完成后自动触发 ③-R",
+    "input": "（自动触发）所有 P0 tasks 状态变为 done",
+    "context": "prd.json 所有 P0 tasks = done",
+    "expect": "自动 spawn ③-R 全量 PRD 对照评审 agent，不直接推进到 verification"
+  },
+  {
+    "id": "eval-07",
+    "description": "PRD 讨论中确认要点立即写入文件",
+    "input": "好的，推荐理由必填且≥10字，这条确认",
+    "context": "PRD 讨论阶段",
+    "expect": "立即追加到 planning/prd-decisions.md：- [x] 推荐理由必填且≥10字 | 结论：... | 日期"
+  },
+  {
+    "id": "eval-08",
+    "description": "PRD 定稿时核对决策记录",
+    "input": "PRD 定稿了，生成 prd.json 吧",
+    "context": "prd-decisions.md 有 5 条 [x] 记录，prd.md 中有 4 条覆盖",
+    "expect": "发现 prd-decisions.md 有 1 条 [x] 记录未在 prd.md 中体现，指出并要求补充后才生成 prd.json"
+  }
+]
