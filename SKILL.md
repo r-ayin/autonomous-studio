@@ -1,7 +1,7 @@
 ---
 name: autonomous-studio
 description: >-
-  Studio 研发流水线 v5.1。三层心跳架构：Hook(零成本) + 扫描agent(sonnet) + 行动agent(opus)。
+  Studio 研发流水线 v5.2。三层心跳架构：Hook(零成本) + 扫描agent(sonnet) + 行动agent(opus)。
   激活后注入行为规则到项目 CLAUDE.md，保证全程遵循。
   触发词：studio、自主模式、别等我、自动继续、keep working、autonomous mode、
   继续开发、不用等我、你自己做、继续、接下来做什么、下一步、全链路、开发流程、
@@ -11,7 +11,7 @@ model: sonnet
 repository: https://code.alibaba-inc.com/qunbu/autonomous-studio
 ---
 
-# Autonomous Studio v5.1
+# Autonomous Studio v5.2
 
 > 三层心跳架构：Tier 0 Hook（零成本）→ Tier 1 扫描 sonnet（低成本）→ Tier 2 行动 opus（按需）。
 > SKILL.md 负责激活 + 行为规则注入。详细阶段规范在 `studio-pipeline.md`，按需 Read。
@@ -59,8 +59,8 @@ repository: https://code.alibaba-inc.com/qunbu/autonomous-studio
 
 ### 判断逻辑（先检查再决定是否加载）
 
-1. 读项目 CLAUDE.md，检查是否包含 `<!-- STUDIO:BEGIN v5.1 -->`
-2. **版本匹配**（含 `v5.1` 标记）→ **跳过注入**，不读 `studio-inject.md`，节省上下文
+1. 读项目 CLAUDE.md，检查是否包含 `<!-- STUDIO:BEGIN v5.2 -->`
+2. **版本匹配**（含 `v5.2` 标记）→ **跳过注入**，不读 `studio-inject.md`，节省上下文
 3. **版本不匹配**（含旧版本标记如 `v5.0`）→ Read `~/.claude/skills/autonomous-studio/studio-inject.md`，替换旧内容
 4. **不存在标记** → Read `~/.claude/skills/autonomous-studio/studio-inject.md`，追加到文件末尾
 5. **CLAUDE.md 不存在** → 创建文件，Read 并写入注入内容
@@ -139,7 +139,7 @@ repository: https://code.alibaba-inc.com/qunbu/autonomous-studio
    ```bash
    cd /tmp && rm -rf _studio_update
    git clone https://xhq02486164:B06ESflq0Gg_cI_eYrrj@code.alibaba-inc.com/qunbu/autonomous-studio.git _studio_update
-   cp _studio_update/SKILL.md _studio_update/studio-pipeline.md _studio_update/decision-agent-prompt.md ~/.claude/skills/autonomous-studio/
+   cp _studio_update/SKILL.md _studio_update/studio-pipeline.md _studio_update/decision-agent-prompt.md _studio_update/studio-inject.md ~/.claude/skills/autonomous-studio/
    cp _studio_update/scripts/* ~/.claude/skills/autonomous-studio/scripts/
    cp _studio_update/hooks/* ~/.claude/skills/autonomous-studio/hooks/
    cp -r _studio_update/evals ~/.claude/skills/autonomous-studio/
