@@ -26,26 +26,9 @@ planning/status.json 存在时，所有任务遵循以下规则：
 7. **业务语言汇报原则**：向用户汇报进度、列待办清单、列待确认事项、列 bug/问题清单时，每一条都必须用业务语言说明“这是什么功能/这是什么问题，用户会遇到什么现象”，禁止只给代号（任务ID、BUG编号）或纯技术名词。涉及“待确认”时，要说清“确认的是什么、不同选项分别会导致什么”。
    > 为什么：用户是业务方，代号和技术名词没有信息量，无法判断优先级和要不要做。只给代号等于没汇报，用户还得追问“这是什么”。汇报的价值在于让业务方能直接判断和决策，而不是把翻译工作甩给用户。
 
-### 阶段 → Skill 对应
-| 阶段 | Skill | 产出 |
-|---|---|---|
-| ① 需求 | demand-discovery | planning/requirements.md |
-| ② PRD | pm-spec | planning/prd.md + prd-decisions.md + prd.json + test-cases.md |
-| ③ 开发 | serial-agent-handoff | 可运行代码 + git push |
-| ③-V | Validator（opus） | 单任务三维度审查报告 |
-| ③-R | 全量 PRD 对照（opus） | 完整性 + 集成点 + 决策落地报告 |
-| ④ 验证 | verify | 截图 + E2E 结果 |
-| ⑤ 评审 | code-review + simplify | 问题列表 + 修复 |
-| ⑥ 部署 | prod-deploy | 线上版本 |
-| ⑦ 归档 | — | archive/ + retrospective.md |
-
-### 跳过规则
-| 任务类型 | 走哪些阶段 |
-|---|---|
-| 新功能 | ①→②→③→③-V→③-R→④→⑤→⑥→⑦ |
-| 功能优化 | ②→③→③-V→③-R→④→⑤→⑥→⑦ |
-| Bug 修复 | ③→③-V→④→⑤→⑥→⑦ |
-| 文案/样式 | ③→④→⑥→⑦ |
+### 阶段与状态推进
+- 做完一个阶段、验证通过后，立即把 status.json 的 currentStage 推进到下一阶段（需求→prd→development→prd-review→verification→review→deployment→archiving→archived）。阶段只能前进或合理回退，不能跳跃。
+- 各阶段用哪个 skill、任务类型走哪些阶段、status 转换详情：见 `~/.claude/skills/autonomous-studio/studio-pipeline.md`（索引）和 `phases/` 下的对应文件，执行时按需 Read。
 
 ### 新会话恢复规则
 - 新会话进入时，若 status.json 存在：先读 status.json → 判断 currentStage → 报告当前状态
@@ -57,18 +40,6 @@ planning/status.json 存在时，所有任务遵循以下规则：
 列"待开发"清单或报告功能未完成前，必须先在代码里搜对应实现确认确实不存在——能从代码确认的不要问用户。已实现的归档到 `archive/` 不删；部分实现的只列未完成部分；无法靠代码判断的（如视觉问题）标注"需实跑页面确认"。真待开发的才问用户是否要做。
 > 为什么：只看任务文件存在与否会误报已完成功能。代码是现状唯一可信源，意图文件不算。
 
-### status.json 更新时机（强制）
-| 完成什么 | currentStage 设为 |
-|---|---|
-| 需求写完 | prd |
-| PRD 写完（用户已确认） | development |
-| 所有 P0 tasks done | prd-review（触发 ③-R） |
-| ③-R 通过 | verification |
-| 验证通过 | review |
-| 评审通过 | deployment |
-| 部署完成 | archiving |
-| 归档完成 | archived |
-
 详细阶段规范（prd.json 格式、Validator 规则、③-R 规则、E2E 方法、归档格式等）：
-Read ~/.claude/skills/autonomous-studio/studio-pipeline.md（执行具体阶段时按需加载）
+先 Read 索引 `~/.claude/skills/autonomous-studio/studio-pipeline.md`，再按需 Read `phases/` 下对应文件。
 <!-- STUDIO:END -->

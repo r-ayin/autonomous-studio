@@ -1,0 +1,90 @@
+# 阶段四五六七：验证 + 评审 + 部署 + 归档（交付期）
+
+> 执行 E2E 验证、代码评审、上线、归档时加载本文件。
+
+## ④ 验证（E2E）
+
+按任务类型选模式：
+
+**模式 A — 全量验证**（新功能、功能优化）
+1. 遍历 prd.json 所有 done 的 task → 逐条验证 acceptance
+2. 读 test-cases.md → 按顺序执行全部用例
+3. 不通过 → 回退到开发阶段
+
+**模式 B — 定点验证**（Bug 修复、文案/样式）
+1. 只跑 git diff 涉及的用例
+2. 额外跑冒烟测试
+
+```bash
+/home/admin/.local/bin/playwright test e2e/              # 全量
+/home/admin/.local/bin/playwright test e2e/<功能>.spec.ts  # 定点
+/home/admin/.local/bin/playwright test --grep @smoke       # 冒烟
+```
+
+测试脚本：`e2e/<功能名>.spec.ts`，失败截图存 `e2e/screenshots/`。
+
+## ⑤ 代码评审
+
+- Skill: `code-review` + `simplify`
+- 上下文：git diff + prd-decisions.md + 项目代码风格规范
+- 评审对照 PRD 决策，不是凭感觉，确保评审有依据
+
+## ⑥ 上线部署
+
+- Skill: `prod-deploy`
+
+## ⑦ 归档（Episodic LTM）
+
+**触发时机**：部署完成后自动执行。
+
+**执行步骤**：
+1. 从 status.json 提取功能名称和时间范围
+2. 创建 `archive/YYYY-MM-DD-{功能名}/` 目录
+3. 复制 `planning/` 全部文件到归档目录
+4. 从 prd.json 提取 blocked tasks 列表
+5. 生成 `archive/YYYY-MM-DD-{功能名}/retrospective.md`
+6. 更新 status.json：`currentStage = "archived"`
+
+**retrospective.md 格式**（带结构化教训标签，供未来项目复用）：
+```markdown
+# 回顾：{功能名}
+**时间**：{开始} → {结束}
+**任务总数**：{total} 个，其中 P0 {p0_count} 个
+**阻塞任务**：{blocked_count} 个
+
+## 阻塞原因
+- N1-03：权限校验时序问题，需先建角色再绑定权限
+
+## 教训（供未来项目参考）
+- [坑/权限] 权限 task 必须先建后用，不能和业务 task 并行
+- [坑/数据库] Supabase RLS 开启后需要 service role 才能写入
+- [坑/PRD] 弹窗关闭按钮经常被遗漏，PRD 要明确写触发条件和关闭效果
+
+## 做得好的地方
+- prd-decisions.md 的讨论记录完整，定稿时无遗漏
+```
+
+**跨项目学习闭环**：
+- 新项目 Studio 激活时，扫描 `archive/*/retrospective.md`
+- 提取同类型项目（根据 taskType 匹配）的教训标签 `[坑/*]`
+- 写入本次项目 `planning/known-pitfalls.md`
+- Validator 验证时额外检查 known-pitfalls.md 中的历史坑点
+
+## 回退规则
+
+| 场景 | 回退到 |
+|---|---|
+| ③-V Validator 失败 | → ③ 开发（自动修复） |
+| ③-R 全量对照发现遗漏 | → ③ 开发（补充实现） |
+| ④ 验证发现功能不对 | → ③ 开发 |
+| ⑤ 评审发现设计问题 | → ② PRD |
+| 上线后发现 bug | → ③→④→⑥ 快速发布 |
+
+## 辅助 Skill（按需调用）
+
+| Skill | 什么时候用 |
+|---|---|
+| `excalidraw-diagram-skill` | PRD 阶段需要画流程图时 |
+| `devix-dingtalk-skill` | PRD 写入钉钉文档时 |
+| `agents-map` | 进入新项目需要理解全貌时 |
+| `zujianfuyon` | 开发阶段需要复用组件时 |

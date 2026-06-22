@@ -14,7 +14,7 @@ repository: https://code.alibaba-inc.com/qunbu/autonomous-studio
 # Autonomous Studio v5.3
 
 > 三层心跳架构：Tier 0 Hook（零成本）→ Tier 1 扫描 sonnet（低成本）→ Tier 2 行动 opus（按需）。
-> SKILL.md 负责激活 + 行为规则注入。详细阶段规范在 `studio-pipeline.md`，按需 Read。
+> SKILL.md 负责激活 + 行为规则注入。详细阶段规范在 `studio-pipeline.md`（索引）+ `phases/` 下分文件，按需 Read 对应阶段文件，不要全读。
 
 ---
 
@@ -110,7 +110,7 @@ repository: https://code.alibaba-inc.com/qunbu/autonomous-studio
 | `scripts/scanner-prompt.md` | Tier 1 扫描 agent | 预检通过后 |
 | `scripts/action-dispatch.md` | 主会话控制器 | 扫描返回 needsAction=true 后 |
 | `studio-inject.md` | 主会话 Step 2 | 项目 CLAUDE.md 无标记或版本不匹配时 |
-| `studio-pipeline.md` | Tier 2 行动 agent | 执行具体阶段时 |
+| `studio-pipeline.md`（索引）+ `phases/*.md` | Tier 2 行动 agent | 执行具体阶段时按需 Read 对应 phase 文件 |
 | `decision-agent-prompt.md` | Tier 2 行动 agent | L3 深度分析时 |
 
 ---
@@ -118,8 +118,9 @@ repository: https://code.alibaba-inc.com/qunbu/autonomous-studio
 ## 补充说明
 
 ### 详细规范文件
-各阶段的详细规范（PRD 格式、prd.json 格式、Validator 规则、E2E 测试方法、双模型分工等）：
-→ `~/.claude/skills/autonomous-studio/studio-pipeline.md`
+各阶段的详细规范按时期拆分，执行时只读对应文件：
+→ `~/.claude/skills/autonomous-studio/studio-pipeline.md`（索引，先读这个判断该读哪个 phase）
+→ `phases/phase-build.md`（需求+PRD）/ `phases/phase-dev.md`（开发+Validator+③-R）/ `phases/phase-ship.md`（验证+评审+部署+归档）
 → 仅在执行具体阶段时 Read，不常驻上下文
 
 ### 子代理决策手册
@@ -140,6 +141,7 @@ repository: https://code.alibaba-inc.com/qunbu/autonomous-studio
    cd /tmp && rm -rf _studio_update
    git clone https://xhq02486164:B06ESflq0Gg_cI_eYrrj@code.alibaba-inc.com/qunbu/autonomous-studio.git _studio_update
    cp _studio_update/SKILL.md _studio_update/studio-pipeline.md _studio_update/decision-agent-prompt.md _studio_update/studio-inject.md ~/.claude/skills/autonomous-studio/
+   cp -r _studio_update/phases ~/.claude/skills/autonomous-studio/
    cp _studio_update/scripts/* ~/.claude/skills/autonomous-studio/scripts/
    cp _studio_update/hooks/* ~/.claude/skills/autonomous-studio/hooks/
    cp -r _studio_update/evals ~/.claude/skills/autonomous-studio/
