@@ -1,7 +1,7 @@
 ---
 name: autonomous-studio
 description: >-
-  Studio 研发流水线 v5.3。三层心跳架构：Hook(零成本) + 扫描agent(sonnet) + 行动agent(opus)。
+  Studio 研发流水线 v5.4。三层心跳架构：Hook(零成本) + 扫描agent(sonnet) + 行动agent(opus)。
   激活后注入行为规则到项目 CLAUDE.md，保证全程遵循。
   触发词：studio、自主模式、别等我、自动继续、keep working、autonomous mode、
   继续开发、不用等我、你自己做、继续、接下来做什么、下一步、全链路、开发流程、
@@ -11,7 +11,7 @@ model: sonnet
 repository: https://code.alibaba-inc.com/qunbu/autonomous-studio
 ---
 
-# Autonomous Studio v5.3
+# Autonomous Studio v5.4
 
 > 三层心跳架构：Tier 0 Hook（零成本）→ Tier 1 扫描 sonnet（低成本）→ Tier 2 行动 opus（按需）。
 > SKILL.md 负责激活 + 行为规则注入。详细阶段规范在 `studio-pipeline.md`（索引）+ `phases/` 下分文件，按需 Read 对应阶段文件，不要全读。
@@ -59,8 +59,8 @@ repository: https://code.alibaba-inc.com/qunbu/autonomous-studio
 
 ### 判断逻辑（先检查再决定是否加载）
 
-1. 读项目 CLAUDE.md，检查是否包含 `<!-- STUDIO:BEGIN v5.3 -->`
-2. **版本匹配**（含 `v5.3` 标记）→ **跳过注入**，不读 `studio-inject.md`，节省上下文
+1. 读项目 CLAUDE.md，检查是否包含 `<!-- STUDIO:BEGIN v5.4 -->`
+2. **版本匹配**（含 `v5.4` 标记）→ **跳过注入**，不读 `studio-inject.md`，节省上下文
 3. **版本不匹配**（含旧版本标记如 `v5.0`）→ Read `~/.claude/skills/autonomous-studio/studio-inject.md`，替换旧内容
 4. **不存在标记** → Read `~/.claude/skills/autonomous-studio/studio-inject.md`，追加到文件末尾
 5. **CLAUDE.md 不存在** → 创建文件，Read 并写入注入内容
@@ -110,7 +110,7 @@ repository: https://code.alibaba-inc.com/qunbu/autonomous-studio
 | `scripts/scanner-prompt.md` | Tier 1 扫描 agent | 预检通过后 |
 | `scripts/action-dispatch.md` | 主会话控制器 | 扫描返回 needsAction=true 后 |
 | `studio-inject.md` | 主会话 Step 2 | 项目 CLAUDE.md 无标记或版本不匹配时 |
-| `studio-pipeline.md`（索引）+ `phases/*.md` | Tier 2 行动 agent | 执行具体阶段时按需 Read 对应 phase 文件 |
+| `studio-inject.md`（含阶段路由）+ `phases/*.md` | Tier 2 行动 agent | 阶段路由在 inject 内联，执行时直接 Read 对应 phase 文件 |
 | `decision-agent-prompt.md` | Tier 2 行动 agent | L3 深度分析时 |
 
 ---
@@ -118,10 +118,9 @@ repository: https://code.alibaba-inc.com/qunbu/autonomous-studio
 ## 补充说明
 
 ### 详细规范文件
-各阶段的详细规范按时期拆分，执行时只读对应文件：
-→ `~/.claude/skills/autonomous-studio/studio-pipeline.md`（索引，先读这个判断该读哪个 phase）
+阶段路由已内联在 studio-inject.md（注入到项目 CLAUDE.md），执行时按路由直接 Read 对应 phase 文件：
 → `phases/phase-build.md`（需求+PRD）/ `phases/phase-dev.md`（开发+Validator+③-R）/ `phases/phase-ship.md`（验证+评审+部署+归档）
-→ 仅在执行具体阶段时 Read，不常驻上下文
+→ `studio-pipeline.md` 现在只是速查表，通常不用读。
 
 ### 子代理决策手册
 → `~/.claude/skills/autonomous-studio/decision-agent-prompt.md`

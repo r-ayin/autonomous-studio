@@ -1,15 +1,7 @@
-# Studio 阶段规范索引
+# Studio 阶段速查
 
-> 本文件只是索引。执行具体阶段时，按需 Read 对应 phase 文件，不要全读。
-> 行为规则和阶段速查表在项目 CLAUDE.md（由 SKILL.md 激活时注入）。
-
-## 按时期加载
-
-| 你要做什么 | 读哪个文件 |
-|---|---|
-| 聊需求 / 写 PRD / 生成 prd.json | `phases/phase-build.md` |
-| 写代码 / 单任务审查 / 全量 PRD 对照 | `phases/phase-dev.md` |
-| E2E 验证 / 评审 / 部署 / 归档 / 回退 | `phases/phase-ship.md` |
+> 阶段路由（哪个阶段读哪个文件）已在项目 CLAUDE.md 注入块里。本文件仅作速查，通常不用读。
+> 详细规范在 `phases/` 下三个文件，按需 Read。
 
 ## 阶段速查
 
@@ -29,8 +21,3 @@
 - 功能优化：②→③→③-V→③-R→④→⑤→⑥→⑦
 - Bug 修复：③→③-V→④→⑤→⑥→⑦
 - 文案/样式：③→④→⑥→⑦
-
-## 状态推进
-
-做完一个阶段、验证通过后，把 status.json 的 currentStage 推进到下一阶段：
-需求→prd→development→prd-review→verification→review→deployment→archiving→archived
