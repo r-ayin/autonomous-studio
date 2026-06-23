@@ -31,7 +31,22 @@
 
 ## ⑥ 上线部署
 
-- Skill: `prod-deploy`
+**首选 OneDay CLI 发布**（OneDay 平台项目标准方式）：
+
+```bash
+# 前置：oneday CLI 已装 + 已登录（oneday whoami 有输出）
+oneday build        # 云端沙箱构建（流式日志，看是否报错）
+oneday publish      # 发布上线：构建 + 上传 + 出线上访问地址
+```
+
+- **已存在的 OneDay 项目**（项目已在平台，有 app id）：直接 `oneday build && oneday publish`，不重新 create/import。
+- **新项目首次上线**：`oneday import ./项目目录` 导入 → `oneday build && oneday publish`。
+- **登录过期**：`oneday whoami` 无输出时，提示用户在会话里 `! oneday login`（浏览器授权，不要静默替用户执行）。
+- 详见 `oneday-open-cli` 技能。
+
+**备选**：CLI 不可用时退回 `prod-deploy` skill。
+
+**部署后验证**：拿到线上地址后，curl 核心页面 + 关键 API 确认能访问，不报 5xx。
 
 ## ⑦ 归档（Episodic LTM）
 
