@@ -10,6 +10,7 @@
 - Skill: `pm-spec`
 - 输入: 自动读取 `planning/requirements.md` + 已有代码库
 - **格式规范**：按工作流节点组织（不按功能分类）：配置项 → 页面交互 → 功能联动 → 异常与边界
+- **UI 视觉设计参考**：技术方案涉及界面时，可参考 `react-bits`（130+ 动画组件，效果目录见 `~/.claude/skills/kanban-automation/recipes/design-reference-react-bits.md`），在方案里标注关键视觉点（如指标卡 CountUp、标题 GradientText、卡片 GlareHover）。只是参考不是照搬，实现时用纯 CSS 避免 OneDay 白屏（详见 phase-dev 的 UI 视觉设计参考）。
 
 ### 核心原则：渐进式共识沉淀
 
