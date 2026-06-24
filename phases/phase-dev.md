@@ -8,6 +8,15 @@
 - 输入: 自动读取 `planning/prd.json`
 - 完成后自动 `git add` + `git commit` + `git push`
 
+### UI 视觉设计参考（react-bits）
+
+写 UI 代码时，视觉特效可参考 [react-bits](https://github.com/DavidHDev/react-bits)（130+ 动画组件库）的效果思路（**只是参考素材，不是照搬**——你作为世界上最厉害的设计师，从中融合、举一反三，写出比原组件更好、更贴合需求主题的 UI），完整目录见 `~/.claude/skills/kanban-automation/recipes/design-reference-react-bits.md`：
+- 数字 **CountUp** 滚动、标题 **GradientText** 渐变、入场 **ScrollReveal**、卡片悬停 **GlareHover**、背景 **DotGrid**
+- **用纯 CSS 实现**，不要 npm install react-bits 全包（它依赖 three.js/gsap/framer-motion 重量级库，OneDay 平台走 CDN 会白屏）
+- 信息密集页（看板/后台）效果要克制，避免 3D 背景/闪电/故障文字抢焦点 + 白屏风险
+
+> react-bits 是**视觉特效层**，不替代 `zujianfuyon`（**业务集成层**：钉钉拉取/Supabase 客户端/钉钉机器人）。看板两层都要——数据推送用 zujianfuyon，视觉激发用 react-bits。
+
 **双模型分工**：
 | 模型 | 做什么 | 调用方式 |
 |---|---|---|
