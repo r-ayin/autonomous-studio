@@ -22,7 +22,7 @@ graph TB
         IS["incremental-save.py"]
     end
     subgraph L3["L3: Skill Layer"]
-        AE["autonomous-studio<br/>v3.0"]
+        AE["autonomous-studio<br/>v5.4"]
         CG["CodeGraph<br/>融合层"]
         PP["project-protocol"]
         RB["ralph-bridge"]
@@ -64,11 +64,13 @@ graph TB
 | watchdog.sh | checkpoints/, process | .watchdog_heartbeat | WSL cron 5min |
 | autonomous-studio | decision-log, calibration, codegraph | case-*.json, calibration | CronCreate L2/L3 |
 
-## 决策引擎七阶段循环
+## 决策引擎七阶段循环（详见 decision-agent-prompt.md）
 
-OBSERVE -> MATCH -> RESEARCH -> DECIDE -> ACT -> REPORT -> LEARN
+CONTEXTUALIZE -> DIAGNOSE -> RESEARCH -> DELIBERATE -> DECIDE -> EXECUTE -> RETROSPECT
 
 信心公式: confidence = pattern_match(0-25) + web_corroboration(0-25) + risk_assessment(0-25) + user_preference_alignment(0-25)
+
+> 以下为简化参考。实际使用操作类型三档制（可逆/高风险可逆/不可逆），详见 decision-agent-prompt.md §⑤。
 
 | 分数 | 级别 | 行为 |
 |------|------|------|

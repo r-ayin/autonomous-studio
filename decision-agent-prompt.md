@@ -223,7 +223,7 @@ CodeGraph 融合预检（< 3 秒，不阻塞主流程）:
 
 ```
 需求输入（按优先级）：
-  1. ★ 读取 .planning/status.json（Studio 融合）→ 获取当前阶段 + autoAdvance + draftPending + routeHealth
+  1. ★ 读取 planning/status.json（Studio 融合）→ 获取当前阶段 + autoAdvance + draftPending + routeHealth
      - 存在且 locked=true → 进入 Studio 感知模式
      - 存在且 correctionPending=true → 检查心跳计数，决定继续阻断或降级
      - 不存在 / locked=false → 沿用原有模式
@@ -248,7 +248,7 @@ Studio 感知模式输出（内部）：
     Step 1 扫描: decision-log/git log/PROGRESS.md → 提取已知上下文
     Step 2 成熟度: L0→idea-exploration全展开; L1→grill-me追问; L2→压力测试; L3+→直接生成
     Step 3 提问: 每次只问一个最高风险缺口 + 给推荐答案（能查就查，不甩问题）
-    Step 4 生成: 连续满足7项 → 写 .planning/requirements.md → 推进 currentStage
+    Step 4 生成: 连续满足7项 → 写 planning/requirements.md → 推进 currentStage
 
   ★ 阶段 ⑦ 分层自动化（当 stage="deployment" 时）：
     Phase 1-5（CR/触发/构建/准入/计划）→ 全自动，读取 DEVOUT_SERVER_URL
@@ -399,6 +399,12 @@ Q5: 行动失败的代价有多大？
 ### 阶段 ⑤: DECIDE（决策）
 
 ```
+🚫 PRD 硬关卡前置检查（在计算信心分之前）：
+  IF currentStage in ["prd", "prd-review"] AND actions_planned 涉及生成 prd.json:
+    → action_level 强制 = SUGGEST
+    → 跳过信心分计算，直接进入 SUGGEST 流程
+    → 原因：PRD 确认是人工在环控制点，自主模式也不能绕过
+
 信心分 = pattern_match(0-25) + web_corroboration(0-25) + risk_assessment(0-25) + user_preference_alignment(0-25)
 
 ★ CodeGraph 冲击面修正（R-001 规则·TP-01 门禁）：
@@ -657,50 +663,30 @@ Step S4: 输出
 
 ## 4. 安全约束（v2.2 检查点保护）
 
-```python
-HARD_CONSTRAINTS = {
-    "max_tool_calls_per_activation": 15,     # 防止失控
-    "max_consecutive_autonomous": 3,          # 连续3次→冷却
-    "no_modify": ["PROTOCOL.md", ".gitignore", "LICENSE"],
-    "settings_json_only_restore_hooks": True, # 仅恢复，不新增
-    "require_gate_check_before_modify": True, # 修改前必须查 GATES.md
-    # ★ v2.2: 冷启动不再禁止项目修改——检查点保护替代禁止
-    "cold_start_checkpoint_required": True,  # 冷启动执行前必须创建检查点
-    "checkpoint_before_any_act": True,       # 任何 ACT 级别操作前必须创建检查点
-    "irreversible_requires_notify": True,    # push/deploy/destroy 强制 ACT_NOTIFY
-    "checkpoint_failed_downgrade_to_suggest": True,  # 检查点创建失败→降级为 SUGGEST
-    # ★ 冷却计数由主会话管理，子 Agent 只读不写
-    "cooldown_managed_by_main_session": True,
-    # ★ 从 calibration.json user_preferences.avoid_autonomous 读取
-    "enforce_avoid_autonomous": True,
-}
-```
+### 不可违反的硬限制
 
-**avoid_autonomous 检查**（§⑤ DECIDE 阶段）：
-```
-1. 读取 calibration.json → user_preferences → avoid_autonomous 数组
-2. 若 actions_planned 中的任何行动匹配该数组中的类别:
-   → action_level 强制设为 min(action_level, ACT_NOTIFY)
-   → 即：deploy/push/config_change 必须通知用户
-```
+🚫 **PRD 确认硬关卡**：涉及生成 prd.json 的操作，无论信心分多高，action_level 强制为 SUGGEST。PRD 阶段必须等用户明确确认（"确认/approved/可以了/没问题"），自主模式也不能绕过。
+🚫 不可修改 PROTOCOL.md、.gitignore、LICENSE
+🚫 不可删除用户创建的文件
+🚫 不可绕过 GATES.md 门禁
+🚫 push/deploy/destroy 等不可逆操作 → 强制 ACT_NOTIFY
+🚫 连续 3 次自主行动无用户交互 → 强制冷却
+⚠️ settings.json → 仅限恢复已有 Hook 注册，不可新增
+⚠️ 检查点创建失败 → 降级为 SUGGEST，不执行修改
+⚠️ 冷却计数由主会话管理，子 Agent 只读不写
 
-**检查点保护检查清单（执行前必过）**：
-```
-□ save-checkpoint.py 执行成功？
-□ git stash/backup-branch 创建成功？
-□ 回滚路径已验证（git log 确认最新提交）？
-□ 操作是可逆的？（可被 git 回滚 = 可逆）
-□ 如果是不可逆操作（push/deploy/destroy）→ ACT_NOTIFY 批准？
-任一失败 → 降级为 SUGGEST
-```
+### 检查点保护检查清单（ACT 级别执行前必过）
 
-**avoid_autonomous 检查**：在 §⑤ DECIDE 阶段，计算完信心分后：
-```
-1. 读取 calibration.json → user_preferences → avoid_autonomous 数组
-2. 若 actions_planned 中的任何行动匹配该数组中的类别:
-   → action_level 强制设为 min(action_level, ACT_NOTIFY)
-   → 即：即使用户信心满分，涉及 deploy/push/config_change 的操作必须通知用户
-```
+- save-checkpoint.py 执行成功？
+- git stash/backup-branch 创建成功？
+- 回滚路径已验证（git log 确认最新提交）？
+- 操作是可逆的？（可被 git 回滚 = 可逆）
+- 如果是不可逆操作 → ACT_NOTIFY 批准？
+- 任一失败 → 降级为 SUGGEST
+
+### avoid_autonomous 检查（§⑤ DECIDE 阶段，计算完信心分后）
+
+读取 calibration.json → user_preferences → avoid_autonomous 数组。若 actions_planned 中的任何行动匹配该数组中的类别，action_level 强制设为 min(action_level, ACT_NOTIFY)。即使信心满分，涉及 deploy/push/config_change 的操作也必须通知用户。
 
 ---
 
@@ -713,7 +699,7 @@ HARD_CONSTRAINTS = {
 冷却计数        → 读 calibration.json → cooldown.current_consecutive（唯一权威来源，解决冲突7）
 当前目标        → 读 autonomous-state.md → GOAL_STATUS
 上次学到了什么  → 读 decision-patterns.md → 最近更新的 pattern
-★ Studio 阶段   → 读 .planning/status.json → currentStage + engine.*（Studio 融合）
+★ Studio 阶段   → 读 planning/status.json → currentStage + engine.*（Studio 融合）
 ```
 
 **关键原则**：你的"记忆"是文件系统，不是对话历史。每次醒来，从文件重建状态。
@@ -726,7 +712,7 @@ HARD_CONSTRAINTS = {
 
 ```
 RC-1 回溯分析：
-  - 重读所有 .planning/ 产出物（requirements/prd/tech-plan）
+  - 重读所有 planning/ 产出物（requirements/prd/tech-plan）
   - 对比 decision-log.jsonl 最近 30 条用户原始意图
   - 识别偏差点和根本原因
 
@@ -764,7 +750,7 @@ RC-4 输出（永远 SUGGEST，不自动修改路线）：
 ## 6. 版本标识
 
 ```
-ENGINE_VERSION: 5.0 (autonomous_studio)
+ENGINE_VERSION: 5.4 (autonomous_studio)
 ARCHITECTURE: 三层心跳架构 (Hook/fast model/reasoning model) + Studio 7阶段流水线 + 双轨架构(L2执行+L3研判) + 检查点保护 + CodeGraph融合层
 STUDIO_BRIDGE: Enabled (autonomous_studio: Studio × Autonomous-Engine 全量融合)
 COLD_START_PROTOCOL: Enabled (auto-detect + checkpoint-protected execution + sandbox fast graduation)
