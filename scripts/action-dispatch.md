@@ -67,7 +67,7 @@ spawn Agent:
     - 当前 task id：{task_id}
     - git diff：{diff内容}
 
-    读 ~/.claude/skills/autonomous-studio/studio-pipeline.md 的 ③-V 部分。
+    读 ~/.claude/skills/autonomous-studio/phases/phase-dev.md 的 ③-V 部分。
     按三维度（正确性 + 代码风格 + PRD 一致性）审查。
     输出标准格式的 Validator 报告。
     有 ❌ 时：更新 prd.json 该任务 status=pending + notes 写失败原因 + retryCount +1。
@@ -88,7 +88,7 @@ spawn Agent:
     - 测试用例：{项目目录}/planning/test-cases.md
     - git log（本次功能）：{git_log}
 
-    读 ~/.claude/skills/autonomous-studio/studio-pipeline.md 的 ③-R 部分。
+    读 ~/.claude/skills/autonomous-studio/phases/phase-dev.md 的 ③-R 部分。
     检查三件事：完整性 + 集成点 + PRD 决策落地。
     输出标准格式的全量对照报告。
     有 ❌ → 返回 needs_fix，列出具体遗漏。
@@ -107,7 +107,7 @@ spawn Agent:
     - 完整 prd.json：{项目目录}/planning/prd.json
     - 测试用例：{项目目录}/planning/test-cases.md
 
-    读 ~/.claude/skills/autonomous-studio/studio-pipeline.md 的 ④ 验证部分。
+    读 ~/.claude/skills/autonomous-studio/phases/phase-ship.md 的 ④ 验证部分。
     按规范执行 E2E 验证。
     返回：通过/失败 + 详情。
 ```
@@ -124,7 +124,7 @@ spawn Agent:
     - PRD 决策记录：{项目目录}/planning/prd-decisions.md
     - status.json：{项目目录}/planning/status.json
 
-    读 ~/.claude/skills/autonomous-studio/studio-pipeline.md 的 ⑦ 归档部分。
+    读 ~/.claude/skills/autonomous-studio/phases/phase-ship.md 的 ⑦ 归档部分。
     执行归档流程：创建 archive/ 目录、复制 planning/、生成 retrospective.md。
     扫描 {项目根目录}/archive/*/retrospective.md，提取历史教训标签到 known-pitfalls.md（为下个项目准备）。
     返回：归档路径 + 教训条数。
