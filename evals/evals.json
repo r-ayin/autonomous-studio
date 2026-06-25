@@ -54,5 +54,61 @@
     "input": "PRD 定稿了，生成 prd.json 吧",
     "context": "prd-decisions.md 有 5 条 [x] 记录，prd.md 中有 4 条覆盖",
     "expect": "发现 prd-decisions.md 有 1 条 [x] 记录未在 prd.md 中体现，指出并要求补充后才生成 prd.json"
+  },
+  {
+    "id": "eval-09",
+    "description": "【铁律2】新会话恢复时必须搜代码确认，不能只看 prd.json",
+    "input": "继续开发",
+    "context": "status.json currentStage=development，prd.json 有 3 个 pending 任务，但其中 2 个功能代码已实现",
+    "expect": "搜代码确认后报告'1 个待开发'而非'3 个待开发'，将已实现的 2 个任务更新为 done"
+  },
+  {
+    "id": "eval-10",
+    "description": "【铁律2】prd.json status=done 但代码实现有缺陷",
+    "input": "项目状态",
+    "context": "status.json currentStage=development，prd.json 某任务 status=done，但代码中对应功能缺少关键字段",
+    "expect": "搜代码发现实现不完整，标记出来告知用户，不直接信任 prd.json 的 done 标记"
+  },
+  {
+    "id": "eval-11",
+    "description": "【PRD硬关卡】自主模式下不能自动生成 prd.json",
+    "input": "别等我，自动继续",
+    "context": "status.json currentStage=prd，PRD 讨论已完成但用户尚未明确确认",
+    "expect": "进入自主模式但不生成 prd.json，向用户报告'PRD 待确认，需要你明确说确认才能推进'"
+  },
+  {
+    "id": "eval-12",
+    "description": "【覆盖检查】生成 prd.md 前必须输出覆盖对照表",
+    "input": "可以生成 PRD 文档了",
+    "context": "prd-decisions.md 有 6 条 [x] 记录",
+    "expect": "先输出覆盖对照表（6 条决策→PRD 对应章节→✅/❌），不直接生成 prd.md"
+  },
+  {
+    "id": "eval-13",
+    "description": "【actionType补全】扫描 agent 识别刚完成 task 需要 validate",
+    "input": "（心跳扫描触发）",
+    "context": "currentStage=development，最近 commit 包含 'feat: [N1-03] 任务标题'",
+    "expect": "扫描 agent 返回 actionType=validate，触发 Validator 审查"
+  },
+  {
+    "id": "eval-14",
+    "description": "【actionType补全】扫描 agent 识别所有 P0 done 需要 prd-review",
+    "input": "（心跳扫描触发）",
+    "context": "currentStage=development，prd.json 所有 P0 tasks status=done",
+    "expect": "扫描 agent 返回 actionType=prd-review，触发 ③-R 全量对照"
+  },
+  {
+    "id": "eval-15",
+    "description": "【业务语言】汇报待办时不用技术术语",
+    "input": "还有哪些没做完",
+    "context": "currentStage=development，有 2 个 pending 任务",
+    "expect": "用业务语言描述（如'候选人列表页的筛选功能还没做'），不说'N1-03 pending'或技术代号"
+  },
+  {
+    "id": "eval-16",
+    "description": "【description触发】用户用自然语言描述场景应触发 Skill",
+    "input": "帮我把这个想法做成产品",
+    "context": "无 planning/ 目录",
+    "expect": "识别为新功能开发场景，激活 Studio，从需求阶段开始"
   }
 ]

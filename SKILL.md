@@ -1,12 +1,12 @@
 ---
 name: autonomous-studio
 description: >-
-  Studio 研发流水线 v5.4。三层心跳架构：Hook(零成本) + 扫描agent(sonnet) + 行动agent(opus)。
-  激活后注入行为规则到项目 CLAUDE.md，保证全程遵循。
-  触发词：studio、自主模式、别等我、自动继续、keep working、autonomous mode、
-  继续开发、不用等我、你自己做、继续、接下来做什么、下一步、全链路、开发流程、
-  从需求到上线、项目状态、帮我聊需求、这个想法能不能做、写PRD、需求文档、
-  开始开发、按计划执行、验证一下、e2e测试、review、代码评审、部署、上线。
+  从需求到上线的全链路研发流水线。管理阶段推进（需求→PRD→开发→验证→评审→部署→归档），
+  注入行为规则到项目 CLAUDE.md，驱动子 Agent 按 PRD 自动开发。
+  支持自主模式：用户离开后 AI 按心跳继续推进任务。
+  使用场景：启动新功能开发、聊需求写 PRD、查看项目状态和进度、
+  进入自主开发模式、执行代码评审和验证、部署上线、
+  或任何涉及研发流程阶段管理的操作。
 model: sonnet
 repository: https://code.alibaba-inc.com/qunbu/autonomous-studio
 ---
