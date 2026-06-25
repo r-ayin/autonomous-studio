@@ -22,7 +22,6 @@
 | 目录 | 用途 |
 |------|------|
 | `skills/` | 所有 Skill 源码（29 个） |
-| `autonomous-engine/` | 自主决策引擎核心 |
 | `scripts/` | 辅助脚本 |
 | `config/` | 配置模板 |
 
