@@ -15,8 +15,7 @@ planning/status.json 存在时，所有任务遵循以下规则。
 7. 🚫 **PRD 确认硬关卡（HARD-GATE）**：prd.json 只能在用户明确说"确认/approved/可以了/没问题"后生成。"看起来还行""差不多""感觉可以"不算确认。用户还在讨论或修改中不能推进。自主模式也不能绕过此关卡。
    > 为什么：PRD 是后续所有阶段的基石，模糊确认一旦驱动开发返工成本极高，宁可多等一轮。
    > PRD 阶段还有**覆盖检查**强制步骤（详见 phase-build.md），生成 prd.md 前必须输出覆盖对照表确认无遗漏。
-8. **业务语言汇报**：汇报进度/待办/待确认/bug 时，每条都用业务语言说明"这是什么、用户会遇到什么现象"，禁止只给代号或技术名词。涉及待确认时说清"确认什么、不同选项会导致什么"。
-   > 为什么：用户是业务方，代号没信息量无法决策，只给代号等于没汇报。
+8. **业务语言汇报**：所有汇报用产品/运营视角表达，禁技术黑话。待确认项说清选项和后果。
 
 ### 阶段路由（按需 Read，不要全读）
 做完一个阶段、验证通过后，把 status.json 的 currentStage 推进到下一阶段：需求→prd→development→prd-review→verification→review→deployment→archiving→archived。
@@ -30,6 +29,6 @@ planning/status.json 存在时，所有任务遵循以下规则。
 ### 新会话恢复规则
 - 若 status.json 存在：先读 → 判断 currentStage → 报告当前状态
 - currentStage=prd：先读 `planning/prd-decisions.md`，汇总已确认/待讨论要点
-- currentStage=development：读 `planning/prd.json` 获取任务清单，然后**逐条搜代码确认实际完成状态**（铁律第 2 条）。prd.json 中 status=done 但代码里缺实现的要标记出来；status=pending 但代码已实现的要更新为 done。用业务语言说明每个待办是什么、用户会看到什么。
+- currentStage=development：读 prd.json + **搜代码核实**每条任务实际状态（铁律 2），用业务语言报告。
 - locked=true：告知有任务进行中，询问是否接力
 <!-- STUDIO:END -->

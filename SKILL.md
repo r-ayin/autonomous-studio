@@ -39,17 +39,7 @@ repository: https://code.alibaba-inc.com/qunbu/autonomous-studio
 
 ### status.json 初始格式
 
-```json
-{
-  "currentStage": "requirements",
-  "completedStages": [],
-  "lastUpdated": "ISO时间",
-  "taskType": "new-feature",
-  "notes": "项目描述",
-  "locked": true,
-  "autoAdvance": true
-}
-```
+关键字段：`currentStage`（当前阶段）、`completedStages`、`lastUpdated`、`taskType`（new-feature/bug-fix 等）、`locked`、`autoAdvance`。不存在时由阶段检测自动创建。
 
 ---
 
@@ -64,10 +54,6 @@ repository: https://code.alibaba-inc.com/qunbu/autonomous-studio
 3. **版本不匹配**（含旧版本标记如 `v5.0`）→ Read `~/.claude/skills/autonomous-studio/studio-inject.md`，替换旧内容
 4. **不存在标记** → Read `~/.claude/skills/autonomous-studio/studio-inject.md`，追加到文件末尾
 5. **CLAUDE.md 不存在** → 创建文件，Read 并写入注入内容
-
-> 为什么这样设计：注入内容约 70 行，写在 SKILL.md 里会让每次激活都加载这些内容到上下文。
-> 一旦注入到项目 CLAUDE.md，后续每轮对话自动加载，SKILL.md 里再放一份就是双倍浪费。
-> 分离后，首次激活多读一个文件，后续激活零额外开销。
 
 ---
 
@@ -102,25 +88,9 @@ repository: https://code.alibaba-inc.com/qunbu/autonomous-studio
 4. 主会话控制器: git commit + status.json + 输出摘要
 ```
 
-### 渐进式加载的文件
-
-| 文件 | 谁加载 | 何时加载 |
-|---|---|---|
-| `scripts/studio-precheck.sh` | Cron prompt | 每次心跳第一步 |
-| `scripts/scanner-prompt.md` | Tier 1 扫描 agent | 预检通过后 |
-| `scripts/action-dispatch.md` | 主会话控制器 | 扫描返回 needsAction=true 后 |
-| `studio-inject.md` | 主会话 Step 2 | 项目 CLAUDE.md 无标记或版本不匹配时 |
-| `studio-inject.md`（含阶段路由）+ `phases/*.md` | Tier 2 行动 agent | 阶段路由在 inject 内联，执行时直接 Read 对应 phase 文件 |
-| `decision-agent-prompt.md` | Tier 2 行动 agent | L3 深度分析时 |
-
 ---
 
 ## 补充说明
-
-### 详细规范文件
-阶段路由已内联在 studio-inject.md（注入到项目 CLAUDE.md），执行时按路由直接 Read 对应 phase 文件：
-→ `phases/phase-build.md`（需求+PRD）/ `phases/phase-dev.md`（开发+Validator+③-R）/ `phases/phase-ship.md`（验证+评审+部署+归档）
-→ `studio-pipeline.md` 现在只是速查表，通常不用读。
 
 ### 子代理决策手册
 → `~/.claude/skills/autonomous-studio/decision-agent-prompt.md`
@@ -135,19 +105,8 @@ repository: https://code.alibaba-inc.com/qunbu/autonomous-studio
 1. 检查本地版本标记：`cat ~/.claude/skills/autonomous-studio/.version 2>/dev/null`
 2. 获取远程最新 commit：`git ls-remote https://xhq02486164:B06ESflq0Gg_cI_eYrrj@code.alibaba-inc.com/qunbu/autonomous-studio.git HEAD | cut -f1`
 3. 比对：本地 hash ≠ 远程 hash → 需要更新
-4. 更新方式：
-   ```bash
-   cd /tmp && rm -rf _studio_update
-   git clone https://xhq02486164:B06ESflq0Gg_cI_eYrrj@code.alibaba-inc.com/qunbu/autonomous-studio.git _studio_update
-   cp _studio_update/SKILL.md _studio_update/studio-pipeline.md _studio_update/decision-agent-prompt.md _studio_update/studio-inject.md ~/.claude/skills/autonomous-studio/
-   cp -r _studio_update/phases ~/.claude/skills/autonomous-studio/
-   cp _studio_update/scripts/* ~/.claude/skills/autonomous-studio/scripts/
-   cp _studio_update/hooks/* ~/.claude/skills/autonomous-studio/hooks/
-   cp -r _studio_update/evals ~/.claude/skills/autonomous-studio/
-   git -C /tmp/_studio_update rev-parse HEAD > ~/.claude/skills/autonomous-studio/.version
-   rm -rf /tmp/_studio_update
-   ```
-5. 更新后告知用户："Studio skill 已从 v{旧} 更新到 v{新}"
+4. 更新方式：克隆仓库到 /tmp/_studio_update → 复制核心文件（SKILL.md、studio-inject.md、phases/、scripts/、hooks/、evals/）到 ~/.claude/skills/autonomous-studio/ → 写 .version → 清理
+5. 更新后告知用户版本变化
 6. 本地 hash = 远程 hash → 跳过，直接进入 Step 1
 
 **此规则适用于所有 `qunbu/` 命名空间下的 skill。** 任何 skill 的 SKILL.md 中有 `repository:` 字段指向 `code.alibaba-inc.com/qunbu/*` 的，激活时都应执行同样的版本检查。
