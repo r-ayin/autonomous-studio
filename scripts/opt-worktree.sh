@@ -1,0 +1,152 @@
+#!/usr/bin/bash
+# opt-worktree.sh — 自动优化 worktree 管理器
+#
+# 设计（用户定）:
+#   引擎的自动研究/修复/优化 → 全部进 optimization worktree（不碰 main）
+#   → 等人工回复才合并（人看 diff 决定）→ 优化可大胆执行，main 永远安全
+#   → 方向差距大时（不同 area）自动开新 worktree，避免方向纠缠
+#
+# 方向分歧判定（2 层）:
+#   direction 格式 "area:subdirection"（如 "engine:distillation"、"moni:quant"）
+#   新优化 area == 主 worktree area → 同一 worktree（小差距，累积）
+#   新优化 area != 主 worktree area → 开新 worktree auto/opt-{area}-{ts}（大差距，隔离）
+#
+# 用法:
+#   opt-worktree.sh init [project]                        # 建主 optimization worktree
+#   opt-worktree.sh commit [project] <direction> <msg>    # 按方向提交到合适 worktree
+#   opt-worktree.sh list [project]                        # 列所有 opt worktree + 方向 + diffstat
+#   opt-worktree.sh show [project] [worktree]             # 给人审：看 diff（不合并）
+#   opt-worktree.sh merge [project] <worktree>            # 人工批准后：squash 合并→main + 清理
+#   opt-worktree.sh reject [project] <worktree]           # 人工拒绝：归档/删
+set -euo pipefail
+
+PROJECT="${1:-.}"
+CMD="${2:-list}"
+PROJECT="$(cd "$PROJECT" && pwd)"
+WT_BASE="$PROJECT/../.opt-worktrees"
+MAIN_BRANCH="main"
+
+area_of() { echo "${1%%:*}"; }
+slug() { echo "$1" | tr ':' '-' | tr '/' '-'; }
+
+ensure_main_wt() {
+  local dir="$WT_BASE/optimization"
+  if [[ ! -d "$dir" ]]; then
+    mkdir -p "$WT_BASE"
+    git -C "$PROJECT" worktree add -b auto/optimization "$dir" "$MAIN_BRANCH" 2>/dev/null || \
+      git -C "$PROJECT" worktree add "$dir" auto/optimization 2>/dev/null || true
+    echo "engine:general" > "$dir/.opt-direction"
+    echo "✓ 建 optimization worktree: $dir"
+  fi
+}
+
+current_area() {
+  local dir="$WT_BASE/optimization"
+  [[ -f "$dir/.opt-direction" ]] && area_of "$(cat "$dir/.opt-direction")" || echo "engine"
+}
+
+cmd_init() { ensure_main_wt; }
+
+cmd_commit() {
+  local direction="${3:?need direction}"
+  local msg="${4:?need commit message}"
+  ensure_main_wt
+  local cur_area; cur_area=$(current_area)
+  local new_area; new_area=$(area_of "$direction")
+
+  # 选目标 worktree：方向 area 一致 → 主 worktree；不一致 → 开新
+  local target
+  if [[ "$cur_area" == "$new_area" ]]; then
+    target="$WT_BASE/optimization"
+  else
+    local ts; ts=$(date +%s)
+    target="$WT_BASE/opt-$(slug "$new_area")-$ts"
+    mkdir -p "$target"
+    git -C "$PROJECT" worktree add -b "auto/opt-$(slug "$new_area")-$ts" "$target" "$MAIN_BRANCH" 2>/dev/null
+    echo "$direction" > "$target/.opt-direction"
+    echo "↔ 方向分歧（$cur_area → $new_area），开新 worktree: $(basename "$target")"
+  fi
+
+  # 把当前工作区改动同步到 target worktree 提交
+  # 策略：把 PROJECT 的未提交改动 stash，在 target worktree apply + commit
+  cd "$PROJECT"
+  if [[ -n "$(git status --porcelain)" ]]; then
+    git stash push -u -m "opt-$direction" >/dev/null 2>&1
+    cd "$target"
+    git stash pop >/dev/null 2>&1 || { echo "⚠️ stash apply 冲突，改动留在 stash，人工处理"; exit 1; }
+    git add -A
+    git -c user.name="autonomous-studio" -c user.email="opt@auto" commit -q -m "opt($direction): $msg
+
+[auto-optimization on worktree $(basename "$target") — 待人工审合并]"
+    echo "✓ 提交到 $(basename "$target")  方向=$direction"
+  else
+    echo "（无未提交改动，跳过）"
+  fi
+}
+
+cmd_list() {
+  echo "=== optimization worktrees ==="
+  for d in "$WT_BASE"/*; do
+    [[ -d "$d" ]] || continue
+    local name; name=$(basename "$d")
+    local dir; dir=$(cat "$d/.opt-direction" 2>/dev/null || echo "?")
+    local stat
+    stat=$(git -C "$d" diff --stat "$MAIN_BRANCH" 2>/dev/null | tail -1)
+    local commits
+    commits=$(git -C "$d" rev-list --count "$MAIN_BRANCH"..HEAD 2>/dev/null || echo 0)
+    echo "  $name | 方向=$dir | $commits 提交 | ${stat:-(无 diff)}"
+  done
+}
+
+cmd_show() {
+  local wt="${3:-optimization}"
+  local dir="$WT_BASE/$wt"
+  [[ -d "$dir" ]] || { echo "❌ worktree 不存在: $wt"; exit 1; }
+  echo "=== $wt 的优化 diff（待人工审）==="
+  echo "方向: $(cat "$dir/.opt-direction" 2>/dev/null)"
+  echo "提交:"
+  git -C "$dir" log --oneline "$MAIN_BRANCH"..HEAD 2>/dev/null
+  echo "--- diff ---"
+  git -C "$dir" diff "$MAIN_BRANCH"...HEAD 2>/dev/null | head -300
+  echo "..."
+  echo "审完: opt-worktree.sh merge \"$PROJECT\" \"$wt\"   或   opt-worktree.sh reject \"$PROJECT\" \"$wt\""
+}
+
+cmd_merge() {
+  local wt="${3:?need worktree}"
+  local dir="$WT_BASE/$wt"
+  [[ -d "$dir" ]] || { echo "❌ worktree 不存在: $wt"; exit 1; }
+  cd "$PROJECT"
+  git checkout "$MAIN_BRANCH" 2>/dev/null || true
+  if git merge --squash "auto/$(basename "$dir" | sed 's/^opt-//;s/^/opt-/')" 2>/dev/null || git merge --squash "$wt" 2>/dev/null; then
+    git -c user.name="autonomous-studio" -c user.email="opt@auto" commit -q -m "merge: 人工批准合并 optimization worktree '$wt'
+
+$(git log --oneline auto/$(basename "$dir") 2>/dev/null | head -5)"
+    echo "✓ 已 squash 合并 $wt → $MAIN_BRANCH"
+    git -C "$PROJECT" worktree remove "$dir" --force 2>/dev/null || rm -rf "$dir"
+    echo "✓ worktree 清理"
+  else
+    echo "❌ 合并冲突，人工处理: cd $dir && 解决后 opt-worktree.sh merge"
+    git merge --abort 2>/dev/null || true
+    exit 1
+  fi
+}
+
+cmd_reject() {
+  local wt="${3:?need worktree}"
+  local dir="$WT_BASE/$wt"
+  [[ -d "$dir" ]] || { echo "❌ worktree 不存在: $wt"; exit 1; }
+  git -C "$PROJECT" worktree remove "$dir" --force 2>/dev/null || rm -rf "$dir"
+  git -C "$PROJECT" branch -D "auto/$(basename "$dir")" 2>/dev/null || true
+  echo "✗ 已拒绝并删除 worktree: $wt（分支 auto/$(basename "$dir") 保留可恢复，或手动删）"
+}
+
+case "$CMD" in
+  init) cmd_init ;;
+  commit) cmd_commit "$@" ;;
+  list) cmd_list ;;
+  show) cmd_show "$@" ;;
+  merge) cmd_merge "$@" ;;
+  reject) cmd_reject "$@" ;;
+  *) echo "用法: opt-worktree.sh <project> <init|commit|list|show|merge|reject> ..."; exit 1 ;;
+esac
