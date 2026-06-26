@@ -7,6 +7,7 @@
 .claude/.last_phone_notify
 .claude/decision-log.jsonl
 .claude/scheduled_tasks.json
+.claude/memory/autonomous-state-runtime.md
 planning/status.json
 
 # Node/Python

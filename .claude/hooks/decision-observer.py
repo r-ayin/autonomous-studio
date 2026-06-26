@@ -28,7 +28,9 @@ if sys.platform == "win32":
 
 PROJECT_DIR = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
 LOG_FILE = os.path.join(PROJECT_DIR, ".claude", "decision-log.jsonl")
-STATE_FILE = os.path.join(PROJECT_DIR, ".claude", "memory", "autonomous-state.md")
+# 运行时心跳状态写到独立文件，**绝不覆写** autonomous-state.md（那是手维护的富状态：
+# v3.0 引擎配置/历史目标/项目索引等）。本文件每次 Stop 覆写，只存最新运行时快照。
+STATE_FILE = os.path.join(PROJECT_DIR, ".claude", "memory", "autonomous-state-runtime.md")
 STUDIO_STATUS_FILE = os.path.join(PROJECT_DIR, "planning", "status.json")
 
 # ── 辅助函数 ────────────────────────────────────────────
@@ -573,16 +575,18 @@ def handle_stop(data: dict):
 
     additional_context = "\n".join(context_parts)
 
-    # 写入状态文件
+    # 写入运行时状态文件（每次 Stop 覆写；完整状态见 autonomous-state.md，不在此处改）
     try:
         state_content = f"""---
-name: autonomous-state
-description: 自主决策引擎运行状态
+name: autonomous-state-runtime
+description: 自主决策引擎运行时心跳（每次 Stop 覆写快照；完整状态见 autonomous-state.md）
 metadata:
   type: project
 ---
 
-# 引擎状态
+# 引擎运行时状态
+> 完整引擎状态（v3.0 配置/历史目标/项目索引等）见 `.claude/memory/autonomous-state.md`，本文件仅存最新运行时快照，勿手工编辑。
+
 - **最后活跃**: {datetime.now(timezone.utc).strftime('%Y-%m-%dT%H:%M:%SZ')}
 - **活跃项目**: {active_project}
 - **当前阶段**: {phase}
