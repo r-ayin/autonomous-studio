@@ -30,7 +30,7 @@ spawn Agent:
     - 原因：...
 ```
 
-主会话收到后 → 写 `.claude/autonomous-suggestions.md` → 输出一行摘要。
+主会话收到后 → 写 `.claude/memory/autonomous-suggestions.md` → 输出一行摘要。
 
 ## 路径 B：执行型（agent 想+做）
 
@@ -154,7 +154,7 @@ spawn Agent:
 1. **有代码变更** → `git add + commit + push`
 2. **阶段推进** → 更新 `status.json`
 3. **输出摘要** → `Studio {阶段} @ {时间} | {摘要}`
-4. **建议类** → 追加到 `.claude/autonomous-suggestions.md`
+4. **建议类** → 追加到 `.claude/memory/autonomous-suggestions.md`
 5. **③-R 返回 needs_fix** → 回到 develop 路径补充实现
 6. **③-R 返回 passed** → advance_stage 到 verification
 

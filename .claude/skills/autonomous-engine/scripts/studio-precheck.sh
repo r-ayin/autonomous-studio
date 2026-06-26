@@ -4,8 +4,8 @@
 
 PROJ_DIR="${1:-.}"
 STATUS_FILE="$PROJ_DIR/planning/status.json"
-CAL_FILE="$PROJ_DIR/.claude/calibration.json"
-STATE_FILE="$PROJ_DIR/.claude/autonomous-state.md"
+CAL_FILE="$PROJ_DIR/.claude/decisions/calibration.json"
+STATE_FILE="$PROJ_DIR/.claude/memory/autonomous-state.md"
 PROMPT_FILE="$HOME/.claude/skills/autonomous-studio/decision-agent-prompt.md"
 
 # 1. decision-agent-prompt.md 存在？

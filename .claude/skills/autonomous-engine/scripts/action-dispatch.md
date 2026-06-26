@@ -27,7 +27,7 @@ spawn Agent:
     - 原因：...
 ```
 
-主会话收到后 → 写 `.claude/autonomous-suggestions.md` → 输出一行摘要。
+主会话收到后 → 写 `.claude/memory/autonomous-suggestions.md` → 输出一行摘要。
 
 ## 路径 B：执行型（agent 想+做）
 
@@ -73,6 +73,6 @@ spawn Agent:
 1. **有代码变更** → `git add + commit + push`
 2. **阶段推进** → 更新 `status.json`
 3. **输出摘要** → `Studio {阶段} @ {时间} | {摘要}`
-4. **建议类** → 追加到 `.claude/autonomous-suggestions.md`
+4. **建议类** → 追加到 `.claude/memory/autonomous-suggestions.md`
 
 主会话是唯一有权执行 git 操作和更新 status.json 的角色。

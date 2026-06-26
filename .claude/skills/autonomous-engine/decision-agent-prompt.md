@@ -213,7 +213,7 @@ CodeGraph 融合预检（< 3 秒，不阻塞主流程）:
 
 ```
 需求输入（按优先级）：
-  1. ★ 读取 .planning/status.json（Studio 融合）→ 获取当前阶段 + autoAdvance + draftPending + routeHealth
+  1. ★ 读取 planning/status.json（Studio 融合）→ 获取当前阶段 + autoAdvance + draftPending + routeHealth
      - 存在且 locked=true → 进入 Studio 感知模式
      - 存在且 correctionPending=true → 检查心跳计数，决定继续阻断或降级
      - 不存在 / locked=false → 沿用原有模式
@@ -238,7 +238,7 @@ Studio 感知模式输出（内部）：
     Step 1 扫描: decision-log/git log/PROGRESS.md → 提取已知上下文
     Step 2 成熟度: L0→idea-exploration全展开; L1→grill-me追问; L2→压力测试; L3+→直接生成
     Step 3 提问: 每次只问一个最高风险缺口 + 给推荐答案（能查就查，不甩问题）
-    Step 4 生成: 连续满足7项 → 写 .planning/requirements.md → 推进 currentStage
+    Step 4 生成: 连续满足7项 → 写 planning/requirements.md → 推进 currentStage
 
   ★ 阶段 ⑦ 分层自动化（当 stage="deployment" 时）：
     Phase 1-5（CR/触发/构建/准入/计划）→ 全自动，读取 DEVOUT_SERVER_URL
@@ -703,7 +703,7 @@ HARD_CONSTRAINTS = {
 冷却计数        → 读 calibration.json → cooldown.current_consecutive（唯一权威来源，解决冲突7）
 当前目标        → 读 autonomous-state.md → GOAL_STATUS
 上次学到了什么  → 读 decision-patterns.md → 最近更新的 pattern
-★ Studio 阶段   → 读 .planning/status.json → currentStage + engine.*（Studio 融合）
+★ Studio 阶段   → 读 planning/status.json → currentStage + engine.*（Studio 融合）
 ```
 
 **关键原则**：你的"记忆"是文件系统，不是对话历史。每次醒来，从文件重建状态。
@@ -716,7 +716,7 @@ HARD_CONSTRAINTS = {
 
 ```
 RC-1 回溯分析：
-  - 重读所有 .planning/ 产出物（requirements/prd/tech-plan）
+  - 重读所有 planning/ 产出物（requirements/prd/tech-plan）
   - 对比 decision-log.jsonl 最近 30 条用户原始意图
   - 识别偏差点和根本原因
 
