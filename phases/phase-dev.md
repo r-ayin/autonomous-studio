@@ -8,6 +8,18 @@
 - 输入: 自动读取 `planning/prd.json`
 - 完成后自动 `git add` + `git commit` + `git push`
 
+### GLM 代码风格纪律（使用非前沿模型时强制生效）
+
+GLM-5.2 / Qwen / DeepSeek 等中等模型最常见的质量问题不是"写不出"而是"改太多"。以下规则强制：
+
+1. **最小改动**：只改完成 task 必须改的代码。不"顺手"重构、不"优化"无关文件、不抽取只用一次的公共函数。
+2. **不必要抽象禁止**：一段逻辑只用一次就直接内联，不要"为了复用"提取 util/helper。
+3. **保持现有风格**：改文件前先读已有 30 行，确认命名规范（camelCase/snake_case）、缩进（tab/space）、引号（单/双），然后严格一致。
+4. **禁止创造性重命名**：不要把已有变量/函数/文件改名为"更好的"名字。保持原名。
+5. **diff 自检**：每次修改后检查 diff 行数，超过 task 预期改动量 2 倍立即停下审查、删多余改动。
+
+违反任一条 → Validator 标 ❌ 并要求回滚不必要的改动。
+
 ### UI 视觉设计参考（react-bits）
 
 写 UI 代码时，视觉特效可参考 [react-bits](https://github.com/DavidHDev/react-bits)（130+ 动画组件库）的效果思路（**只是参考素材，不是照搬**——你作为世界上最厉害的设计师，从中融合、举一反三，写出比原组件更好、更贴合需求主题的 UI），完整目录见 `~/.claude/skills/kanban-automation/recipes/design-reference-react-bits.md`：
@@ -40,8 +52,11 @@
 5. git commit：`feat: [N1-01] 任务标题`
 6. 立即触发 Validator（见 ③-V）
 7. Validator 通过 → 继续下一个
-8. Validator 失败 → notes 写入原因，status 改回 pending → 下轮自动修复
-9. 同一 task 连续失败 3 次 → `blocked: true`，跳过并记录
+8. Validator 失败 → 执行 **Reflexion 修复协议**（最多 2 轮，用外部信号反馈，不是自我反思）：
+   - **轮次 1**：读 Validator 报告的 ❌ 条目（这是外部信号，不是自己重新审查代码）→ 对每个 ❌ 提取"预期行为+实际行为+涉及文件"→ 只改必要代码（不重构不优化）→ 重新触发 Validator → 通过则继续下一个 task。
+   - **轮次 2**（轮次 1 仍有 ❌ 时）：先对比轮次 1 的修复与新 ❌，判断是否引入新问题；新问题 → `git checkout` 回滚到轮次 1 之前重新分析；同一问题未修好 → 换一种实现思路再试 → 重新触发 Validator。
+   - **关键**：Reflexion 的输入必须是 Validator 报告（外部二元信号），不是让模型自己重新审查代码——中等模型纯自我反思可能零提升甚至越改越坏。
+9. 同一 task Reflexion 2 轮仍失败 → `blocked: true`，notes 写入两轮尝试的失败原因摘要，跳过并记录（第 3 轮及以后中等模型修复成功率接近 0 但 token 线性增长，不值得继续）。
 10. 每完成一批 → 输出进度摘要
 11. 所有 P0 done → 自动触发 ③-R 全量对照评审
 
@@ -137,3 +152,73 @@
 - 有 ❌ → 回到 ③ 开发补充，不进入 E2E
 - 只有 ⚠️ → 输出给用户决定是否修复
 - 全 ✅ → 自动推进 `currentStage = "verification"`
+
+## ④ 并发构建模式（worktree 隔离 + 主控合并）
+
+> 当 prd.json 有多个独立任务（`blockedBy` 无依赖、`files` 不重叠）时启用。
+> 这是 ③ 并行子模式的**强隔离版**：每个 agent 独立 worktree + 独立分支，互不影响，最后主控合并。
+> 与 ③ 并行子模式（同目录 spawn、中央提交）二选一——任务各需独立构建环境/真隔离走 ④；小改同栈走 ③。
+
+### 核心流程
+
+**Wave 0 — 主 agent 产出并发契约 `planning/parallel-plan.json`**：
+主 agent（opus）读 prd.json，**不写业务代码**，只产出契约：
+1. **DAG 分层**：按 `blockedBy` 做拓扑排序，分成 Wave 1..k，同 wave 内任务互不依赖。
+2. **文件所有权校验**：同 wave 内所有 task 的 `files` 两两交集为空；有重叠 → 合并到同一 task 或下移一个 wave。
+3. **接口契约**：跨 task 的共享接口（类型定义、API schema、状态字段名）写进 parallel-plan.json 的 `contracts` 段——每个 agent 都按此契约编码，不各自发明。
+4. **环境脚本**：`env_setup` 段写清每个 worktree 的 install/端口/.env 差异。
+5. 依赖环检测：`blockedBy` 成环 → 中止并发，回退 ③ 串行。
+
+**Wave 1..k — 分层限流并发**（`scripts/parallel-dispatch.sh`）：
+- 每个 task 一个 `git worktree`（独立工作目录 + 独立分支 `parallel/{task-id}`），共享 .git。
+- 每 wave 内 spawn agent（sonnet 写码），**并发上限 4**（`min(DAG 层宽, 4, 端点 QPS)`），超出排队，不是全开。
+- 每个 agent 的 prompt **只含**：parallel-plan.json 路径 + 本 task id + "只改你 `files` 清单内的文件、按 contracts 段编码、过 acceptance、commit 到本分支"。
+- 每个 agent 内部走 ③ 的 GLM 代码风格纪律 + 测试驱动 Reflexion；Stop 完成门控逐 agent 生效。
+- 每 agent 设预算+轮次上限，超限 → `blocked: true`，**不阻塞同 wave 其他 agent**。
+
+**Wave merge — 增量合并**（`scripts/parallel-merge.sh`）：
+- **不全部最后并**——按依赖顺序逐个 merge `parallel/{task-id}` → 主分支，每并一个跑集成测试。
+- 语义冲突在只牵涉 2 分支时暴露，不是 k 个缠一起时。
+- 合并冲突 / 集成测试失败 → 该分支隔离（`parallel-blocked/`），不阻塞已成功的合并。
+- Blocked 分支进第二波重试或回主控人工处理。
+
+**Wave final — 主合并 agent**（opus）：
+- 修剩余集成 bug → 实跑关键路径（不只编译）→ 跑 ③-R 全量 PRD 对照 → 全过才标记 done + 更新 status.json。
+- 合并 agent 是真实工作，用测试通过作停止条件（接 Stop 完成门控）。
+
+### parallel-plan.json 契约格式
+
+```json
+{
+  "version": "1.0",
+  "source": "planning/prd.json",
+  "maxConcurrency": 4,
+  "waves": [
+    { "wave": 1, "tasks": ["N1-01", "N1-02", "N2-01"] },
+    { "wave": 2, "tasks": ["N1-03"] }
+  ],
+  "contracts": {
+    "sharedTypes": "src/types/api.ts — 所有 task 按此类型编码，不得各自定义",
+    "apiSchema": "POST /api/apply → {userId, reason(>=10字)} → {code, id}",
+    "statusFields": "applications.status 枚举: pending|approved|rejected"
+  },
+  "ownership": { "N1-01": ["src/form.ts"], "N1-02": ["src/list.ts"] },
+  "envSetup": "每 worktree: ln -s $MAIN/node_modules .; 端口 3001..300N 写各 .env"
+}
+```
+
+### 适用边界（路由规则）
+
+| 场景 | 走哪 |
+|---|---|
+| 任务独立 + 文件不重叠 + 各需独立环境/构建 | ④ 并发构建 |
+| 任务独立但同栈小改、不需独立环境 | ③ 并行子模式（同目录中央提交） |
+| 任务有依赖 / 改同一文件 / 架构核心耦合 | ③ 串行（先做核心骨架，再放并行翅膀） |
+| 机械迁移（per-file，独立） | ④ 并发构建（最理想） |
+
+### 禁止行为
+- ❌ 用"分支"而非"worktree"隔离——同一工作目录多分支会互相覆盖文件。必须 `git worktree add`。
+- ❌ 全部最后才合并——集成地狱。必须按依赖序增量合并 + 每并一个跑集成测试。
+- ❌ 全开并发不限流——GLM 端点 QPS 会限流。必须上限 4。
+- ❌ 主 agent 产出完整架构实现而非契约——中等模型在"写完整应用"上易失败；只产接口契约 + 文件所有权，把"写完整应用"降解成 N 个"写过测试的函数"。
+- ❌ 跳过 Wave final 的实跑验证直接汇报——编译过≠功能对。

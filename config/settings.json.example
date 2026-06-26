@@ -137,6 +137,17 @@
         ]
       },
       {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/post-edit-lint.py\" 2>&1",
+            "timeout": 90,
+            "statusMessage": "编辑后自动 lint/测试..."
+          }
+        ]
+      },
+      {
         "matcher": "AskUserQuestion",
         "hooks": [
           {
@@ -153,6 +164,17 @@
           {
             "type": "command",
             "command": "python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/discovery-gate.py\" 2>&1; python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/decision-observer.py\" 2>&1"
+          }
+        ]
+      },
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/stop-completion-gate.py\" 2>&1",
+            "timeout": 180,
+            "statusMessage": "完成门控检查（测试/任务/语法）..."
           }
         ]
       }

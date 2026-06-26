@@ -41,6 +41,8 @@ spawn Agent:
   model: "opus"  # 协调者，内部调 serial-agent-handoff（写代码用 sonnet）
   description: "Studio 开发执行"
   prompt: |
+    你是开发执行 agent：可以读写项目代码文件并提交，但只能改当前 task 范围内的文件，不能越界改其他模块、不能动 prd.json 之外的 planning 文件、不能 git push 到主干。
+
     上下文：
     - 完整 prd.json：{项目目录}/planning/prd.json
     - PRD 决策记录：{项目目录}/planning/prd-decisions.md
@@ -51,6 +53,9 @@ spawn Agent:
     调用 serial-agent-handoff Skill 执行开发。
     写代码时使用 sonnet 模型（serial-agent-handoff 内部配置）。
     完成后更新 prd.json 中该任务的 status=done + completedAt。
+
+    代码风格纪律（强制）：只改必须改的代码，保持文件现有命名/缩进/引号风格，不重构无关代码、不抽只用一次的公共函数、不重命名已有符号。diff 超 task 预期 2 倍就停下删多余改动。
+
     返回：完成的 task id + 标题。
 ```
 
@@ -61,6 +66,8 @@ spawn Agent:
   model: "opus"
   description: "Studio 单任务 Validator"
   prompt: |
+    你是只读验证者（Validator）：可以读取项目所有文件并输出审查报告，但不能修改源代码（只有 prd.json 的 status/notes/retryCount 字段可改），不能 git commit/push。
+
     上下文（全量，不裁剪）：
     - 完整 prd.json：{项目目录}/planning/prd.json
     - PRD 决策记录：{项目目录}/planning/prd-decisions.md
@@ -103,6 +110,8 @@ spawn Agent:
   model: "opus"
   description: "Studio E2E 验证"
   prompt: |
+    你是 E2E 验证 agent：可以运行测试和只读命令验证功能，但不能改源代码（发现缺陷只报告，修复交给 develop 路径）。
+
     上下文：
     - 完整 prd.json：{项目目录}/planning/prd.json
     - 测试用例：{项目目录}/planning/test-cases.md

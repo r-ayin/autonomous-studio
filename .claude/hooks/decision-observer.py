@@ -385,7 +385,7 @@ def handle_user_prompt_submit(data: dict):
         engine = studio_status.get("engine", {})
         engine["autoAdvance"] = False
         engine["blockedReasons"] = engine.get("blockedReasons", []) + ["用户主动停止自动推进"]
-        engine["nextActionHint"] = "自动驾驶已暂停。说"继续自动"或"auto on"重新启用"
+        engine["nextActionHint"] = '自动驾驶已暂停。说"继续自动"或"auto on"重新启用'
         studio_status["engine"] = engine
         studio_status["lastUpdated"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         safe_write_json(STUDIO_STATUS_FILE, studio_status)
@@ -515,6 +515,22 @@ def handle_stop(data: dict):
         f"**使用工具**: {', '.join(tools_used) if tools_used else '无'} | **决策点**: {decisions}",
         "[ISOLATION] 日志和状态绑定到此 session_id，跨会话不混淆",
     ]
+
+    # Token 泄漏防护：每 10 轮提醒压缩/切会话（MSR 实测：输入:输出=20-25:1，上下文二次方增长）
+    try:
+        sfile = get_session_file(session_id)
+        if os.path.exists(sfile):
+            with open(sfile, "r", encoding="utf-8") as f:
+                sc = json.load(f)
+            ic = sc.get("input_count", 0)
+            if ic > 0 and ic % 10 == 0:
+                context_parts.extend([
+                    "",
+                    f"💡 **TOKEN 泄漏防护**: 本会话已 {ic} 轮。上下文二次方增长，"
+                    "建议执行 /compact 总结进展或开新会话继续。代码评审一次性给全部修改意见，不逐条来回。",
+                ])
+    except Exception:
+        pass
 
     # Studio 阶段状态注入（L1 内联感知，解决遗漏I）
     if studio_stage:
