@@ -462,21 +462,28 @@ Q5: 行动失败的代价有多大？
   7. 成功 → git commit（如适用）+ 清理备份分支
 
 执行后必做：
-  1. 写决策案例 → decisions/case-YYYY-MM-DD-NNN.json
-  2. 更新 calibration.json（pattern accuracy 调整）
+  1. 写决策案例 → decisions/case-YYYY-MM-DD-NNN.json（含显式 outcome 字段，见 ⑦）
+  2. 标注 case 的 outcome（success/failure/partial_success/user_rejected/aborted）+ outcome_evidence（引用可观察事实：测试输出/git diff/用户原话）
   3. 更新 autonomous-state.md（时间戳 + 行动计数）
   4. 如果修改了项目文件 → 更新 PROGRESS.md
+  ★ accuracy 不再由子 agent 自评 —— 由 scripts/distill-patterns.py 从 case outcome 确定性计算。子 agent 只负责如实标注 outcome。
 ```
 
 ### 阶段 ⑦: RETROSPECT（回溯）
 
 ```
-在决策案例的 lessons_learned 字段记录：
-  - 什么做对了？（保留）
-  - 什么不够好？（改进）
-  - 如果有下一次，会怎么做不同？
-  - 是否发现了新的决策模式？（→ 写入 decision-patterns.md）
+在决策案例记录结构化回溯（不再写散文式 lessons）：
+  - outcome: success | failure | partial_success | user_rejected | aborted
+      （二元枚举，不是"做得还行"这种模糊语）
+  - outcome_evidence: 引用可观察事实——"pytest 3 passed"、"git diff 含 X"、"用户说'不对'"
+      （不接受 LLM 散文总结，必须可验证）
+  - what_worked / what_to_improve: 各 ≤2 条
+  - new_pattern_discovered: 签名前缀格式 "domain:action:variant"（如 "implementation:debug:fix_verify"），
+      后接 " — " 再写一句话描述。**不直接写 decision-patterns.md**——由 scripts/distill-patterns.py
+      定期从 case 聚合 + 门禁验证后写入。
 ```
+> 设计原则：执行者不评判自己（EDV）。outcome 由可观察事实定义，accuracy 由确定性脚本从 outcome 算，
+> pattern 写入由独立 distill 脚本 + verify-pattern.sh 门禁把关——LLM 自评 82% 虚高，不可用。
 
 ---
 
@@ -610,11 +617,14 @@ Step S4: 输出
     "files_modified": ["文件路径"],
     "case_file_written": "case-YYYY-MM-DD-NNN.json"
   },
-  
+
+  "outcome": "success|failure|partial_success|user_rejected|aborted",
+  "outcome_evidence": "可观察事实：pytest 输出 / git diff / 用户原话",
+
   "retrospect": {
-    "what_worked": ["做对的"],
-    "what_to_improve": ["需改进的"],
-    "new_pattern_discovered": null,
+    "what_worked": ["做对的（≤2 条）"],
+    "what_to_improve": ["需改进的（≤2 条）"],
+    "new_pattern_discovered": "domain:action:variant — 一句话描述（或 null）",
     "lessons_learned": ["教训"]
   }
 }
@@ -640,7 +650,7 @@ Step S4: 输出
 | `codegraph/capability-registry.json` | CodeGraph 能力注册表 | 融合预检 |
 | `codegraph/integration-rules.json` | 集成规则引擎 | 融合预检 |
 | `codegraph/engine-touchpoints.json` | 引擎触点注册表 | 融合预检 |
-| `decisions/case-*.json` | 历史案例 | MATCH 阶段 |
+| `decisions/case-*.json` | 历史案例 | MATCH 阶段（**经 scripts/index-cases.py ANN 检索 top-5 相似案例，非全量扫描**） |
 
 ### 写入（只写结构化数据）
 

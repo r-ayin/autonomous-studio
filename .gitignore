@@ -12,6 +12,8 @@
 .claude/memory/autonomous-state-runtime.md
 .claude/memory/session-progress.md
 .claude/memory/autonomous-suggestions.md
+*.broken.bak
+*.broken.*
 planning/status.json
 
 # Node/Python

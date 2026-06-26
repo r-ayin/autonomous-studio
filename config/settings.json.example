@@ -124,6 +124,15 @@
             "command": "python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/protocol-check.py\" 2>&1"
           }
         ]
+      },
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"${CLAUDE_PROJECT_DIR}/.claude/hooks/patterns-write-gate.py\" 2>&1"
+          }
+        ]
       }
     ],
     "PostToolUse": [

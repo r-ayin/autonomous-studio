@@ -11,7 +11,6 @@ metadata:
 > 模式从 `decision-archive.md` 和 `case-*.json` 中提取。
 
 ## 已提取的模式
-
 ### Pattern: debug_fix_and_verify
 - **签名前缀**: `implementation:debug:*:fix_verify`
 - **触发条件**: 用户报告 bug，有明确复现步骤
@@ -111,3 +110,170 @@ metadata:
 - **典型响应**: S-0 降频豁免 → S-1 一致性 → S-2 机会成本 → S-3 技术债 → S-4 跨项目
 - **关键规则**: locked=true 时强制将 consecutive_no_delta 归零（防止 L3 降频）
 - **输出**: route_health_score 写入 status.json.engine.routeHealth
+### Pattern: workspace_hygiene
+- **签名前缀**: `cold_start:scout:workspace_hygiene`
+- **accuracy**: 0.0 (zombie(无 case 关联,待退役))
+- **actions/approved**: 0/0
+- **来源**: engine-discovered:case-2026-06-15-003
+
+### Pattern: workspace_hygiene — 冷启动瞭望中git脏乱+核心项目pending的组合模式
+- **签名前缀**: `cold_start:scout:workspace_hygiene — 冷启动瞭望中git脏乱+核心项目pending的组合模式`
+- **accuracy**: 0.0 (new(待积累))
+- **actions/approved**: 1/0
+- **来源**: engine-discovered:case-2026-06-15-003
+
+### Pattern: cold_start_exhaustion
+- **签名前缀**: `cold_start_exhaustion`
+- **accuracy**: 0.0 (zombie(无 case 关联,待退役))
+- **actions/approved**: 0/0
+- **来源**: engine-discovered:case-2026-06-16-005+006
+
+### Pattern:  当冷启动+0交互+扫描发现已穷尽时，引擎应从SUGGEST降级至OBSERVE，避免制造重复噪音
+- **签名前缀**: `cold_start_exhaustion: 当冷启动+0交互+扫描发现已穷尽时，引擎应从SUGGEST降级至OBSERVE，避免制造重复噪音`
+- **accuracy**: 0.0 (new(待积累))
+- **actions/approved**: 1/0
+- **来源**: engine-discovered:case-2026-06-16-005
+
+### Pattern:  与前次独立确认一致
+- **签名前缀**: `cold_start_exhaustion_confirmed: 与前次独立确认一致`
+- **accuracy**: 0.0 (new(待积累))
+- **actions/approved**: 1/0
+- **来源**: engine-discovered:case-2026-06-16-007
+
+### Pattern:  当autonomous-state.md中进度显示全部完成条件✅但GOAL_STATUS≠goal_achieved时，触发状态同步操作
+- **签名前缀**: `goal_completion_detected: 当autonomous-state.md中进度显示全部完成条件✅但GOAL_STATUS≠goal_achieved时，触发状态同步操作`
+- **accuracy**: 0.0 (new(待积累))
+- **actions/approved**: 1/1
+- **来源**: engine-discovered:case-2026-06-15-002
+
+### Pattern: commit_autonomous_work
+- **签名前缀**: `infrastructure:git:commit_autonomous_work`
+- **accuracy**: 0.0 (zombie(无 case 关联,待退役))
+- **actions/approved**: 0/0
+- **来源**: engine-discovered:case-2026-06-16-008
+
+### Pattern: commit_autonomous_work — 自主产出闭环提交模式
+- **签名前缀**: `infrastructure:git:commit_autonomous_work — 自主产出闭环提交模式`
+- **accuracy**: 0.0 (new(待积累))
+- **actions/approved**: 1/1
+- **来源**: engine-discovered:case-2026-06-16-008
+
+### Pattern: goal_achieved
+- **签名前缀**: `infrastructure:goal_completion:goal_achieved`
+- **accuracy**: 0.0 (zombie(无 case 关联,待退役))
+- **actions/approved**: 0/0
+- **来源**: engine-discovered:case-2026-06-15-002
+
+### Pattern: engine_bootstrap
+- **签名前缀**: `infrastructure:plan:infrastructure:engine_bootstrap`
+- **accuracy**: 0.0 (zombie(无 case 关联,待退役))
+- **actions/approved**: 0/0
+- **来源**: decision-patterns.md:protocol_bootstrap
+
+### Pattern: batch_case_sync
+- **签名前缀**: `l3:infrastructure:archive:batch_case_sync`
+- **accuracy**: 0.0 (zombie(无 case 关联,待退役))
+- **actions/approved**: 0/0
+- **来源**: engine-discovered:case-2026-06-16-002
+
+### Pattern: batch_case_sync — L3深度检查中发现未归档案例时批量同步到decision-archive.md
+- **签名前缀**: `l3:infrastructure:archive:batch_case_sync — L3深度检查中发现未归档案例时批量同步到decision-archive.md`
+- **accuracy**: 0.0 (new(待积累))
+- **actions/approved**: 1/0
+- **来源**: engine-discovered:case-2026-06-16-002
+
+### Pattern:  Major state change — first user interaction after prolonged vacuum. Engine correctly transitioned from cold_start_exhaustion OBSERVE to full reconnaissance mode with ACT_SILENT for infrastructure maintenance.
+- **签名前缀**: `l3:user_engagement_breakthrough: Major state change — first user interaction after prolonged vacuum. Engine correctly transitioned from cold_start_exhaustion OBSERVE to full reconnaissance mode with ACT_SILENT for infrastructure maintenance.`
+- **accuracy**: 0.0 (new(待积累))
+- **actions/approved**: 1/1
+- **来源**: engine-discovered:case-2026-06-16-009
+
+### Pattern: no_delta
+- **签名前缀**: `scout:infrastructure:scan:no_delta`
+- **accuracy**: 0.0 (zombie(无 case 关联,待退役))
+- **actions/approved**: 0/0
+- **来源**: engine-discovered:case-2026-06-16-001
+
+### Pattern: no_delta — 连续扫描无变化时跳过建议更新
+- **签名前缀**: `scout:infrastructure:scan:no_delta — 连续扫描无变化时跳过建议更新`
+- **accuracy**: 0.0 (new(待积累))
+- **actions/approved**: 1/0
+- **来源**: engine-discovered:case-2026-06-16-001
+
+### Pattern:  When user completes a feature deployment (commits pushed), engine should recognize the 'deployment steady state' — maintain infrastructure (archive + calibrate + research) at OBSERVE level, do not initiate new project-level actions, do not update suggestions unless genuinely new issues emerge.
+- **签名前缀**: `scout:post_deployment_steady_state: When user completes a feature deployment (commits pushed), engine should recognize the 'deployment steady state' — maintain infrastructure (archive + calibrate + research) at OBSERVE level, do not initiate new project-level actions, do not update suggestions unless genuinely new issues emerge.`
+- **accuracy**: 0.0 (new(待积累))
+- **actions/approved**: 1/0
+- **来源**: engine-discovered:case-2026-06-16-012
+
+### Pattern:  缩减搜索预算至0-1查询, 优先内部基础设施维护
+- **签名前缀**: `scout:research_saturation — 当引擎检测到连续N次L3均无法发现新研究领域时, 进入研究饱和模式: 缩减搜索预算至0-1查询, 优先内部基础设施维护`
+- **accuracy**: 0.0 (new(待积累))
+- **actions/approved**: 1/0
+- **来源**: engine-discovered:case-2026-06-17-002
+
+### Pattern: research_validation_vs_novelty — 区分'确认性研究'(验证prior发现)和'创新性研究'(新领域), 降低确认性查询在query规划中的优先级
+- **签名前缀**: `scout:research_validation_vs_novelty — 区分'确认性研究'(验证prior发现)和'创新性研究'(新领域), 降低确认性查询在query规划中的优先级`
+- **accuracy**: 0.0 (new(待积累))
+- **actions/approved**: 1/0
+- **来源**: engine-discovered:case-2026-06-17-001
+
+### Pattern: stand_down — When user is actively building a feature in the main session, engine's correct response is silent OBSERVE with minimal metadata writes. Do not touch user's development files, do not suggest during active work, do not git add/commit.
+- **签名前缀**: `scout:user_active_development:stand_down — When user is actively building a feature in the main session, engine's correct response is silent OBSERVE with minimal metadata writes. Do not touch user's development files, do not suggest during active work, do not git add/commit.`
+- **accuracy**: 0.0 (new(待积累))
+- **actions/approved**: 1/0
+- **来源**: engine-discovered:case-2026-06-16-011
+
+### Pattern:  execute 1 targeted WebSearch in genuinely new domain (not prior cycles) → archive pending cases → update calibration → return OBSERVE. No suggestions push, no project scans, no multi-query research. The user's instruction is the highest-priority signal.
+- **签名前缀**: `scout:user_directive_observe: When user explicitly instructs OBSERVE + 'don't over-research', engine should: execute 1 targeted WebSearch in genuinely new domain (not prior cycles) → archive pending cases → update calibration → return OBSERVE. No suggestions push, no project scans, no multi-query research. The user's instruction is the highest-priority signal.`
+- **accuracy**: 0.0 (new(待积累))
+- **actions/approved**: 1/0
+- **来源**: engine-discovered:case-2026-06-16-014
+
+### Pattern:  verify archive status + single research query + calibration update + return OBSERVE. Do NOT re-scan projects or re-read all PROGRESS.md files. Skip full seven-stage deliberation — the prior L3's diagnosis is still valid.
+- **签名前缀**: `scout:zero_delta_rapid_return: When L3 activates within <30min of prior L3 with zero state change, execute minimal protocol: verify archive status + single research query + calibration update + return OBSERVE. Do NOT re-scan projects or re-read all PROGRESS.md files. Skip full seven-stage deliberation — the prior L3's diagnosis is still valid.`
+- **accuracy**: 0.0 (new(待积累))
+- **actions/approved**: 1/0
+- **来源**: engine-discovered:case-2026-06-16-013
+
+### Pattern:  Major state change
+- **签名前缀**: `l3:user_engagement_breakthrough: Major state change`
+- **accuracy**: 0.0 (new(待积累显式 outcome))
+- **actions/approved**: 1/1
+- **来源**: engine-discovered:case-2026-06-16-009
+
+### Pattern:  When user completes a feature deployment (commits pushed), engine should recognize the 'deployment steady state'
+- **签名前缀**: `scout:post_deployment_steady_state: When user completes a feature deployment (commits pushed), engine should recognize the 'deployment steady state'`
+- **accuracy**: 0.0 (new(待积累显式 outcome))
+- **actions/approved**: 1/0
+- **来源**: engine-discovered:case-2026-06-16-012
+
+### Pattern: research_saturation
+- **签名前缀**: `scout:research_saturation`
+- **accuracy**: 0.0 (new(待积累显式 outcome))
+- **actions/approved**: 1/0
+- **来源**: engine-discovered:case-2026-06-17-002
+
+### Pattern: research_validation_vs_novelty
+- **签名前缀**: `scout:research_validation_vs_novelty`
+- **accuracy**: 0.0 (new(待积累显式 outcome))
+- **actions/approved**: 1/0
+- **来源**: engine-discovered:case-2026-06-17-001
+
+### Pattern: stand_down
+- **签名前缀**: `scout:user_active_development:stand_down`
+- **accuracy**: 0.0 (new(待积累显式 outcome))
+- **actions/approved**: 1/0
+- **来源**: engine-discovered:case-2026-06-16-011
+
+### Pattern: user_directive_observe
+- **签名前缀**: `scout:user_directive_observe`
+- **accuracy**: 0.0 (new(待积累显式 outcome))
+- **actions/approved**: 1/0
+- **来源**: engine-discovered:case-2026-06-16-014
+
+### Pattern:  verify archive status + single research query + calibration update + return OBSERVE. Do NOT re-scan projects or re-read all PROGRESS.md files. Skip full seven-stage deliberation
+- **签名前缀**: `scout:zero_delta_rapid_return: When L3 activates within <30min of prior L3 with zero state change, execute minimal protocol: verify archive status + single research query + calibration update + return OBSERVE. Do NOT re-scan projects or re-read all PROGRESS.md files. Skip full seven-stage deliberation`
+- **accuracy**: 0.0 (new(待积累显式 outcome))
+- **actions/approved**: 1/0
+- **来源**: engine-discovered:case-2026-06-16-013

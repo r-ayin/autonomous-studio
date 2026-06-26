@@ -28,6 +28,7 @@ if sys.platform == "win32":
 
 PROJECT_DIR = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
 LOG_FILE = os.path.join(PROJECT_DIR, ".claude", "decision-log.jsonl")
+DECISIONS_DIR = os.path.join(PROJECT_DIR, ".claude", "decisions")
 # 运行时心跳状态写到独立文件，**绝不覆写** autonomous-state.md（那是手维护的富状态：
 # v3.0 引擎配置/历史目标/项目索引等）。本文件每次 Stop 覆写，只存最新运行时快照。
 STATE_FILE = os.path.join(PROJECT_DIR, ".claude", "memory", "autonomous-state-runtime.md")
@@ -87,6 +88,55 @@ def is_studio_draft_pending(status: dict) -> bool:
     engine = status.get("engine", {})
     draft = engine.get("draftPending", {})
     return bool(draft.get("stage")) and not draft.get("confirmed", False)
+
+
+def extract_decision_outcome():
+    """从最新 case-*.json 回读决策结果，供 decision-log 记录。
+    闭合数据管道：confidence-calibrator.js 期望 stage/result/confidence_score，
+    但之前 observer 从不写这些字段。现在从最新 case 提取。
+    case schema: decide.action_level / decide.confidence_score / retrospect.new_pattern_discovered
+                 顶层 outcome（新字段，枚举）或 execute.outcome
+    """
+    import glob as _glob
+    try:
+        cases = sorted(_glob.glob(os.path.join(DECISIONS_DIR, "case-*.json")))
+        if not cases:
+            return None
+        latest = cases[-1]
+        case = safe_read_json(latest)
+        if not case:
+            return None
+        decide = case.get("decide", {}) or {}
+        retro = case.get("retrospect", {}) or {}
+        exec_ = case.get("execute", {}) or {}
+        # outcome: 优先显式字段，否则 None（distill 会推断）
+        outcome = case.get("outcome") or retro.get("outcome") or exec_.get("outcome") or None
+        return {
+            "type": "decision_outcome",
+            "case_file": os.path.basename(latest),
+            "case_id": case.get("case_id"),
+            "stage": decide.get("action_level", "unknown"),
+            "result": outcome or decide.get("action_level", "unknown"),
+            "confidence_score": decide.get("confidence_score", 0),
+            "pattern_used": _sig_from_discovered(retro.get("new_pattern_discovered")) if retro.get("new_pattern_discovered") else "none",
+            "case_timestamp": case.get("timestamp"),
+        }
+    except Exception:
+        return None
+
+
+def _sig_from_discovered(s):
+    """从 new_pattern_discovered 长描述提取签名前缀（与 distill-patterns.py 一致）"""
+    if not s:
+        return ""
+    s = s.strip()
+    for sep in [" — ", " – ", " - "]:
+        if sep in s:
+            return s.split(sep, 1)[0].strip()
+    if ": " in s:
+        return s.split(": ", 1)[0].strip()
+    return s
+
 
 
 def confirm_studio_draft(status: dict, prompt: str) -> bool:
@@ -433,6 +483,12 @@ def handle_stop(data: dict):
         "session_id": session_id,
         "boundary": "stop",
     })
+
+    # 1b. 从最新 case 回读决策结果，写 decision_outcome 到 decision-log
+    #     闭合数据管道：让 confidence-calibrator.js 终于能拿到 stage/result/confidence_score
+    outcome = extract_decision_outcome()
+    if outcome:
+        safe_append_jsonl(LOG_FILE, outcome)
 
     record = {
         "type": "assistant_response",

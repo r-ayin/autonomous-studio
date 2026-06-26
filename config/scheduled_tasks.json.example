@@ -11,6 +11,12 @@
       "cron": "17 */2 * * *",
       "prompt": "AUTONOMOUS_HEARTBEAT L2 (2h, GLM 预算制) v2.1 — Agent Isolation Mode:\n0. Quick pre-check: 检查 workspace 下是否有任意项目含 planning/status.json。若无任何活跃 Studio 项目，输出 \"<!-- HB SKIP: no studio -->\" 并 STOP（不 spawn agent，省 token）。\n1. Quick pre-check: Read .claude/decisions/calibration.json → if cooldown.current_consecutive >= 3, output \"<!-- HB COOL -->\" and STOP.\n2. Quick pre-check: Read .claude/memory/autonomous-state.md → if GOAL_STATUS is \"paused\", output \"<!-- HB SKIP: paused -->\" and STOP. If goal_achieved or no goal → CONTINUE (scout mode).\n3. If pre-checks pass: Use Agent tool to spawn a sub-agent:\n   - subagent_type: \"general-purpose\"\n   - description: \"L2 scout scan\"\n   - prompt: \"You are the autodev-engine v2.1 isolated decision agent. FIRST, Read .claude/skills/autonomous-engine/decision-agent-prompt.md — that is your complete operating manual. Your context is clean (no conversation history). Activation: L2 heartbeat 2h. Read decision-log.jsonl (last 30 lines), calibration.json, autonomous-state.md. If GOAL_STATUS is achieved or absent, run §1.5 Active Scout Protocol. If active goal exists, run full §1 seven-phase framework. Output <decision>JSON</decision> + max 3 lines summary.\"\n4. If the sub-agent returns action_level >= ACT_NOTIFY and confidence >= 71, execute the recommended actions.\n5. If sub-agent returns SUGGEST → append findings to autonomous-suggestions.md.\n6. If nothing to do: output \"<!-- HB OK -->\" and STOP.\n7. Keep response minimal.",
       "recurring": true
+    },
+    {
+      "id": "distill-patterns",
+      "cron": "13 */6 * * *",
+      "prompt": "AUTONOMOUS_DISTILL: 确定性蒸馏（零 LLM token）。执行 bash: python3 scripts/distill-patterns.py --project . --apply 2>&1 | tail -25。然后一行汇报：重算了几个 pattern 的 accuracy、几个僵尸(actions=0)、几个新注册、门禁是否通过。不做任何 LLM 推理，只执行脚本+汇报。脚本报错则输出错误并 STOP。",
+      "recurring": true
     }
   ]
 }
