@@ -282,6 +282,14 @@ def do_commit(repo_name: str, repo_path: str, is_subrepo: bool,
     resolved = os.path.join(WORKSPACE_ROOT, repo_path)
     resolved = os.path.abspath(resolved)
 
+    # 自主模式激活时不自动提交（避免绕过 autonomous-commit-gate 直接进 main）
+    # 改由 controller 走 scripts/opt-worktree.sh commit → optimization worktree 等人工审
+    if os.path.exists(os.path.join(WORKSPACE_ROOT, ".claude", ".autonomous_active")):
+        if not suppress_output:
+            print(f"  [AUTO-COMMIT] ⏸️ {repo_name}: 自主模式激活，跳过自动提交 main "
+                  f"（改用 scripts/opt-worktree.sh commit <area:sub> \"<说明>\"）", file=sys.stderr)
+        return False
+
     # 检测 merge 冲突
     if has_merge_conflict(resolved):
         if not suppress_output:

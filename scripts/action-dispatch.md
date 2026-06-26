@@ -151,7 +151,7 @@ spawn Agent:
 
 无论走哪条路径，行动 agent 返回后主会话统一执行：
 
-1. **有代码变更** → `git add + commit + push`
+1. **有代码变更** → 自主模式下用 `bash scripts/opt-worktree.sh commit <area:subdirection> "<说明>"`（进 optimization worktree 等人工审，不直接碰 main——autonomous-commit-gate 会拦）；非自主模式（用户指挥）才直接 `git add + commit`
 2. **阶段推进** → 更新 `status.json`
 3. **输出摘要** → `Studio {阶段} @ {时间} | {摘要}`
 4. **建议类** → 追加到 `.claude/memory/autonomous-suggestions.md`
