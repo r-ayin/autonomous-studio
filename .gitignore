@@ -5,9 +5,13 @@
 .claude/.watchdog_stale
 .claude/.watchdog_resume_needed
 .claude/.last_phone_notify
+.claude/.stop_gate_strikes.json
+.claude/discovery_gate.lock
 .claude/decision-log.jsonl
 .claude/scheduled_tasks.json
 .claude/memory/autonomous-state-runtime.md
+.claude/memory/session-progress.md
+.claude/memory/autonomous-suggestions.md
 planning/status.json
 
 # Node/Python

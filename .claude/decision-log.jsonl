@@ -1,5 +1,0 @@
-{"type":"system","session_id":"init","classification":"meta","project_hint":"infrastructure","prompt_length":0,"prompt_preview":"Decision Observer initialized","timestamp":"2026-06-15T00:00:00Z"}
-{"type":"user","session_id":"961037da-ab25-461a-a873-e8eacdeae88c","classification":"infrastructure","project_hint":"infrastructure","prompt_length":8,"prompt_preview":"主动引擎主动过几次？","timestamp":"2026-06-16T03:10:00Z"}
-{"type":"user","session_id":"961037da-ab25-461a-a873-e8eacdeae88c","classification":"infrastructure","project_hint":"infrastructure","prompt_length":6,"prompt_preview":"详细讲讲","timestamp":"2026-06-16T03:12:00Z"}
-{"type":"user","session_id":"961037da-ab25-461a-a873-e8eacdeae88c","classification":"infrastructure","project_hint":"infrastructure","prompt_length":45,"prompt_preview":"你做了这么多研究，为什么不直接优化？","timestamp":"2026-06-16T03:14:00Z"}
-{"type":"user","session_id":"961037da-ab25-461a-a873-e8eacdeae88c","classification":"infrastructure_directive","project_hint":"infrastructure","prompt_length":78,"prompt_preview":"先修基础设施，然后更改冷启动协议——检查点+Git回滚替代禁止执行","timestamp":"2026-06-16T03:15:00Z"}
