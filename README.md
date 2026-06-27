@@ -39,7 +39,7 @@ opt-worktree.sh <project> reject <wt>                # 拒绝
 方向分歧判定：`direction = area:subdirection`。同 area 累积同 worktree，不同 area 开新 worktree（隔离）。
 
 ### 3. 蒸馏闭环（决策习惯积累）
-> 现状（2026-06-27）：预算解禁后，引擎每轮重新写 case JSON 喂闭环。基础设施齐备：`distill-patterns.py` / `index-cases.py` / `verify-pattern.sh` / `decision-observer.py` hook 均在；`scheduled_tasks.json` 定义了 L3 每 4h + distill 定时任务（依赖 REPL 空闲触发）。calibration.json `last_decision` 此前停在 06-17（预算暂停期），待引擎续写 case 后由 distill 重算刷新。
+> 现状（2026-06-27）：预算解禁后，引擎每轮重新写 case JSON 喂闭环，已累积归档至 case-047。基础设施齐备：`distill-patterns.py` / `index-cases.py` / `verify-pattern.sh` / `decision-observer.py` hook 均在；`scheduled_tasks.json` 定义了 L3 每 4h + distill 定时任务（依赖 REPL 空闲触发）。calibration.json `last_decision` 此前停在 06-17（预算暂停期），待 distill 重算刷新。
 
 修复了"提示词描述闭环、代码实现开环"的 7 个断裂。`scripts/distill-patterns.py` 从 case outcome 确定性重算 pattern accuracy（不再 LLM 自评 82% 虚高），`scripts/verify-pattern.sh` 4 门禁（最小样本/accuracy 底线/容量帽/同步检查）防退化。
 
@@ -57,11 +57,13 @@ scout-scan.py --workspace .           # 扫描+索引+写 PROJECTS.md
 scout-scan.py --workspace . --json    # JSON 供 agent 解析
 ```
 
+**标记约定**：`TODO`/`FIXME`/`HACK` 仅在代码注释中以 `MARKER:`/`-` 形式计入真债（剥离字符串字面量与字典键散文自指；忽略 `.venv*`/`site-packages` 第三方包与 `<!-- TODO -->`/`【TODO】` 模板桩）。已 triage 但保留可见的债标 `TODO(deferred)`——主 `_MARKER_RE` 天然不匹配该形式，故**不计入 triage 推荐分子**（不再每轮重推已 triage 项），`_DEFERRED_RE` 单独计数仅供可见性。`pending_*_in_worktrees` 让推荐感知待合并 worktree 已动过 marker 文件，先等合并别重做。
+
 ## Hook 栈（确定性 backstop）
 
 | Hook | 触发 | 作用 |
 |---|---|---|
-| `autonomous-commit-gate.py` | PreToolUse/Bash | 自治标记在时拦死 `git commit/push/merge main`，强制走 opt-worktree |
+| `autonomous-commit-gate.py` | PreToolUse/Bash | 自治标记在时拦死对 main 的 `commit`/`push`/`merge`；tokenizer 跨过 `git -C/-c` 全局选项取真实子命令（修 `git -C <repo> commit` 被旧正则漏放），从 `-C` 解析目标 repo 识别分支；`.claude/decisions/case-*.json` 元数据归档豁免放行。**已知缺口（case-047，进行中）**：`reset --hard`/`branch -D`/`update-ref` 等 ref 直写未拦，WIP 在 optimization worktree |
 | `stop-completion-gate.py` | Stop | 测试/任务/语法二元门控，未完成 exit 2 强制继续（3 连击防死循环） |
 | `post-edit-lint.py` | PostToolUse/Edit\|Write | 编辑后自动 py_compile/tsc/关联测试 |
 | `patterns-write-gate.py` | PreToolUse/Edit\|Write | 阻断直接改 patterns.md（强制走 distill） |
