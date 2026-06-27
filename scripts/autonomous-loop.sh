@@ -73,7 +73,7 @@ while true; do
   cd "$WORKSPACE"
   claude -p "$PROMPT" \
     --permission-mode bypassPermissions \
-    --max-budget-usd 0.50 2>&1 | tail -30
+    --max-budget-usd 3.00 2>&1 | tail -30
   echo "[$(date +%H:%M:%S)] 轮次 $ITER 结束，提交在 opt-worktree（待人工 opt-worktree.sh show/merge）"
   sleep 2  # 短暂喘息，避免空转打爆 API
 done
