@@ -43,6 +43,18 @@ MD_HEAD = re.compile(r"^#{1,3}\s+(.+)$", re.M)
 #   2) 只认 MARKER: / MARKER - 形式（通用债务注释约定）；散文提及 "FIXME/HACK 比 TODO..."
 #      或 "TODO/FIXME/HACK 标记的代码" 不算债务标记
 _STRIP_STRINGS = re.compile(r'"[^"\\]*(?:\\.[^"\\]*)*"|\'[^\'\\]*(?:\\.[^\'\\]*)*\'')
+# 剥离全角括号占位符 【TODO...】 等：scaffold 生成器（如 luban/tools/
+# scaffold-skill.sh）用 【TODO 做什么】 作为待用户填写的模板提示，不是真债务注释。
+# 此前 14/17 个 TODO 全来自 scaffold-skill.sh 的占位提示，致 autonomous-studio 健康分虚高霸榜。
+# 真债务是行内注释形式的标记（TODO/FIXME/HACK 后跟冒号或破折号），落在 【】 之外，不受影响。
+_STRIP_PLACEHOLDERS = re.compile(r"【[^】]*】")
+# 剥离 HTML 注释占位符 <!-- TODO... --> / <!-- TODO -->：project-protocol 自举生成的
+# 子项目 CLAUDE.md/PROGRESS.md 三件套用 <!-- TODO: 一句话描述... --> / <!-- TODO -->
+# 作为"待人工补充"的模板桩（见 .claude/decision-archive.md:511 约定：留空标记
+# `<!-- TODO -->` 待人工补充）。HTML 注释非可执行代码，按项目约定属占位提示不算真债。
+# 此前 x-tool 的 TODO=44 中 38 个全来自这类桩，致其标记密度虚高霸榜 #1。
+# 真债务行内注释（井号或双斜杠后跟标记加冒号）不在 HTML 注释里，不受影响。
+_STRIP_HTML_COMMENTS = re.compile(r"<!--.*?-->")
 _MARKER_RE = {m: re.compile(rf"\b{m}\b\s*[:-]") for m in ("TODO", "FIXME", "HACK")}
 
 
@@ -94,7 +106,13 @@ def git_info(path):
 
 
 def count_markers(path):
-    """TODO/FIXME/HACK 计数（仅计代码注释中的真标记：剥离字符串字面量 + 要求 MARKER:/- 形式）"""
+    """TODO/FIXME/HACK 计数（仅计代码注释中的真标记：剥离字符串字面量 + 要求 MARKER:/- 形式）。
+
+    同时返回含真标记的 repo-relative 文件集合，供 pending_triage_in_worktrees 判定
+    "这些标记是否已在某个待合并 opt-worktree 里被 triage"——让引擎区分"真未 triage"与
+    "已 triage 待合并"，避免反复重选同一标记任务（autonomous-studio 4 个 TODO 已在
+    opt-skills worktree triage、main 仍计 4→不应再推 triage，应推合并）。
+    """
     counts = {"TODO": 0, "FIXME": 0, "HACK": 0}
     mfiles = set()
     for root, dirs, files in os.walk(path):
@@ -116,8 +134,12 @@ def count_markers(path):
             try:
                 with open(fp, encoding="utf-8", errors="ignore") as fh:
                     for line in fh:
-                        # 剥离字符串字面量：counts={"FIXME":0} / f"...FIXME..." 不再自指误算
+                        # 剥离字符串字面量 counts={"FIXME":0} / f"...FIXME..." 不再自指误算
                         stripped = _STRIP_STRINGS.sub("", line)
+                        # 剥离全角括号占位符 【TODO...】 scaffold 模板提示不算真债务
+                        stripped = _STRIP_PLACEHOLDERS.sub("", stripped)
+                        # 剥离 HTML 注释占位符 <!-- TODO... --> project-protocol 模板桩不算真债务
+                        stripped = _STRIP_HTML_COMMENTS.sub("", stripped)
                         for m, rx in _MARKER_RE.items():
                             if rx.search(stripped):
                                 counts[m] += 1
@@ -262,6 +284,41 @@ def pending_triage_in_worktrees(path, marker_files):
     return hits
 
 
+def pending_planning_in_worktrees(path):
+    """planning/ 目录是否在某待合并 opt-worktree 的 diff 里（main 上无但 worktree 已建）。
+
+    与 pending_in_opt_worktrees（按单文件名查 PROGRESS/GATES）同构，但按目录前缀查：
+    若 planning/ 已在某 worktree 的 diff 里，main 上"无 planning/"就是"已做待合并"而非
+    "真缺失"，引擎应推合并而非重做（补了也会和 worktree 冲突）。
+
+    修复盲区：sunset-prediction opt-planning-1782557428 已建 planning/ROADMAP.md，
+    但 main 仍无 planning/→此前 scout 不感知，持续报"无 planning/" score=1.0 霸榜 #1，
+    致 3 轮（case-021/022/023）撞同一已做工作单位、全部 superseded 零落地。
+    """
+    wt_root = os.path.join(os.path.dirname(path), ".opt-worktrees", os.path.basename(path))
+    if not os.path.isdir(wt_root):
+        return []
+    try:
+        base = subprocess.run(["git", "rev-parse", "HEAD"], cwd=path,
+                              capture_output=True, text=True, timeout=5).stdout.strip()
+    except Exception:
+        return []
+    if not base:
+        return []
+    hits = []
+    for entry in sorted(os.scandir(wt_root), key=lambda e: e.name):
+        if not entry.is_dir():
+            continue
+        try:
+            r = subprocess.run(["git", "diff", "--name-only", f"{base}..HEAD"],
+                               cwd=entry.path, capture_output=True, text=True, timeout=5)
+            if r.returncode == 0 and any(p.startswith("planning/") for p in r.stdout.splitlines()):
+                hits.append(entry.name)
+        except Exception:
+            continue
+    return hits
+
+
 def health_priority(r):
     """计算项目健康度优先级：分数越高 = 越需要被照顾。
 
@@ -279,6 +336,8 @@ def health_priority(r):
     ps = r["progress_stale_days"]
     pend_prog = r.get("progress_pending_wts", [])
     pend_gates = r.get("gates_pending_wts", [])
+    pend_triage = r.get("triage_pending_wts", [])
+    pend_planning = r.get("planning_pending_wts", [])
     if ps is None:
         if pend_prog:
             score += 1  # 已在 worktree 待合并，大幅降权——别再推荐重做
@@ -297,8 +356,13 @@ def health_priority(r):
             score += 4
             reasons.append("缺 GATES.md")
     if not r["has_planning"]:
-        score += 1
-        reasons.append("无 planning/")
+        if pend_planning:
+            # planning/ 已在某 worktree 待合并——不加分（别再推荐补，应推合并），
+            # 否则该项目会因"无 planning/"持续霸榜 #1 让引擎重做已做工作（3 轮撞盲区）
+            reasons.append(f"planning/ 待合并({','.join(pend_planning)})")
+        else:
+            score += 1
+            reasons.append("无 planning/")
     m = r["markers"]
     total = m["TODO"] + m["FIXME"] + m["HACK"]
     n = max(r["file_count_indexed"], 1)
@@ -308,6 +372,11 @@ def health_priority(r):
         reasons.append(f"标记 TODO/FIXME/HACK={m['TODO']}/{m['FIXME']}/{m['HACK']} 密度{density:.3f}")
     # FIXME/HACK 比 TODO 更可操作，额外加权（封顶）
     score += min((m["FIXME"] + m["HACK"]) * 0.2, 4)
+    # marker 文件已在待合并 worktree 动过——main 上的标记是"已 triage 待合并"而非"真未处理"，
+    # 降权使其不再因待合并债务霸榜 #1 让引擎重做（应推合并，不是重 triage）
+    if pend_triage:
+        score -= 1
+        reasons.append(f"marker 文件待合并({','.join(pend_triage)})，可能已 triage")
 
     # 推荐一个**具体的小工作单位**（tractable，不需深读大块代码）——给引擎现成抓手
     if ps is None and pend_prog:
@@ -320,10 +389,18 @@ def health_priority(r):
         unit = "补 GATES.md（1 文件，无需深读代码）"
     elif ps is not None and ps > STALE_DAYS:
         unit = f"刷新 PROGRESS.md（已 stale {ps}天）"
+    elif m["FIXME"] + m["HACK"] > 0 and pend_triage:
+        unit = f"等合并 {','.join(pend_triage)} worktree（marker 文件已动，可能已 triage FIXME/HACK，别重做——先查 worktree log）"
     elif m["FIXME"] + m["HACK"] > 0:
         unit = f"triage {m['FIXME'] + m['HACK']} 个 FIXME/HACK（取前 1-2 个修）"
+    elif m["TODO"] > 0 and pend_triage:
+        unit = f"等合并 {','.join(pend_triage)} worktree（marker 文件已动，可能已 triage TODO，别重做——先查 worktree log）"
     elif m["TODO"] > 0:
         unit = f"triage 前 1-2 个 TODO（标注或清掉）"
+    elif not r["has_planning"] and pend_planning:
+        unit = f"等合并 planning/（已在 {','.join(pend_planning)} worktree，别重做——先查 worktree log）"
+    elif not r["has_planning"]:
+        unit = "补 planning/ 目录（路线图文档，无需深读代码）"
     else:
         unit = "无明确小工作单位——可跳过或做文档润色"
     return {"score": round(score, 2), "reasons": reasons, "work_unit": unit}
@@ -342,6 +419,7 @@ def scan_project(p):
         "gates_exists": os.path.isfile(os.path.join(path, "GATES.md")),
         "gates_pending_wts": pending_in_opt_worktrees(path, "GATES.md"),
         "has_planning": os.path.isdir(os.path.join(path, "planning")),
+        "planning_pending_wts": pending_planning_in_worktrees(path),
         "markers": m_counts,
         "marker_files": sorted(m_files),
         "triage_pending_wts": pending_triage_in_worktrees(path, m_files),
