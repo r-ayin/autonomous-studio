@@ -21,7 +21,13 @@ from datetime import datetime, timezone
 # 忽略的目录
 IGNORE_DIRS = {".git", "node_modules", ".venv", "__pycache__", ".pytest_cache",
                "dist", "build", ".next", ".cache", "venv", "env", ".mypy_cache",
-               ".tox", "coverage", ".nyc_output", ".opt-worktrees", ".parallel-worktrees"}
+               ".tox", "coverage", ".nyc_output", ".opt-worktrees", ".parallel-worktrees",
+               "site-packages", ".venv-sidecar"}
+# 虚拟环境目录名变体繁多（.venv / .venv-foo / .venv-sidecar / venv-xxx），
+# 单靠精确集合匹配会漏（曾致 x-tool 的 聚合ai客服开发/.venv-sidecar/site-packages
+# 里 pydantic/h11/PyInstaller 的第三方 FIXME/HACK 被计入项目真债，虚高至 #1）。
+# 故任何 .venv 前缀目录一律忽略。
+IGNORE_DIR_PREFIXES = (".venv",)
 IGNORE_FILES_SUFFIX = (".pyc", ".log", ".lock", ".min.js", ".min.css", ".map")
 MAX_FILE_SIZE = 2 * 1024 * 1024  # >2MB 不索引内容
 STALE_DAYS = 7
@@ -37,6 +43,18 @@ MD_HEAD = re.compile(r"^#{1,3}\s+(.+)$", re.M)
 #   2) 只认 MARKER: / MARKER - 形式（通用债务注释约定）；散文提及 "FIXME/HACK 比 TODO..."
 #      或 "TODO/FIXME/HACK 标记的代码" 不算债务标记
 _STRIP_STRINGS = re.compile(r'"[^"\\]*(?:\\.[^"\\]*)*"|\'[^\'\\]*(?:\\.[^\'\\]*)*\'')
+# 剥离全角括号占位符 【TODO...】 等：scaffold 生成器（如 luban/tools/
+# scaffold-skill.sh）用 【TODO 做什么】 作为待用户填写的模板提示，不是真债务注释。
+# 此前 14/17 个 TODO 全来自 scaffold-skill.sh 的占位提示，致 autonomous-studio 健康分虚高霸榜。
+# 真债务是行内注释形式的标记（TODO/FIXME/HACK 后跟冒号或破折号），落在 【】 之外，不受影响。
+_STRIP_PLACEHOLDERS = re.compile(r"【[^】]*】")
+# 剥离 HTML 注释占位符 <!-- TODO... --> / <!-- TODO -->：project-protocol 自举生成的
+# 子项目 CLAUDE.md/PROGRESS.md 三件套用 <!-- TODO: 一句话描述... --> / <!-- TODO -->
+# 作为"待人工补充"的模板桩（见 .claude/decision-archive.md:511 约定：留空标记
+# `<!-- TODO -->` 待人工补充）。HTML 注释非可执行代码，按项目约定属占位提示不算真债。
+# 此前 x-tool 的 TODO=44 中 38 个全来自这类桩，致其标记密度虚高霸榜 #1。
+# 真债务行内注释（井号或双斜杠后跟标记加冒号）不在 HTML 注释里，不受影响。
+_STRIP_HTML_COMMENTS = re.compile(r"<!--.*?-->")
 _MARKER_RE = {m: re.compile(rf"\b{m}\b\s*[:-]") for m in ("TODO", "FIXME", "HACK")}
 
 
@@ -91,7 +109,8 @@ def count_markers(path):
     """TODO/FIXME/HACK 计数（仅计代码注释中的真标记：剥离字符串字面量 + 要求 MARKER:/- 形式）"""
     counts = {"TODO": 0, "FIXME": 0, "HACK": 0}
     for root, dirs, files in os.walk(path):
-        dirs[:] = [d for d in dirs if d not in IGNORE_DIRS]
+        dirs[:] = [d for d in dirs if d not in IGNORE_DIRS
+                   and not d.startswith(IGNORE_DIR_PREFIXES)]
         for f in files:
             if f.endswith(IGNORE_FILES_SUFFIX):
                 continue
@@ -106,8 +125,12 @@ def count_markers(path):
             try:
                 with open(fp, encoding="utf-8", errors="ignore") as fh:
                     for line in fh:
-                        # 剥离字符串字面量：counts={"FIXME":0} / f"...FIXME..." 不再自指误算
+                        # 剥离字符串字面量 counts={"FIXME":0} / f"...FIXME..." 不再自指误算
                         stripped = _STRIP_STRINGS.sub("", line)
+                        # 剥离全角括号占位符 【TODO...】 scaffold 模板提示不算真债务
+                        stripped = _STRIP_PLACEHOLDERS.sub("", stripped)
+                        # 剥离 HTML 注释占位符 <!-- TODO... --> project-protocol 模板桩不算真债务
+                        stripped = _STRIP_HTML_COMMENTS.sub("", stripped)
                         for m, rx in _MARKER_RE.items():
                             if rx.search(stripped):
                                 counts[m] += 1
@@ -123,7 +146,8 @@ def file_tree_and_symbols(path, max_files=2000):
     symbols = {"functions": [], "classes": [], "headings": []}
     n = 0
     for root, dirs, files in os.walk(path):
-        dirs[:] = sorted(d for d in dirs if d not in IGNORE_DIRS)
+        dirs[:] = sorted(d for d in dirs if d not in IGNORE_DIRS
+                         and not d.startswith(IGNORE_DIR_PREFIXES))
         for f in sorted(files):
             if n >= max_files:
                 break
