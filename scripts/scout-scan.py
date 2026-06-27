@@ -31,6 +31,14 @@ PY_SYM = re.compile(r"^(async\s+)?(def|class)\s+(\w+)", re.M)
 JS_TS_SYM = re.compile(r"^(export\s+)?(async\s+)?(function|class|const|let|var)\s+(\w+)", re.M)
 MD_HEAD = re.compile(r"^#{1,3}\s+(.+)$", re.M)
 
+# 债务标记计数修正：
+#   1) 剥离字符串字面量——字典键 {"FIXME":0}、f-string、docstring 里的标记名不算债务
+#      （此前 scout-scan.py 自身被自指误算为 FIXME=9/HACK=9，全来自 counts={"FIXME":0} 这类键）
+#   2) 只认 MARKER: / MARKER - 形式（通用债务注释约定）；散文提及 "FIXME/HACK 比 TODO..."
+#      或 "TODO/FIXME/HACK 标记的代码" 不算债务标记
+_STRIP_STRINGS = re.compile(r'"[^"\\]*(?:\\.[^"\\]*)*"|\'[^\'\\]*(?:\\.[^\'\\]*)*\'')
+_MARKER_RE = {m: re.compile(rf"\b{m}\b\s*[:-]") for m in ("TODO", "FIXME", "HACK")}
+
 
 def now_iso():
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
@@ -80,7 +88,7 @@ def git_info(path):
 
 
 def count_markers(path):
-    """TODO/FIXME/HACK 计数"""
+    """TODO/FIXME/HACK 计数（仅计代码注释中的真标记：剥离字符串字面量 + 要求 MARKER:/- 形式）"""
     counts = {"TODO": 0, "FIXME": 0, "HACK": 0}
     for root, dirs, files in os.walk(path):
         dirs[:] = [d for d in dirs if d not in IGNORE_DIRS]
@@ -98,8 +106,10 @@ def count_markers(path):
             try:
                 with open(fp, encoding="utf-8", errors="ignore") as fh:
                     for line in fh:
-                        for m in counts:
-                            if m in line:
+                        # 剥离字符串字面量：counts={"FIXME":0} / f"...FIXME..." 不再自指误算
+                        stripped = _STRIP_STRINGS.sub("", line)
+                        for m, rx in _MARKER_RE.items():
+                            if rx.search(stripped):
                                 counts[m] += 1
             except Exception:
                 continue
@@ -174,6 +184,36 @@ def staleness(path, fname):
         return None
 
 
+def pending_in_opt_worktrees(path, filename):
+    """检查 filename 是否在某个待合并的 opt worktree 里已落地（main 上缺但 worktree 已提交）。
+
+    让引擎区分"真缺失"与"已做待合并"，避免反复重选同一缺文件任务
+    （如 x-tool/PROGRESS.md 已在 opt-docs worktree、main 仍缺→别再推荐补，应推合并）。
+    """
+    wt_root = os.path.join(os.path.dirname(path), ".opt-worktrees", os.path.basename(path))
+    if not os.path.isdir(wt_root):
+        return []
+    try:
+        base = subprocess.run(["git", "rev-parse", "HEAD"], cwd=path,
+                              capture_output=True, text=True, timeout=5).stdout.strip()
+    except Exception:
+        return []
+    if not base:
+        return []
+    hits = []
+    for entry in sorted(os.scandir(wt_root), key=lambda e: e.name):
+        if not entry.is_dir():
+            continue
+        try:
+            r = subprocess.run(["git", "diff", "--name-only", f"{base}..HEAD"],
+                               cwd=entry.path, capture_output=True, text=True, timeout=5)
+            if r.returncode == 0 and filename in r.stdout.splitlines():
+                hits.append(entry.name)
+        except Exception:
+            continue
+    return hits
+
+
 def health_priority(r):
     """计算项目健康度优先级：分数越高 = 越需要被照顾。
 
@@ -189,15 +229,25 @@ def health_priority(r):
     score = 0.0
     reasons = []
     ps = r["progress_stale_days"]
+    pend_prog = r.get("progress_pending_wts", [])
+    pend_gates = r.get("gates_pending_wts", [])
     if ps is None:
-        score += 5
-        reasons.append("缺 PROGRESS.md")
+        if pend_prog:
+            score += 1  # 已在 worktree 待合并，大幅降权——别再推荐重做
+            reasons.append(f"PROGRESS.md 待合并({','.join(pend_prog)})")
+        else:
+            score += 5
+            reasons.append("缺 PROGRESS.md")
     elif ps > STALE_DAYS:
         score += 3
         reasons.append(f"PROGRESS.md stale {ps}天")
     if not r["gates_exists"]:
-        score += 4
-        reasons.append("缺 GATES.md")
+        if pend_gates:
+            score += 1
+            reasons.append(f"GATES.md 待合并({','.join(pend_gates)})")
+        else:
+            score += 4
+            reasons.append("缺 GATES.md")
     if not r["has_planning"]:
         score += 1
         reasons.append("无 planning/")
@@ -212,8 +262,12 @@ def health_priority(r):
     score += min((m["FIXME"] + m["HACK"]) * 0.2, 4)
 
     # 推荐一个**具体的小工作单位**（tractable，不需深读大块代码）——给引擎现成抓手
-    if ps is None:
+    if ps is None and pend_prog:
+        unit = f"等合并 PROGRESS.md（已在 {','.join(pend_prog)} worktree，别重做）"
+    elif ps is None:
         unit = "补 PROGRESS.md（1 文件，无需深读代码）"
+    elif not r["gates_exists"] and pend_gates:
+        unit = f"等合并 GATES.md（已在 {','.join(pend_gates)} worktree）"
     elif not r["gates_exists"]:
         unit = "补 GATES.md（1 文件，无需深读代码）"
     elif ps is not None and ps > STALE_DAYS:
@@ -235,7 +289,9 @@ def scan_project(p):
         "path": path,
         "git": git_info(path),
         "progress_stale_days": staleness(path, "PROGRESS.md"),
+        "progress_pending_wts": pending_in_opt_worktrees(path, "PROGRESS.md"),
         "gates_exists": os.path.isfile(os.path.join(path, "GATES.md")),
+        "gates_pending_wts": pending_in_opt_worktrees(path, "GATES.md"),
         "has_planning": os.path.isdir(os.path.join(path, "planning")),
         "markers": count_markers(path),
     }
@@ -312,8 +368,14 @@ def main():
             lc = g.get("last_commit")
             print(f"  最近提交: {lc['relative'] if lc else '?'} — {lc['subject'][:50] if lc else ''}")
             ps = r["progress_stale_days"]
-            print(f"  PROGRESS.md: {'缺失' if ps is None else f'{ps}天' + (' ⚠️stale' if ps > STALE_DAYS else '')}")
-            print(f"  GATES.md: {'有' if r['gates_exists'] else '无'} | planning/: {'有' if r['has_planning'] else '无'}")
+            pend_p = r.get("progress_pending_wts", [])
+            prog = "缺失" if ps is None else f"{ps}天" + (" ⚠️stale" if ps > STALE_DAYS else "")
+            if ps is None and pend_p:
+                prog += f" ⏳待合并({','.join(pend_p)})"
+            print(f"  PROGRESS.md: {prog}")
+            gp = r.get("gates_pending_wts", [])
+            gates = "有" if r["gates_exists"] else ("无" + (f" ⏳待合并({','.join(gp)})" if gp else ""))
+            print(f"  GATES.md: {gates} | planning/: {'有' if r['has_planning'] else '无'}")
             m = r["markers"]
             print(f"  标记: TODO={m['TODO']} FIXME={m['FIXME']} HACK={m['HACK']}")
             print(f"  索引: {r['file_count_indexed']} 文件, "
