@@ -66,14 +66,14 @@ while true; do
   fi
   ITER=$((ITER+1))
   echo "[$(date +%H:%M:%S)] === 轮次 $ITER ==="
-  # 每轮新 context，bounded max-iterations 防单轮卡死
-  # bypassPermissions：不弹权限提示（否则后台会卡在 bash 确认）；安全由 hook 兜底
+  # 每轮新 context，--max-budget-usd 限单轮开销防跑飞（cloudcli claude 无 --max-iterations）
+  # bypassPermissions：不弹权限提示（否则后台卡）；安全由 hook 兜底
   #   - autonomous-commit-gate: 拦 main 提交
   #   - discovery-gate / patterns-write-gate / stop-completion-gate: 各自门禁
   cd "$WORKSPACE"
   claude -p "$PROMPT" \
     --permission-mode bypassPermissions \
-    --max-iterations 50 2>&1 | tail -30
+    --max-budget-usd 0.50 2>&1 | tail -30
   echo "[$(date +%H:%M:%S)] 轮次 $ITER 结束，提交在 opt-worktree（待人工 opt-worktree.sh show/merge）"
   sleep 2  # 短暂喘息，避免空转打爆 API
 done
