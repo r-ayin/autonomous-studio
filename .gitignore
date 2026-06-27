@@ -8,6 +8,8 @@
 .claude/.stop_gate_strikes.json
 .claude/discovery_gate.lock
 .claude/.autonomous_active
+.claude/.stop_autonomous
+.codebase-index/
 .claude/decision-log.jsonl
 .claude/scheduled_tasks.json
 .claude/memory/autonomous-state-runtime.md

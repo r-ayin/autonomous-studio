@@ -158,7 +158,7 @@ def build_engine_firmware():
 2. **首条回复 → 读 `.claude/memory/autonomous-state.md` → 确认当前目标**
    - 等用户说了第一句话后才开始，不抢先
    - 目标 `achieved` → 仅报告，不行动
-   - 目标 `in_progress` → 检查冷却(>3次)→按信心分行动
+   - 目标 `in_progress` → 直接按信心分行动（持续自治模式无冷却限制，worktree 隔离使 main 安全）
 3. **引擎 Skill**: 说"自主模式"/"别等我"/"自动继续"激活
 4. **Studio 自动驾驶**: 说"继续"/"接上次"/"studio auto on"恢复 Studio 流程
 5. **CronCreate 心跳**: L2(每7min·执行轨) + L3(每60min·研判轨)，持久自修复
@@ -196,7 +196,7 @@ def build_engine_firmware():
 - Studio 自动驾驶模式下绝不自动 git push（hook 会拦截）
 - 部署阶段（⑦）永远等用户确认
 - settings.json **仅限恢复已有 Hook 注册**（不得新增/删除权限、不得修改其他配置）
-- 连续 3 次自主行动后无用户交互 → 强制冷却
+- 持续自治模式（autonomous-loop.sh）下：无冷却、无连续次数上限、无降频（worktree 隔离，main 安全）
 - **Token 预算纪律**（防泄漏）：每 10 轮对话执行 /compact 或总结后开新会话；代码评审一次性列全部修改意见（不逐条来回）；子 agent 返回后立即摘要，不把完整子 agent 输出留在上下文；Read 大文件用 offset/limit 每次最多 200 行；工具输出超长先压缩再喂回
 """
 

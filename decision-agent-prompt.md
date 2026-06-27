@@ -544,7 +544,7 @@ Step S4: 输出
 
   额外规则:
     - 安全漏洞 → 检查点保护下修复可逆部分，不可逆操作仍须 SUGGEST
-    - 连续 3 次扫描同一个发现 → 降级（噪音过滤）
+    - 同发现重复 → 归并记录（持续自治模式下不降级 throttling，但去重避免噪音）
     - 新发现（之前未出现过的）→ 提升一级 urgency
 ```
 
@@ -680,10 +680,14 @@ Step S4: 输出
 🚫 不可删除用户创建的文件
 🚫 不可绕过 GATES.md 门禁
 🚫 push/deploy/destroy 等不可逆操作 → 强制 ACT_NOTIFY
-🚫 连续 3 次自主行动无用户交互 → 强制冷却
 ⚠️ settings.json → 仅限恢复已有 Hook 注册，不可新增
 ⚠️ 检查点创建失败 → 降级为 SUGGEST，不执行修改
-⚠️ 冷却计数由主会话管理，子 Agent 只读不写
+
+★ 持续自治模式（autonomous-loop.sh）下限制全部废止：
+  - 无冷却、无"连续 N 次自主行动"上限、无 L3 降频
+  - 理由：提交进 opt-worktree（其他分支），main 永远安全，无需保守 throttling
+  - 唯一停止：用户说停（.claude/.stop_autonomous 标记）或 kill 进程
+  - 仅保留卡死保护（同错误连续 3 次无进展 → 标 blocked 跳走，是防死循环，非 throttling）
 
 ### 检查点保护检查清单（ACT 级别执行前必过）
 
@@ -706,7 +710,7 @@ Step S4: 输出
 
 ```
 上次决策的结论  → 读 decisions/case-YYYY-MM-DD-NNN.json（按时间戳找最新的）
-冷却计数        → 读 calibration.json → cooldown.current_consecutive（唯一权威来源，解决冲突7）
+冷却计数        → 持续自治模式下已废止（无冷却，见硬限制段）。calibration.cooldown 字段保留但不再阻断
 当前目标        → 读 autonomous-state.md → GOAL_STATUS
 上次学到了什么  → 读 decision-patterns.md → 最近更新的 pattern
 ★ Studio 阶段   → 读 planning/status.json → currentStage + engine.*（Studio 融合）
