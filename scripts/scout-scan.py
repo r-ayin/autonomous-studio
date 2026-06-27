@@ -106,8 +106,15 @@ def git_info(path):
 
 
 def count_markers(path):
-    """TODO/FIXME/HACK 计数（仅计代码注释中的真标记：剥离字符串字面量 + 要求 MARKER:/- 形式）"""
+    """TODO/FIXME/HACK 计数（仅计代码注释中的真标记：剥离字符串字面量 + 要求 MARKER:/- 形式）。
+
+    同时返回含真标记的 repo-relative 文件集合，供 pending_triage_in_worktrees 判定
+    "这些标记是否已在某个待合并 opt-worktree 里被 triage"——让引擎区分"真未 triage"与
+    "已 triage 待合并"，避免反复重选同一标记任务（autonomous-studio 4 个 TODO 已在
+    opt-skills worktree triage、main 仍计 4→不应再推 triage，应推合并）。
+    """
     counts = {"TODO": 0, "FIXME": 0, "HACK": 0}
+    mfiles = set()
     for root, dirs, files in os.walk(path):
         dirs[:] = [d for d in dirs if d not in IGNORE_DIRS
                    and not d.startswith(IGNORE_DIR_PREFIXES)]
@@ -122,6 +129,8 @@ def count_markers(path):
                 continue
             if not f.endswith((".py", ".js", ".ts", ".tsx", ".jsx", ".md", ".sh", ".go", ".rs")):
                 continue
+            rel = os.path.relpath(fp, path)
+            hit = False
             try:
                 with open(fp, encoding="utf-8", errors="ignore") as fh:
                     for line in fh:
@@ -134,10 +143,13 @@ def count_markers(path):
                         for m, rx in _MARKER_RE.items():
                             if rx.search(stripped):
                                 counts[m] += 1
+                                hit = True
             except Exception:
                 continue
+            if hit:
+                mfiles.add(rel)
         # 只走一层多（避免大库超时）— 实际 walk 已限 dirs
-    return counts
+    return counts, mfiles
 
 
 def file_tree_and_symbols(path, max_files=2000):
@@ -238,6 +250,40 @@ def pending_in_opt_worktrees(path, filename):
     return hits
 
 
+def pending_triage_in_worktrees(path, marker_files):
+    """含真标记的文件是否在某待合并 opt-worktree 的 diff 里——是则该 worktree 可能已 triage 这些 TODO/FIXME/HACK。
+
+    与 pending_in_opt_worktrees（按单文件名查 PROGRESS/GATES）同构，但按 marker 文件集合查：
+    若 marker 文件已在 worktree 动过，main 上的标记计数就是"已 triage 待合并"而非"真未处理"，
+    引擎应推合并而非重做 triage。
+    """
+    if not marker_files:
+        return []
+    wt_root = os.path.join(os.path.dirname(path), ".opt-worktrees", os.path.basename(path))
+    if not os.path.isdir(wt_root):
+        return []
+    try:
+        base = subprocess.run(["git", "rev-parse", "HEAD"], cwd=path,
+                              capture_output=True, text=True, timeout=5).stdout.strip()
+    except Exception:
+        return []
+    if not base:
+        return []
+    mset = set(marker_files)
+    hits = []
+    for entry in sorted(os.scandir(wt_root), key=lambda e: e.name):
+        if not entry.is_dir():
+            continue
+        try:
+            r = subprocess.run(["git", "diff", "--name-only", f"{base}..HEAD"],
+                               cwd=entry.path, capture_output=True, text=True, timeout=5)
+            if r.returncode == 0 and mset & set(r.stdout.splitlines()):
+                hits.append(entry.name)
+        except Exception:
+            continue
+    return hits
+
+
 def health_priority(r):
     """计算项目健康度优先级：分数越高 = 越需要被照顾。
 
@@ -255,6 +301,7 @@ def health_priority(r):
     ps = r["progress_stale_days"]
     pend_prog = r.get("progress_pending_wts", [])
     pend_gates = r.get("gates_pending_wts", [])
+    pend_triage = r.get("triage_pending_wts", [])
     if ps is None:
         if pend_prog:
             score += 1  # 已在 worktree 待合并，大幅降权——别再推荐重做
@@ -284,6 +331,11 @@ def health_priority(r):
         reasons.append(f"标记 TODO/FIXME/HACK={m['TODO']}/{m['FIXME']}/{m['HACK']} 密度{density:.3f}")
     # FIXME/HACK 比 TODO 更可操作，额外加权（封顶）
     score += min((m["FIXME"] + m["HACK"]) * 0.2, 4)
+    # marker 文件已在待合并 worktree 动过——main 上的标记是"已 triage 待合并"而非"真未处理"，
+    # 降权使其不再因待合并债务霸榜 #1 让引擎重做（应推合并，不是重 triage）
+    if pend_triage:
+        score -= 1
+        reasons.append(f"marker 文件待合并({','.join(pend_triage)})，可能已 triage")
 
     # 推荐一个**具体的小工作单位**（tractable，不需深读大块代码）——给引擎现成抓手
     if ps is None and pend_prog:
@@ -296,8 +348,12 @@ def health_priority(r):
         unit = "补 GATES.md（1 文件，无需深读代码）"
     elif ps is not None and ps > STALE_DAYS:
         unit = f"刷新 PROGRESS.md（已 stale {ps}天）"
+    elif m["FIXME"] + m["HACK"] > 0 and pend_triage:
+        unit = f"等合并 {','.join(pend_triage)} worktree（marker 文件已动，可能已 triage FIXME/HACK，别重做——先查 worktree log）"
     elif m["FIXME"] + m["HACK"] > 0:
         unit = f"triage {m['FIXME'] + m['HACK']} 个 FIXME/HACK（取前 1-2 个修）"
+    elif m["TODO"] > 0 and pend_triage:
+        unit = f"等合并 {','.join(pend_triage)} worktree（marker 文件已动，可能已 triage TODO，别重做——先查 worktree log）"
     elif m["TODO"] > 0:
         unit = f"triage 前 1-2 个 TODO（标注或清掉）"
     else:
@@ -308,6 +364,7 @@ def health_priority(r):
 def scan_project(p):
     """扫描单个项目，返回健康报告 + 索引"""
     path = p["path"]
+    m_counts, m_files = count_markers(path)
     rep = {
         "name": p["name"],
         "path": path,
@@ -317,7 +374,9 @@ def scan_project(p):
         "gates_exists": os.path.isfile(os.path.join(path, "GATES.md")),
         "gates_pending_wts": pending_in_opt_worktrees(path, "GATES.md"),
         "has_planning": os.path.isdir(os.path.join(path, "planning")),
-        "markers": count_markers(path),
+        "markers": m_counts,
+        "marker_files": sorted(m_files),
+        "triage_pending_wts": pending_triage_in_worktrees(path, m_files),
     }
     # 文件索引（限制规模，避免大库超时）
     tree, symbols, n = file_tree_and_symbols(path)
