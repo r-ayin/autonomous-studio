@@ -68,7 +68,8 @@ repository: https://code.alibaba-inc.com/qunbu/autonomous-studio
 | Tier 2 行动 | opus | 按需 | 写代码/跑验证/出建议 |
 | 主会话控制器 | — | 行动完成后 | git commit + status.json + 通知 |
 
-原则：不需要 AI → Hook。需要判断 → sonnet 扫描。需要行动 → opus 执行。权限操作 → 主会话。
+原则：不需要 AI → Hook。浅层扫描/门控（要不要行动）→ sonnet。深度推理/写代码/关键决策 → opus。权限操作 → 主会话。
+> 通用心法：越需要深度思考的环节用越贵的模型，越是机械执行用越便宜的。"判断"若指浅层门控用 sonnet，若指深度归因/决策必须用 opus；"行动"若指写代码用 opus，若指机械重跑可用 sonnet。按工作性质分档，不按"判断/行动"二字分档。
 
 ### CronCreate 流程（L2 每 7 分钟 / L3 每 60 分钟）
 
