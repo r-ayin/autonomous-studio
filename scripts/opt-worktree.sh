@@ -23,7 +23,8 @@ set -euo pipefail
 PROJECT="${1:-.}"
 CMD="${2:-list}"
 PROJECT="$(cd "$PROJECT" && pwd)"
-WT_BASE="$PROJECT/../.opt-worktrees"
+# per-project 子目录，避免多项目 worktree 撞车（之前 $PROJECT/../.opt-worktrees 共享导致跨项目冲突）
+WT_BASE="$PROJECT/../.opt-worktrees/$(basename "$PROJECT")"
 MAIN_BRANCH="main"
 
 area_of() { echo "${1%%:*}"; }
