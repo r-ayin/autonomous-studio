@@ -11,13 +11,14 @@
 #   新优化 area == 主 worktree area → 同一 worktree（小差距，累积）
 #   新优化 area != 主 worktree area → 开新 worktree auto/opt-{area}-{ts}（大差距，隔离）
 #
-# 用法:
-#   opt-worktree.sh init [project]                        # 建主 optimization worktree
-#   opt-worktree.sh commit [project] <direction> <msg>    # 按方向提交到合适 worktree
-#   opt-worktree.sh list [project]                        # 列所有 opt worktree + 方向 + diffstat
-#   opt-worktree.sh show [project] [worktree]             # 给人审：看 diff（不合并）
-#   opt-worktree.sh merge [project] <worktree>            # 人工批准后：squash 合并→main + 清理
-#   opt-worktree.sh reject [project] <worktree]           # 人工拒绝：归档/删
+# 用法（project 在前、command 在后；project 缺省为 .，与底部 case 的提示一致）:
+#   opt-worktree.sh [project] init                        # 建主 optimization worktree
+#   opt-worktree.sh [project] commit <direction> <msg> [file...]  # 按方向提交到合适 worktree（指定文件避免扫 WIP）
+#   opt-worktree.sh [project] list                        # 列所有 opt worktree + 方向 + diffstat
+#   opt-worktree.sh [project] show [worktree]             # 给人审：看 diff（不合并）
+#   opt-worktree.sh [project] merge <worktree>            # 人工批准后：squash 合并→main + 清理
+#   opt-worktree.sh [project] reject <worktree>           # 人工拒绝：归档/删
+# 例: opt-worktree.sh shizi commit "docs:governance" "说明" PROGRESS.md GATES.md
 set -euo pipefail
 
 PROJECT="${1:-.}"
@@ -25,7 +26,14 @@ CMD="${2:-list}"
 PROJECT="$(cd "$PROJECT" && pwd)"
 # per-project 子目录，避免多项目 worktree 撞车（之前 $PROJECT/../.opt-worktrees 共享导致跨项目冲突）
 WT_BASE="$PROJECT/../.opt-worktrees/$(basename "$PROJECT")"
-MAIN_BRANCH="main"
+# 动态探测项目默认分支：x-tool/moni 用 master，autonomous-studio 用 main。
+# 硬编码 main 会导致 master 项目 worktree add 失败被 || true 吞、随后写 .opt-direction 崩。
+detect_main_branch() {
+  local b
+  b=$(git -C "$1" symbolic-ref --short HEAD 2>/dev/null) || { echo main; return; }
+  echo "${b:-main}"
+}
+MAIN_BRANCH="$(detect_main_branch "$PROJECT")"
 
 area_of() { echo "${1%%:*}"; }
 slug() { echo "$1" | tr ':' '-' | tr '/' '-'; }
@@ -61,8 +69,10 @@ cmd_commit() {
     target="$WT_BASE/optimization"
   else
     # 先找已有的同 area worktree 复用，没有才建新（避免同方向开一堆 worktree）
+    # 注意：ls 无匹配时 exit 2，在 `set -euo pipefail` 下会经由管道 abort cmd_commit
+    # （曾导致新 area 首次提交静默失败 exit 2、改动留在 main）。用 `|| true` 中和。
     local existing
-    existing=$(ls -d "$WT_BASE"/opt-$(slug "$new_area")-* 2>/dev/null | head -1)
+    existing=$( { ls -d "$WT_BASE"/opt-$(slug "$new_area")-* 2>/dev/null || true; } | head -1 )
     if [[ -n "$existing" ]]; then
       target="$existing"
       echo "→ 复用同 area worktree: $(basename "$target")"
