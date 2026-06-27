@@ -133,7 +133,10 @@ Set Theme "Catppuccin Mocha"
 Set TypingSpeed 45ms
 Set Padding 16
 
-# TODO: 用真实运行回放写这盘带子,不要摆拍。
+# TODO: 用真实运行回放填本盘带子，不要摆拍。
+#   填充: 在下方追加 Type "<scaffolded-skill 的真实首跑命令>" + Enter 序列（如该 skill 的
+#         CLI --help / 首次调用的真实输入→真实输出），禁止虚构样例命令。
+#   验收: 在本目录执行 `vhs demo.tape` 端到端跑通、产出非空 demo.gif 且可复现后，删此 TODO。
 # 录制: 在本目录执行 `vhs demo.tape`
 EOF
 
