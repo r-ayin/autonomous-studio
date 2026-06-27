@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-27-002",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-27T08:05:00Z",
+  "project": "x-tool",
+  "work_unit": "补建/增强 PROGRESS.md（scout-scan #1 推荐，缺 PROGRESS.md）",
+  "situation": "scout-scan 健康快照 x-tool score=16.19 排 #1，理由：缺 PROGRESS.md / GATES.md / planning/，标记密度 0.218（TODO=354 FIXME=66 HACK=17）。x-tool 不在 autonomous-constraints.md 排除项。main 工作区确无 PROGRESS.md（git status 仅 ?? PROGRESS.md 为本轮新建）。",
+  "action": "本想新建 x-tool/PROGRESS.md，但执行中发现 opt-docs-1782546288 worktree 已有上一轮自治循环提交的 PROGRESS.md（1981B）+ GATES.md（commits 56fc15a / b9fd237 / af3036b），未合并 main——属于已存在但未落地的同方向工作。改为避免重复造：删除 main 中新建的重复副本，在已有 opt-docs PROGRESS.md 上做定向增强，补一个它漏掉的真实发现——引擎自身无回归测试套件（find . -name '*test*' 仅命中 聚合ai客服开发/.venv-sidecar 内 pytest，非引擎决策循环/Hook 回归），列为 P0 待办。",
+  "files_changed": ["x-tool/PROGRESS.md（在 opt-docs worktree 内，非 main）"],
+  "worktree": "/home/admin/workspace/.opt-worktrees/x-tool/opt-docs-1782546288（分支 auto/opt-docs-1782546288）",
+  "direction": "docs:progress",
+  "outcome": "succeeded",
+  "outcome_evidence": "git -C opt-docs worktree commit 成功 → [auto/opt-docs-1782546288 55ffda3] docs(progress): 补 P0 待办… 1 file changed, 1 insertion(+)。main 工作区已清理（rm PROGRESS.md 后 git status --short 无输出）。opt-docs worktree git log 顶 = 55ffda3，含本轮 + 上一轮 56fc15a GATES 补齐。未碰 main（main 仍 0fb55b0）。",
+  "next_suggestion": "下轮可考虑：(1) 将 opt-docs-1782546288 worktree 合并到 main——但需人工批准（opt-worktree.sh merge，自治循环纪律禁直接动 main）；合并后 scout-scan 将不再把 x-tool 标为缺 PROGRESS/GATES，健康度下降，让位给真实结构问题项目。(2) 不合并则继续在 opt-docs worktree 累积 docs 改进（如补 planning/ 占位、核对 PROJECTS.md 子项目状态）。(3) 落地本轮新发现的 P0：为引擎决策循环/ checkpoint Hooks 加最小回归测试。注：autonomous-studio 自身 score=6.06 排 #3（FIXME/HACK triage），未上 #1，未触发自我润色。"
+}

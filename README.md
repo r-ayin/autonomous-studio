@@ -22,7 +22,7 @@ autonomous-loop.sh <workspace> [--bg]    # 启动（前台/后台）
 touch <workspace>/.claude/.stop_autonomous   # 停
 ```
 
-每轮纪律：跑 `scout-scan` 选最高价值工作 → 探究/开发/修复/优化/缺文件就补 → `opt-worktree.sh commit` → 写 case → 一行汇报。**无限制**（无冷却/连续次数/降频），worktree 隔离使 main 安全。仅卡死保护（同错误 3 次无进展→blocked 跳走）。
+每轮纪律：跑 `scout-scan`（末尾出「推荐工作单位」按健康度排序）→ 取 #1 项目的工作单位 → 探究/开发/修复/优化/缺文件就补 → `opt-worktree.sh commit` → 一行汇报 + 写 case JSON 喂蒸馏闭环（预算已解禁，2026-06-27）。**无限制**（无冷却/连续次数/降频/预算上限），worktree 隔离使 main 安全。仅卡死保护（同错误 3 次无进展→blocked 跳走）。
 
 ### 2. opt-worktree 隔离（main 永远安全）
 自动优化**从不直接提交 main**。`scripts/opt-worktree.sh` 把改动提交到 `auto/optimization`（或 `auto/opt-<area>-<ts>`）worktree，人审 diff 后 `merge`/`reject`。
@@ -39,6 +39,8 @@ opt-worktree.sh <project> reject <wt>                # 拒绝
 方向分歧判定：`direction = area:subdirection`。同 area 累积同 worktree，不同 area 开新 worktree（隔离）。
 
 ### 3. 蒸馏闭环（决策习惯积累）
+> 现状（2026-06-27）：预算解禁后，引擎每轮重新写 case JSON 喂闭环。基础设施齐备：`distill-patterns.py` / `index-cases.py` / `verify-pattern.sh` / `decision-observer.py` hook 均在；`scheduled_tasks.json` 定义了 L3 每 4h + distill 定时任务（依赖 REPL 空闲触发）。calibration.json `last_decision` 此前停在 06-17（预算暂停期），待引擎续写 case 后由 distill 重算刷新。
+
 修复了"提示词描述闭环、代码实现开环"的 7 个断裂。`scripts/distill-patterns.py` 从 case outcome 确定性重算 pattern accuracy（不再 LLM 自评 82% 虚高），`scripts/verify-pattern.sh` 4 门禁（最小样本/accuracy 底线/容量帽/同步检查）防退化。
 
 - **数据管道闭合**：`decision-observer.py` 从最新 case 回读 stage/result/confidence_score 写入 decision-log

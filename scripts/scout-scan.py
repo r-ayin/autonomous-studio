@@ -174,6 +174,59 @@ def staleness(path, fname):
         return None
 
 
+def health_priority(r):
+    """计算项目健康度优先级：分数越高 = 越需要被照顾。
+
+    设计意图：打破引擎"自由心证总挑 autonomous-studio"的自反馈环路。
+    关键约束——
+      * 只用**结构性健康信号**（缺 PROGRESS/GATES、stale、标记密度），**不用 last_commit 新旧**：
+        因 opt-worktree 流程下提交进 worktree、main 总是 stale，用提交新旧会反向把
+        刚动过的宿主项目顶高，反而强化自选择。
+      * autonomous-studio **不被排除**：它若真有结构性问题（缺文档/stale/标记堆积）仍会
+        排到前面被修——满足"引擎真有 bug 就该修"的要求；只是日常自我润色不再因
+        "最近活跃+可嚼"而霸榜。
+    """
+    score = 0.0
+    reasons = []
+    ps = r["progress_stale_days"]
+    if ps is None:
+        score += 5
+        reasons.append("缺 PROGRESS.md")
+    elif ps > STALE_DAYS:
+        score += 3
+        reasons.append(f"PROGRESS.md stale {ps}天")
+    if not r["gates_exists"]:
+        score += 4
+        reasons.append("缺 GATES.md")
+    if not r["has_planning"]:
+        score += 1
+        reasons.append("无 planning/")
+    m = r["markers"]
+    total = m["TODO"] + m["FIXME"] + m["HACK"]
+    n = max(r["file_count_indexed"], 1)
+    density = total / n
+    score += min(density * 10, 5)  # 密度贡献封顶，防大库绝对值碾压
+    if total:
+        reasons.append(f"标记 TODO/FIXME/HACK={m['TODO']}/{m['FIXME']}/{m['HACK']} 密度{density:.3f}")
+    # FIXME/HACK 比 TODO 更可操作，额外加权（封顶）
+    score += min((m["FIXME"] + m["HACK"]) * 0.2, 4)
+
+    # 推荐一个**具体的小工作单位**（tractable，不需深读大块代码）——给引擎现成抓手
+    if ps is None:
+        unit = "补 PROGRESS.md（1 文件，无需深读代码）"
+    elif not r["gates_exists"]:
+        unit = "补 GATES.md（1 文件，无需深读代码）"
+    elif ps is not None and ps > STALE_DAYS:
+        unit = f"刷新 PROGRESS.md（已 stale {ps}天）"
+    elif m["FIXME"] + m["HACK"] > 0:
+        unit = f"triage {m['FIXME'] + m['HACK']} 个 FIXME/HACK（取前 1-2 个修）"
+    elif m["TODO"] > 0:
+        unit = f"triage 前 1-2 个 TODO（标注或清掉）"
+    else:
+        unit = "无明确小工作单位——可跳过或做文档润色"
+    return {"score": round(score, 2), "reasons": reasons, "work_unit": unit}
+
+
 def scan_project(p):
     """扫描单个项目，返回健康报告 + 索引"""
     path = p["path"]
@@ -238,6 +291,16 @@ def main():
     if not args.project and projects:
         write_projects_md(ws, projects)
 
+    # 健康度优先级排序 → 确定性推荐工作单位
+    # （打破引擎自由心证总挑 autonomous-studio 的自反馈环路）
+    recs = []
+    for r in report["projects"]:
+        hp = health_priority(r)
+        recs.append({"name": r["name"], "score": hp["score"],
+                     "reasons": hp["reasons"], "work_unit": hp["work_unit"]})
+    recs.sort(key=lambda x: x["score"], reverse=True)
+    report["recommendations"] = recs
+
     if args.json:
         print(json.dumps(report, ensure_ascii=False, indent=2))
     else:
@@ -255,6 +318,16 @@ def main():
             print(f"  标记: TODO={m['TODO']} FIXME={m['FIXME']} HACK={m['HACK']}")
             print(f"  索引: {r['file_count_indexed']} 文件, "
                   f"fn={r['symbols']['functions']} class={r['symbols']['classes']} h={r['symbols']['headings']}")
+
+        # 推荐工作单位（按健康度排序）——给引擎确定性选材，避免自由心证总挑自己
+        print("\n=== 推荐工作单位（按健康度排序，越高越该被照顾）===")
+        print("说明：分数基于结构性健康信号（缺文档/stale/标记密度），不依赖提交新旧；")
+        print("      autonomous-studio 不被排除，按健康度公平排名（引擎真有 bug 仍可被选中）。")
+        for i, rc in enumerate(recs[:3], 1):
+            print(f"  #{i} {rc['name']} (score={rc['score']}) — {rc['work_unit']}")
+            print(f"      理由: {'; '.join(rc['reasons']) or '健康度良好'}")
+        if recs and recs[0]["score"] == 0:
+            print("  （所有项目健康度良好，无紧迫小工作单位——可做文档润色或跳过）")
 
 
 if __name__ == "__main__":
