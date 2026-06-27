@@ -76,10 +76,16 @@ cmd_commit() {
   fi
 
   # 把当前工作区改动同步到 target worktree 提交
-  # 策略：把 PROJECT 的未提交改动 stash，在 target worktree apply + commit
+  # 策略：若有文件列表（$5+），只 stash 指定文件（避免扫进用户 WIP）；否则 stash 全部（dirty=0 时安全）
   cd "$PROJECT"
+  local files="${@:5}"
   if [[ -n "$(git status --porcelain)" ]]; then
-    git stash push -u -m "opt-$direction" >/dev/null 2>&1
+    if [[ -n "$files" ]]; then
+      git stash push -u -m "opt-$direction" -- $files >/dev/null 2>&1
+    else
+      echo "⚠️ 未指定文件列表，stash 全部改动（若项目有用户 WIP 会被一并扫进 worktree）" >&2
+      git stash push -u -m "opt-$direction" >/dev/null 2>&1
+    fi
     cd "$target"
     git stash pop >/dev/null 2>&1 || { echo "⚠️ stash apply 冲突，改动留在 stash，人工处理"; exit 1; }
     git add -A
