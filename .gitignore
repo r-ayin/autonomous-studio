@@ -30,3 +30,4 @@ __pycache__/
 **/config/servers.json
 **/*.key
 **/*.pem
+.opt-direction
