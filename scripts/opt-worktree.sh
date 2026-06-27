@@ -54,17 +54,25 @@ cmd_commit() {
   local cur_area; cur_area=$(current_area)
   local new_area; new_area=$(area_of "$direction")
 
-  # 选目标 worktree：方向 area 一致 → 主 worktree；不一致 → 开新
+  # 选目标 worktree：方向 area 一致 → 主 worktree；不一致 → 复用或开新
   local target
   if [[ "$cur_area" == "$new_area" ]]; then
     target="$WT_BASE/optimization"
   else
-    local ts; ts=$(date +%s)
-    target="$WT_BASE/opt-$(slug "$new_area")-$ts"
-    mkdir -p "$target"
-    git -C "$PROJECT" worktree add -b "auto/opt-$(slug "$new_area")-$ts" "$target" "$MAIN_BRANCH" 2>/dev/null
-    echo "$direction" > "$target/.opt-direction"
-    echo "↔ 方向分歧（$cur_area → $new_area），开新 worktree: $(basename "$target")"
+    # 先找已有的同 area worktree 复用，没有才建新（避免同方向开一堆 worktree）
+    local existing
+    existing=$(ls -d "$WT_BASE"/opt-$(slug "$new_area")-* 2>/dev/null | head -1)
+    if [[ -n "$existing" ]]; then
+      target="$existing"
+      echo "→ 复用同 area worktree: $(basename "$target")"
+    else
+      local ts; ts=$(date +%s)
+      target="$WT_BASE/opt-$(slug "$new_area")-$ts"
+      mkdir -p "$target"
+      git -C "$PROJECT" worktree add -b "auto/opt-$(slug "$new_area")-$ts" "$target" "$MAIN_BRANCH" 2>/dev/null
+      echo "$direction" > "$target/.opt-direction"
+      echo "↔ 方向分歧（$cur_area → $new_area），开新 worktree: $(basename "$target")"
+    fi
   fi
 
   # 把当前工作区改动同步到 target worktree 提交
