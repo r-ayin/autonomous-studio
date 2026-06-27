@@ -82,12 +82,12 @@ def _resource_type_to_entity_type(resource_type: str) -> str:
     """将 --resource-type 映射为 getDetail 所需的 entityType 参数。"""
     _MAP = {
         "MaxComputeTable": "odps-table",
-        "HologresTable":   "holo-table",    # TODO: 未实测——对真实 Hologres 表调 client.getDetail(entityType="holo-table") 确认 200，否则按 searchTables 返回的 entityType 校正
+        "HologresTable":   "holo-table",    # TODO(deferred): 未实测——对真实 Hologres 表调 client.getDetail(entityType="holo-table") 确认 200，否则按 searchTables 返回的 entityType 校正
         "DLFTable":        "dlf-table",
         "DLFNextTable":    "dlfnext-table",
         "StarRocksTable":  "starrocks-table",
         "EmrTable":        "emr-table",
-        "LindormTable":    "lindorm-table",  # TODO: 未实测——同上，对真实 Lindorm 表调 getDetail(entityType="lindorm-table") 验证
+        "LindormTable":    "lindorm-table",  # TODO(deferred): 未实测——同上，对真实 Lindorm 表调 getDetail(entityType="lindorm-table") 验证
     }
     return _MAP.get(resource_type, "odps-table")
 

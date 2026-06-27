@@ -56,6 +56,14 @@ _STRIP_PLACEHOLDERS = re.compile(r"【[^】]*】")
 # 真债务行内注释（井号或双斜杠后跟标记加冒号）不在 HTML 注释里，不受影响。
 _STRIP_HTML_COMMENTS = re.compile(r"<!--.*?-->")
 _MARKER_RE = {m: re.compile(rf"\b{m}\b\s*[:-]") for m in ("TODO", "FIXME", "HACK")}
+# 延期债约定：债务标记单词后接 (deferred) 后缀（标记与括号间可有空白），表示已 triage 标注
+# 但确认延期（非清掉、非盲实现）的债——与 moni broker_qmt.py 既有约定一致。主 _MARKER_RE
+# 因左括号非 [:-] 天然不匹配此形式，故延期债不计入 triage 推荐分子；此处单独计数只为可见性——
+# 修复"merged 后标注式 triage 仍被每轮重推 triage"盲点（memory: scout-scan-recommend-blind-
+# to-pending-worktrees 的 merged 子项：pending-worktree 检测只覆盖未合并，已合并到 main 的
+# 标注式 triage 仍被重推）。注释行不字面写出该约定形式，避免本文件自指误算（同类缺口见
+# memory: scout-scan-marker-self-inflation）。
+_DEFERRED_RE = {m: re.compile(rf"\b{m}\b\s*\(\s*deferred\b") for m in ("TODO", "FIXME", "HACK")}
 
 
 def now_iso():
@@ -114,6 +122,7 @@ def count_markers(path):
     opt-skills worktree triage、main 仍计 4→不应再推 triage，应推合并）。
     """
     counts = {"TODO": 0, "FIXME": 0, "HACK": 0}
+    deferred = {"TODO": 0, "FIXME": 0, "HACK": 0}
     mfiles = set()
     for root, dirs, files in os.walk(path):
         dirs[:] = [d for d in dirs if d not in IGNORE_DIRS
@@ -140,6 +149,10 @@ def count_markers(path):
                         stripped = _STRIP_PLACEHOLDERS.sub("", stripped)
                         # 剥离 HTML 注释占位符 <!-- TODO... --> project-protocol 模板桩不算真债务
                         stripped = _STRIP_HTML_COMMENTS.sub("", stripped)
+                        for m, rx in _DEFERRED_RE.items():
+                            if rx.search(stripped):
+                                deferred[m] += 1
+                                hit = True
                         for m, rx in _MARKER_RE.items():
                             if rx.search(stripped):
                                 counts[m] += 1
@@ -149,7 +162,7 @@ def count_markers(path):
             if hit:
                 mfiles.add(rel)
         # 只走一层多（避免大库超时）— 实际 walk 已限 dirs
-    return counts, mfiles
+    return counts, mfiles, deferred
 
 
 def file_tree_and_symbols(path, max_files=2000):
@@ -370,6 +383,10 @@ def health_priority(r):
     score += min(density * 10, 5)  # 密度贡献封顶，防大库绝对值碾压
     if total:
         reasons.append(f"标记 TODO/FIXME/HACK={m['TODO']}/{m['FIXME']}/{m['HACK']} 密度{density:.3f}")
+    d = r.get("markers_deferred", {})
+    d_total = d.get("TODO", 0) + d.get("FIXME", 0) + d.get("HACK", 0)
+    if d_total:
+        reasons.append(f"延期(已triage) TODO/FIXME/HACK={d.get('TODO', 0)}/{d.get('FIXME', 0)}/{d.get('HACK', 0)}（不计入triage推荐）")
     # FIXME/HACK 比 TODO 更可操作，额外加权（封顶）
     score += min((m["FIXME"] + m["HACK"]) * 0.2, 4)
     # marker 文件已在待合并 worktree 动过——main 上的标记是"已 triage 待合并"而非"真未处理"，
@@ -409,7 +426,7 @@ def health_priority(r):
 def scan_project(p):
     """扫描单个项目，返回健康报告 + 索引"""
     path = p["path"]
-    m_counts, m_files = count_markers(path)
+    m_counts, m_files, m_deferred = count_markers(path)
     rep = {
         "name": p["name"],
         "path": path,
@@ -421,6 +438,7 @@ def scan_project(p):
         "has_planning": os.path.isdir(os.path.join(path, "planning")),
         "planning_pending_wts": pending_planning_in_worktrees(path),
         "markers": m_counts,
+        "markers_deferred": m_deferred,
         "marker_files": sorted(m_files),
         "triage_pending_wts": pending_triage_in_worktrees(path, m_files),
     }
@@ -507,6 +525,9 @@ def main():
             print(f"  GATES.md: {gates} | planning/: {'有' if r['has_planning'] else '无'}")
             m = r["markers"]
             print(f"  标记: TODO={m['TODO']} FIXME={m['FIXME']} HACK={m['HACK']}")
+            d = r.get("markers_deferred", {})
+            if d.get("TODO", 0) + d.get("FIXME", 0) + d.get("HACK", 0):
+                print(f"  延期(已triage): TODO={d.get('TODO', 0)} FIXME={d.get('FIXME', 0)} HACK={d.get('HACK', 0)}")
             print(f"  索引: {r['file_count_indexed']} 文件, "
                   f"fn={r['symbols']['functions']} class={r['symbols']['classes']} h={r['symbols']['headings']}")
 

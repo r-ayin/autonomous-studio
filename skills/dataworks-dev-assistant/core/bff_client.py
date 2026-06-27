@@ -203,7 +203,7 @@ class BFFClient(PaginationMixin, OutputMixin):
             except FileNotFoundError:
                 pass
         # ⚠️ 迁移期兼容：旧 dist 无 profile.json，按 public 行为运行
-        # TODO: 待人工裁决删除条件——所有部署环境的 dist 均已含 profile.json 时移除此兼容分支；
+        # TODO(deferred): 待人工裁决删除条件——所有部署环境的 dist 均已含 profile.json 时移除此兼容分支；
         #       可用 `find <dist-root> -name profile.json` 确认全覆盖后，连同下方 warnings.warn/print 兼容块一并删除
         import warnings
         warnings.warn(
