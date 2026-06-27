@@ -228,6 +228,40 @@ def pending_in_opt_worktrees(path, filename):
     return hits
 
 
+def pending_triage_in_worktrees(path, marker_files):
+    """含真标记的文件是否在某待合并 opt-worktree 的 diff 里——是则该 worktree 可能已 triage 这些 TODO/FIXME/HACK。
+
+    与 pending_in_opt_worktrees（按单文件名查 PROGRESS/GATES）同构，但按 marker 文件集合查：
+    若 marker 文件已在 worktree 动过，main 上的标记计数就是"已 triage 待合并"而非"真未处理"，
+    引擎应推合并而非重做 triage。
+    """
+    if not marker_files:
+        return []
+    wt_root = os.path.join(os.path.dirname(path), ".opt-worktrees", os.path.basename(path))
+    if not os.path.isdir(wt_root):
+        return []
+    try:
+        base = subprocess.run(["git", "rev-parse", "HEAD"], cwd=path,
+                              capture_output=True, text=True, timeout=5).stdout.strip()
+    except Exception:
+        return []
+    if not base:
+        return []
+    mset = set(marker_files)
+    hits = []
+    for entry in sorted(os.scandir(wt_root), key=lambda e: e.name):
+        if not entry.is_dir():
+            continue
+        try:
+            r = subprocess.run(["git", "diff", "--name-only", f"{base}..HEAD"],
+                               cwd=entry.path, capture_output=True, text=True, timeout=5)
+            if r.returncode == 0 and mset & set(r.stdout.splitlines()):
+                hits.append(entry.name)
+        except Exception:
+            continue
+    return hits
+
+
 def health_priority(r):
     """计算项目健康度优先级：分数越高 = 越需要被照顾。
 
