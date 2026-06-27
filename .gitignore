@@ -31,3 +31,4 @@ __pycache__/
 **/*.key
 **/*.pem
 .opt-direction
+.claude/memory/autonomous-state.md
