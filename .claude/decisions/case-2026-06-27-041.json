@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-06-27-041",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-27T14:30:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "修复 scout-scan 盲点：merged 后标注式 triage 的 TODO 每轮被重推 triage。引入 deferred 标记约定(TODO(deferred))，主 _MARKER_RE 天然不匹配该形式故延期债不计入 triage 推荐分子，新增 _DEFERRED_RE 单独计数只供可见性；把 AS 4 个已 triage 的 TODO 转为 deferred 形式",
+  "situation": "scout-scan(workspace 根权威副本)报 autonomous-studio #1(score=0.05)，推荐工作单位='triage 前 1-2 个 TODO'。核实 AS 4 个真实 TODO(apply_resource_access.py:85/90 Hologres/Lindorm entityType 未实测、bff_client.py:206 迁移期兼容分支待人工裁决、scaffold-skill.sh:136 demo.tape 真实回放)全部已在 prior case 010/011/012 triage 标注(merged 到 main)，但 triage=标注保留了 # TODO: 形式 → scout-scan 主 _MARKER_RE 仍计 4 → 每轮重复推荐 triage。这正是 memory scout-scan-recommend-blind-to-pending-worktrees 记录盲点的 merged 子项：pending-worktree 检测(只覆盖未合并 worktree)对已合并到 main 的标注式 triage 无效。三处 TODO 均不可在本环境实测(需真实 DataWorks Hologres/Lindorm 表 / 部署环境 dist 覆盖率人工裁决 / vhs 真实回放)，故不能清掉只能标注。",
+  "action": "(1) scout-scan.py 在 _MARKER_RE 后新增 _DEFERRED_RE={m:re.compile(rf'\\b{m}\\b\\s*\\(\\s*deferred\\b')}（与 moni broker_qmt.py 既有 TODO(deferred) 约定一致；主 regex 因左括号非 [:-] 天然不匹配此形式，故 deferred 不进 triage 推荐分子）；count_markers 新增 deferred dict 计数并作为第 3 返回值；scan_project 存入 rep['markers_deferred']；health_priority 增 reasons 行'延期(已triage) TODO/FIXME/HACK=...（不计入triage推荐）'供可见性；文本报告增'延期(已triage)'打印行。(2) 把 AS 4 个已 triage 的 # TODO: 转 # TODO(deferred):（注释全文保留，仅标记形式变），让 scout-scan 识别其已 triage 状态。(3) 修复中途发现的自指：首版注释字面写了 TODO(deferred)/FIXME(deferred)/HACK(deferred) 致 scout-scan.py 自身被 _DEFERRED_RE 计 6/1/1(虚高)，改写为描述性注释不字面出现该形式后归零。(4) 同步修复到 workspace 根权威副本 scripts/scout-scan.py(独立文件非 git 仓库，loop step1 实跑此副本)。",
+  "files_changed": [
+    "scripts/scout-scan.py",
+    "skills/dataworks-dev-assistant/modules/security-center/scripts/apply_resource_access.py",
+    "skills/dataworks-dev-assistant/core/bff_client.py",
+    "skills/luban/tools/scaffold-skill.sh"
+  ],
+  "worktree": "opt-scanner-1782570277 (commit 64dbab3, direction=scanner:deferred-marker)；AS main 保持干净(改动由 opt-worktree cp 进 worktree 提交)；root scripts/scout-scan.py 同步含修复(独立文件)",
+  "direction": "scanner:deferred-marker",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "python3 scripts/scout-scan.py(根权威副本)报 AS: 标记 TODO=0 FIXME=0 HACK=0(修复前 TODO=4)，延期(已triage) TODO=4 FIXME=0 HACK=0(修复前该行不存在、延期债完全不可见)",
+    "推荐工作单位由'triage 前 1-2 个 TODO（标注或清掉）'变为'无明确小工作单位——可跳过或做文档润色'，理由行='延期(已triage) TODO/FIXME/HACK=4/0/0（不计入triage推荐）'——重推盲点消除",
+    "AS score 0.05→0.0(与其他 5 项目并列健康，不再因已 triage 债霸榜)",
+    "worktree opt-scanner-1782570277: git -C <WT> log --oneline main..HEAD 顶=64dbab3；grep -c _DEFERRED_RE <WT>/scripts/scout-scan.py=2；grep TODO(deferred) <WT>/skills/luban/tools/scaffold-skill.sh:136 命中",
+    "AS main 干净: grep -c _DEFERRED_RE autonomous-studio/scripts/scout-scan.py=0，scaffold-skill.sh:136 仍为 # TODO: 原状(opt-worktree 把改动移出 main)",
+    "自指修复验证: 注释改写后 scout-scan.py 自身 deferred 计数 6/1/1→0(根副本扫描 AS deferred=4/0/0 恰等于 4 个真实 reannotation，无虚高)",
+    "python3 -c ast.parse(scout-scan.py) 通过，语法无误"
+  ],
+  "next_suggestion": "下轮 scout-scan(根副本)大概率所有项目 score=0.0 并列、推荐均'无明确小工作单位'。建议:(A) 合并 opt-scanner-1782570277 到 AS main(让 AS-main 副本与根副本一致，消除 case-014 类两副本分歧；合并后 AS main scout-scan.py 亦含 _DEFERRED_RE)；(B) 同步检查其他项目是否有既有 TODO(deferred)/FIXME(deferred)/HACK(deferred) 现首次被 _DEFERRED_RE 可见化(如 moni broker_qmt.py 的 4 处 TODO(deferred) 应在新报告'延期(已triage)'行显现)——确认非误报；(C) 若仍无明确工作单位，可做 shizi/sunset 文档润色或 sunset-pending planning worktree 合并推进。deferred 约定文档化(PROGRESS.md/decision-archive)可作为后续小单位。"
+}
