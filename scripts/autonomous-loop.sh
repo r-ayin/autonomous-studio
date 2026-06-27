@@ -29,27 +29,23 @@ mkdir -p "$WORKSPACE/.claude"
 rm -f "$STOP_MARKER"
 
 PROMPT='你是 autonomous-studio 引擎的持续自治循环（Ralph Wiggum 模式，每轮新 context）。
-当前轮次：推进持久化自动开发研究管线的**一个工作单位**。
+当前轮次：推进持久化自动开发研究管线的**一个小工作单位**。
+
+★ 预算约束：每轮 ~$0.5（平台硬上限），做小工作单位，不要深读大量代码/大文件。靠 scout-scan 报告选任务，最小改动+提交。
 
 步骤：
 0. 读 .claude/autonomous-constraints.md 的排除项（DO NOT），严格遵守（如"不做 moni 前端重构"）
-1. 读 .claude/memory/autonomous-state.md 的 GOAL_STATUS + active goal（若有）
-2. 跑 bash scripts/scout-scan.py --workspace '"$WORKSPACE"' --json  → 拿项目健康+索引（确定性，零 token）
-3. 从扫描结果选一个最高价值工作单位（P0 阻塞/数据丢失/安全 > P1 质量/测试/重构 > P2 新功能）：
-   - 探究该项目：读代码理解实现、跑测试看状态、对比设计
-   - 主动开发/修复/优化
-   - 缺文件就建（PROGRESS.md / GATES.md / 测试 / 配置 / 文档）
-4. 改动用 bash scripts/opt-worktree.sh commit <area:subdirection> "<说明>" 提交
-   （禁直接 git commit main——autonomous-commit-gate 会拦；area 如 engine:distillation / moni:quant）
-5. 把本轮决策写 .claude/decisions/case-YYYY-MM-DD-NNN.json（含 outcome 枚举 + outcome_evidence）
-6. 一行汇报：做了什么 + 改了哪些文件 + 提交到哪个 worktree + 下轮建议
+1. 跑 bash scripts/scout-scan.py --workspace '"$WORKSPACE"'（不带 --json，文本报告，轻）→ 拿项目健康快照
+2. 从报告选一个最高价值的**小**工作单位（缺文件就补 PROGRESS.md/GATES.md；小 bug 修复；TODO 标注）。不要选需要深读大块代码的任务。
+3. 最小改动（只改 1-3 个文件，不要 Read 超过 2 个源文件，不要碰 .codebase-index/ 大 JSON）
+4. 用 bash scripts/opt-worktree.sh commit <area:subdirection> "<说明>" <文件1> <文件2> 提交（指定文件，避免扫 WIP；禁直接 git commit main——gate 会拦）
+5. 一行汇报：做了什么 + 哪个 worktree + 下轮建议（不写完整 case JSON，省 token——outcome 直接写在 commit msg 里）
 
 纪律（用户定，无限制）：
 - 不设冷却/连续次数上限——worktree 隔离，main 永远安全，大胆做
-- 最坏只是某 worktree 被拒，main 不受影响
-- 每轮聚焦一个工作单位，做完提交就退出（while 循环重开新 context 继续）
-- 唯一停止条件：用户说停（建 .claude/.stop_autonomous 标记）或 kill 进程
-- 卡死保护（不是限制，是防死循环）：同错误连续 3 次无进展 → 写 case 标 blocked，跳到下个项目'
+- 每轮聚焦一个**小**工作单位，做完提交就退出（while 循环重开新 context 继续）
+- 唯一停止：用户说停（.claude/.stop_autonomous 标记）或 kill 进程
+- 卡死保护：同错误连续 3 次无进展 → 跳到下个项目'
 
 echo "=== autonomous-loop 启动 @ $(date) ==="
 echo "workspace: $WORKSPACE"
