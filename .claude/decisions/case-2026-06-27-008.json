@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-27-008",
+  "agent_id": "autonomous-loop-ralph",
+  "timestamp": "2026-06-27T09:12:00Z",
+  "project": "x-tool",
+  "work_unit": "triage #1 项目 x-tool 的 TODO 占位符——补全 api额度监测 CLAUDE.md 脚手架占位符（清掉 4 个 <!-- TODO -->）",
+  "situation": "scout-scan 本轮报告 x-tool=#1 (score=1.22, TODO=44, 无 planning/)，推荐工作单位=triage 前 1-2 个 TODO。grep 核实 44 个 TODO 的真实构成：绝大多数是 project-protocol 自举生成的 <!-- TODO --> HTML 注释占位符（散布在 7 个子项目 CLAUDE.md/PROGRESS.md，decision-archive.md:511 明确记录为'待人工补充'），真实代码 TODO 仅 ~6 个且全在 moni/factors/scripts/qlib_repo/（vendored 第三方 qlib 源码，不该改）。部署版 scout-scan.py 已含 .venv-sidecar + 全角【】占位符剥离修复，故 44 非第三方虚高，但 HTML 注释 <!-- TODO --> 仍被 _MARKER_RE=\\bTODO\\b\\s*[:-] 计为真债（第 4 类 inflation 缺口，本轮未修 scanner）。",
+  "action": "按 loop 纪律'取 #1 及其工作单位'忠实执行：挑可确信推断的子项目 api额度监测（monitor.py 用 requests 轮询 yunyi.cfd、rich 实时展示、msvcrt 表明 Windows、config.json 存 base_url+keys），把其 CLAUDE.md 的 4 个 <!-- TODO --> 占位符补为真实内容——目的（轮询监测 API 服务各 key 额度/余额，rich 终端实时展示+键入交互）、技术栈（Python: requests/rich/python-dateutil）、入口（python monitor.py / 启动监测.bat）、快速命令、项目规则（仅 Windows-msvcrt / config.json key 明文勿泄露 / base_url+keys 配置）。遵循 project-protocol skill'推断不到不猜测'原则，仅填可从源码确证的字段。未改 scanner（第 4 类 inflation 留作下轮 AS 侧结构性工作单位）。",
+  "files_changed": ["api额度监测/CLAUDE.md"],
+  "worktree": "x-tool opt-docs-1782551599（方向 docs:claude-meta，commit eecce6e，1 文件 +.opt-direction，+9/-7）",
+  "direction": "docs:claude-meta",
+  "outcome": "succeeded",
+  "outcome_evidence": "worktree opt-docs-1782551599 commit eecce6e diff --stat 显示 api额度监测/CLAUDE.md 15 行变更（+9/-7）；grep -c TODO 该文件=0（原 4 个 <!-- TODO --> 全清）。主工作树已由 opt-worktree 还原为干净态（main 安全）。x-tool 其余 ~6 子项目仍有同类占位符，下轮可继续或一次性修第 4 类 scanner inflation 根因。",
+  "next_suggestion": "下轮两条路径任选：(A) 继续 #1=x-tool 同模式补全下一个子项目 CLAUDE.md 占位符（如 pdd监测/dongxiao/AB system），逐文件清债；(B) 转去 AS 侧修第 4 类 scanner inflation 根因——count_markers 剥离链新增 HTML 注释 span 剥离（re.compile(r'<!--.*?-->', re.S) 在 _STRIP_STRINGS 后剥离），让 <!-- TODO --> 脚手架占位符不再计为真债，x-tool TODO 44→~6 退榜，一劳永逸。注意 AS git 副本仍缺 .venv-sidecar 修复，两份副本 diverge 需一并处理（见 state NEXT_SUGGESTION #5）。另：shizi VL_KEY 历史 rewrite P0 + AS optimization worktree 3 提交待人工 merge 仍积压。"
+}

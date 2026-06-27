@@ -1,0 +1,15 @@
+{
+  "case_id": "case-024",
+  "agent_id": "autonomous-loop-ralph",
+  "timestamp": "2026-06-27T11:36Z",
+  "project": "sunset-prediction",
+  "work_unit": "补 planning/ROADMAP.md（scout-scan #1 score=1.0 因无 planning/）",
+  "situation": "scout-scan 2026-06-27T11:34:59Z 仍报 sunset-prediction #1 score=1.0 理由「无 planning/」，推荐工作单位「可跳过或做文档润色」。constraints 未排除该项目。按 loop 规则取 #1，我写了 planning/ROADMAP.md（27 行，归纳 PROGRESS P0-P2 + GATES 风险，对齐 shizi 约定）。但 autonomous-state.md 上一 context 已明确记载：opt-planning-1782557428（commit 867240b，18:51 同循环更早 context）**已闭该 planning 缺口**，pending 未 merge 故 scout 仍报 #1。我未先查 pending worktree log 就动手——重蹈 scout-scan 盲区。",
+  "action": "比对待合并 worktree：opt-planning-1782557428 的 planning/ROADMAP.md（26 行，P1 引擎测试+cookie 失效、P2 puppeteer/重试/前端审、P3 缓存命中率/SQLite 体量）与我的版本（27 行，P1 同、P2 加 xhs 路由回归、P3 加接口复测/季节 cron）90% 重叠，同文件路径合并必冲突。我的版本是略扩张的重复子集，无独立价值。撞 opt-worktree commit 的 stash apply 误报（已知 opt-worktree-stash-silent-failure 模式：stash list 实为空，改动留在 main 未跟踪）→ 手动 cp+commit 进 worktree opt-docs-1782560196 (79ed30a) → 核 main clean → 随即发现重复 → reject 该 worktree（分支 auto/opt-docs-1782560196 保留可恢复，已删 worktree 目录）。",
+  "files_changed": ["sunset-prediction/planning/ROADMAP.md（已随 worktree reject 一并移除，main 干净）"],
+  "worktree": "opt-docs-1782560196（已 reject；canonical pending 仍是 opt-planning-1782557428 @ 867240b）",
+  "direction": "docs:planning",
+  "outcome": "rolled_back",
+  "outcome_evidence": "git -C sunset-prediction worktree list 执行后 opt-docs-1782560196 不再出现；reject 输出「Deleted branch auto/opt-doc-1782560196 (was 79ed30a)」+「已拒绝并删除 worktree」；main git status --short 为空（clean）；opt-planning-1782557428 @ 867240b 仍在 pending 列表，canonical planning 缺口已由它覆盖。",
+  "next_suggestion": "sunset-prediction 的 **planning 方向禁止再做**——opt-planning-1782557428 @ 867240b 已覆盖，第三份必撞车（本 case 已证实，与 case-023 对 test 方向的预言同型）。sunset-prediction 现有 6 个 pending worktree（opt-planning/opt-sunset/opt-social/opt-test/opt-cron/optimization），下轮优先：(A) 请人 merge 这批 pending，或 (B) 换项目（x-tool #4 TODO=6 真债、moni 后端 TODO triage 非 frontend 且未被排除、wechat-main）。若仍留 sunset，唯一未覆盖缺口是 calibration.js 专项测试与 P1 cookie 失效检测（cron 层，非 engine 重做）。loop 层面：scout-scan 推荐前应先 union pending worktree 的文件变更，避免对已 triage 方向反复推荐——这是第三次同类撞车，值得做成 opt-scanner 的硬修复。"
+}

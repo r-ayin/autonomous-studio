@@ -1,0 +1,17 @@
+{
+  "case_id": "case-2026-06-27-017",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-27T10:50:28Z",
+  "project": "sunset-prediction",
+  "work_unit": "补建 planning/ROADMAP.md——关闭 scout-scan #1 结构性缺口（score=1.0 因无 planning/）",
+  "situation": "scout-scan 2026-06-27T10:47:24Z 报 sunset-prediction 排名 #1（score=1.0，全仓最高），理由单一：'无 planning/'。其余结构齐备——PROGRESS.md（0.3天，含 P0/P1/P2 待办清单）、GATES.md（CRITICAL/IMPORTANT/NICE 三档齐全）、README.md、scripts/、src/、0 TODO/FIXME/HACK。推荐工作单位原文 '无明确小工作单位——可跳过或做文档润色'，但 score=1.0 恰因 planning/ 缺失被健康度算法判为最该照顾项——符合 autonomous-constraints '缺文件就补' 纪律，是真实结构性缺口而非边际润色。参考 shizi planning/ROADMAP.md 约定（非承诺性路线图，按 P1/P2/P3/不做 分档）。",
+  "action": "单文件补建 sunset-prediction/planning/ROADMAP.md，把 PROGRESS.md 已有待办清单重组为 shizi 约定的非承诺性路线图：P1（补引擎回归测试 computeSunsetScore+calibration 双信号校准 / WEIBO_COOKIE 失效检测+告警）→P2（puppeteer-core 浏览器路径配置化 / 日报失败重试 / 前端 public/ 现状审计）→P3（缓存命中率可观测 / SQLite 增长评估）→不做（不重写算法核心 / 不引付费 API / 不做无关社媒运营）。与 PROGRESS 待办对齐，不发明新需求。仅 1 文件，未读任何源代码（PROGRESS/GATES 已列全部待办，无需深读 prediction-engine.js 等）。",
+  "files_changed": [
+    "sunset-prediction/planning/ROADMAP.md"
+  ],
+  "worktree": "opt-planning-1782557428",
+  "direction": "planning:roadmap",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh sunset-prediction commit 'planning:roadmap' 输出 `✓ 提交到 opt-planning-1782557428 方向=planning:roadmap`；worktree git log HEAD=867240b `opt(planning:roadmap): 补建 planning/ROADMAP.md...` off main 2ec3a27；`git diff --stat main` 确认 planning/ROADMAP.md | 26 +++++++++（1 file changed, 26 insertions）；main 工作树 git status --short 空（clean，符合不动 main 纪律）。下轮 merge 后 sunset-prediction 将有 planning/→score 应从 1.0 回落，#1 易主。",
+  "next_suggestion": "下轮两条路：(1) 人工 merge opt-planning-1782557428（`bash scripts/opt-worktree.sh sunset-prediction show opt-planning-1782557428` 审完→merge），落地后 sunset-prediction score 回落、#1 易主。(2) 若仍由 sunset-prediction 霸榜或顺健康度排序，做其 P1 首项——补 prediction-engine.js computeSunsetScore + calibration.js 双信号校准的最小回归测试（当前 0 测试，GATES NICE 门要求≥1 测试），仍走 opt-worktree 不动 main。注意：本轮额外清理了 stale 共享路径 worktree /home/admin/workspace/.opt-worktrees/optimization（pre-per-project-path 遗留，占 auto/optimization 分支阻塞 gate）——已 git worktree remove + git branch -D（merge-base --is-ancestor auto/optimization main=YES 确认无独有提交，安全），opt-worktree gate 现对 sunset-prediction 可正常 init。"
+}

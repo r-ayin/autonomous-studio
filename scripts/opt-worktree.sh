@@ -18,6 +18,7 @@
 #   opt-worktree.sh [project] show [worktree]             # 给人审：看 diff（不合并）
 #   opt-worktree.sh [project] merge <worktree>            # 人工批准后：squash 合并→main + 清理
 #   opt-worktree.sh [project] reject <worktree>           # 人工拒绝：归档/删
+#   opt-worktree.sh [project] next-case                   # 查下一个可用 case 编号（扫 main + 所有 pending worktree，防撞号）
 # 例: opt-worktree.sh shizi commit "docs:governance" "说明" PROGRESS.md GATES.md
 set -euo pipefail
 
@@ -87,26 +88,91 @@ cmd_commit() {
   fi
 
   # 把当前工作区改动同步到 target worktree 提交
-  # 策略：若有文件列表（$5+），只 stash 指定文件（避免扫进用户 WIP）；否则 stash 全部（dirty=0 时安全）
+  # 弃用 git stash（phantom-stash 误报根因，见 case-028/029/030/032/004 +
+  #   [[opt-worktree-stash-silent-failure]]）：`git stash push -u -- <pathspec>`
+  #   当 pathspec 只命中 untracked 新文件时，git 报 "No local changes to save" 且 exit 0
+  #   但不产 stash；随后 `git stash pop` 无 stash 可弹 exit 1 → 被误报成
+  #   "stash apply 冲突，改动留在 stash" —— 实则无 stash、改动滞留 main、worktree 无 commit。
+  # 改显式 cp：①指定文件 cp 到 target → ②worktree add+commit → ③main 还原
+  #   (tracked → checkout HEAD / untracked 新文件 → rm) → ④断言 worktree 有新 commit 且 main 干净
   cd "$PROJECT"
   local files="${@:5}"
-  if [[ -n "$(git status --porcelain)" ]]; then
-    if [[ -n "$files" ]]; then
-      git stash push -u -m "opt-$direction" -- $files >/dev/null 2>&1
-    else
-      echo "⚠️ 未指定文件列表，stash 全部改动（若项目有用户 WIP 会被一并扫进 worktree）" >&2
-      git stash push -u -m "opt-$direction" >/dev/null 2>&1
-    fi
-    cd "$target"
-    git stash pop >/dev/null 2>&1 || { echo "⚠️ stash apply 冲突，改动留在 stash，人工处理"; exit 1; }
-    git add -A
-    git -c user.name="autonomous-studio" -c user.email="opt@auto" commit -q -m "opt($direction): $msg
+  if [[ -z "$(git status --porcelain)" ]]; then
+    echo "（无未提交改动，跳过）"
+    return 0
+  fi
+  local head_before; head_before=$(git -C "$target" rev-parse HEAD)
+
+  # ① 迁移改动到 target worktree
+  if [[ -n "$files" ]]; then
+    local f
+    for f in $files; do
+      [[ -e "$f" ]] || { echo "⚠️ 指定文件不存在，跳过: $f" >&2; continue; }
+      mkdir -p "$target/$(dirname "$f")"
+      cp -p "$f" "$target/$f"
+    done
+  else
+    echo "⚠️ 未指定文件列表，cp 全部改动（含用户 WIP 风险，建议显式传文件）" >&2
+    local p
+    while IFS= read -r -d '' p; do
+      p="${p#???}"               # 去掉前导 "XY "（status 2 字符 + 空格）
+      case "$p" in *" -> "*) p="${p##* -> }";; esac   # rename 取新路径
+      [[ -e "$p" ]] || continue
+      mkdir -p "$target/$(dirname "$p")"
+      cp -p "$p" "$target/$p"
+    done < <(git status --porcelain -z)
+  fi
+
+  # ② worktree 内提交
+  cd "$target"
+  git add -A
+  git -c user.name="autonomous-studio" -c user.email="opt@auto" commit -q -m "opt($direction): $msg
 
 [auto-optimization on worktree $(basename "$target") — 待人工审合并]"
-    echo "✓ 提交到 $(basename "$target")  方向=$direction"
+
+  # ③ 还原 main：tracked → checkout HEAD；untracked 新文件 → rm（已 cp 走）
+  cd "$PROJECT"
+  if [[ -n "$files" ]]; then
+    local f2
+    for f2 in $files; do
+      if git ls-files --error-unmatch "$f2" >/dev/null 2>&1; then
+        git checkout HEAD -- "$f2" 2>/dev/null || true   # tracked：还原到 HEAD
+      else
+        rm -f "$f2"                                       # untracked 新文件：删（已迁走）
+      fi
+    done
   else
-    echo "（无未提交改动，跳过）"
+    local p2
+    while IFS= read -r -d '' p2; do
+      p2="${p2#???}"
+      case "$p2" in *" -> "*) p2="${p2##* -> }";; esac
+      if git ls-files --error-unmatch "$p2" >/dev/null 2>&1; then
+        git checkout HEAD -- "$p2" 2>/dev/null || true
+      else
+        rm -f "$p2"
+      fi
+    done < <(git status --porcelain -z)
   fi
+
+  # ④ 断言：worktree 必有新 commit + 本次提交的文件在 main 必已还原（撞误报自动 fail 而非静默）
+  #    注意只校验本次列入 $files 的文件，不要求整个工作区干净——main 可能含本次未涉及的 WIP/未跟踪文件。
+  local head_after; head_after=$(git -C "$target" rev-parse HEAD)
+  if [[ "$head_before" == "$head_after" ]]; then
+    echo "⚠️ 断言失败：worktree 无新 commit（cp/commit 未生效），改动仍在 main" >&2
+    exit 1
+  fi
+  local leak
+  if [[ -n "$files" ]]; then
+    leak=$(git status --porcelain -- $files)
+  else
+    leak=$(git status --porcelain)
+  fi
+  if [[ -n "$leak" ]]; then
+    echo "⚠️ 断言失败：本次提交的文件在 main 仍有残留改动（还原未生效），人工核对：" >&2
+    echo "$leak" >&2
+    exit 1
+  fi
+  echo "✓ 提交到 $(basename "$target")  方向=$direction"
 }
 
 cmd_list() {
@@ -166,6 +232,35 @@ cmd_reject() {
   echo "✗ 已拒绝并删除 worktree: $wt（分支 auto/$(basename "$dir") 保留可恢复，或手动删）"
 }
 
+# 取当天（或指定日）下一个可用 case 编号：扫 main 工作树 + 所有 pending opt worktree 的
+# .claude/decisions/ 下 case-{date}-NNN.json，取 max+1。
+# 关键：用 ls（盘上文件，含未提交/untracked），不用 git ls-tree（只看已提交）——
+# 否则看不见 main 未提交的孤儿 case 文件（曾导致 036/037 撞号：main 仅见 002/003 已提交，
+# 引擎再选 004 与 worktree 已存的 004-035 撞）。也扫 pending worktree（case 常写在那）。
+cmd_next_case() {
+  local date="${3:-$(date +%Y-%m-%d)}"
+  local pat="case-${date}-"
+  local max=0 n f d
+  # 收集所有该扫的 decisions 目录：main + 每个 pending opt worktree
+  local dirs=( "$PROJECT/.claude/decisions" )
+  for d in "$WT_BASE"/*/; do
+    [[ -d "${d}.claude/decisions" ]] && dirs+=( "${d}.claude/decisions" )
+  done
+  for d in "${dirs[@]}"; do
+    for f in "$d"/${pat}*.json; do
+      [[ -e "$f" ]] || continue
+      n="${f##*${pat}}"            # 去掉前缀（含路径）
+      n="${n%.json}"               # 去后缀
+      [[ "$n" =~ ^[0-9]+$ ]] || continue
+      # 10# 强制十进制：否则前导零被当八进制（037→31，008/009 报错），编号算错
+      if (( 10#$n > max )); then max=$((10#$n)); fi
+    done
+  done
+  local next=$((max+1))
+  printf -v next3 "%03d" "$next"
+  echo "case-${date}-${next3}.json"
+}
+
 case "$CMD" in
   init) cmd_init ;;
   commit) cmd_commit "$@" ;;
@@ -173,5 +268,6 @@ case "$CMD" in
   show) cmd_show "$@" ;;
   merge) cmd_merge "$@" ;;
   reject) cmd_reject "$@" ;;
-  *) echo "用法: opt-worktree.sh <project> <init|commit|list|show|merge|reject> ..."; exit 1 ;;
+  next-case) cmd_next_case "$@" ;;
+  *) echo "用法: opt-worktree.sh <project> <init|commit|list|show|merge|reject|next-case> ..."; exit 1 ;;
 esac

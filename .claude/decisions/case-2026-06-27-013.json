@@ -1,0 +1,23 @@
+{
+  "case_id": "case-2026-06-27-013",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-27T10:25:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "转 AS 结构性债（triage 已穷尽）：新增 planning/ 目录，写 main/worktree 历史分歧裁决方案文档（rebase --onto vs reset main）——P0 阻塞所有基于 b725eb4 的 pending worktree 合入 main，分歧既有非本轮引入、历史改写有丢工作风险不可自动做，故本工作单位=留据文档（不改历史）+补 planning/ 降 AS score 驱动项'无 planning/'",
+  "situation": "scout-scan 文本报告 autonomous-studio score=1.06 排 #1，理由'无 planning/;标记密度'。state(case-012)显式指示 AS 4 真实 TODO 已全部 triage、triage 工作单位穷尽，下轮若 AS 仍 #1 应转结构性债：NEXT_SUGGESTION #3 ① = 补 planning/ 写一份 rebase vs reset main 裁决方案。autonomous-constraints.md 不排除 AS。本工作单位即执行该 #3 ①。动手前先查 pending worktree（避免 case-011 重复覆辙）：git worktree list 确认 opt-skills-1782553243(off 34fe229)/opt-scanner-1782549922(off b725eb4)/optimization(b725eb4) 三处 pending。",
+  "action": "用 git 可观察事实（非散文）定位分歧根因：common-ancestor=f9b36aa；从 f9b36aa 起同一组 4 个 worktree 合并被独立重放两次产生 main(34fe229…)与 optimization(b725eb4…)两条平行线（提交消息相同 hash 不同）；git merge-base --is-ancestor b725eb4 main=NO 确认分歧；git diff --shortstat 34fe229 b725eb4=1 file(SKILL.md) 1+/2-；git log --no-merges f9b36aa..34fe229 含 3c5d5a3(SKILL fix) 而 f9b36aa..b725eb4 不含 → main=optimization+仅额外 3c5d5a3。opt-scanner-1782549922 merge-base(main,HEAD)=f9b36aa 故阻塞（合 main 会带入重放合并历史），其真实新工作仅 2 提交 9f2967b/135a67f。写 planning/divergence-rebase-vs-reset.md：方案 A=rebase --onto main b725eb4 auto/opt-scanner-1782549922（推荐，零丢失，worktree 隔离+reflog 可回退，3c5d5a3 已在 main 不丢）vs 方案 B=reset main --hard b725eb4（不推荐，丢 3c5d5a3+改 main 已推历史）+执行顺序+后续结构性收益。1 文件。opt-worktree.sh autonomous-studio commit planning:divergence-rebase-vs-reset（方向分歧 engine→planning 开新 worktree opt-planning-1782554583）。",
+  "files_changed": ["planning/divergence-rebase-vs-reset.md"],
+  "worktree": "autonomous-studio opt-planning-1782554583（方向 planning:divergence-rebase-vs-reset，新增 commit c856a15 off main 34fe229，1 文件，待人工 merge）",
+  "direction": "planning:divergence-rebase-vs-reset",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "git -C opt-planning-1782554583 log --oneline main..HEAD 顶 = 'c856a15 opt(planning:divergence-rebase-vs-reset): 新增 planning/ 与 main/worktree 历史分歧裁决方案...'",
+    "git -C opt-planning-1782554583 ls-files planning/ = 'planning/divergence-rebase-vs-reset.md'（文件已入库）",
+    "git merge-base --is-ancestor b725eb4 main 退出非零（NO）=分歧可观察确认，文档第1节记录",
+    "git diff --shortstat 34fe229 b725eb4 输出 '1 file changed, 1 insertion(+), 2 deletions(-)' 且 git diff 34fe229 b725eb4 -- SKILL.md 非空 =两线树差异仅 SKILL.md，文档第1节记录",
+    "git log --oneline --no-merges f9b36aa..34fe229 含 '3c5d5a3 fix(SKILL)...' 而 f9b36aa..b725eb4 不含 =main 为 optimization 超集+仅 3c5d5a3，文档第1节结论",
+    "opt-scanner-1782549922 的 git log --oneline b725eb4..HEAD 仅 2 行(9f2967b/135a67f)=真实新工作仅 2 提交，rebase --onto 可干净移植，文档方案 A 记录",
+    "main 工作树 git status --porcelain 不含 planning/（opt-worktree 已 stash 移入 worktree，main 干净安全）"
+  ],
+  "next_suggestion": "本工作单位=分歧裁决方案文档，未执行历史改写（纪律：有丢工作风险需人工裁决）。下轮优先：①【待人工执行·P0】按 opt-planning-1782554583 的方案 A 在 opt-scanner-1782549922 worktree 跑 `git rebase --onto main b725eb4 auto/opt-scanner-1782549922`，验证 `git log --oneline main..HEAD` 仅 2 提交(9f2967b'/135a67f')且 bash -n scripts/scout-scan.py 通过，再人工 ff-merge——这同时解除 P0 并让已写好的【TODO】模板桩剥离修复(135a67f)到达 main。②先合 opt-skills-1782553243(merge-base=34fe229=main HEAD，零风险 ff-able，3 提交 todo-triage)——独立于分歧。③发现：scout-scan 文本报告 AS TODO=17(首扫=4)的根因=scaffold-skill.sh 的 14 个【TODO:...】模板桩被 main 的 scout-scan.py 计入(.claude/decisions/*.json 的 134 处 TODO 散文未被计，因 .json 不在扫描扩展名)；该【TODO】剥离修复已存在于 opt-scanner-1782549922(135a67f, _STRIP_PLACEHOLDERS=【[^】]*】)但困于分歧未到 main——正是本工作单位方案 A 要解除的。勿重复写该修复(case-011 覆辙)。④若人工暂不裁决分歧：顺延 #2 x-tool(TODO=6 真实代码债 triage:broker_qmt.py×4+run_trader.py:102+download_sw_industry.py:87)。"
+}

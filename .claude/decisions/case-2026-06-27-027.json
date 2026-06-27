@@ -1,0 +1,27 @@
+{
+  "case_id": "case-2026-06-27-027",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-27T12:05:00Z",
+  "project": "x-tool",
+  "work_unit": "合并 pending triage worktree opt-x-tool-1782557061，并在合并前对齐 .gitignore（防止 .opt-direction cruft 入 master）",
+  "situation": "scout-scan #1 = x-tool (score=0.03)，推荐工作单位=「等合并 opt-x-tool-1782557061 worktree，可能已 triage TODO，别重做——先查 worktree log」。查 worktree log：该 worktree 有 1 个干净 commit（b3f5829），做了 x-tool 标记密度 triage（旧 0.218=354/66/17 被第三方包+构建产物+模板占位虚高，真实 scoped 6/0/0 密度0.003；唯一可操作代码 TODO=download_sw_industry.py akshare 备选，主路径 baostock 已通故标注延后），并动了 GATES.md/PROGRESS.md/.opt-direction/download_sw_industry.py。审查 diff 发现：commit 把 per-worktree 方向标记 .opt-direction 计入了跟踪——而 x-tool 的兄弟项目 shizi/sunset-prediction 上周刚做过『untrack .opt-direction cruft + gitignore』（git log 可证），x-tool 自身 .gitignore 未排除该文件（git check-ignore -v .opt-direction 返回 not ignored）。直接 squash 合并会把 cruft 重新引入 master，与项目约定相悖。",
+  "action": "在 worktree 内：(1) 向 .gitignore 追加 .opt-direction（对齐 shizi/sunset-prediction 模式）；(2) git rm --cached .opt-direction（保留磁盘文件供 opt-worktree 自身 current_area/show 读取）；(3) git commit --amend --no-edit 把 .opt-direction 移出 commit。随后 bash scripts/opt-worktree.sh x-tool merge opt-x-tool-1782557061 执行 squash 合并 → master，并删除残留分支 auto/opt-x-tool-1782557061 + git worktree prune。",
+  "files_changed": [
+    "x-tool/.gitignore",
+    "x-tool/GATES.md",
+    "x-tool/PROGRESS.md",
+    "x-tool/moni/factors/scripts/alpha_graph/tools/download_sw_industry.py"
+  ],
+  "worktree": "opt-x-tool-1782557061（已合并并清理；分支已删；merge commit=d165fd4 on master）",
+  "direction": "x-tool:triage",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "opt-worktree merge 输出：『✓ 已 squash 合并 opt-x-tool-1782557061 → master』+『✓ worktree 清理』",
+    "git log --oneline -3 x-tool master 顶部 = d165fd4 merge: 人工批准合并 optimization worktree 'opt-x-tool-1782557061'",
+    "git status --short x-tool master = 空（干净）",
+    "git ls-files | grep -c '^.opt-direction$' = 0（cruft 未入 master，对齐 shizi/sunset-prediction 约定）",
+    "amended commit stat 显示 .opt-direction 不再在跟踪文件列表，.gitignore +4 行",
+    "git worktree list 仅余 opt-docs-1782551599 与 optimization；auto/opt-x-tool-1782557061 分支 git branch -D 成功（was 2898889）"
+  ],
+  "next_suggestion": "x-tool triage 已合并，scout-scan 下轮应不再把 x-tool 列 #1（标记密度信号已被 GATES NICE 项记录为已 triage）。下轮取 scout-scan 新 #1；若仍指向 x-tool，则做 GATES NICE 列的下一个真缺口：补建 x-tool/planning/ 目录（lightweight 规划占位）或核对 PROJECTS.md 子项目状态（最后更新停在 2026-06-16，可能 stale）。注意 opt-docs-1782551599 worktree 仍 pending 未合并，下轮若 x-tool 再上榜先查该 worktree log 避免重做。"
+}

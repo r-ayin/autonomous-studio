@@ -21,7 +21,7 @@
 
 ## 待办（小工作单位池）
 
-- [ ] TODO/FIXME/HACK 清理：scout 报 TODO=45 / FIXME=4 / HACK=4，逐个 triage
+- [~] TODO/FIXME/HACK 清理：scout 报 TODO=45 / FIXME=4 / HACK=4 → 现报 TODO=4 / FIXME=0 / HACK=0（marker-strip + .venv/skills 第三方包忽略修复落地后大幅下降，2026-06-27 核验）。剩 4 条为 scout-scan.py 内描述标记约定的注释（非真债），triage 可收尾
 - [ ] GATES.md 中 CRITICAL 门禁项大部分未勾选，需逐项核验存活状态
 - [ ] 确认 decision-log.jsonl 有 ≥1 条真实用户交互记录（IMPORTANT 门禁）
 
