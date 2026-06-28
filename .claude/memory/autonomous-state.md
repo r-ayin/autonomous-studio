@@ -14,15 +14,15 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-06-28T13:52:00Z（agentfw 补 GATES.md → opt-docs-1782638790 commit 39c53d6）**
+- **最后活跃: 2026-06-28T15:34Z（agentfw 补 planning/status.json → worktree opt-docs-1782638790 commit 59eb404 → case-089）**
 - **活跃项目**: 持续自治管线巡检——按 scout-scan 健康度排序轮转
 - **当前阶段**: 管线日常运行——scout-scan → 选项目 → 小工作单位 → worktree 提交
 - **GOAL_STATUS**: active
 - **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动）
 - **LAST_UPDATED**: 2026-06-28
-- **LAST_WORKTREE**: opt-docs-1782638790
+- **LAST_WORKTREE**: agentfw/opt-docs-1782638790 (commit 59eb404)
 - **LAST_OUTCOME**: done
-- **NEXT_SUGGESTION**: 1) 人工批准合并 opt-docs-1782638790（agentfw PROGRESS.md + GATES.md）; 2) dingtalk-auto 补 GATES.md（#2 score=6.0）; 3) linshi 补 GATES.md（#3 score=6.0）
+- **NEXT_SUGGESTION**: 1) 人工批准合并 agentfw/opt-docs-1782638790（PROGRESS.md+GATES.md+planning/status.json 三件套，3 commits）; 2) dingtalk-auto（scout #2）补 planning/ 目录; 3) linshi（scout #3）补 planning/ 目录
 - **自主循环**: 🟢 活跃
   - L1 Inline: 每次回复末尾内联检查 (+ git status)
   - L2 Heartbeat: CronCreate 每7分钟（执行轨——推进 Studio 阶段或主动扫描）
