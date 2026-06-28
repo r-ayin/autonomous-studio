@@ -14,15 +14,15 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-06-29T12:00Z（autonomous-studio-aone: .gitignore 补 loop 运行时文件排除 + case-025/027 归档 → opt-chore-1782656102; case-2026-06-29-029）**
+- **最后活跃: 2026-06-29T20:45Z（autonomous-studio-aone: commit-gate 扩拦 reset/branch/update-ref 旁路写 case-047 缺口 → opt-gate-1782679188; case-2026-06-29-031）**
 - **活跃项目**: 持续自治管线巡检——按 scout-scan 健康度排序轮转
 - **当前阶段**: 管线日常运行——scout-scan → 选项目 → 小工作单位 → worktree 提交
 - **GOAL_STATUS**: active
 - **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动）
 - **LAST_UPDATED**: 2026-06-29
-- **LAST_WORKTREE**: autonomous-studio-aone/opt-chore-1782656102 (commit f1a905b: .gitignore+decisions 归档)
+- **LAST_WORKTREE**: autonomous-studio-aone/opt-gate-1782679188 (commit b3cb5d5: commit-gate 扩拦 reset/branch/update-ref)
 - **LAST_OUTCOME**: done
-- **NEXT_SUGGESTION**: 1) 人工批准合并 opt-chore-1782656102（含 gitignore+case-025/027/029 归档，安全）；2) 人工 merge opt-server-1782676356 → quanzhan main（单文件单行，安全）；3) 人工 merge opt-skills-1782670300 → skills master（3 commits 累积，安全）；4) 人工批准合并积压 blocked worktrees（1BfrYn9G/agent-dashboard/agentfw/opt-docs/opt-decisions-1782670914）；5) 关注 shizi dirty=16（新增 agent/config/engine 目录，可能是 WIP，需人工确认）
+- **NEXT_SUGGESTION**: 1) 人工批准合并 opt-gate-1782679188（1 文件 commit-gate 增加拦截规则，安全）；2) 人工批准合并 opt-gates-1782678110（GATES.md 核验，1 文件低风险）；3) 人工批准合并积压 worktrees：opt-chore-1782656102/opt-server-1782676356/opt-skills-1782670300；4) 确认 decision-log.jsonl 有 ≥1 条真实记录（GATES IMPORTANT）；5) 关注 shizi dirty=16 WIP（需人工确认）
 - **自主循环**: 🟢 活跃
   - L1 Inline: 每次回复末尾内联检查 (+ git status)
   - L2 Heartbeat: CronCreate 每7分钟（执行轨——推进 Studio 阶段或主动扫描）

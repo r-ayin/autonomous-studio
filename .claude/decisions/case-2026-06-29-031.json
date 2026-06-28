@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-031",
+  "agent_id": "autonomous-loop-ralph",
+  "timestamp": "2026-06-29T20:45:00Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "commit-gate 扩拦 reset/branch/update-ref 旁路写（case-047 缺口）",
+  "situation": "scout-scan 前 3 推荐均 ⏳blocked（等人工 merge 积压 worktree）；stagehand TODO=9 为上游继承不可动；skills dirty=2 已在 opt-skills-1782670300 处理；shizi dirty=16 为大块 WIP 需人工确认。PROGRESS.md 明确标注 case-047 commit-gate 旁路缺口待续：reset(ref-mover)/branch -f/-D/-m/update-ref 三条路径未被拦截，可绕过 autonomous 模式在 main 分支直接移动指针。",
+  "action": "读 autonomous-commit-gate.py（83 行），确认只拦 commit/push/merge，reset/branch/update-ref 缺口属实。写新版：扩拦集合为 {commit,push,merge,reset,branch,update-ref}；reset 仅拦 --hard/--soft/--mixed 模式（暂存区 reset 放行）；branch 仅拦 -f/-D/-d/-m/-M 且目标含 main/master；update-ref 拦 refs/heads/main/master；checkout/switch 不拦。9 个 CLI 场景全测通过。via worktree opt-gate-1782679188 提交 b3cb5d5。",
+  "files_changed": [".claude/hooks/autonomous-commit-gate.py"],
+  "worktree": "opt-gate-1782679188",
+  "direction": "gate:commit-bypass",
+  "outcome": "succeeded",
+  "outcome_evidence": "git show auto/opt-gate-1782679188:.claude/hooks/autonomous-commit-gate.py 第 139 行显示 _GUARDED = {'commit','push','merge','reset','branch','update-ref'}；9 个场景测试全 ✓；worktree commit b3cb5d5 创建成功",
+  "next_suggestion": "1) 人工批准合并 opt-gate-1782679188（1 文件，增加拦截规则，安全）；2) 人工批准合并 opt-gates-1782678110（GATES.md 核验时间戳，1 文件低风险）；3) 人工批准合并积压 worktrees：opt-chore-1782656102/opt-server-1782676356/opt-skills-1782670300；4) 确认 decision-log.jsonl 有 ≥1 条真实用户交互记录（GATES IMPORTANT 门禁）；5) 关注 shizi dirty=16 WIP 状态（需人工确认是否提交）"
+}
