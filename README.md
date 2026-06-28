@@ -68,6 +68,7 @@ scout-scan.py --workspace . --json    # JSON 供 agent 解析
 | `post-edit-lint.py` | PostToolUse/Edit\|Write | 编辑后自动 py_compile/tsc/关联测试 |
 | `patterns-write-gate.py` | PreToolUse/Edit\|Write | 阻断直接改 patterns.md（强制走 distill） |
 | `discovery-gate.py` | PreToolUse+UserPromptSubmit | 项目初始化门禁，强制苏格拉底发现协议 |
+| `pipeline-gate.py` | PreToolUse(Edit\|Write\|Bash)+Stop | 管线强制：studio 项目(含 planning/status.json)改动前须 `scripts/triage.py --kind small\|complex`；complex 须 stage∈{development,verify}+`--verify-passed` 才提交；小修直放但 diff 超规模(files>3/+行>50)升级 complex；Stop 提醒未收尾。详见 `PIPELINE-GATE.md` |
 | `decision-observer.py` | Stop+UserPromptSubmit | 决策日志 + 从 case 回读 outcome + 每 10 轮 token 泄漏提醒 |
 | `auto-commit.py` | Stop+SessionEnd | 项目变更自动 commit（自治标记在时跳过，不绕过 gate） |
 | `resume-checkpoint.py` | SessionStart | 检查点恢复 + 引擎固件注入 |

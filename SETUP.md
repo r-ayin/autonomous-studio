@@ -47,7 +47,9 @@ cp .claude/hooks/*.sh "$TARGET/.claude/hooks/" 2>/dev/null || true
 chmod +x "$TARGET/.claude/hooks/"*.sh "$TARGET/.claude/hooks/"*.py
 ```
 
-关键 hook：`decision-observer.py`、`resume-checkpoint.py`、`save-checkpoint.py`、`incremental-save.py`、`discovery-gate.py`、`protocol-check.py`、`stop-completion-gate.py`（Stop 完成门控）、`post-edit-lint.py`（编辑后自动 lint/测试）、`auto-commit.py`、`notify-phone.py`、`codegraph-sync.py`。
+关键 hook：`decision-observer.py`、`resume-checkpoint.py`、`save-checkpoint.py`、`incremental-save.py`、`discovery-gate.py`、`protocol-check.py`、`stop-completion-gate.py`（Stop 完成门控）、`post-edit-lint.py`（编辑后自动 lint/测试）、`auto-commit.py`、`notify-phone.py`、`codegraph-sync.py`、`pipeline-gate.py`（管线强制，见下）。
+
+> **管线强制（pipeline-gate）**：studio 项目（含 `planning/status.json`）改动前必须先 `python3 scripts/triage.py --kind small|complex --desc '...'`（写 `<project>/.pipeline/current.json`）。complex 任务走 `requirement→prd→development→verify→done`（`triage.py --stage ...`），commit 前 `--verify-passed`；小修直放但 diff 超规模(files>3 或 +行>50)自动升级 complex。非 studio 项目不受约束。详见 `PIPELINE-GATE.md`。`scripts/triage.py` 随技能包一起 `cp -r scripts` 安装。
 
 ## 步骤 4：部署引擎种子数据
 
