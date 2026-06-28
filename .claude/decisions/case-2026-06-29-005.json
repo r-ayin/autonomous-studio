@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-06-29-005",
+  "agent_id": "autonomous-loop-ralph",
+  "timestamp": "2026-06-29T08:20Z",
+  "project": "text-counter-extension",
+  "work_unit": "合并 opt-docs-1782640949（PROGRESS.md + GATES.md）+ 补 planning/roadmap.md",
+  "situation": "scout-scan #1: text-counter-extension score=3.0，PROGRESS.md/GATES.md 待合并(opt-docs-1782640949)，无 planning/ 目录",
+  "action": "1) opt-worktree merge opt-docs-1782640949 → squash 合并到 main（PROGRESS.md + GATES.md）; 2) 新建 planning/roadmap.md（功能地图 + 技术约束 + 里程碑），提交到新 worktree opt-docs-1782663723",
+  "files_changed": [
+    "PROGRESS.md",
+    "GATES.md",
+    "planning/roadmap.md"
+  ],
+  "worktree": "text-counter-extension/opt-docs-1782663723",
+  "direction": "docs:planning",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-docs-1782640949 squash 合并到 main（git log 7848cb2 'merge: 人工批准合并 optimization worktree opt-docs-1782640949'）; planning/roadmap.md 已提交到 opt-docs-1782663723（opt-worktree.sh 输出：✓ 提交到 opt-docs-1782663723 方向=docs:planning）",
+  "next_suggestion": "1) 人工 review + merge text-counter-extension/opt-docs-1782663723（planning/roadmap.md）; 2) 下轮选 browser-use（score=2.68，triage 前 1-2 个 TODO）; 3) shizi（score=2.2，1 个 TODO + 待合并 GATES.md worktree）"
+}
