@@ -14,15 +14,15 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-06-29T03:34Z（skills: gitignore 两个空stub目录 → opt-skills-1782670300; case-2026-06-29-026）**
+- **最后活跃: 2026-06-29T04:30Z（quanzhan: server/index.js 端口硬编码 → process.env.PORT → opt-server-1782676356; case-2026-06-29-028）**
 - **活跃项目**: 持续自治管线巡检——按 scout-scan 健康度排序轮转
 - **当前阶段**: 管线日常运行——scout-scan → 选项目 → 小工作单位 → worktree 提交
 - **GOAL_STATUS**: active
 - **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动）
 - **LAST_UPDATED**: 2026-06-29
-- **LAST_WORKTREE**: skills/opt-skills-1782670300 (gitignore oneday-capability-register/oneday-open-cli + PROGRESS.md 更新)
+- **LAST_WORKTREE**: quanzhan/opt-server-1782676356 (1 commit: server/index.js 端口环境变量化)
 - **LAST_OUTCOME**: done
-- **NEXT_SUGGESTION**: 1) 人工 merge opt-skills-1782670300 → skills master（2文件，安全）；2) 人工批准合并积压 blocked worktrees（1BfrYn9G/agent-dashboard/agentfw/opt-docs-1782658244/autonomous-studio/opt-decisions-1782670914）；3) 修复 opt-worktree.sh commit 文档说明文件参数应为相对路径（防重踩绝对路径 bug）
+- **NEXT_SUGGESTION**: 1) 人工 merge opt-server-1782676356 → quanzhan main（单文件单行，安全）；2) 人工 merge opt-skills-1782670300 → skills master（3 commits 累积，安全）；3) 人工批准合并积压 blocked worktrees（1BfrYn9G/agent-dashboard/agentfw/opt-docs-1782658244/opt-decisions-1782670914）；4) 检查 quanzhan GATES.md NICE 项——src/data.ts 资源条目排序和移动端布局是否满足
 - **自主循环**: 🟢 活跃
   - L1 Inline: 每次回复末尾内联检查 (+ git status)
   - L2 Heartbeat: CronCreate 每7分钟（执行轨——推进 Studio 阶段或主动扫描）
