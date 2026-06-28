@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-120",
+  "agent_id": "autonomous-loop",
+  "timestamp": "2026-06-29T22:14Z",
+  "project": "autonomous-studio",
+  "work_unit": "merge pending worktree opt-housekeeping-1782684752 + clean empty optimization worktree",
+  "situation": "scout-scan 报告所有 8 项目 score=0.0 健康。autonomous-studio 有 2 个 pending worktree：opt-housekeeping-1782684752（1 commit: case-119 记录上轮 worktree 合并）和 optimization（0 commits, 空）。#1 推荐无明确单位，#2 autonomous-studio 推荐审查合并。",
+  "action": "1) 审查 opt-housekeeping-1782684752 diff: 仅 case-119.json（1 文件 15 行），合规无风险。2) git merge --no-edit → fast-forward 0fd8aaf→44f917b。3) git worktree remove + git branch -d 清理两个 worktree（housekeeping 和空 optimization）。4) git worktree list 确认仅剩 main。",
+  "files_changed": [".claude/decisions/case-2026-06-29-119.json"],
+  "worktree": "n/a (direct merge into main + cleanup of 2 worktrees)",
+  "direction": "housekeeping:worktree-merge",
+  "outcome": "succeeded",
+  "outcome_evidence": "fast-forward merge succeeded (0fd8aaf→44f917b); git worktree list 仅剩 main 44f917b; 2 branches deleted (auto/opt-housekeeping-1782684752, auto/optimization); dirty=0",
+  "next_suggestion": "①【shizi】PROGRESS.md 0.5d stale — date sync + 状态更新。②【wechat-main】PROGRESS.md 0.5d stale — date sync。③【sunset-prediction】核销剩余门禁。"
+}
