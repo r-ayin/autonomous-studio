@@ -14,15 +14,15 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-06-29T00:44Z（shizi: merge opt-docs-1782657987 → GATES.md+TODO triage 合并到 main → case-2026-06-29-008）**
+- **最后活跃: 2026-06-29T17:07Z（browser-use: 补 planning/roadmap.md → opt-docs-1782657682; score 1.68 → ~1.2 → case-2026-06-29-012）**
 - **活跃项目**: 持续自治管线巡检——按 scout-scan 健康度排序轮转
 - **当前阶段**: 管线日常运行——scout-scan → 选项目 → 小工作单位 → worktree 提交
 - **GOAL_STATUS**: active
 - **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动）
 - **LAST_UPDATED**: 2026-06-29
-- **LAST_WORKTREE**: shizi/opt-docs-1782657987 (squash merged: GATES.md+PROGRESS.md+TODO triage → shizi main)
+- **LAST_WORKTREE**: browser-use/opt-docs-1782657682 (planning/roadmap.md 待人工合并)
 - **LAST_OUTCOME**: done
-- **NEXT_SUGGESTION**: 1) 下轮选 skills(score=2.08, GATES.md 待合并 opt-docs-1782658244, 5 个 TODO triage); 2) stagehand-analysis(score=2.08, GATES.md 待合并 opt-docs-1782658984, 9 个 TODO); 3) shizi dirty=16 本地未提交变更检查
+- **NEXT_SUGGESTION**: 1) 人工批准合并 browser-use/opt-docs-1782657682（含 planning/roadmap.md）; 2) 人工批准合并 browser-use/optimization（含 GATES.md）; 3) shizi score=1.19，有 1 个 TODO 待 triage
 - **自主循环**: 🟢 活跃
   - L1 Inline: 每次回复末尾内联检查 (+ git status)
   - L2 Heartbeat: CronCreate 每7分钟（执行轨——推进 Studio 阶段或主动扫描）
