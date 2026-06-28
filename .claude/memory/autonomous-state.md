@@ -14,10 +14,15 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-06-18T01:30:00Z（CodeGraph 融合层 v1.0 全量部署 · 4项目索引初始化 · 引擎更新为 autonomous_studio）**
-- **活跃项目**: **moni** (股票量化系统) — 看板已重写，两层架构 30+ 模块，待推进 WFO 评估 + 因子回测
-- **当前阶段**: 项目归并完成——moni = 策略执行层 + 因子研发层，私有仓库部署完毕
-- **连续自主行动**: 0 / 3（用户已交互，冷却重置）
+- **最后活跃: 2026-06-28T13:52:00Z（agentfw 补 GATES.md → opt-docs-1782638790 commit 39c53d6）**
+- **活跃项目**: 持续自治管线巡检——按 scout-scan 健康度排序轮转
+- **当前阶段**: 管线日常运行——scout-scan → 选项目 → 小工作单位 → worktree 提交
+- **GOAL_STATUS**: active
+- **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动）
+- **LAST_UPDATED**: 2026-06-28
+- **LAST_WORKTREE**: opt-docs-1782638790
+- **LAST_OUTCOME**: done
+- **NEXT_SUGGESTION**: 1) 人工批准合并 opt-docs-1782638790（agentfw PROGRESS.md + GATES.md）; 2) dingtalk-auto 补 GATES.md（#2 score=6.0）; 3) linshi 补 GATES.md（#3 score=6.0）
 - **自主循环**: 🟢 活跃
   - L1 Inline: 每次回复末尾内联检查 (+ git status)
   - L2 Heartbeat: CronCreate 每7分钟（执行轨——推进 Studio 阶段或主动扫描）
