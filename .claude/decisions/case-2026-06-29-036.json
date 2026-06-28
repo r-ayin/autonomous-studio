@@ -1,0 +1,17 @@
+{
+  "case_id": "case-2026-06-29-036",
+  "agent_id": "ralph-loop",
+  "timestamp": "2026-06-29T06:40Z",
+  "project": "skills",
+  "work_unit": "gitignore oneday-capability-register + oneday-open-cli stub dirs",
+  "situation": "scout-scan --workspace /home/admin/workspace 发现 skills 项目 dirty=2（2个未追踪目录：oneday-capability-register/ 和 oneday-open-cli/）。top-3 推荐工作单位全部 blocked（等待合并 worktree）。检查内容发现这两个目录是 ClawHub scaffold 占位符（oneday-capability-register/ 内含 references/.clawhub 标记目录；oneday-open-cli/ 为空），与 case-031 场景相同。scout-scan 还确认正确 workspace 路径应为 /home/admin/workspace，非 /home/admin/workspace/autonomous-studio。",
+  "action": "在 skills/.gitignore 添加 oneday-capability-register/ 和 oneday-open-cli/ 条目，附注释说明为 ClawHub skill stubs。提交到已有的 opt-skills-1782670300 worktree（同 area 复用）。case + autonomous-state.md 也进入 opt-skills-1782686301 worktree。",
+  "files_changed": [
+    "/home/admin/workspace/skills/.gitignore"
+  ],
+  "worktree": "opt-skills-1782670300 (skills gitignore), opt-skills-1782686301 (case+state)",
+  "direction": "skills:gitignore",
+  "outcome": "succeeded",
+  "outcome_evidence": "git status --short 在 edit 前显示 '?? oneday-capability-register/ ?? oneday-open-cli/'；edit 后仅剩 'M .gitignore'；opt-worktree.sh 输出 '→ 复用同 area worktree: opt-skills-1782670300; ✓ 提交到 opt-skills-1782670300'。case 文件确认存在于 opt-skills-1782686301 worktree 中。",
+  "next_suggestion": "1) 人工批准合并 opt-skills-1782670300（累积2轮 gitignore ClawHub stubs，低风险）；2) 批准合并 opt-gate-1782679188（commit-gate 扩拦，同时可扩展豁免 autonomous-state.md 直提 main）；3) 批准合并 blocked opt-docs-1782638147/opt-agent-dashboard-1782638553/opt-docs-1782638790；4) stagehand-analysis TODO=9 可作下轮工作单位（非阻塞，减债）"
+}
