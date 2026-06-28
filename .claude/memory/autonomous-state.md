@@ -14,15 +14,15 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-06-29T17:07Z（browser-use: 补 planning/roadmap.md → opt-docs-1782657682; score 1.68 → ~1.2 → case-2026-06-29-012）**
+- **最后活跃: 2026-06-29T17:40Z（x-tool: triage moni/factors 6 Python TODO → opt-moni-1782668136; case-2026-06-29-016）**
 - **活跃项目**: 持续自治管线巡检——按 scout-scan 健康度排序轮转
 - **当前阶段**: 管线日常运行——scout-scan → 选项目 → 小工作单位 → worktree 提交
 - **GOAL_STATUS**: active
 - **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动）
 - **LAST_UPDATED**: 2026-06-29
-- **LAST_WORKTREE**: browser-use/opt-docs-1782657682 (planning/roadmap.md 待人工合并)
+- **LAST_WORKTREE**: x-tool/opt-moni-1782668136 (moni/factors 3文件 TODO deferred 标注，待人工合并)
 - **LAST_OUTCOME**: done
-- **NEXT_SUGGESTION**: 1) 人工批准合并 browser-use/opt-docs-1782657682（含 planning/roadmap.md）; 2) 人工批准合并 browser-use/optimization（含 GATES.md）; 3) shizi score=1.19，有 1 个 TODO 待 triage
+- **NEXT_SUGGESTION**: 1) 人工批准合并 opt-moni-1782668136（broker_qmt.py + run_trader.py + download_sw_industry.py，TODO deferred 标注）；2) 人工批准合并 opt-docs-1782659755（dongxiao + claude CLAUDE.md 占位符）；3) 合并后重跑 scout-scan 验证 x-tool score 降至 0，若降则转向 stagehand-analysis 补 planning/ 目录
 - **自主循环**: 🟢 活跃
   - L1 Inline: 每次回复末尾内联检查 (+ git status)
   - L2 Heartbeat: CronCreate 每7分钟（执行轨——推进 Studio 阶段或主动扫描）
