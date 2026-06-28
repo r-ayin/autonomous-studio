@@ -14,15 +14,15 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-06-29T00:20Z（quanzhan: 合并 opt-docs-1782640587 + 补 planning/roadmap.md → case-2026-06-29-004）**
+- **最后活跃: 2026-06-29T00:44Z（shizi: merge opt-docs-1782657987 → GATES.md+TODO triage 合并到 main → case-2026-06-29-008）**
 - **活跃项目**: 持续自治管线巡检——按 scout-scan 健康度排序轮转
 - **当前阶段**: 管线日常运行——scout-scan → 选项目 → 小工作单位 → worktree 提交
 - **GOAL_STATUS**: active
 - **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动）
 - **LAST_UPDATED**: 2026-06-29
-- **LAST_WORKTREE**: quanzhan/opt-docs-1782640587 (已合并：PROGRESS.md + GATES.md + planning/roadmap.md)
+- **LAST_WORKTREE**: shizi/opt-docs-1782657987 (squash merged: GATES.md+PROGRESS.md+TODO triage → shizi main)
 - **LAST_OUTCOME**: done
-- **NEXT_SUGGESTION**: 1) 下轮选 text-counter-extension（score=3.0，opt-docs worktree 待合并，补 planning/）; 2) 或选 browser-use（score=2.68，triage 前 1-2 个 TODO）; 3) scout-scan 应以 /home/admin/workspace 为 workspace（已确认正确）
+- **NEXT_SUGGESTION**: 1) 下轮选 skills(score=2.08, GATES.md 待合并 opt-docs-1782658244, 5 个 TODO triage); 2) stagehand-analysis(score=2.08, GATES.md 待合并 opt-docs-1782658984, 9 个 TODO); 3) shizi dirty=16 本地未提交变更检查
 - **自主循环**: 🟢 活跃
   - L1 Inline: 每次回复末尾内联检查 (+ git status)
   - L2 Heartbeat: CronCreate 每7分钟（执行轨——推进 Studio 阶段或主动扫描）
