@@ -6,14 +6,6 @@
   "cold_start_protocol_version": "2.2",
   "checkpoint_protection_enabled": true,
   "patterns": {
-    "infrastructure:plan:infrastructure:engine_bootstrap": {
-      "actions": 0,
-      "approved": 0,
-      "accuracy": 0.0,
-      "adjusted_base_score": 22,
-      "source": "decision-patterns.md:protocol_bootstrap",
-      "accuracy_basis": "zombie(无 case 关联,待退役)"
-    },
     "infrastructure:goal_completion:goal_achieved": {
       "actions": 1,
       "approved": 1,
@@ -21,62 +13,6 @@
       "adjusted_base_score": 20,
       "source": "engine-discovered:case-2026-06-15-002",
       "accuracy_basis": "inferred:1(需更多显式 outcome)"
-    },
-    "implementation:debug:*:fix_verify": {
-      "actions": 0,
-      "approved": 0,
-      "accuracy": 0.0,
-      "adjusted_base_score": 18,
-      "source": "decision-patterns.md:debug_fix_and_verify",
-      "accuracy_basis": "zombie(无 case 关联,待退役)"
-    },
-    "tooling:debug:pachong-master:wechat_media": {
-      "actions": 0,
-      "approved": 0,
-      "accuracy": 0.0,
-      "adjusted_base_score": 15,
-      "source": "decision-patterns.md:wechat_file_send",
-      "accuracy_basis": "zombie(无 case 关联,待退役)"
-    },
-    "infrastructure:meta:*:session_resume": {
-      "actions": 0,
-      "approved": 0,
-      "accuracy": 0.0,
-      "adjusted_base_score": 20,
-      "source": "decision-patterns.md:ssh_resume_recovery",
-      "accuracy_basis": "zombie(无 case 关联,待退役)"
-    },
-    "implementation:debug:pachong-master:crawler_fix": {
-      "actions": 0,
-      "approved": 0,
-      "accuracy": 0.0,
-      "adjusted_base_score": 18,
-      "source": "decision-patterns.md:crawler_quality_optimization",
-      "accuracy_basis": "zombie(无 case 关联,待退役)"
-    },
-    "tooling:meta:*:notification_choice": {
-      "actions": 0,
-      "approved": 0,
-      "accuracy": 0.0,
-      "adjusted_base_score": 12,
-      "source": "decision-patterns.md:notification_channel_selection",
-      "accuracy_basis": "zombie(无 case 关联,待退役)"
-    },
-    "configuration:meta:*:workspace_path": {
-      "actions": 0,
-      "approved": 0,
-      "accuracy": 0.0,
-      "adjusted_base_score": 10,
-      "source": "decision-patterns.md:workspace_path_configuration",
-      "accuracy_basis": "zombie(无 case 关联,待退役)"
-    },
-    "infrastructure:meta:*:phone_notify": {
-      "actions": 0,
-      "approved": 0,
-      "accuracy": 0.0,
-      "adjusted_base_score": 15,
-      "source": "decision-patterns.md:phone_notification_setup",
-      "accuracy_basis": "zombie(无 case 关联,待退役)"
     },
     "cold_start:scout:workspace_hygiene": {
       "actions": 1,

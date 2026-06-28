@@ -297,6 +297,45 @@ def pending_triage_in_worktrees(path, marker_files):
     return hits
 
 
+def count_pending_worktrees(path):
+    """统计项目的 pending opt-worktrees：total 数量 + stale(0-ahead) 数量 + 各 worktree 的 ahead count。
+
+    当所有健康信号为绿时，pending worktree 积压是唯一可操作的结构性信号——
+    提示人工 review/merge。stale (0 ahead) worktree 则是可安全清理的废弃物。
+    """
+    wt_root = os.path.join(os.path.dirname(path), ".opt-worktrees", os.path.basename(path))
+    if not os.path.isdir(wt_root):
+        return {"total": 0, "stale": 0, "with_content": 0, "details": []}
+    main_branch = "main"
+    try:
+        r = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=path,
+                           capture_output=True, text=True, timeout=3)
+        if r.returncode == 0 and r.stdout.strip():
+            main_branch = r.stdout.strip()
+    except Exception:
+        pass
+    total = 0
+    stale = 0
+    with_content = 0
+    details = []
+    for entry in sorted(os.scandir(wt_root), key=lambda e: e.name):
+        if not entry.is_dir():
+            continue
+        total += 1
+        try:
+            r = subprocess.run(["git", "rev-list", "--count", f"{main_branch}..HEAD"],
+                               cwd=entry.path, capture_output=True, text=True, timeout=5)
+            ahead = int(r.stdout.strip()) if r.returncode == 0 else -1
+        except Exception:
+            ahead = -1
+        if ahead == 0:
+            stale += 1
+        elif ahead > 0:
+            with_content += 1
+        details.append({"name": entry.name, "ahead": ahead})
+    return {"total": total, "stale": stale, "with_content": with_content, "details": details}
+
+
 def pending_planning_in_worktrees(path):
     """planning/ 目录是否在某待合并 opt-worktree 的 diff 里（main 上无但 worktree 已建）。
 
@@ -419,7 +458,15 @@ def health_priority(r):
     elif not r["has_planning"]:
         unit = "补 planning/ 目录（路线图文档，无需深读代码）"
     else:
-        unit = "无明确小工作单位——可跳过或做文档润色"
+        pw = r.get("pending_worktrees", {})
+        if pw.get("with_content", 0) > 0:
+            unit = f"review {pw['with_content']} 个待合并 worktree（人工审 diff + merge/reject）"
+            if pw.get("stale", 0) > 0:
+                unit += f"；另有 {pw['stale']} 个空 worktree 可清理"
+        elif pw.get("stale", 0) > 0:
+            unit = f"清理 {pw['stale']} 个空 worktree（0 ahead, 内容已在 main）"
+        else:
+            unit = "无明确小工作单位——可跳过或做文档润色"
     return {"score": round(score, 2), "reasons": reasons, "work_unit": unit}
 
 
@@ -441,6 +488,7 @@ def scan_project(p):
         "markers_deferred": m_deferred,
         "marker_files": sorted(m_files),
         "triage_pending_wts": pending_triage_in_worktrees(path, m_files),
+        "pending_worktrees": count_pending_worktrees(path),
     }
     # 文件索引（限制规模，避免大库超时）
     tree, symbols, n = file_tree_and_symbols(path)
@@ -530,6 +578,14 @@ def main():
                 print(f"  延期(已triage): TODO={d.get('TODO', 0)} FIXME={d.get('FIXME', 0)} HACK={d.get('HACK', 0)}")
             print(f"  索引: {r['file_count_indexed']} 文件, "
                   f"fn={r['symbols']['functions']} class={r['symbols']['classes']} h={r['symbols']['headings']}")
+            pw = r.get("pending_worktrees", {})
+            if pw.get("total", 0) > 0:
+                parts = [f"共{pw['total']}"]
+                if pw.get("with_content", 0):
+                    parts.append(f"待合并={pw['with_content']}")
+                if pw.get("stale", 0):
+                    parts.append(f"空(可清理)={pw['stale']}")
+                print(f"  待处理 worktree: {', '.join(parts)}")
 
         # 推荐工作单位（按健康度排序）——给引擎确定性选材，避免自由心证总挑自己
         print("\n=== 推荐工作单位（按健康度排序，越高越该被照顾）===")
