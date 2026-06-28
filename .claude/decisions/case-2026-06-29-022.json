@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-022",
+  "agent_id": "autonomous-loop",
+  "timestamp": "2026-06-29T11:10Z",
+  "project": "autonomous-studio",
+  "work_unit": "engine:cp-dir-fix — 修复 opt-worktree.sh 不支持目录参数",
+  "situation": "scout-scan #1-3 全部 blocked（待人工合并 docs worktrees）。尝试用 opt-worktree.sh 提交 skills 项目两个新技能目录（oneday-capability-register/、oneday-open-cli/），脚本报错：'cp: -r not specified; omitting directory'。定位到 opt-worktree.sh 两处 Bug：① cp -p 不递归拷贝目录；② rm -f 不删除目录。",
+  "action": "1) 诊断：opt-worktree.sh cmd_commit 第①阶段用 'cp -p $f $target/$f'，-p 不含 -r，对目录静默失败；第③阶段用 'rm -f $f2' 删 untracked 新文件/目录，同样对目录无效。2) 修复：cp -p → cp -rp（第①阶段两处），rm -f → rm -rf（第③阶段两处）。3) 提交：通过 opt-worktree.sh 将修复推入 autonomous-studio 的 optimization worktree（commit 64adb77）。",
+  "files_changed": ["scripts/opt-worktree.sh"],
+  "worktree": "autonomous-studio/optimization",
+  "direction": "engine:cp-dir-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "git -C .opt-worktrees/autonomous-studio/optimization log --oneline -1 → '64adb77 opt(engine:cp-dir-fix): fix: cp -rp + rm -rf 支持目录参数（修复 untracked dir 迁移失败）'；worktree 中 grep 'cp -rp\\|rm -rf' 输出 lines 112,122,141,152 均已修正；main 干净（lease 断言通过）。",
+  "next_suggestion": "1) 人工 merge optimization worktree（含本次 cp-dir-fix + 前次 scout-workspace 修复）；2) 人工批量合并积压 docs worktrees（1BfrYn9G/agent-dashboard/agentfw/dingtalk-auto/kaoqin/linshi/pc_agent）解除 blocked；3) skills/opt-skills-1782670300 已有 oneday-capability-register+oneday-open-cli 提交，待合并。"
+}

@@ -14,15 +14,15 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-06-29T17:40Z（x-tool: triage moni/factors 6 Python TODO → opt-moni-1782668136; case-2026-06-29-016）**
+- **最后活跃: 2026-06-29T18:50Z（autonomous-studio: decisions gap-fill case-022+024 → opt-decisions-1782670914; case-2026-06-29-024）**
 - **活跃项目**: 持续自治管线巡检——按 scout-scan 健康度排序轮转
 - **当前阶段**: 管线日常运行——scout-scan → 选项目 → 小工作单位 → worktree 提交
 - **GOAL_STATUS**: active
 - **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动）
 - **LAST_UPDATED**: 2026-06-29
-- **LAST_WORKTREE**: x-tool/opt-moni-1782668136 (moni/factors 3文件 TODO deferred 标注，待人工合并)
+- **LAST_WORKTREE**: autonomous-studio/opt-decisions-1782670914 (case-022 gap-fill + case-024 归档，待人工合并)
 - **LAST_OUTCOME**: done
-- **NEXT_SUGGESTION**: 1) 人工批准合并 opt-moni-1782668136（broker_qmt.py + run_trader.py + download_sw_industry.py，TODO deferred 标注）；2) 人工批准合并 opt-docs-1782659755（dongxiao + claude CLAUDE.md 占位符）；3) 合并后重跑 scout-scan 验证 x-tool score 降至 0，若降则转向 stagehand-analysis 补 planning/ 目录
+- **NEXT_SUGGESTION**: 1) 人工批准合并积压 blocked docs worktrees（1BfrYn9G/agent-dashboard/agentfw 各有 PROGRESS+GATES+planning）；2) 人工合并 autonomous-studio/optimization（cp-dir-fix + scout-workspace 修复），合并后 shizi dirty=16 大重构（agent/config/engine 模块拆分）可用 opt-worktree.sh 正确提交目录；3) 人工合并 autonomous-studio/opt-decisions-1782670914（含 case-001~024 全集）到 main
 - **自主循环**: 🟢 活跃
   - L1 Inline: 每次回复末尾内联检查 (+ git status)
   - L2 Heartbeat: CronCreate 每7分钟（执行轨——推进 Studio 阶段或主动扫描）
