@@ -14,15 +14,15 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-06-29T20:45Z（autonomous-studio-aone: commit-gate 扩拦 reset/branch/update-ref 旁路写 case-047 缺口 → opt-gate-1782679188; case-2026-06-29-031）**
+- **最后活跃: 2026-06-29T07:30Z（skills: gitignore stubs repeat → superseded, case-2026-06-29-037）**
 - **活跃项目**: 持续自治管线巡检——按 scout-scan 健康度排序轮转
 - **当前阶段**: 管线日常运行——scout-scan → 选项目 → 小工作单位 → worktree 提交
 - **GOAL_STATUS**: active
 - **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动）
 - **LAST_UPDATED**: 2026-06-29
-- **LAST_WORKTREE**: autonomous-studio-aone/opt-gate-1782679188 (commit b3cb5d5: commit-gate 扩拦 reset/branch/update-ref)
-- **LAST_OUTCOME**: done
-- **NEXT_SUGGESTION**: 1) 人工批准合并 opt-gate-1782679188（1 文件 commit-gate 增加拦截规则，安全）；2) 人工批准合并 opt-gates-1782678110（GATES.md 核验，1 文件低风险）；3) 人工批准合并积压 worktrees：opt-chore-1782656102/opt-server-1782676356/opt-skills-1782670300；4) 确认 decision-log.jsonl 有 ≥1 条真实记录（GATES IMPORTANT）；5) 关注 shizi dirty=16 WIP（需人工确认）
+- **LAST_WORKTREE**: opt-chore-1782680083 (skills gitignore stubs — superseded)
+- **LAST_OUTCOME**: blocked
+- **NEXT_SUGGESTION**: ⚠️ skills gitignore fix 已在 opt-skills-1782670300 + opt-chore-1782680083 累积≥5次重复提交，必须人工合并其中一个到 main 才能打破循环。建议: 1) 合并 opt-skills-1782670300（累计最全）→ reject 其余重复 worktree; 2) 合并 opt-gate-1782679188（commit-gate 扩拦）; 3) 批准合并 opt-docs-1782638147/opt-agent-dashboard-1782638553/opt-docs-1782638790 解锁 scout-scan 前3; 4) 下轮选 quanzhan 或 kaoqin（未被重复占用）
 - **自主循环**: 🟢 活跃
   - L1 Inline: 每次回复末尾内联检查 (+ git status)
   - L2 Heartbeat: CronCreate 每7分钟（执行轨——推进 Studio 阶段或主动扫描）
