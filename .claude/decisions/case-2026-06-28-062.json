@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-28-062",
+  "agent_id": "ralph-autonomous",
+  "timestamp": "2026-06-28T10:20:54Z",
+  "project": "personal-assistant",
+  "work_unit": "temporal.py _parse_hm X点半 regex bug fix + 47 unit tests",
+  "situation": "scout-scan 全项目健康度 0.0，无紧迫工作；personal-assistant temporal 模块（中文时间解析，日历/提醒/反幻觉核心依赖）0 测试覆盖。写测试时发现 _parse_hm regex 交替分支贪婪吞没 bug：'X点半' 被第一分支 'X点(Y分)?' 贪婪匹配为 (X, 0)，半分支永不触发。'下午两点半' 解析为 14:00 而非 14:30，直接影响日历事件和提醒触发时间。",
+  "action": "1. 修复 temporal.py _parse_hm：交换正则交替顺序，半分支优先；重构分支逻辑使 AM/PM 调整统一应用。2. 新增 tests/test_temporal.py 47 个测试覆盖 _cn_to_int / _parse_hm / resolve / resolve_range / find_exprs / _safe_date 全函数，含边界（闰年、月份溢出、中文数字组合、凌晨12→0）。",
+  "files_changed": ["personal_assistant/temporal.py", "tests/test_temporal.py"],
+  "worktree": "opt-personal-assistant-1782642054",
+  "direction": "personal-assistant:temporal-tests",
+  "outcome": "succeeded",
+  "outcome_evidence": "47/47 tests pass; full suite 99/99 pass (was 52/52 before); fix verified: _parse_hm('三点半') now returns (3,30) not (3,0)",
+  "next_suggestion": "personal-assistant calendar/reminders 模块单测（temporal 的下游消费者）；或 moni-master opt-moni worktree 合并审查"
+}

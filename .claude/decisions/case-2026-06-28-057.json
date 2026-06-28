@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-28-057",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-06-28T09:45:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "hash-based routing for oneday-design UI",
+  "situation": "1BfrYW9R (oneday-design) scored #1 in scout-scan. MVP prototype had state-based conditional rendering (useState) but no URL routing — browser back/forward, direct links, and bookmarks did not work. All other projects healthy with no urgent markers.",
+  "action": "Added hash-based routing to index.html App component: readHash() parses location.hash, navigate() updates hash, hashchange listener syncs state. source-jump custom events also route through navigate(). Updated PROGRESS.md to mark routing complete.",
+  "files_changed": ["index.html", "PROGRESS.md"],
+  "worktree": "opt-1BfrYW9R-1782640068",
+  "direction": "1BfrYW9R:hash-routing",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh commit succeeded: '✓ 提交到 opt-1BfrYW9R-1782640068  方向=1BfrYW9R:hash-routing'",
+  "next_suggestion": "1BfrYW9R: responsive layout optimization (next PROGRESS.md TODO); or check moni pending worktree merge readiness"
+}

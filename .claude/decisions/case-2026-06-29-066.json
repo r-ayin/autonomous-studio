@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-066",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-06-29T00:15:00+08:00",
+  "project": "x-tool",
+  "work_unit": "docs:projects-reconcile — PROJECTS.md 13天stale核对更新",
+  "situation": "scout-scan 全项目健康度 0.0 无紧迫工作；x-tool PROGRESS.md P1 项标注 PROJECTS.md 13天未更新(2026-06-16→2026-06-29)；实际目录与文档有3处不一致(autonomous-engine已删、ai-web-explorer已删、3个新目录未录入)，moni迁出未标注",
+  "action": "核对 x-tool 目录现状与 PROJECTS.md，更新4处：(1) autonomous-engine从基础设施移入已清理，(2) ai-web-explorer移入已清理，(3) moni条目标注迁出至moni-master，(4) 新增docs/一件重启脚本/记忆备份/；同步核销 PROGRESS.md P1(PROJECTS.md stale)+P2(planning/已存在)",
+  "files_changed": ["PROJECTS.md", "PROGRESS.md"],
+  "worktree": "opt-docs-1782663122",
+  "direction": "docs:projects-reconcile",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh commit 成功输出 '✓ 提交到 opt-docs-1782663122  方向=docs:projects-reconcile'；git diff 确认 PROJECTS.md 更新时间戳+4处变更、PROGRESS.md 核销 P1+P2",
+  "next_suggestion": "personal-assistant 有2个待合并 worktree(opt-docs/opt-personal-assistant)，可做 GATES.md 对账或 DuckDB habits 功能审查；或 1BfrYW9R 两个 responsive worktree 待审"
+}

@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-088",
+  "agent_id": "ralph-loop",
+  "timestamp": "2026-06-29T03:15:00Z",
+  "project": "wechat-main",
+  "work_unit": "feedback_collector.py test coverage",
+  "situation": "scout-scan 全项目 score=0.0（健康）。wechat-main 16 个管线脚本中 5 个已有测试(pending worktree)。NEXT_SUGGESTION #1 指向 feedback_collector.py(258行)——post-publish 数据回传管线，含 _compute_reward 纯函数+JSONL 读写+cmd_report 报告生成。",
+  "action": "创建 tests/test_feedback_collector.py，18 用例覆盖 3 个测试套件：TestComputeReward(7: all_zero/all_max/mid_values/share_rate_capped/reads_zero_safety/negative_sentiment/rounding) + TestAppendAndLoadRewards(6: empty/nonexistent/append_then_load/append_multiple/malformed_json/blank_lines) + TestCmdReport(5: no_data/single_record/descending_order/same_slug_dedup/sequential_ranks)。",
+  "files_changed": ["tests/test_feedback_collector.py"],
+  "worktree": "opt-wechat-1782668384",
+  "direction": "wechat:feedback-collector-tests",
+  "outcome": "succeeded",
+  "outcome_evidence": "pytest 18/18 passed in 0.20s; git log 确认 commit 4785445; git diff --stat 显示 179 insertions",
+  "next_suggestion": "①【wechat-main style_fingerprint.py tests】风格指纹提取器(纯函数)。②【wechat-main style_evolution.py tests】风格演化记录器。③【sunset-prediction CRITICAL gates verify】npm install + node server.js startup test。④【personal-assistant ingest.py CREATE VIEW】GATES NICE 唯一未满足项。"
+}

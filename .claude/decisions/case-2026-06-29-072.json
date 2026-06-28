@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-072",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-06-29T01:10:00+08:00",
+  "project": "personal-assistant",
+  "work_unit": "gates-audit: 重新验证并勾选 10/11 质量门禁",
+  "situation": "scout-scan 所有项目 score=0.0（全健康），推荐无紧迫工作单位。选择 personal-assistant GATES.md 门禁核销。但提交后发现 case-069 和 case-064 已在同一 worktree(opt-gates-1782665158)完成相同工作——11/12 gates + DuckDB views 均已处理。本轮为重复劳动。",
+  "action": "逐条验证 10 个 gate 并提交到 opt-gates-1782665158。提交成功但内容与 case-069 重叠。",
+  "files_changed": ["GATES.md"],
+  "worktree": "opt-gates-1782665158",
+  "direction": "gates:audit",
+  "outcome": "superseded",
+  "outcome_evidence": "case-069 已在同一 worktree 核销 11/12 gates；case-064 已完成 DuckDB views。本轮 commit 内容与 case-069 等价。",
+  "next_suggestion": "①【1BfrYW9R 2个重叠 responsive worktree 甄选】opt-responsive(CSS)+opt-1BfrYW9R(Sidebar.jsx 三档)内容重叠，需合并更完整版本。②【x-tool GATES.md 核销更新】BOM 检查已通过、.db 已 untrack。③【shizi dist 自动重建 hook/gate】后续 source 改动须同步 rebuild dist。④【sunset-prediction 检查 dirty 状态和 PROGRESS 进度】"
+}
