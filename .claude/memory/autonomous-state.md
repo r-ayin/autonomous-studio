@@ -1,13 +1,13 @@
 ---
-<!-- ENGINE_VERSION: 3.0 -->
+<!-- ENGINE_VERSION: 6.0 -->
 <!-- STUDIO_BRIDGE: enabled -->
 <!-- ISOLATION_MODE: agent_subprocess -->
 <!-- SCOUT_MODE: active -->
 <!-- CHECKPOINT_PROTECTION: enabled -->
-<!-- DUAL_TRACK: L2_execution_7min + L3_judgment_60min -->
+<!-- AUTONOMOUS_LOOP: continuous (replaces cron dual-track) -->
 <!-- CODEGRAPH_FUSION: enabled (v1.0 · 8触点8规则 · codegraph-sync.py) -->
 name: autonomous-state
-description: 自主决策引擎运行状态 v3.0 — Studio × Autonomous-Engine 深度融合
+description: 自主决策引擎运行状态 v6.0 — 持续自治管线 + 蒸馏闭环 + opt-worktree + 确定性扫描索引
 metadata:
   type: project
 ---
