@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-109",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-06-29T05:25:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "merge case-108 worktree, clean 2 worktrees + 2 branches, cross-project test sweep (343 tests / 5 projects)",
+  "situation": "scout-scan: all 8 projects score=0.0. AS ranked #2 with 1 pending worktree (opt-cases-1782681483, 1 commit: case-108.json) and 1 empty worktree (optimization). No #1 actionable work.",
+  "action": "1) Reviewed opt-cases-1782681483 diff (single case-108.json, valid distillation). Merged --no-ff into main. 2) Removed both worktrees + deleted both branches (auto/opt-cases-1782681483 was 1e92089, auto/optimization was dfa146b). 3) Cross-project test sweep: shizi 53/53, sunset-prediction 28/28, wechat-main 159/159, personal-assistant 99/99, autonomous-studio 4/4 — total 343 pass, 0 fail.",
+  "files_changed": [".claude/decisions/case-2026-06-29-108.json (merged from worktree)", ".claude/decisions/case-2026-06-29-109.json (this case)"],
+  "worktree": "committed via opt-worktree.sh",
+  "direction": "cases:cross-project-test-sweep",
+  "outcome": "succeeded",
+  "outcome_evidence": "git worktree list shows only main (a49e26a). All 343 tests green (exit 0, 0 fail). No latent regressions surfaced.",
+  "next_suggestion": "All healthy, 0 pending worktrees. Consider: (1) moni-master backend test coverage expansion, (2) x-tool test infrastructure setup, (3) 1BfrYW9R test infrastructure setup, (4) planning doc freshness audit for stale projects."
+}
