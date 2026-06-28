@@ -125,6 +125,9 @@ cmd_commit() {
 
   # ② worktree 内提交
   cd "$target"
+  local gitdir; gitdir=$(git rev-parse --git-dir)
+  mkdir -p "$gitdir/info"
+  echo ".opt-direction" >> "$gitdir/info/exclude"
   git add -A
   git -c user.name="autonomous-studio" -c user.email="opt@auto" commit -q -m "opt($direction): $msg
 
