@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-06-29-004",
+  "agent_id": "autonomous-loop",
+  "timestamp": "2026-06-29T00:20:00Z",
+  "project": "quanzhan",
+  "work_unit": "合并 opt-docs-1782640587 worktree + 补 planning/roadmap.md",
+  "situation": "scout-scan 报告 quanzhan 健康度 #1（score=3.0）：PROGRESS.md/GATES.md 已在 opt-docs worktree 完成但待合并；planning/ 目录缺失",
+  "action": "1) 将 auto/opt-docs-1782640587 分支 fast-forward 合并到 quanzhan master；2) 移除泄露的 .opt-direction 元数据文件；3) 新建 planning/roadmap.md 补齐路线图文档",
+  "files_changed": [
+    "quanzhan/PROGRESS.md",
+    "quanzhan/GATES.md",
+    "quanzhan/planning/roadmap.md"
+  ],
+  "worktree": "opt-docs-1782640587（已合并，操作完成）",
+  "direction": "docs",
+  "outcome": "succeeded",
+  "outcome_evidence": "git log quanzhan master 显示三次提交：3b3f259(GATES.md) a9ee3d4(PROGRESS.md) dc7a160(.opt-direction 清除) 411fe4b(planning/roadmap.md)；scout-scan #1 项目结构缺失问题已闭环",
+  "next_suggestion": "下轮选 #2 text-counter-extension：同类 opt-docs worktree 待合并，补 planning/；或选 #3 browser-use 的 34 个 TODO triage"
+}
