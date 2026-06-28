@@ -10,7 +10,7 @@ r"""autonomous-commit-gate.py — PreToolUse Hook (matcher: Bash)
 触发条件(全部满足才拦):
   1. .claude/.autonomous_active 标记存在(引擎自治激活时建)
   2. 目标分支是 main/master(或 push 显式推 main/master ref)
-  3. 子命令是 git commit / git push / git merge
+  3. 子命令是 git commit / push / merge / reset / branch -D / update-ref
 
 豁免:case 元数据归档——commit 仅触及 .claude/decisions/case-*.json 时放行。
   跨项目 case 按先例(0f77848/06937a9)直提 AS main 归档,这是元数据而非代码优化,
@@ -24,6 +24,12 @@ r"""autonomous-commit-gate.py — PreToolUse Hook (matcher: Bash)
   现改用 tokenizer 跨过 git 全局选项(-C/-c/--*)取真实子命令,并从 -C 解析目标 repo
   正确识别分支。case-归档豁免配合此修复:分支检测修好后归档 commit 落 main 会被拦,
   需此豁免放行元数据归档(代码 commit 仍拦)。
+
+扩展(reset/branch -D/update-ref 拦截,2026-06-28):case-047 实证 `git reset --hard` 可直移
+  main ref 绕过 commit/push/merge 门禁。扩展拦截:
+  (a) reset 当前分支为 main → 拦(任何 reset 在 main 上都改写分支指向);
+  (b) branch -D/-d main/master → 拦(删主分支);
+  (c) update-ref refs/heads/main 或 refs/heads/master → 拦(直接改写 ref)。
 """
 import os, sys, json, re, subprocess
 
@@ -136,7 +142,7 @@ def main():
 
     # 用 tokenizer 取子命令(跨过 -C/-c 等 git 全局选项),只拦 commit/push/merge
     sub, rest = _git_parse(cmd)
-    if sub not in ("commit", "push", "merge"):
+    if sub not in ("commit", "push", "merge", "reset", "branch", "update-ref"):
         print("{}")
         return
 
@@ -151,6 +157,14 @@ def main():
     if sub == "push":
         # 显式推 main/master ref(如 `git -C <p> push origin main`)→ 即便当前在 feature 分支也拦
         targets_main = targets_main or any(t in MAIN_BRANCHES for t in rest)
+    elif sub == "branch":
+        # git branch -D main / git branch -d master → 删主分支
+        deletes = any(t in ("-D", "-d", "--delete") for t in rest)
+        targets_main = deletes and any(t in MAIN_BRANCHES for t in rest)
+    elif sub == "update-ref":
+        # git update-ref refs/heads/main <sha> → 直接改写主分支 ref
+        main_refs = {f"refs/heads/{b}" for b in MAIN_BRANCHES}
+        targets_main = any(t in main_refs for t in rest)
 
     if targets_main:
         # 豁免:case 元数据归档(仅 .claude/decisions/case-*.json)按先例可直提 main
@@ -162,12 +176,12 @@ def main():
         print(json.dumps({
             "decision": "block",
             "reason": (
-                "🚫 autonomous 模式激活:禁止直接 commit/push/merge 到 main/master。\n"
+                "🚫 autonomous 模式激活:禁止直接 commit/push/merge/reset/branch -D/update-ref 到 main/master。\n"
                 "引擎的自动优化必须进 optimization worktree 等人工审合并——这样 main 永远安全,优化可大胆跑。\n"
                 "改用: bash scripts/opt-worktree.sh commit <area:subdirection> \"<提交说明>\"\n"
                 "  (方向格式如 engine:distillation / moni:quant;area 不同会自动开新 worktree)\n"
                 "提交后人工审: opt-worktree.sh show <worktree> → merge/reject\n"
-                "若确需直接提交 main(非自治优化),先 rm .claude/.autonomous_active 退出自治标记。\n"
+                "若确需直接操作 main(非自治优化),先 rm .claude/.autonomous_active 退出自治标记。\n"
                 "豁免:仅归档 .claude/decisions/case-*.json 的 case 元数据 commit 可直提 main(按先例)。"
             )
         }, ensure_ascii=False))
