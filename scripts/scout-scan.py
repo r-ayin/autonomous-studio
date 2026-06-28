@@ -395,32 +395,43 @@ def health_priority(r):
         score -= 1
         reasons.append(f"marker 文件待合并({','.join(pend_triage)})，可能已 triage")
 
-    # 推荐一个**具体的小工作单位**（tractable，不需深读大块代码）——给引擎现成抓手
+    # 推荐一个**具体的小工作单位**——优先选可操作项，"等合并"降为备选
+    # 修复：此前用 first-match 优先级链，"缺 PROGRESS + pending"先于"缺 GATES（可补）"
+    # 命中，导致推荐列表全是不可操作的"等合并"，真正可做的工作被掩盖。
+    actionable = []
+    blocked = []
     if ps is None and pend_prog:
-        unit = f"等合并 PROGRESS.md（已在 {','.join(pend_prog)} worktree，别重做）"
-    elif ps is None:
-        unit = "补 PROGRESS.md（1 文件，无需深读代码）"
-    elif not r["gates_exists"] and pend_gates:
-        unit = f"等合并 GATES.md（已在 {','.join(pend_gates)} worktree）"
-    elif not r["gates_exists"]:
-        unit = "补 GATES.md（1 文件，无需深读代码）"
-    elif ps is not None and ps > STALE_DAYS:
-        unit = f"刷新 PROGRESS.md（已 stale {ps}天）"
-    elif m["FIXME"] + m["HACK"] > 0 and pend_triage:
-        unit = f"等合并 {','.join(pend_triage)} worktree（marker 文件已动，可能已 triage FIXME/HACK，别重做——先查 worktree log）"
-    elif m["FIXME"] + m["HACK"] > 0:
-        unit = f"triage {m['FIXME'] + m['HACK']} 个 FIXME/HACK（取前 1-2 个修）"
-    elif m["TODO"] > 0 and pend_triage:
-        unit = f"等合并 {','.join(pend_triage)} worktree（marker 文件已动，可能已 triage TODO，别重做——先查 worktree log）"
-    elif m["TODO"] > 0:
-        unit = f"triage 前 1-2 个 TODO（标注或清掉）"
-    elif not r["has_planning"] and pend_planning:
-        unit = f"等合并 planning/（已在 {','.join(pend_planning)} worktree，别重做——先查 worktree log）"
-    elif not r["has_planning"]:
-        unit = "补 planning/ 目录（路线图文档，无需深读代码）"
+        blocked.append(f"等合并 PROGRESS.md（已在 {','.join(pend_prog)} worktree，别重做）")
+    if ps is None and not pend_prog:
+        actionable.append("补 PROGRESS.md（1 文件，无需深读代码）")
+    if not r["gates_exists"] and pend_gates:
+        blocked.append(f"等合并 GATES.md（已在 {','.join(pend_gates)} worktree）")
+    if not r["gates_exists"] and not pend_gates:
+        actionable.append("补 GATES.md（1 文件，无需深读代码）")
+    if ps is not None and ps > STALE_DAYS:
+        actionable.append(f"刷新 PROGRESS.md（已 stale {ps}天）")
+    if m["FIXME"] + m["HACK"] > 0 and pend_triage:
+        blocked.append(f"等合并 {','.join(pend_triage)} worktree（marker 文件已动，可能已 triage FIXME/HACK，别重做）")
+    if m["FIXME"] + m["HACK"] > 0 and not pend_triage:
+        actionable.append(f"triage {m['FIXME'] + m['HACK']} 个 FIXME/HACK（取前 1-2 个修）")
+    if m["TODO"] > 0 and pend_triage and not (m["FIXME"] + m["HACK"] > 0):
+        blocked.append(f"等合并 {','.join(pend_triage)} worktree（marker 文件已动，可能已 triage TODO，别重做）")
+    if m["TODO"] > 0 and not pend_triage:
+        actionable.append(f"triage 前 1-2 个 TODO（标注或清掉）")
+    if not r["has_planning"] and pend_planning:
+        blocked.append(f"等合并 planning/（已在 {','.join(pend_planning)} worktree，别重做）")
+    if not r["has_planning"] and not pend_planning:
+        actionable.append("补 planning/ 目录（路线图文档，无需深读代码）")
+
+    if actionable:
+        unit = actionable[0]
+    elif blocked:
+        unit = blocked[0]
     else:
         unit = "无明确小工作单位——可跳过或做文档润色"
-    return {"score": round(score, 2), "reasons": reasons, "work_unit": unit}
+    is_actionable = bool(actionable)
+    return {"score": round(score, 2), "reasons": reasons, "work_unit": unit,
+            "actionable": is_actionable}
 
 
 def scan_project(p):
@@ -500,8 +511,9 @@ def main():
     for r in report["projects"]:
         hp = health_priority(r)
         recs.append({"name": r["name"], "score": hp["score"],
-                     "reasons": hp["reasons"], "work_unit": hp["work_unit"]})
-    recs.sort(key=lambda x: x["score"], reverse=True)
+                     "reasons": hp["reasons"], "work_unit": hp["work_unit"],
+                     "actionable": hp.get("actionable", True)})
+    recs.sort(key=lambda x: (x.get("actionable", True), x["score"]), reverse=True)
     report["recommendations"] = recs
 
     if args.json:
@@ -536,7 +548,8 @@ def main():
         print("说明：分数基于结构性健康信号（缺文档/stale/标记密度），不依赖提交新旧；")
         print("      autonomous-studio 不被排除，按健康度公平排名（引擎真有 bug 仍可被选中）。")
         for i, rc in enumerate(recs[:3], 1):
-            print(f"  #{i} {rc['name']} (score={rc['score']}) — {rc['work_unit']}")
+            tag = "" if rc.get("actionable", True) else " ⏳blocked"
+            print(f"  #{i} {rc['name']} (score={rc['score']}{tag}) — {rc['work_unit']}")
             print(f"      理由: {'; '.join(rc['reasons']) or '健康度良好'}")
         if recs and recs[0]["score"] == 0:
             print("  （所有项目健康度良好，无紧迫小工作单位——可做文档润色或跳过）")
