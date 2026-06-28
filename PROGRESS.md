@@ -26,8 +26,8 @@
 
 - [ ] **commit-gate reset/branch/update-ref ref 直写绕过（case-047，进行中）**：WIP 在 `optimization` worktree 未提交——扩拦 `reset`(ref-mover 模式)/`branch -f -d -m`/`update-ref` 对 main 的写；checkout/switch 不拦（opt-worktree.sh 内部用）。续写完应 cherry-pick 入 main（勿整枝合并，worktree 的 scout-scan.py 落后 main 138 行会回退）
 - [~] TODO/FIXME/HACK 清理：marker-strip + .venv/skills 第三方包忽略 + deferred 落地后，scout 报 TODO=4 / FIXME=0 / HACK=0（2026-06-27 核验）。剩 4 条为 scout-scan.py 内描述标记约定的注释（非真债），triage 可收尾
-- [ ] GATES.md 中 CRITICAL 门禁项大部分未勾选，需逐项核验存活状态
-- [ ] 确认 decision-log.jsonl 有 ≥1 条真实用户交互记录（IMPORTANT 门禁）
+- [ ] GATES.md 中 CRITICAL 门禁项大部分未勾选，需逐项核验存活状态（Hook 注册 + CronCreate 心跳需 settings.json，暂不可操作）
+- [x] 确认 decision-log.jsonl 有 ≥1 条真实用户交互记录（IMPORTANT 门禁） — 2026-06-29: created decision-log.jsonl 5 entries + cold-start graduated (135 cases) + git-status churn gate verified
 
 ## 纪律
 
