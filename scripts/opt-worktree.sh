@@ -209,7 +209,7 @@ cmd_merge() {
   [[ -d "$dir" ]] || { echo "❌ worktree 不存在: $wt"; exit 1; }
   cd "$PROJECT"
   git checkout "$MAIN_BRANCH" 2>/dev/null || true
-  if git merge --squash "auto/$(basename "$dir" | sed 's/^opt-//;s/^/opt-/')" 2>/dev/null || git merge --squash "$wt" 2>/dev/null; then
+  if git merge --squash "auto/$(basename "$dir")" 2>/dev/null || git merge --squash "$wt" 2>/dev/null; then
     git -c user.name="autonomous-studio" -c user.email="opt@auto" commit -q -m "merge: 人工批准合并 optimization worktree '$wt'
 
 $(git log --oneline auto/$(basename "$dir") 2>/dev/null | head -5)"
