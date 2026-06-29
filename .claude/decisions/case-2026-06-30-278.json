@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-06-30-278",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-30T21:15:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "docs:contributing-drift——CONTRIBUTING.md「本地运行」块补 npm test + npm start（与 README/CLAUDE 同类漂移，case-276 未覆盖的剩余 contributing drift）",
+  "situation": "scout-scan @本轮 #1=1BfrYW9R（score=0.0）推荐「无明确小工作单位——可跳过或做文档润色」。.opt-direction 实读 = docs:contributing-drift（case-276 merge 5ec70ae 后落定），故 contributing-drift 仍是该项目声明的待办方向。核 CONTRIBUTING.md 现状：「本地运行」块仅列 npm install / npm run dev / npm run build 三行，遗漏 npm test（23 测回归锁套件）与 npm start（生产部署入口 NICE ⑬⑭）——与 README.md（b34c83d 修）/ CLAUDE.md「常用命令」块（已含 test+start）存在同类漂移。case-276 仅修 CONTRIBUTING.md「测试与验证」段的 29→30 组件计数，未触「本地运行」块，故本漂移非重复。全员 score=0.0 下挑真单位：此为 .opt-direction 声明方向、有 README 对账基线、可 npm test 复测证未破的最小真单位，非自我润色霸榜。",
+  "action": "（1）读 README.md「快速开始」块取对账基线（含 npm test # 回归冒烟...pass 计数由 ㉑ 与 GATES.md 对账 + npm start # 生产部署入口...NICE ⑬⑭ 两行），确认 CONTRIBUTING.md「本地运行」块缺这两条。（2）单文件最小改：Edit CONTRIBUTING.md「本地运行」bash 块，于 npm run build 后补 npm test 与 npm start 两行，注释风格对齐既有（# 描述），不硬编码 pass 数（㉑ 已锁 GATES.md canonical「npm test → N pass 0 fail」，README/CONTRIBUTING 写死数会造新漂移面）。（3）改前 npm test 复测基线 23 pass 0 fail（绿基线）。（4）opt-worktree.sh 1BfrYW9R commit docs:contributing-drift <msg> CONTRIBUTING.md 提交。坑：opt-worktree.sh commit 签名为 [project] commit <direction> <msg> [file...]（project 在前），首试省 project 把 commit 当路径报「'commit' 不是目录」；project-first 二试通过。opt-worktree cp 文件入 worktree 提交后恢复 live 工作树至 HEAD（main dirty=0），符合隔离设计——变更在 worktree 待人工 merge，main 永远安全。",
+  "files_changed": ["1BfrYW9R/CONTRIBUTING.md"],
+  "worktree": "opt-docs-1782767325（pending，待人工审 merge）",
+  "direction": "docs:contributing-drift",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "opt-worktree.sh 1BfrYW9R commit ... → '✓ 提交到 opt-docs-1782767325 方向=docs:contributing-drift'（worktree 提交落定）",
+    "git -C .opt-worktrees/1BfrYW9R/opt-doc-1782767325 show HEAD --stat → commit 09f648a 'opt(docs:contributing-drift): docs(contributing): 本地运行块补 npm test + npm start...'，1 file changed",
+    "sed -n '10,17p' <wt>/CONTRIBUTING.md → 「本地运行」bash 块现含 5 行：install / dev / build / test / start（test+start 两行已落 worktree 提交）",
+    "cd 1BfrYW9R && npm test（改前基线）→ '# pass 23 / # fail 0'（绿基线，文档补行未触代码故无回归风险）",
+    "git -C 1BfrYW9R status --short → 空（main 干净 dirty=0，变更隔离在 worktree）"
+  ],
+  "next_suggestion": "（1）人工审 opt-docs-1782767325 并 merge 入 1BfrYW9R onedaybot-dev：opt-worktree.sh 1BfrYW9R show opt-doc-1782767325 审 diff（应仅 CONTRIBUTING.md +2 行）→ merge；合后 CONTRIBUTING.md 三件套（README/CLAUDE/CONTRIBUTING）本地运行/常用命令块均含 test+start，contributing-drift 闭合，可清 .opt-direction。（2）scout-scan 全员 score=0.0 真功能单位候选：1BfrYW9R Phase 2 表单校验/空状态骨架屏 或 Phase 3 错误上报（须真功能非 doc 润色，⑧/㉑ 防漂移锁自守）。（3）AS 侧：合 opt-cases-1782766175（含 case-274/275/276）入 AS main 让 disk 见 274-278，scout-scan #2 待合并计数归零（[[scout-scan-recommend-blind-to-pending-worktrees]]）。（4）结构根因待做：case-id 自挑号 [[case-id-collision-agent-self-pick]]、跨项目 case 孤儿 [[case-file-orphan-on-cross-project-work]]（本轮 case-278 跨项目工作在 1BfrYW9R、case 归 AS main 仍滞留 dirty，非根治）、两副本同改 [[opt-worktree-root-as-copy-drift]]。moni 前端重构仍 constraints 排除。"
+}

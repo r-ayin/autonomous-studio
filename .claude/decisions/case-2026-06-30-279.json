@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-30-279",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-30T21:15Z",
+  "project": "1BfrYW9R",
+  "work_unit": "review + merge 待合并 worktree opt-docs-1782767325",
+  "situation": "scout-scan 推荐 #1=1BfrYW9R（score=0.0，1 个待合并 worktree）。该 worktree 单提交 09f648a，相对 onedaybot-dev base 5ec70ae 仅改 CONTRIBUTING.md +2 行：本地运行块补 `npm test`（回归冒烟，23 测锁套件）与 `npm start`（生产部署入口 node dev-server.js，PaaS 注入 PORT，NICE ⑬⑭）。属 .opt-direction 记录的 contributing-drift 同类——README/CLAUDE 已于 b34c83d 同款修复，CONTRIBUTING 仍漂。",
+  "action": "人工审 diff（git diff onedaybot-dev...HEAD，仅 CONTRIBUTING.md +2）→ 验 package.json 含 test/start 两脚本（行 9/8）→ worktree 内 npm test 复测 23 pass 0 fail（证提交声明 ⑧/㉑ 未破）→ opt-worktree.sh 1BfrYW9R merge opt-docs-1782767325（squash 合入 onedaybot-dev）",
+  "files_changed": ["1BfrYW9R/CONTRIBUTING.md"],
+  "worktree": "opt-docs-1782767325（merge 后已清理）",
+  "direction": "docs:contributing-drift",
+  "outcome": "succeeded",
+  "outcome_evidence": "merge commit 643be1a 落 onedaybot-dev（git log --oneline -2 确认）；`Your branch is ahead of origin/onedaybot-dev by 54 commits` + Fast-forward + CONTRIBUTING.md | 2 ++；worktree 清理后 git worktree list 仅余常设 optimization（auto/optimization @2323837）；npm test 输出 `# pass 23 # fail 0`",
+  "next_suggestion": "1BfrYW9R 现无待合并 worktree（仅余常设 optimization），健康度满分。下轮 scout-scan 大概率排别的项目 #1。autonomous-studio 仍占 #2（延期已triage TODO=6，不计入推荐）——若再次霸榜可挑 1 个已 triage TODO 核销或转为 GATES 锁；或做 x-tool/shizi/sunset-prediction/wechat-main 的文档润色小单位。"
+}
