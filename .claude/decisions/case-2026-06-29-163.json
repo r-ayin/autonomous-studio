@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-163",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-29T04:57:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "清理空 optimization worktree（无唯一提交）+ 盘点 pending opt-cases-1782708487 待人工审",
+  "situation": "scout-scan #2 AS：1 个待合并 worktree(opt-cases-1782708487, 3 commits/13 files) + 1 个空 worktree(optimization, 0 commits)。memory 'AS 分枝历史分歧收口' 与 case-162 next_suggestion 均提示空 optimization worktree 可安全清理。opt-cases-1782708487 含 151-162 case 归档 + case-048 agent_id/timestamp 修正，需人工裁决 merge/reject，引擎不应自动合。",
+  "action": "git worktree remove ../.opt-worktrees/autonomous-studio/optimization --force; git branch -D auto/optimization (was 1b846bd same as main, no unique commits). 不触碰 opt-cases-1782708487（留给人工）。本轮无新 commit、无文件改动——纯 cleanup。",
+  "files_changed": [],
+  "worktree": "none (cleanup only, no commit)",
+  "direction": "worktree:cleanup",
+  "outcome": "succeeded",
+  "outcome_evidence": "git worktree list post-cleanup 仅显示 main(1b846bd) + opt-cases-1782708487(4412996)；git branch | grep auto/optimization 无输出；main HEAD=1b846bd 未变、git status clean；opt-cases-1782708487 diff stat = 13 files changed, 237 insertions(+), 10 deletions(-) 完整保留待审",
+  "next_suggestion": "下轮应人工审 opt-cases-1782708487（bash scripts/opt-worktree.sh autonomous-studio show opt-cases-1782708487）后决定 merge/reject；若 merge，则 151-162 case 归档入 main、AS 健康度进一步清零。若继续自动循环且此枝仍未审，切到 wechat-main(PROGRESS 0.8天最 stale)做文档刷新"
+}

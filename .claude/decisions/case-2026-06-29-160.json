@@ -1,0 +1,24 @@
+{
+  "case_id": "case-2026-06-29-160",
+  "agent_id": "ralph-wiggum-loop",
+  "timestamp": "2026-06-29T04:50:00Z",
+  "project": "wechat-main",
+  "work_unit": "merge-pending-opt-tests-and-cleanup-empty-worktrees",
+  "situation": "scout-scan 报告 wechat-main 待合并 worktree=1 (opt-tests-1782706084, 含 knowledge_base+research_cache 共 43 用例)、空 worktree=1 (optimization 仅 .opt-direction 改动)；main 已 dirty=0 但 pending 未收口",
+  "action": "1) 在 opt-tests worktree 内跑 pytest 验证 43 passed; 2) git merge --no-ff auto/opt-tests-1782706084 入 main; 3) git worktree remove + branch -d 清理两个 worktree (merged + empty)",
+  "files_changed": [
+    "wechat-main/tests/test_knowledge_base.py",
+    "wechat-main/tests/test_research_cache.py",
+    "wechat-main/.opt-direction"
+  ],
+  "worktree": "auto/opt-tests-1782706084 (merged+removed); auto/optimization (cleaned+removed)",
+  "direction": "tests:knowledge-base+research-cache",
+  "outcome": "succeeded",
+  "outcome_evidence": "pytest tests/test_knowledge_base.py tests/test_research_cache.py → 43 passed in 0.36s; git log -1 → 'merge: opt-tests-1782706084 — knowledge_base(17)+research_cache(26) tests, 43 passed'; git worktree list 只剩 /home/admin/workspace/wechat-main main; scout-scan 复扫显示 wechat-main dirty=0、无待处理 worktree",
+  "next_suggestion": [
+    "autonomous-studio dirty=10：检查 main 上未提交文件（多为 case/orphan），归档或清理",
+    "autonomous-studio 延期 TODO 核销：6 个已 triage TODO 挑一个低成本项做小工作单位",
+    "moni-master 后端/量化任务：PROGRESS 0.1天可刷（前端重构排除）",
+    "1BfrYW9R planning/roadmap.md 与 single-file README 对齐"
+  ]
+}

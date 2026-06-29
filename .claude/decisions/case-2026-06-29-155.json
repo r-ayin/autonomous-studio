@@ -1,0 +1,18 @@
+{
+  "case_id": "case-2026-06-29-155",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-29T12:33:00+08:00",
+  "project": "1BfrYW9R",
+  "work_unit": "build:single-file-support",
+  "situation": "scout-scan #1 (score=0.0, healthy). 但 GATES.md 仍记录 '15 JSX components' 与 'npm run build → Build OK — 15 JSX components'，而当前 index.html 已是单文件 bundle（无外部 .jsx 引用），build.js 输出 'Build OK — 0 JSX components'——gate 证据与实际状态严重脱节。build.js 的 multi-file-only 校验逻辑在 single-file 架构下静默退化为 no-op，无法真正验证 bundle 完整性。",
+  "action": "扩展 build.js 自动检测两种架构：(1) multi-file（外部 src='*.jsx' 引用）保留原有缺失文件校验；(2) single-file bundle（<script type='text/babel'> 内联块）计数组件定义并报错若完全无 JSX 源。同步更新 GATES.md 头部注明当前为 single-file bundle / 29 组件，CRITICAL gate 证据刷新为最新 build 输出。",
+  "files_changed": [
+    "1BfrYW9R/build.js",
+    "1BfrYW9R/GATES.md"
+  ],
+  "worktree": "opt-build-1782707571",
+  "direction": "build:single-file-support",
+  "outcome": "succeeded",
+  "outcome_evidence": "node build.js exit 0 with output 'Build OK — 29 JSX components (single-file bundle), static project (browser Babel)'; git diff HEAD~1 --stat shows 3 files changed, 34 insertions(+), 9 deletions(-); worktree commit 007027f on auto/opt-build-1782707571.",
+  "next_suggestion": "人工 review opt-build-1782707571 后 squash merge 入 onedaybot-dev；merge 后下一轮可针对 autonomous-studio dirty=4 检查未提交文件是否为遗留 case/orphan 并归档或清理（autonomous-state.md NEXT_SUGGESTION #1）。"
+}
