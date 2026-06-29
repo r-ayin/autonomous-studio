@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-30-297",
+  "agent_id": "ralph-wiggum-loop",
+  "timestamp": "2026-06-29T22:54:09Z",
+  "project": "1BfrYW9R (oneday-design)",
+  "work_unit": "dev-server.js HTTP 方法守卫 + smoke ㉓ 回归锁（非 GET/HEAD 方法返 405 而非静默 200 服务）",
+  "situation": "scout-scan 全项目健康度 0.0、无明确小工作单位推荐；#1=1BfrYW9R 标「可跳过或做文档润色」。审 dev-server.js 发现真实结构性缺口：请求处理器对任意 HTTP 方法（POST/PUT/DELETE/PATCH）静默走静态分发返 200 + 文件内容——DELETE /index.html 返 200 + 文件体、POST / 返 200 + index.html、PUT /healthz 返 {status:ok} 掩盖探针语义。方法维度零测覆盖（现存 24 测全用 http.get=GET），方法守卫若被误删全套测仍绿，守卫沦死代码无人捕获。与项目既有「锁未经测代码路径+突变复测证咬」文化（⑥/⑯/⑰/㉒）契合。",
+  "action": "dev-server.js 请求处理器首行加方法守卫：`if (req.method !== 'GET' && req.method !== 'HEAD')` 返 405 + Allow:GET,HEAD + text/plain 'Method Not Allowed'，落点在 /healthz//readyz/静态分发三路之前（探针亦受法）；HEAD 由 Node 协议层自动抑制 body 故与 GET 同路径放行不另测。smoke.test.js 追加 ㉓ 回归锁：注入 ONEDAY_DIR 临时 served 目录含 index.html，发 POST /→405+Allow、DELETE /index.html→405（非 200+文件体）、PUT /healthz→405（非 200+{status:ok}，证守卫在探针路由之前探针亦受法）+ GET / 控制组仍 200。GATES.md IMPORTANT npm test bullet 追加 ㉓ 条目 + canonical pass 计数 bump 24→25 + 末尾历史注记。PROGRESS.md 最近里程碑前置新里程碑条目。",
+  "files_changed": ["1BfrYW9R/dev-server.js", "1BfrYW9R/test/smoke.test.js", "1BfrYW9R/GATES.md", "1BfrYW9R/PROGRESS.md"],
+  "worktree": "opt-gates-1782773566 (commit c8c15f7, branch auto/opt-gates-1782773566)",
+  "direction": "gates:method-guard",
+  "outcome": "succeeded",
+  "outcome_evidence": "worktree 内 `npm test` → 25 pass 0 fail（基线 24 pass，新增 ㉓ 后 25）；gates-doc-drift 锁 ㉑ 先捕获到加测后 GATES 仍 24 的漂移（25 注册 vs 24 声明 strictEqual 失败），同步 GATES 后转绿，证 ㉑ drift 锁生效；突变复测：把守卫条件改为 `if (false && ...)` 全 disabling 后 ㉓ 转红 not ok 25 / pass24/fail1（POST/DELETE/PUT 不再 405），还原后 25 pass 0 fail，证锁真咬非侥幸；`npm run build` exit 0 报 30 JSX components（CRITICAL gate 不破）；worktree HEAD c8c15f7 grep 确认 guard/㉓/25 pass/HTTP 方法守卫里程碑四项俱全。live 1BfrYW9R main 经 opt-worktree commit 清理回 HEAD 干净态（cp 语义，main 安全）。",
+  "next_suggestion": "1BfrYW9R 待办 Phase 2「加载/空状态骨架屏」与「表单校验与错误提示」是真实功能缺口（非回归锁），但需动 86KB index.html single-file bundle，下轮可评估最小骨架屏组件增量 + build.js 计数同步 + ⑧ 文档计数对账；或继续 dev-server.js 维度扫缺口（如 /healthz//readyz 大小写敏感、根 / 末尾斜杠归一）但已近锁饱和，价值递减。另 opt-gates-1782773566 待人工批准合 main。"
+}
