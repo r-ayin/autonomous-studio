@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-032",
+  "agent_id": "autonomous-loop",
+  "timestamp": "2026-06-29T20:57:00Z",
+  "project": "skills",
+  "work_unit": "gitignore: add clawhub-installed skill stub dirs",
+  "situation": "Scout scan found skills project with dirty=2 (two untracked directories: oneday-capability-register/ and oneday-open-cli/). Both contain only .clawhub/origin.json marker files — ClawHub registry install metadata stubs with no actual skill source code. Top 3 scout recommendations were all blocked (awaiting merge). skills was the best actionable target.",
+  "action": "Added 'oneday-capability-register/' and 'oneday-open-cli/' to skills/.gitignore under a new '# ClawHub-installed skill stubs' section. Committed to worktree opt-chore-1782680083 (commit 55c101c).",
+  "files_changed": [".gitignore"],
+  "worktree": "opt-chore-1782680083",
+  "direction": "chore:gitignore",
+  "outcome": "succeeded",
+  "outcome_evidence": "git show HEAD --stat in worktree shows '.gitignore | 4 ++++', commit 55c101c. grep confirms ClawHub entries present in file. Once merged to skills main, 'git status --short' in skills repo will no longer show ?? for those two directories.",
+  "next_suggestion": "1) Human approve merge of opt-chore-1782680083 (skills .gitignore, 4 lines, low risk); 2) Human approve merge of existing blocked worktrees: opt-docs-1782638147/opt-agent-dashboard-1782638553/opt-docs-1782638790; 3) stagehand-analysis has TODO=9 but all are upstream/integration test TODOs — consider reviewing if any are actionable"
+}

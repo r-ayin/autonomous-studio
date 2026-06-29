@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-28-060",
+  "agent_id": "ralph-loop",
+  "timestamp": "2026-06-28T09:39:00Z",
+  "project": "dingtalk-auto",
+  "work_unit": "补 PROGRESS.md",
+  "situation": "scout-scan 报告 dingtalk-auto score=10.0（缺 PROGRESS.md/GATES.md/planning），排名 #1",
+  "action": "根据 README、git log、src/ 目录结构撰写 PROGRESS.md，包含项目概要、当前状态、近期里程碑、核心模块表、待办",
+  "files_changed": ["PROGRESS.md"],
+  "worktree": "opt-docs-1782639001",
+  "direction": "docs:progress",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree commit 成功，worktree opt-docs-1782639001 已包含 PROGRESS.md",
+  "next_suggestion": "pc_agent 补 PROGRESS.md（score=10.0）；或 quanzhan 补 PROGRESS.md（score=10.0）"
+}

@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-28-064",
+  "agent_id": "ralph-loop",
+  "timestamp": "2026-06-28T09:56:00Z",
+  "project": "quanzhan",
+  "work_unit": "补 PROGRESS.md 项目进度文档",
+  "situation": "scout-scan 报 quanzhan score=10.0（缺 PROGRESS.md / GATES.md / planning/），排名 #1",
+  "action": "在 worktree opt-docs-1782640587 创建 PROGRESS.md，包含项目概要、当前状态、里程碑、技术栈、待办",
+  "files_changed": ["PROGRESS.md"],
+  "worktree": "opt-docs-1782640587",
+  "direction": "docs:progress",
+  "outcome": "succeeded",
+  "outcome_evidence": "git commit a9ee3d4 成功，1 file changed 27 insertions",
+  "next_suggestion": "text-counter-extension 补 PROGRESS.md（score=10.0）；kaoqin 补 PROGRESS.md（score=9.0）"
+}

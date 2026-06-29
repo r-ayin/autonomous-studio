@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-28-082",
+  "agent_id": "autonomous-loop-ralph",
+  "timestamp": "2026-06-28T14:56:00Z",
+  "project": "browser-use",
+  "work_unit": "补 GATES.md（参考项目门禁）",
+  "situation": "scout-scan（正确 workspace=/home/admin/workspace）显示 browser-use score=5.68 排 #1，缺 GATES.md。之前存在的 opt-docs-1782657682 worktree 中 GATES.md 提交到了错误的绝对路径（home/admin/workspace/browser-use/GATES.md 而非根目录 GATES.md），scout-scan 也未将其识别为 pending 待合并。同时发现 scout-scan 历史调用传入了错误 workspace（autonomous-studio 自身而非 /home/admin/workspace），导致 0 projects。",
+  "action": "在 browser-use optimization worktree（auto/optimization 分支）写入正确路径 GATES.md，内容适合参考/研究项目（非自研，聚焦本地集成健康度），并标注 TODO=34 均来自上游代码。直接 git commit 提交。",
+  "files_changed": ["GATES.md"],
+  "worktree": "optimization (auto/optimization branch, /home/admin/workspace/.opt-worktrees/browser-use/optimization)",
+  "direction": "docs:gates",
+  "outcome": "succeeded",
+  "outcome_evidence": "git commit 返回 [auto/optimization 47522ef] opt(docs:gates): browser-use 补 GATES.md，1 file changed, 25 insertions(+)，create mode 100644 GATES.md。文件位于 worktree 根目录，路径正确。",
+  "next_suggestion": "1) 人工批准合并 browser-use optimization worktree（含正确 GATES.md）; 2) 人工批准合并 browser-use opt-docs-1782657682（含错误路径 GATES.md，应 reject 或清理）; 3) stagehand-analysis 补 GATES.md（score=5.08，#2）; 4) 修复 autonomous-loop 的 scout-scan workspace 参数（应传 /home/admin/workspace 而非 /home/admin/workspace/autonomous-studio）"
+}

@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-28-056",
+  "agent_id": "ralph-loop",
+  "timestamp": "2026-06-28T09:20:53Z",
+  "project": "agent-dashboard",
+  "work_unit": "补 PROGRESS.md — 记录 MVP 状态、已完成功能、待办及架构概览",
+  "situation": "scout-scan #1 推荐 agent-dashboard (score=10.0)：缺 PROGRESS.md、缺 GATES.md、无 planning/。8 个提交、12 天无活跃。项目为 AI Agent 多会话管理看板（React+Vite + FastAPI + Redis + tmux/ttyd）。",
+  "action": "基于 README.md 和 git log 快速提取项目状态，创建 PROGRESS.md 记录阶段、已完成功能清单、待办及架构概要。",
+  "files_changed": ["PROGRESS.md"],
+  "worktree": "opt-agent-dashboard-1782638553",
+  "direction": "agent-dashboard:docs",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh commit 断言通过：worktree 有新 commit、main 无残留改动。ls 确认 PROGRESS.md 存在于 worktree。",
+  "next_suggestion": "agent-dashboard 补 GATES.md 或 agentfw 补 PROGRESS.md（scout-scan #2）"
+}

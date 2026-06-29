@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-28-069",
+  "agent_id": "ralph-loop",
+  "timestamp": "2026-06-28T10:21:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "fix opt-worktree.sh merge to strip .opt-direction metadata",
+  "situation": "scout-scan top 3 recommendations (#1 1BfrYn9G, #2 agent-dashboard, #3 agentfw) are all waiting for PROGRESS.md worktree merges. The merge function (cmd_merge) squash-merges without stripping .opt-direction metadata file, causing it to leak into target projects. This was the root cause of recent 'chore: remove leaked .opt-direction metadata file' cleanup commits across browser-use, shizi, skills, stagehand-analysis.",
+  "action": "Added two lines to cmd_merge in opt-worktree.sh: after git merge --squash succeeds and before commit, run 'git rm -f --cached .opt-direction' and 'rm -f .opt-direction' to strip the worktree-internal metadata file from the merge result. This prevents .opt-direction leaking into any target project on future merges.",
+  "files_changed": ["scripts/opt-worktree.sh"],
+  "worktree": "optimization (autonomous-studio)",
+  "direction": "engine:merge-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh commit succeeded: '✓ 提交到 optimization  方向=engine:merge-fix'. Diff is 2 added lines in cmd_merge between squash and commit.",
+  "next_suggestion": "Merge pending PROGRESS.md worktrees for 1BfrYn9G/agent-dashboard/agentfw (user approval needed); then x-tool PROGRESS.md stale 8.4d; skills 5 TODO markers; browser-use 34 TODO markers"
+}

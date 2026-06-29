@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-28-091",
+  "agent_id": "claude-sonnet-4-6",
+  "timestamp": "2026-06-28T15:46Z",
+  "project": "linshi",
+  "work_unit": "补 planning/status.json（归档态）",
+  "situation": "scout-scan 健康度排序 #1 为 linshi（score=3.0）：PROGRESS.md+GATES.md 待合并，无 planning/。linshi 为钉钉文档归档仓（136 文档 LFS），归档完成无活跃开发。existing opt-docs-1782639428 worktree 已有 PROGRESS.md+GATES.md 但缺 planning/。",
+  "action": "在 linshi opt-docs-1782639428 worktree 直接创建 planning/status.json（标记 stage=archived，3 个 milestone 均 done，next_actions=[]），并 git commit。",
+  "files_changed": ["planning/status.json"],
+  "worktree": "linshi/opt-docs-1782639428 (commit 7fc962b)",
+  "direction": "docs:planning",
+  "outcome": "succeeded",
+  "outcome_evidence": "git commit 7fc962b 成功：'docs(planning): 补 planning/status.json（归档态，136 文档 LFS）'，1 file changed 14 insertions(+)。",
+  "next_suggestion": "1) 人工批准合并 linshi/opt-docs-1782639428（三件套 PROGRESS.md+GATES.md+planning/status.json）; 2) open-design triage TODO×1（scout #2）; 3) pc_agent 补 planning/ 目录（scout #3）"
+}

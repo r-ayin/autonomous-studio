@@ -1,0 +1,20 @@
+{
+  "case_id": "case-2026-06-28-067",
+  "agent_id": "ralph-loop",
+  "timestamp": "2026-06-28T10:10:00Z",
+  "project": "autonomous-studio + browser-use + shizi + skills",
+  "work_unit": "合并 3 个 pending PROGRESS.md worktree + 修复 opt-worktree.sh merge 泄漏 .opt-direction bug",
+  "situation": "scout-scan 前 3 推荐均为 '等合并 PROGRESS.md worktree'（browser-use score=6.68, shizi=6.2, skills=6.08）。worktree 已有 PROGRESS.md 提交但未合并到 main。同时发现 cmd_merge() 在 squash 合并时未排除 .opt-direction 元数据文件，导致泄漏到 main。",
+  "action": "1) 用 opt-worktree.sh merge 合并 browser-use/opt-browser-use-1782636860、shizi/opt-docs-1782636645、skills/opt-docs-1782637363 三个 worktree 到各自 main/master；2) 发现并修复 opt-worktree.sh cmd_merge() 中缺少 `git rm .opt-direction` 的 bug；3) 清理已被泄漏的 .opt-direction 文件（3 个项目各一个 follow-up commit）；4) reject 空的 skills/opt-skills-1782637143 worktree",
+  "files_changed": [
+    "scripts/opt-worktree.sh (fix: merge 时排除 .opt-direction)",
+    "browser-use/PROGRESS.md (merged from worktree)",
+    "shizi/PROGRESS.md (merged from worktree)",
+    "skills/PROGRESS.md (merged from worktree)"
+  ],
+  "worktree": "optimization (autonomous-studio) + direct merge (browser-use, shizi, skills)",
+  "direction": "engine:merge-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "browser-use git log shows merge commit 3cbe452 + cleanup commit; shizi git log shows merge commit 3768aa4 + cleanup; skills git log shows merge commit; opt-worktree.sh now has `git rm -f --cached .opt-direction` before commit in cmd_merge(); all 3 projects have PROGRESS.md on main and no .opt-direction",
+  "next_suggestion": "再跑 scout-scan 验证 score 下降；合并其余项目的待合并 PROGRESS.md worktree（agent-dashboard, 1BfrYn9G, agentfw, dingtalk-auto, kaoqin, linshi 等）；x-tool PROGRESS.md stale 8.4 天需刷新"
+}

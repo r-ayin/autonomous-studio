@@ -860,7 +860,31 @@
       "current_effective_interval": 60,
       "last_degrade_action": "2026-06-17T15:50:00Z — user interaction (Browser Use XHS) reset consecutive_no_delta to 0, interval restored to 60min",
       "note": "consecutive_no_delta 1→2触发降频至120min, 4→触发至240min。当前=3仍在120min。用户交互时自动重置。"
+    },
+    "2026-06-28T17:15:00Z": {
+      "l3_check_count": "loop-active",
+      "finding": "autonomous-loop 正在成功运行(pid 572489, 第7轮, /model GLM-5.2 后 claude -p 有配额)。产出 6 个待审 opt-worktree，全 docs-only PROGRESS.md(browser-use/shizi/skills x2/stagehand-analysis/open-design)。loop 持续产出中。",
+      "pending_worktrees": [
+        "browser-use/opt-browser-use-1782636860",
+        "shizi/opt-docs-1782636645",
+        "skills/opt-skills-1782637143",
+        "skills/opt-docs-1782637363",
+        "stagehand-analysis/opt-docs-1782637586",
+        "open-design/opt-docs-1782637924"
+      ],
+      "action_level": "ACT_NOTIFY",
+      "confidence": 85,
+      "next": "人工 batch merge 这些 docs-only worktree(opt-worktree.sh <proj> merge <wt>)，或让 loop 继续累积后统一处理"
+    },
+    "2026-06-28T21:10:00Z": {
+      "l3_check_count": "post-loop",
+      "finding": "autonomous-loop 跑 1607 轮后已停(收到 .stop_autonomous 标记)。今日产出 70 case(001-070)，共 95 case。archive 从 18 修复到覆盖全 95。6 个 docs-only worktree 仍待审(open-design/1BfrYn9G/agent-dashboard x2/kaoqin/pc_agent)。8 僵尸 pattern 稳定不变。",
+      "loop_status": "stopped after 1607 rounds",
+      "pending_worktrees": 6,
+      "action_level": "ACT_NOTIFY",
+      "confidence": 80,
+      "next": "人工 merge 6 个 docs-only worktree(opt-worktree.sh <proj> merge <wt>)，或直接 reject 清理；loop 已停无需再处理堆积"
     }
   },
-  "last_distill": "2026-06-26T23:05:53Z"
+  "last_distill": "2026-06-28T10:43:14Z"
 }
