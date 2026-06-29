@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-06-30-292",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-30T06:20:00+08:00",
+  "project": "autonomous-studio",
+  "work_unit": "engine:merge — 人工审 auto/optimization 待合并 worktree(单提交 71a6872) 并 squash 合入 AS main",
+  "situation": "scout-scan 报 AS 待合并 worktree=1(常设 optimization, 分支 auto/optimization @ 71a6872)。case-291(上轮) next_suggestion(1) 明确指派本轮做此 merge。71a6872 单提交仅改 scripts/opt-worktree.sh(+42/-3), 实捆三修: case-223/226(cmd_merge 分支名解析—旧 sed 把常设 worktree 名 optimization 变成不存在的 auto/opt-optimization 致两路皆败误报冲突, 这正是常设 worktree 修复长期合不进 main 的根因)、case-207(cmd_commit copied==0 前置断言堵 bogus 空 commit)、case-034/263(cmd_new_case O_EXCL 原子预留根除 agent 手挑号撞号)。两副本 root live↔AS optimization 逐字节一致(无 drift)。",
+  "action": "(1) 用 git show --stat 71a6872 审单提交(非两点 diff)→ 仅 opt-worktree.sh, 干净; (2) 识破两点 diff 误读: git diff main..auto/optimization 显 case-261..286 为'删除'实为 main 后增文件分支侧缺失[[diverged-base-two-dot-diff-misread]], squash 三方合并(base 缺/ours 有/theirs 未触→保留 ours)不会删; (3) 现场测 new-case: 串行→292, 并发两调用→293/294 不同号(noclobber 生效), 验证 case-034/263 修复; (4) 清理测试 stub 293/294; (5) bash scripts/opt-worktree.sh autonomous-studio merge optimization → squash 合入 main + 清理常设 worktree。",
+  "files_changed": ["scripts/opt-worktree.sh (auto/optimization→main via squash)"],
+  "worktree": "auto/optimization (standing, .opt-worktrees/autonomous-studio/optimization) — 已 merge 入 main 75e3dc4 并清理",
+  "direction": "engine:merge",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "git -C autonomous-studio rev-parse --short main: 5568f3b→75e3dc4 (merge commit 'merge: 人工批准合并 optimization worktree optimization')",
+    "git ls-files case-2026-06-30-26*.json + 28*.json | wc -l = 17 (合并前后均 17, case 文件未删, 三方合并推理得证)",
+    "git show main:scripts/opt-worktree.sh | grep -c 'cmd_new_case|new-case)' = 2 (新代码已入 main)",
+    "diff <(git show main:scripts/opt-worktree.sh) /home/admin/workspace/scripts/opt-worktree.sh → IDENTICAL (root live↔AS main 无 drift [[opt-worktree-root-as-copy-drift]])",
+    "git worktree list 仅剩 main(常设 optimization 已合并清理, 不再占 stale 槽 [[scout-scan-standing-worktree-not-stale]])",
+    "merge 命令本身成功执行(exit 0)即证明 case-223/226 修复生效: 旧代码对常设 worktree 会产 auto/opt-optimization 不存在 ref→两路皆败误报冲突, 根本无法走到此步"
+  ],
+  "next_suggestion": "(1) 常设 optimization worktree 已随 merge 清理, 下轮若有 AS engine 修复须 opt-worktree init 重开; (2) AS main 仍 dirty=untracked case 孤儿 287-291(跨项目 case 滞留, [[case-file-orphan-on-cross-project-work]])+本 292, 未根治—可专轮 init optimization worktree 后 commit 归档这批 case 文件入 git; (3) 后续 loop step5 全面改用 new-case 分配 case-id 替代手挑号, 即根除撞号复发 [[case-id-collision-agent-self-pick]]; (4) 下轮 scout-scan 应不再报 AS 待合并=1(已清), 可转向 1BfrYW9R(score=0.0 #1) 或 case 孤儿归档。"
+}
