@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-244",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-29T15:40:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "review + merge pending opt-gates worktree (healthz liveness probe)",
+  "situation": "scout-scan 排 #1 = 1BfrYW9R（score=0.0），推荐工作单位=review 1 个待合并 worktree（opt-gates-1782747365，auto 分支 328080d）。该 worktree 是先前引擎轮次产出的优化，停在 pending 待人工审 diff + merge/reject。1BfrYW9R 主分支 onedaybot-dev，main working tree dirty=0 干净，可安全 squash merge。",
+  "action": "审 diff：worktree 给 dev-server.js 增 /healthz 存活探针（在静态文件分发前 early-return，不读盘不依赖 index.html，liveness≠readiness）+ test/smoke.test.js 增第 7 项断言（拉起 dev-server 偏端口 3098，轮询 GET /healthz，断言 200 + Content-Type application/json + body={status:ok}）+ GATES.md/PROGRESS.md/.opt-direction 同步。先在 worktree 内跑 npm test 验证声明 10 pass 0 fail，属实。diff 纯增量无回归。遂 opt-worktree.sh 1BfrYW9R merge opt-gates-1782747365（squash → onedaybot-dev + 清理 worktree）。",
+  "files_changed": ["dev-server.js", "test/smoke.test.js", "GATES.md", "PROGRESS.md", ".opt-direction"],
+  "worktree": "opt-gates-1782747365 (auto/opt-gates-1782747365, 已 squash 合并并清理)",
+  "direction": "gates:healthz-probe",
+  "outcome": "succeeded",
+  "outcome_evidence": "git log onedaybot-dev -1 = c8a47c9 'merge: 人工批准合并 optimization worktree opt-gates-1782747365'；merge 输出 'Fast-forward / Squash commit / ✓ 已 squash 合并 opt-gates-1782747365 → onedaybot-dev / ✓ worktree 清理'；merge 后 main 上 npm test = # pass 10 / # fail 0；diff --stat = 5 files 63 insertions 4 deletions；git worktree list 已无 opt-gates-1782747365（仅剩常设 optimization worktree）。",
+  "next_suggestion": "1BfrYW9R 现仅剩常设 optimization worktree（auto/optimization, 2323837）——按 memory 它是常设非 stale，不动。1BfrYW9R 待合并队列已清空，下轮该 project 不再有 pending review 工作；scout-scan 下轮大概率把 #1 让给其他 project。建议下轮重跑 scout-scan 取新 #1；若仍无明确小工作单位，可考虑给 1BfrYW9R 的 /healthz 补 readiness 探针（/readyz 读盘校验 bundle）作为 Phase 3 监控的对称补全——但需开新 worktree 非合并。"
+}

@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-243",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-29T15:36:05Z",
+  "project": "1BfrYW9R (oneday-design)",
+  "work_unit": "gates:healthz-probe — 为 dev-server.js 增 /healthz 存活探针（部署/负载均衡前置）+ smoke 断言",
+  "situation": "scout-scan 2026-06-29T15:29Z 把 1BfrYW9R 排 #1（score=0.0，健康度良好）。复测 npm test 9/9 全绿、CRITICAL+IMPORTANT 门禁全核销、build.js/README/CLAUDE/PROGRESS/GATES 均同步无漂移。唯一未勾选的 in-scope 小工作单位落在 NICE「构建产物部署配置」+ Phase 3「基础监控」——此前 dev-server.js 无任何不依赖 index.html bundle 的存活端点，部署到 Aone Pages/静态托管+LB 时缺 liveness 探针（bundle 退化时 GET / 会 404/白屏，探针与 readiness 耦合，无法区分 liveness≠readiness）。pending worktree auto/optimization(2323837) 经查为 stale（落后 main 252 行，非在飞工作），无冲突。",
+  "action": "1) dev-server.js createServer 起始处增 /healthz 分支：早于静态文件分发，path.normalize 后若 safePath==='/healthz' 直接返回 200 + application/json + {status:'ok'}，不读盘不依赖 bundle（liveness≠readiness 契约）。2) test/smoke.test.js 增第 7 项测试：spawn dev-server.js 于偏端口 3098（避开 ⑤3099/⑥3097/默认3015），轮询 GET /healthz 5s，断言 200 + Content-Type application/json + JSON.parse(body).status==='ok'。3) GATES.md NICE 增 [x] /healthz 存活探针 gate（⑨ 逻辑索引）+ IMPORTANT「npm test 绿」项追加 ⑨ 并改 8 pass→10 pass；NICE「构建产物部署配置」行注明存活探针已就位、待部署通道+API endpoint。4) PROGRESS.md 同步：当前状态增 2026-06-29 增量条目，已完成「门禁自动化」项 ①-⑧ 扩为 ①-⑨ + 8 pass→10 pass。",
+  "files_changed": ["dev-server.js", "test/smoke.test.js", "GATES.md", "PROGRESS.md"],
+  "worktree": "opt-gates-1782747365 (1BfrYW9R, branch auto/optimization, HEAD=328080d, 待人工审合并)",
+  "direction": "gates:healthz-probe",
+  "outcome": "succeeded",
+  "outcome_evidence": "worktree opt-gates-1782747365 实测 `npm test` → # tests 10 / # pass 10 / # fail 0（含新增第 7 项 dev-server.js GET /healthz 200+application/json+{status:ok}）；git show --stat HEAD 确认 5 files changed (dev-server.js +7 / test/smoke.test.js +50 / GATES.md +5/-2 / PROGRESS.md +3/-1 / .opt-direction 自动)；`grep -c healthz dev-server.js`==2（路由分支+注释）；main onedaybot-dev(51263cb) 工作树已恢复 clean，改动隔离在 worktree。",
+  "next_suggestion": "1BfrYW9R 现已无 in-scope 小工作单位（剩余 NICE=真实后端 API 接入[Phase 1，依赖 personal-assistant API 契约]+部署通道配置[Phase 3，需选 Aone Pages vs 静态托管决策]，均非小单位）。下轮 scout-scan 若仍把 1BfrYW9R 排 #1 且无明确小工作单位，建议顺延探 AS #2 的 deferred TODO=6（已 triage 不计分但可逐条核销/归档）或 wechat-main(dirty=1) 的 case-orphan。1BfrYW9R 的 healthz 探针待人工审合并入 onedaybot-dev 后，Phase 3 部署可直引 /healthz 作 LB liveness。"
+}

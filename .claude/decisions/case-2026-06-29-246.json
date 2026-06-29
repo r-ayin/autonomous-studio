@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-246",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-29T00:00:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "review-and-merge: 1 个待合并 worktree (opt-gates-1782747872, /readyz 就绪探针)",
+  "situation": "scout-scan 推荐 #1 = 1BfrYW9R(score=0.0)：1 个待合并 worktree 待人工审 diff + merge/reject。pending 枝 auto/opt-gates-1782747872 (1502ff7) 基于 onedaybot-dev (c8a47c9) 单提交：dev-server.js 增 /readyz 就绪探针(读盘校验 index.html, 缺失→503) + ONEDAY_DIR 注入(支撑负测, 与 build.js 的 ONEDAY_INDEX 同模式) + test/smoke.test.js 增 ⑩正测(GET /readyz 200+{status:ready})/⑪负测(无 index.html→503+{status:not ready}, 同进程 /healthz 仍 200 证 liveness≠readiness)。",
+  "action": "在 worktree 内跑 node --test test/smoke.test.js 复核(12 pass 0 fail, 含两新测均绿)；核 diff 无回归(新增 endpoint 在 /healthz return 后、静态分发前, 不影响既有路由; fs.access+R_OK 标准用法; dir=ONEDAY_DIR||__dirname 仅测试可注入, 生产默认 __dirname 不变); 人工批准 --no-ff 合入 onedaybot-dev(ffa4382); 合后 main 上重跑 12 pass 0 fail 二次确认; 删 pending worktree + auto/opt-gates-1782747872 枝, prune。",
+  "files_changed": ["dev-server.js", "test/smoke.test.js", ".opt-direction"],
+  "worktree": "/home/admin/workspace/.opt-worktrees/1BfrYW9R/opt-gates-1782747872 (已合入 onedaybot-dev ffa4382 后清理)",
+  "direction": "gates:readyz-probe",
+  "outcome": "succeeded",
+  "outcome_evidence": "git log --oneline -3 1BfrYW9R 显 ffa4382 merge / 1502ff7 opt(gates:readyz-probe) 在 c8a47c9 之上; node --test test/smoke.test.js 输出 '# pass 12 # fail 0'(合后二次跑同结果); git worktree list 仅剩 base + standing optimization worktree(pending 枝已删); git diff --stat onedaybot-dev..auto/opt-gates-1782747872 = 3 files +123/-2",
+  "next_suggestion": "1BfrYW9R 健康度良好无更多待办；下轮 scout-scan 重排，autonomous-studio 排 #2(6 个延期已triage TODO 不计入推荐)且 AS main 有 10 个孤儿 case(236-245)滞留 untracked——可作下轮工作单位：将 236-245 逐个 rehome 归档(沿用 case-orphan-rehome 模式)或审后并入 git。"
+}

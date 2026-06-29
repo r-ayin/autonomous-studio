@@ -18,6 +18,7 @@
 *.broken.bak
 *.broken.*
 planning/status.json
+loop.log
 
 # Node/Python
 node_modules/
