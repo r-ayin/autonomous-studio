@@ -53,6 +53,27 @@ echo "workspace: $WORKSPACE"
 echo "停止: touch $STOP_MARKER  或  kill $$"
 echo ""
 
+# 模型策略（用户 2026-06-29 定）：优先 GLM-5.2；遇限流(402/429/quota/overloaded)回退 qwen3.7-max。
+# 代理层：env ANTHROPIC_MODEL 经重映射，settings.json 的 model 字段对 claude -p 无效，必须 --model。
+PRIMARY_MODEL="GLM-5.2"          # 用户刚设的默认；有独立额度（见 memory glm52-budget-setup）
+FALLBACK_MODEL="qwen3.7-max"     # 代理层已验证 200，独立额度，限流时兜底
+STICKY_FAIL_THRESHOLD=3          # GLM-5.2 连续限流 N 轮后粘到 fallback，省调用
+PROBE_EVERY=10                   # 粘到 fallback 后每 N 轮探一次 GLM-5.2 是否恢复
+STICKY_FALLBACK=0
+GLM_FAIL_STREAK=0
+PROBE_COUNTDOWN=0
+
+# 跑一轮；stdout 显示末 30 行，返回 0 成功 / 1 检测到限流信号
+run_round() {
+  local model="$1" out
+  out=$(claude -p "$PROMPT" --model "$model" --permission-mode bypassPermissions 2>&1)
+  echo "$out" | tail -30
+  if echo "$out" | grep -qiE '402|429|quota[ _]?exceed|rate[ _]?limit|overloaded|insufficient'; then
+    return 1
+  fi
+  return 0
+}
+
 ITER=0
 while true; do
   # 检查停止标记
@@ -68,12 +89,38 @@ while true; do
   #   - autonomous-commit-gate: 拦 main 提交
   #   - discovery-gate / patterns-write-gate / stop-completion-gate: 各自门禁
   cd "$WORKSPACE"
-  # 显式指定模型：env ANTHROPIC_MODEL(=claude-opus-4-6) 经代理重映射为 GLM-5.2，
-  # 其配额易耗尽(402 quota exceeded)致每轮 fast-fail 不产 case。改用 qwen3.7-max
-  # （代理层已验证 200，有独立额度）。settings.json 的 model 字段对 claude -p 无效，必须 --model。
-  claude -p "$PROMPT" \
-    --model qwen3.7-max \
-    --permission-mode bypassPermissions 2>&1 | tail -30
+  # 模型自适应：优先 GLM-5.2，限流回退 qwen3.7-max（见上方策略变量）
+  if (( STICKY_FALLBACK )); then
+    # 已粘到 fallback：直接 qwen3.7-max，周期性探 GLM-5.2 恢复
+    if (( PROBE_COUNTDOWN <= 0 )); then
+      echo "[$(date +%H:%M:%S)] 探测 $PRIMARY_MODEL 是否恢复..."
+      if run_round "$PRIMARY_MODEL"; then
+        echo "[$(date +%H:%M:%S)] $PRIMARY_MODEL 恢复，解除粘性回退"
+        STICKY_FALLBACK=0; GLM_FAIL_STREAK=0
+      else
+        echo "[$(date +%H:%M:%S)] $PRIMARY_MODEL 仍限流，回退 $FALLBACK_MODEL"
+        run_round "$FALLBACK_MODEL" || true
+        PROBE_COUNTDOWN=$PROBE_EVERY
+      fi
+    else
+      run_round "$FALLBACK_MODEL" || true
+      PROBE_COUNTDOWN=$((PROBE_COUNTDOWN-1))
+    fi
+  else
+    # 正常：先 GLM-5.2，限流即本轮回退 qwen3.7-max
+    if run_round "$PRIMARY_MODEL"; then
+      GLM_FAIL_STREAK=0
+    else
+      echo "[$(date +%H:%M:%S)] $PRIMARY_MODEL 限流，回退 $FALLBACK_MODEL"
+      run_round "$FALLBACK_MODEL" || true
+      GLM_FAIL_STREAK=$((GLM_FAIL_STREAK+1))
+      if (( GLM_FAIL_STREAK >= STICKY_FAIL_THRESHOLD )); then
+        echo "[$(date +%H:%M:%S)] $PRIMARY_MODEL 连续 $GLM_FAIL_STREAK 轮限流，粘到 $FALLBACK_MODEL（每 $PROBE_EVERY 轮探测恢复）"
+        STICKY_FALLBACK=1
+        PROBE_COUNTDOWN=$PROBE_EVERY
+      fi
+    fi
+  fi
   echo "[$(date +%H:%M:%S)] 轮次 $ITER 结束，提交在 opt-worktree（待人工 opt-worktree.sh show/merge）"
   sleep 2  # 短暂喘息，避免空转打爆 API
 done
