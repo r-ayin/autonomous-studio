@@ -82,18 +82,36 @@ def now_iso():
 
 
 def discover_projects(workspace):
-    """发现 workspace 下所有项目（有 .git 或 planning/status.json 的目录）"""
+    """发现 workspace 下所有项目（有 .git 或 planning/status.json 的目录）。
+
+    符号链接去重：os.scandir 的 is_dir() 跟随 symlink，workspace 下若存在指向同库的
+    符号链接（如 autonomous-studio → autonomous-studio-aone），同一仓库会被计两次，
+    在健康榜上以同分霸占 #1/#2（score 翻倍、TODO 双计）。按 realpath 去重；同库既出现
+    符号链接又出现真目录时，保留真目录（路径稳定、不随链接移除而消失）。
+    """
     projects = []
+    seen = {}  # realpath -> projects 下标（便于用真目录覆盖符号链接）
     if not os.path.isdir(workspace):
         return projects
     for entry in sorted(os.scandir(workspace), key=lambda e: e.name):
         if not entry.is_dir() or entry.name.startswith(".") or entry.name in IGNORE_DIRS:
             continue
+        real = os.path.realpath(entry.path)
         has_git = os.path.isdir(os.path.join(entry.path, ".git"))
         has_status = os.path.isfile(os.path.join(entry.path, "planning", "status.json"))
-        if has_git or has_status:
-            projects.append({"name": entry.name, "path": entry.path,
-                              "has_git": has_git, "has_studio": has_status})
+        if not (has_git or has_status):
+            continue
+        if real in seen:
+            idx = seen[real]
+            # 已记录真目录 → 跳过符号链接；反之用真目录覆盖已记录的符号链接
+            if os.path.islink(entry.path) and not os.path.islink(projects[idx]["path"]):
+                continue
+            projects[idx] = {"name": entry.name, "path": entry.path,
+                              "has_git": has_git, "has_studio": has_status}
+            continue
+        seen[real] = len(projects)
+        projects.append({"name": entry.name, "path": entry.path,
+                          "has_git": has_git, "has_studio": has_status})
     return projects
 
 
