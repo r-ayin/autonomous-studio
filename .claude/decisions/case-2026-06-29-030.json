@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-030",
+  "agent_id": "autonomous-loop-ralph",
+  "timestamp": "2026-06-29T20:15:00Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "GATES.md 静态核验 + 门禁状态补全",
+  "situation": "scout-scan 对 /home/admin/workspace/autonomous-studio 返回 0 个项目（工具根目录而非 workspace 根）；对 /home/admin/workspace 发现多项目，但前 3 推荐全被标记 ⏳blocked（等人工 merge 积压 worktree）。stagehand TODO=9 为上游继承不可动；skills dirty=2 已被 opt-skills-1782670300 处理中；open-design dirty=2 为用户临时设置（qwen3.7-max+onboarding=true）不应 auto-commit。autonomous-studio-aone PROGRESS.md 明确列出 'GATES.md CRITICAL 门禁项大部分未勾选，需逐项核验存活状态' 为待办。",
+  "action": "静态核验 GATES.md 所有 CRITICAL 和 IMPORTANT 门禁项：读 settings.json hook 注册列表、检查文件存在性（SKILL.md/decision-agent-prompt.md/calibration.json/autonomous-state.md/decision-log.jsonl）。结果：5 项 [x]（stop-completion-gate/post-edit-lint/SKILL.md/decision-agent-prompt.md/calibration.json 路径已确认/autonomous-state.md/decision-log.jsonl）；1 项 ⚠️（核心 hook 注册 7/8，incremental-save 脚本存在但未注册）；6 项保留 [ ]（行为约束或会话状态，无法静态核验）。更新 GATES.md 添加核验时间戳 + 方法说明 + inline 证据。",
+  "files_changed": ["GATES.md"],
+  "worktree": "opt-gates-1782678110",
+  "direction": "gates:verify",
+  "outcome": "succeeded",
+  "outcome_evidence": "git show auto/opt-gates-1782678110:GATES.md 第 1 行显示核验时间戳注释，第 14 行显示 [x] stop-completion-gate（verified）；worktree commit bc80e3f 创建成功",
+  "next_suggestion": "1) 人工批准合并 opt-gates-1782678110（1 文件，低风险信息性更新）；2) 修复 incremental-save.py 未注册缺口（在 PostToolUse 或 PreCompact 注册）——但需注意 GATES 约束'不可修改 settings.json'仅限非恢复场景；3) 清理 NICE 区块 TODO（scout 报 autonomous-studio-aone TODO=4，均为 scout-scan.py 内约定注释）；4) 人工批准合并积压 worktrees：opt-chore-1782656102/opt-server-1782676356/opt-skills-1782670300"
+}

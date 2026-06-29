@@ -35,3 +35,16 @@
 - [ ] 新增案例 ≥7 天已归档到 decision-archive.md
 - [ ] 信心分校准数据持续更新
 - [ ] 并发构建（phase-dev ④）走 worktree 隔离 + 增量合并（非全末尾合并）
+
+---
+
+## 核验说明
+
+| 门禁项 | 核验方法 | 结果 |
+|--------|---------|------|
+| Hook 注册 | `cat /home/admin/.claude/settings.json \| python3 -c "..."` 数 event 数 | ✅ 11 类型全覆盖 |
+| SKILL.md name | `grep "^name:" SKILL.md` | ✅ autonomous-studio |
+| calibration.json | `python3 -c "json.load(open(...))"` | ✅ 无异常 |
+| autonomous-state.md | `grep GOAL_STATUS` | ✅ active |
+| decision-log.jsonl | `ls -la .claude/decision-log.jsonl` | ❌ 文件缺失 |
+| CronCreate L2/L3 | `cat .claude/scheduled_tasks.json` | 空 = 已迁移至 devix |

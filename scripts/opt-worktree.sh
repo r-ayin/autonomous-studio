@@ -232,6 +232,39 @@ cmd_reject() {
   echo "✗ 已拒绝并删除 worktree: $wt（分支 auto/$(basename "$dir") 保留可恢复，或手动删）"
 }
 
+# 清理空 opt worktree：commits-ahead=0（建了分支但从没落地提交）的 worktree 是死桩，
+# 污染 scout-scan「需人工合并」列表（曾 11/16 项目各有一个空 optimization worktree，
+# 0 提交却被当成待合并，致全管线误报「全部 blocked」）。
+# 安全：只删 ahead=0 且无未提交改动的；有真提交或脏工作区的一律跳过。可逆：删的只是
+# worktree + auto/<name> 分支，main 不动，需要时可 reinit。
+cmd_cleanup() {
+  local removed=0 skipped=0
+  for d in "$WT_BASE"/*; do
+    [[ -d "$d" ]] || continue
+    local name; name=$(basename "$d")
+    [[ "$name" == "_indexes" ]] && continue
+    local ahead dirty status_out line
+    ahead=$(git -C "$d" rev-list --count "$MAIN_BRANCH"..HEAD 2>/dev/null || echo 0)
+    # .opt-direction 是每个 worktree 的方向标记桩（untracked），非真改动，剔后再判脏。
+    status_out=$(git -C "$d" status --porcelain 2>/dev/null || true)
+    dirty=0
+    while IFS= read -r line; do
+      [[ -z "$line" ]] && continue
+      [[ "$line" == "?? .opt-direction" ]] && continue
+      dirty=$((dirty + 1))
+    done <<< "$status_out"
+    if [[ "$ahead" != "0" || "$dirty" != "0" ]]; then
+      skipped=$((skipped + 1))
+      continue
+    fi
+    git -C "$PROJECT" worktree remove "$d" --force 2>/dev/null || rm -rf "$d"
+    git -C "$PROJECT" branch -D "auto/$name" 2>/dev/null || true
+    echo "✓ 清理空 worktree: $name（0 提交，死桩）"
+    removed=$((removed + 1))
+  done
+  echo "清理完成: 删 $removed / 跳 $skipped（有真提交或未提交改动）"
+}
+
 # 取当天（或指定日）下一个可用 case 编号：扫 main 工作树 + 所有 pending opt worktree 的
 # .claude/decisions/ 下 case-{date}-NNN.json，取 max+1。
 # 关键：用 ls（盘上文件，含未提交/untracked），不用 git ls-tree（只看已提交）——
@@ -268,6 +301,7 @@ case "$CMD" in
   show) cmd_show "$@" ;;
   merge) cmd_merge "$@" ;;
   reject) cmd_reject "$@" ;;
+  cleanup) cmd_cleanup ;;
   next-case) cmd_next_case "$@" ;;
-  *) echo "用法: opt-worktree.sh <project> <init|commit|list|show|merge|reject|next-case> ..."; exit 1 ;;
+  *) echo "用法: opt-worktree.sh <project> <init|commit|list|show|merge|reject|cleanup|next-case> ..."; exit 1 ;;
 esac

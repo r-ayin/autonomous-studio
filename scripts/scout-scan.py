@@ -575,6 +575,21 @@ def main():
             print(f"      理由: {'; '.join(rc['reasons']) or '健康度良好'}")
         if recs and recs[0]["score"] == 0:
             print("  （所有项目健康度良好，无紧迫小工作单位——可做文档润色或跳过）")
+        # 死锁信号：所有项目均 blocked（top 仍 > 0 但无可操作项）——明确告知需合并哪些
+        # worktree 到 main 才能解锁。此前此态被静默吞掉，引擎只看到 blocked #1 不断撞墙
+        # （曾导致 ≥5 次 skills gitignore 重复提交：循环反复重做已在 worktree 的工作）。
+        actionable_recs = [rc for rc in recs if rc.get("actionable", True)]
+        if recs and not actionable_recs and recs[0]["score"] != 0:
+            pend = set()
+            for r in report["projects"]:
+                for k in ("progress_pending_wts", "gates_pending_wts",
+                          "triage_pending_wts", "planning_pending_wts"):
+                    for w in (r.get(k) or []):
+                        pend.add(w)
+            print("  ⚠️ 无可操作工作单位——全部项目 blocked，需人工合并以下 worktree 到 main 解锁：")
+            for w in sorted(pend):
+                print(f"     • {w}")
+            print("  （合并任一即可解锁对应项目；引擎不自动 push，故必须人工合并。）")
 
 
 if __name__ == "__main__":
