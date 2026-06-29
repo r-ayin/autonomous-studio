@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-171",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-29T05:35:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "cases:merge-pending+worktree-cleanup — ff-merge opt-cases-1782710534 (case-170) + sync optimization to new main tip 64013df",
+  "situation": "scout-scan #1 AS score=0.0 排 #2，推荐审 1 个待合并 worktree(opt-cases-1782710534, HEAD=64013df, 1 commit: case-170 merge+sync 归档)+1 个空/落后 optimization worktree(stale at 55f6846，落后 main 1 commit)。case-170 JSON 纯增量、零代码风险；merge-base=55f6846=main 上一 tip，fast-forward safe。上轮 case-170 已把 opt-cases-1782710167 合入并清理，AS main clean；本轮仅收尾新一轮 pending merge。",
+  "action": "1) git merge --ff-only auto/opt-cases-1782710534 → fast-forward 合入 main(64013df)；2) git worktree remove + branch -d 清理 opt-cases-1782710534；3) cd optimization && git reset --hard main 将 auto/optimization ref 从 55f6846 推进到 64013df；4) git diff main..HEAD --stat 验证零差异；5) git worktree list 确认仅剩 main+optimization 两个条目、均指向 64013df；6) 写本 case 记录本次双动作",
+  "files_changed": [".claude/decisions/case-2026-06-29-171.json"],
+  "worktree": "opt-cases-1782710534 (merged and removed); optimization (synced to 64013df)",
+  "direction": "cases:merge-pending+worktree-cleanup",
+  "outcome": "succeeded",
+  "outcome_evidence": "git merge --ff-only 输出 'Updating 55f6846..64013df Fast-forward .claude/decisions/case-2026-06-29-170.json | 15 insertions'；git worktree remove + branch -d 输出 'Deleted branch auto/opt-cases-1782710534 (was 64013df)'；git worktree list 仅剩 main(64013df)+optimization(64013df)，pending worktree 数从 1→0；optimization reset --hard 后 git diff main..HEAD --stat 输出为空（零差异）；AS main git status 仍 clean",
+  "next_suggestion": "1) 下轮 scout-scan 重排——AS 待合并清零应让位给 personal-assistant(dirty=2)做 WIP 收口或 shizi/sunset-prediction PROGRESS 0.1天文档刷新；2) wechat-main opt-docs-1782709369 现含 2 commit(5e0e576 PROGRESS.md + 520a5b2 case-164 rehome)，可一并 squash merge 入 wechat-main main；3) AS 自身健康度满分，除非新结构性问题浮现否则不再优先"
+}
