@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-06-30-019",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-30T01:50:00Z",
+  "project": "1BfrYW9R (oneday-design)",
+  "work_unit": "review + merge 待合并 worktree opt-security-1782754878（security:dead-guard-removal）",
+  "situation": "scout-scan @2026-06-29T17:43:11Z 推荐 #1=1BfrYW9R「review 1 个待合并 worktree（人工审 diff + merge/reject）」——即上轮 case-018 在 opt-security-1782754878 隔离提交(cda66ff)的 dev-server.js 不可达 403 死守卫移除，pending merge。需独立复审决定 merge/reject，不轻信上轮自述。",
+  "action": "独立复审（非依赖 case-018 结论）：(1) 读 worktree dev-server.js 全文 + diff——守卫 `if (!filePath.startsWith(dir)) { 403 }` 在 line 48。逐输入验证不可达性：HTTP req.url 经 llhttp 解析恒为 origin-form 起始 `/`（非 `/` 起始的裸 `../` 形被解析器 400 拒，不到 handler）；safePath=path.normalize(req.url) 折叠前导 `..` 于 `/` 之上，safePath 恒为绝对形（起首 `/`）；filePath=path.join(dir, safePath)——join 不像 resolve 重置根，故 filePath 恒 = dir + safePath，startsWith(dir) 恒真 → 403 分支不可达。绝对形 `http://host/x` 与 `*` 形经 normalize+join 亦落 dir 内子路径（ENOENT→404），不逃逸。结论：守卫确系死代码，真防御由 normalize+join 提供。(2) 确认真防御有回归锁：GATES.md smoke ⑯ 注明 `test/smoke.test.js` 注入 ONEDAY_DIR 临时目录+sibling 机密，发 `..`/`%2f`/直申 sibling 穿越形 URL，断言响应体不含机密标记——锁定真实安全属性「穿越形请求永不泄露 served 目录外文件」，且堵死日后把 join 误改 resolve「激活」守卫反而破钳制的回归。(3) worktree 内 `npm test` → 16 pass 0 fail（含 ⑤ dev-server GET / 200 + ⑯ 穿越负测 pass）。(4) 确认 main onedaybot-dev dirty=0、无 git hooks（core.hooksPath 空、.git/hooks 仅 sample）、discovery-gate 无 LOCK_FILE 不阻 merge → 走 sanctioned `opt-worktree.sh 1BfrYW9R merge opt-security-1782754878`：squash → onedaybot-dev @6603956 + worktree 清理。(5) merge 后 main 复跑 `npm test` → 16 pass 0 fail；grep 验 `startsWith(dir)` 仅余 line 50 注释（可执行守卫已删）。",
+  "files_changed": ["1BfrYW9R/dev-server.js", "1BfrYW9R/.opt-direction"],
+  "worktree": "opt-security-1782754878（merge 后已清理；提交 cda66ff squash 入 onedaybot-dev 为 6603956）",
+  "direction": "security:dead-guard-removal",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "merge 输出：`✓ 已 squash 合并 opt-security-1782754878 → onedaybot-dev` + `✓ worktree 清理`",
+    "onedaybot-dev HEAD=6603956 `merge: 人工批准合并 optimization worktree 'opt-security-1782754878'`（父 b0fa45b）",
+    "merge 后 main `npm test` → `# pass 16 / # fail 0`",
+    "dev-server.js `grep -n startsWith(dir)` 仅命中 line 50 注释 `// 原 \\`if (!filePath.startsWith(dir))\\`...`——可执行守卫已删",
+    "diff stat 入 main：dev-server.js +6/-1（守卫行换 5 行注释）+ .opt-direction ±1"
+  ],
+  "next_suggestion": "下轮重跑 scout-scan 取刷新 #1。1BfrYW9R 该待合并 worktree 已清，#1 推荐将顺延——可能转 autonomous-studio（延期已 triage TODO=6，可逐条核销/降级，动手前查 pending worktree log 防重复推荐 [[scout-scan-recommend-blind-to-pending-worktrees]]）或 x-tool/moni-master。若 #1 落 moni-master 须先确认非前端重构排除项。AS 工具债 case-047 reset-bypass（gate 拦 git reset --hard/branch -D/update-ref）WIP 在 optimization worktree 待续 [[autonomous-commit-gate-reset-bypass]]；AS main 12 个 untracked case 孤儿(007-019 含本轮)可批量 rehome [[case-file-orphan-on-cross-project-work]]。1BfrYW9R NICE 真后端接入为较大后续工作单位（留后）。"
+}

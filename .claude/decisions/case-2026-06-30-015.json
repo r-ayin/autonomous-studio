@@ -1,0 +1,20 @@
+{
+  "case_id": "case-2026-06-30-015",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-30T17:25:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "review + merge 1 个待合并 opt worktree（opt-tests-1782753528：smoke ⑮ `npm start` 端到端实跑）",
+  "situation": "scout-scan 报告 1BfrYW9R 为健康度 #1，推荐工作单位=「review 1 个待合并 worktree（人工审 diff + merge/reject）」。该 worktree 提交 db91531 新增 test/smoke.test.js 第 15 个测：端到端起 `npm start`（注入 PORT=3093 env），断言 GET / 返回 200 + listen 日志报告 3093 端口。声称堵死 ⑬ 字符串相等 + ⑫ 直 node 都绿但 `npm start`（npm→scripts.start→node 整链）实跑断链的回归缺口；commit message 称 15 pass 0 fail。需人工核验 diff 干净 + 测真实绿后再合入 onedaybot-dev（项目 main 分支）。",
+  "action": "1) git show --stat db91531 + git show -- test/smoke.test.js 审 diff：新增 67 行单测，用 detached:true 进程组 + process.kill(-child.pid) 整组杀防孤儿 server，偏端口 3093 避让既有 ⑤⑥⑦⑧⑨⑫ 端口，8s deadline 宽于 ⑫ 的 5s——逻辑干净、无副作用泄漏。2) cd worktree 跑 `npm test` 核验：15 pass 0 fail（含新测 ok 15，duration 214ms）。3) main working tree 干净（git status -s 空）。4) bash scripts/opt-worktree.sh 1BfrYW9R merge opt-tests-1782753528 → squash fast-forward 合入 onedaybot-dev（commit 5898324），worktree 自动清理。5) 合并后在 main 复跑 `npm test`：15 pass 0 fail 确认未回归。",
+  "files_changed": [
+    "1BfrYW9R/test/smoke.test.js",
+    "1BfrYW9R/GATES.md",
+    "1BfrYW9R/PROGRESS.md",
+    "1BfrYW9R/.opt-direction"
+  ],
+  "worktree": "opt-tests-1782753528 (merged & cleaned)",
+  "direction": "tests:deploy-channel-e2e",
+  "outcome": "succeeded",
+  "outcome_evidence": "git log onedaybot-dev: '5898324 merge: 人工批准合并 optimization worktree opt-tests-1782753528'；合入后 main `npm test` 输出 '# pass 15 / # fail 0'；git worktree list 不再含 opt-tests-1782753528（已清理）；git cherry onedaybot-dev auto/optimization 无 + 输出（无遗留 pending）。",
+  "next_suggestion": "1BfrYW9R 现已无 pending worktree（待合并=0）。下轮可顺延 scout-scan #2 autonomous-studio——其有 6 个延期(已triage)TODO 不计入 triage 推荐，可做文档润色或跳过；或扫描其他项目新缺口。1BfrYW9R smoke 已 15/15 全绿，部署通道端到端覆盖完整，无需进一步测试补强。"
+}

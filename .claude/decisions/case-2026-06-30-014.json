@@ -1,0 +1,26 @@
+{
+  "case_id": "case-2026-06-30-014",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-30T01:15:00Z",
+  "project": "1BfrYW9R (oneday-design)",
+  "work_unit": "smoke 测试 ⑭：`npm start` 端到端实跑覆盖部署通道（npm→scripts.start→node 整链）",
+  "situation": "scout-scan 排 1BfrYW9R 为 #1（健康度良好，无紧迫小工作单位）。审 GATES.md 发现部署通道门禁有覆盖缺口：⑬ 仅静态断言 package.json `scripts.start` === 'node dev-server.js'（字符串相等），⑫ 行为级覆盖的是直接 `node dev-server.js` + PORT env（直调 node，不经 npm）。PaaS 实际走 `npm start`（npm 解析 scripts.start → spawn node）这条 npm 层链路无人证明可通——若 npm 解析失败 / scripts.start 被改成 npm 不认的形态 / npm 版本问题致 spawn 失败，⑬ 字符串相等仍绿、⑫ 直 node 仍绿，部署通道却断。这是经典的「静态存在性 + 直路径行为」都绿但中间层（npm wrapper）实跑断链的回归缺口，与既有 ⑤(行为)↔④(静态负测)、⑫(行为)↔⑬(静态) 的互补模式同构。",
+  "action": "在 test/smoke.test.js 末尾追加测试 ⑭：spawn `npm start`（shell:true 解析 npm wrapper，detached:true 使 npm+其 spawn 的 node 同属一个进程组），注入 PORT=3093 env（偏端口，避开 ⑤3099/⑥3097/⑦3096/⑧3098/⑨3095/⑫3094/默认3015），cwd=root，轮询 GET / 最多 8s（npm wrapper 启动开销宽于 ⑫ 的 5s），断言 (a) HTTP 200，(b) stdout listen 日志含 `http://localhost:3093`（证 PORT env 经 npm 层透传到 dev-server 生效，非默认 3015 命中）；finally 用 process.kill(-child.pid, 'SIGKILL') 整组杀（含 npm spawn 的 node 子进程）防孤儿 server 占端口，回退 child.kill。同步 GATES.md（⑬ 条目扩写补 ⑭ 说明 + 14→15 pass + 追加 ⑭ 待合标记；PORT env NICE 条目 14→15）与 PROGRESS.md（最近里程碑改写为「部署通道端到端闭合」+ ⑭ 描述 + 14→15；门禁自动化条目追加 ⑭ + 15 pass）。",
+  "files_changed": [
+    "test/smoke.test.js",
+    "GATES.md",
+    "PROGRESS.md"
+  ],
+  "worktree": "opt-tests-1782753528 (1BfrYW9R, 方向 tests:deploy-channel-e2e)",
+  "direction": "tests:deploy-channel-e2e",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "`npm test` 在 worktree opt-tests-1782753528 实跑：# tests 15 / # pass 15 / # fail 0（含新 ⑭ `npm start 实际拉起生产服务并响应` 416ms pass，duration_ms 1480）",
+    "⑭ 测试在 worktree smoke.test.js 中存在（grep `npm start.*实跑|⑭` 命中 1）",
+    "GATES.md worktree 副本含 `15 pass 0 fail`（grep 命中）",
+    "worktree git log：db91531 opt(tests:deploy-channel-e2e): smoke ⑭ ... 15 pass 0 fail ...，父提交 d855cd3（main HEAD）",
+    "无孤儿端口：测后 ss/netstat 查 3093/3094/3015 均无监听（整组杀生效）",
+    "main onedaybot-dev 干净（git status 空），改动隔离在 worktree 待人工 merge"
+  ],
+  "next_suggestion": "1BfrYW9R 部署通道门禁现已端到端闭合（⑬静态+⑫直node+⑭npm实跑三层覆盖）。NICE「构建产物部署配置」仅余 API endpoint（Phase 1 真实后端接入替换 mock const DATA，属较大工作单位，留后）。下轮可：(a) 人工 merge opt-tests-1782753528 入 main 后再探 1BfrYW9R 是否有其他小缺口；或 (b) scout-scan 顺延 #2 autonomous-studio（dirty=7，有 7 个未跟踪 case 文件 007-013 待归档/提交，可能是结构卫生小工作单位）。注：1BfrYW9R 的 Phase 1 真实后端接入依赖 personal-assistant API，跨项目，非小工作单位，本轮不做。"
+}

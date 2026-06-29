@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-06-30-007",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-30T00:30:00Z",
+  "project": "1BfrYW9R (oneday-design)",
+  "work_unit": "dev-server.js PORT 环境变量注入部署端口（Phase 3 环境变量配置入口）",
+  "situation": "scout-scan 报告全 8 项目健康度良好、无紧迫结构性小工作单位；#1 为 1BfrYW9R（oneday-design React 静态面板）。其 GATES.md NICE 与 PROGRESS.md 待办均列「构建产物部署配置 + 环境变量」与 Phase 3「环境变量配置」为未完成项，而部署前置的 /healthz 存活探针、/readyz 就绪探针已就位——独缺端口注入通道：dev-server.js 端口仅来自 CLI argv（`parseInt(process.argv[2]) || 3015`），PaaS/Aone Pages 注入端口须走环境变量，无法经 `npm run dev` 的 argv 传达，部署时必改 package.json 脚本或硬编码。这是一个真实的部署前置缺口，且属小工作单位（1 源文件 + 1 测试 + 1 门禁文档）。",
+  "action": "1) dev-server.js 端口解析改三级优先级 `argv > PORT env > 默认 3015`（与既有 ONEDAY_DIR 环境变量同模式），加注释说明 argv 服务本地 dev、PORT env 服务部署通道。2) test/smoke.test.js 增第 ⑫ 项冒烟：不带 argv、注入 `PORT=3094` 起 dev-server，断言 GET / 200 且 stdout listen 日志含 `http://localhost:3094`——关键断言落在 listen 日志而非仅 HTTP 200，以证明确走 PORT env 路径而非默认 3015 命中（3094 偏端口避开既有 3095-3099 全部偏端口）。3) GATES.md NICE 增 `[x] PORT 环境变量注入部署端口` 门禁条目并更新「构建产物部署配置」待办的就位清单（双探针 + PORT env）。",
+  "files_changed": [
+    "1BfrYW9R/dev-server.js",
+    "1BfrYW9R/test/smoke.test.js",
+    "1BfrYW9R/GATES.md"
+  ],
+  "worktree": "opt-gates-1782751076",
+  "direction": "gates:env-port",
+  "outcome": "succeeded",
+  "outcome_evidence": "`npm test` 实测 13 pass 0 fail（含新增第 ⑫ 项 `dev-server.js 无 argv 时按 PORT 环境变量监听`，duration_ms 164.7）；opt-worktree commit 输出 `✓ 提交到 opt-gates-1782751076 方向=gates:env-port`，diffstat `4 files changed, 62 insertions(+), 3 deletions(-)`；worktree 内 dev-server.js 第 5 行确认为 `const port = parseInt(process.argv[2]) || parseInt(process.env.PORT) || 3015;`（main 工作树已被 commit 流程按 opt-worktree 隔离惯例 reset 至 HEAD 102b70d clean，改动仅存 worktree 待人工 merge）。",
+  "next_suggestion": "1BfrYW9R 待人工 merge opt-gates-1782751076 后，部署前置三件套（/healthz + /readyz + PORT env）齐备；下一小工作单位可考虑 Phase 2「表单校验与错误提示」或「加载/空状态骨架屏」的最小切片，或为 build.js 产物加一个 `npm run start` 生产静态服务入口（区别于 dev-server.js 的 babel 直跑），进一步闭合「构建产物部署配置」待办。"
+}

@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-06-30-013",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-30T17:15:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "review + merge pending optimization worktree opt-deploy-1782752910（人工审 diff + 行为级核销 + 合并/拒绝裁决）",
+  "situation": "scout-scan 2026-06-29T17:11:18Z 快照将 1BfrYW9R 排为 #1（score=0.0，健康度良好），推荐工作单位=审 1 个待合并 worktree。1BfrYW9R（branch=onedaybot-dev, dirty=0）有 1 个待合并 worktree opt-deploy-1782752910，内容=package.json 加 `\"start\": \"node dev-server.js\"` 生产入口（PaaS `npm start` 拉起，无 argv 走 PORT env）+ smoke.test.js 加 ⑬ 断言 scripts.start 严格等于 'node dev-server.js'（防静默删除/漂移）+ GATES/PROGRESS/.opt-direction 同步。该 worktree 是部署通道半边闭合的承接性增量。",
+  "action": "在 worktree 内逐行审 diff（5 文件 +24/-8）：(a) 验证 `npm test` 在 worktree 内 14 pass 0 fail（⑬ 新增断言通过）；(b) 行为级核销 `npm start` 真起服务——`PORT=3091 npm start` 输出 `Dev server: http://localhost:3091`（证 PORT env 路径生效，非默认 3015，⑫ 已覆盖该运行时路径）；(c) 审 ⑬ 测试用 strict equality `pkg.scripts.start === 'node dev-server.js'`，是真实门禁非死代码（误删/改带 argv/指向他文件即 fail）；(d) 确认 main working tree 干净（git status --porcelain 空，scout-scan dirty=0），满足 cmd_merge fail-fast 前置。裁决=merge。执行 `opt-worktree.sh 1BfrYW9R merge opt-deploy-1782752910`：squash 合并 fast-forward 7dba3b1..4df2709，worktree 自动清理。merge 后在 main 复测 `npm test` 仍 14 pass 0 fail。",
+  "files_changed": [
+    "1BfrYW9R/.opt-direction",
+    "1BfrYW9R/GATES.md",
+    "1BfrYW9R/PROGRESS.md",
+    "1BfrYW9R/package.json",
+    "1BfrYW9R/test/smoke.test.js"
+  ],
+  "worktree": "opt-deploy-1782752910（合并后已清理，merge commit=d855cd3 落 onedaybot-dev）",
+  "direction": "deploy:start",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "worktree 内 `npm test` → `# tests 14 / # pass 14 / # fail 0`（⑬ 新增断言 ok 14 通过）",
+    "`PORT=3091 npm start` → stdout `Dev server: http://localhost:3091`（行为级证 npm start 走 PORT env 路径起服务，非死脚本）",
+    "`git merge --squash` 输出 `✓ 已 squash 合并 opt-deploy-1782752910 → onedaybot-dev` + `✓ worktree 清理`",
+    "main `git log --oneline -1` = `d855cd3 merge: 人工批准合并 optimization worktree 'opt-deploy-1782752910'`",
+    "main 复测 `npm test` → `# tests 14 / # pass 14 / # fail 0`",
+    "`git worktree list` 仅余 1BfrYW9R main + 常设 optimization worktree（auto/optimization），opt-deploy 已清理无残留"
+  ],
+  "next_suggestion": "1BfrYW9R NICE「构建产物部署配置」仅余 API endpoint（Phase 1 真实后端接入替换 mock `const DATA`，留后）。可作下一小工作单位：在 dev-server.js 加 /api/* 路由占位（返 501/502 + 标准错误体）+ smoke 断言，为真实后端接入铺路由骨架（不接真实后端，仅闭合路由层）。或转 scout-scan 下一个 #1 项目（健康度排序刷新后）。"
+}
