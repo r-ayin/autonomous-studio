@@ -1,0 +1,29 @@
+{
+  "case_id": "case-2026-06-29-142",
+  "agent_id": "autonomous-loop-qwen3.7-max",
+  "timestamp": "2026-06-29T03:41:03Z",
+  "project": "autonomous-studio",
+  "work_unit": "review pending opt-cases-1782703893 worktree + clean empty optimization worktree",
+  "situation": "scout-scan #2 推荐 autonomous-studio：1 个待合并 worktree (opt-cases-1782703893, 含 13 case 归档 + README 回退 v6.1→v6.0) + 1 个空 optimization worktree。main README 已独立升级到 v6.1，worktree 内的 README 回退与 main 冲突。",
+  "action": "人工审 diff 后决定：(1) merge opt-cases-1782703893（squash 进 main，保留 13 case 归档；README 冲突由 git 自动 resolve，main v6.1 内容保留）；(2) reject 空的 optimization worktree（无 commits ahead of main，删分支 auto/optimization）。",
+  "files_changed": [
+    ".claude/decisions/case-2026-06-29-001.json",
+    ".claude/decisions/case-2026-06-29-130.json",
+    ".claude/decisions/case-2026-06-29-131.json",
+    ".claude/decisions/case-2026-06-29-132.json",
+    ".claude/decisions/case-2026-06-29-133.json",
+    ".claude/decisions/case-2026-06-29-134.json",
+    ".claude/decisions/case-2026-06-29-135.json",
+    ".claude/decisions/case-2026-06-29-136.json",
+    ".claude/decisions/case-2026-06-29-137.json",
+    ".claude/decisions/case-2026-06-29-138.json",
+    ".claude/decisions/case-2026-06-29-139.json",
+    ".claude/decisions/case-2026-06-29-140.json",
+    ".claude/decisions/case-2026-06-29-141.json"
+  ],
+  "worktree": "opt-cases-1782703893 (merged); optimization (rejected/deleted)",
+  "direction": "cases:archive",
+  "outcome": "succeeded",
+  "outcome_evidence": "git log -1 → b92a9ad 'merge: 人工批准合并 optimization worktree opt-cases-1782703893'; git worktree list 仅剩 main (no pending worktrees); re-scan 显示 autonomous-studio dirty=0, 待处理 worktree=0, 排名从 #2 降至 #3（无明确小工作单位）",
+  "next_suggestion": "moni-master 升至 #1（TODO=6 密度 0.003）——下轮 triage 前 1-2 个 TODO（标注或清掉）"
+}
