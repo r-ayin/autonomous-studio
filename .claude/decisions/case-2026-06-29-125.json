@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-06-29-125",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-29T02:32:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "orphan-case-archive-and-state-persistence",
+  "situation": "scout-scan 显示所有项目健康度 0.0（无紧迫任务）。AS main dirty=4：有 4 个 untracked case files (048/122/123/124) 滞留 main（跨项目工作致孤儿，见 memory:case-file-orphan-on-cross-project-work）；autonomous-state.md 缺少 NEXT_SUGGESTION/LAST_WORKTREE/LAST_OUTCOME 字段，导致跨 context 目标传递断裂。",
+  "action": "用 opt-worktree.sh commit 将 4 orphan case files + autonomous-state.md 状态字段补齐一并提交到新 worktree opt-state-1782700340（area=state，与当前 engine area 分歧故开新枝）。amend commit 加入 state 字段更新。",
+  "files_changed": [
+    ".claude/decisions/case-2026-06-29-048.json",
+    ".claude/decisions/case-2026-06-29-122.json",
+    ".claude/decisions/case-2026-06-29-123.json",
+    ".claude/decisions/case-2026-06-29-124.json",
+    ".claude/memory/autonomous-state.md"
+  ],
+  "worktree": "opt-state-1782700340",
+  "direction": "state:persistence",
+  "outcome": "succeeded",
+  "outcome_evidence": "git show --stat HEAD 显示 5 files changed, 65 insertions(+); git log --oneline -1 = 4ee3401 opt(state:persistence): case-125; worktree 位于 /home/admin/workspace/.opt-worktrees/autonomous-studio/opt-state-1782700340; autonomous-state.md 新增 ACTIVE_GOAL/LAST_UPDATED/LAST_WORKTREE/LAST_OUTCOME/NEXT_SUGGESTION 五个字段",
+  "next_suggestion": "[1] 人工审 opt-state-1782700340 并 merge 入 main 以清理 main dirty 状态; [2] x-tool 9 本地提交待推 GitHub (需 PAT，见 memory:x-tool-push-ghproxy-no-creds); [3] wechat-main/shizi PROGRESS.md >0.5天 stale, 可同步更新; [4] moni-master 后端/量化小步（WFO 评估或因子回测）"
+}

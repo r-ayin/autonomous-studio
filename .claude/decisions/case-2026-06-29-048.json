@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-048",
+  "agent_id": "ralph-wiggum-loop",
+  "timestamp": "2026-06-29T02:25:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "docs:verify-gate — 核销 IMPORTANT 门禁（服务端可验证部分）",
+  "situation": "scout-scan #1 推荐 1BfrYW9R (score=0.0) 无紧迫任务；GATES.md IMPORTANT 段有 2 条 [ ] 门禁标注'需浏览器加载验证'，但服务端 build OK + 15 JSX HTTP 200 已可证伪语法/引用错误，未反映在门禁状态",
+  "action": "启动 dev-server.js 验证 15 JSX 组件均返回 HTTP 200；将 GATES.md 两条 IMPORTANT 门禁改写为'服务端可验证部分已通过 + 浏览器端到端待 Phase 2 实测'，保留诚实边界不谎称全通过",
+  "files_changed": ["GATES.md"],
+  "worktree": "opt-docs-1782699498",
+  "direction": "docs:verify-gate",
+  "outcome": "succeeded",
+  "outcome_evidence": "worktree opt-docs-1782699498 commit 6542f4c 'opt(docs:verify-gate): 核销 IMPORTANT 门禁 — 服务端验证 build OK + 15 JSX HTTP 200' (1 file changed, 2 insertions(+), 2 deletions(-))；`node build.js` exit 0；curl http://localhost:3015/{index.html,DashboardPage.jsx,Sidebar.jsx} 均 200",
+  "next_suggestion": "1BfrYW9R 健康度已良好(score=0.0)，下轮切回 autonomous-studio(#2)处理 6 条 triage TODO 之一；或挑 personal-assistant 做 API 契约草稿以解锁 1BfrYW9R Phase 1 真实后端接入"
+}

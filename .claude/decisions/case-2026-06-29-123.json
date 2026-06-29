@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-123",
+  "agent_id": "autonomous-loop-ralph-wiggum",
+  "timestamp": "2026-06-29T02:28:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "GATES.md IMPORTANT gate correction: decision-patterns.md stale 'missing' annotation",
+  "situation": "scout-scan #2 autonomous-studio (score=0.0) 推荐文档润色。复查 GATES.md IMPORTANT 段发现第 25 行标注 'calibration patterns 与 decision-patterns.md 同步 — ⚠️ decision-patterns.md 缺失' 为 [ ] 未通过状态。实际检查：.claude/memory/decision-patterns.md 存在(279行, 13 patterns)，scripts/distill-patterns.py --project . 干跑输出 'patterns.md 追加 0 条缺失条目' 确认已同步。gate 标注为过时误报。",
+  "action": "1) Read GATES.md L20-30 定位 IMPORTANT 段；2) grep 全仓确认 decision-patterns.md 路径(.claude/memory/)及引用方(distill-patterns.py/verify-pattern.sh/decision-agent-prompt.md/MEMORY.md)；3) python3 scripts/distill-patterns.py --project . 干跑验证同步状态(0 missing)；4) Edit GATES.md 将该 gate 从 '[ ] ...⚠️ 缺失' 改为 '[x] ...exists(279行,13 patterns)+distill 干跑 0 缺失+verified 2026-06-29'；5) 更新顶部'最后核验'时间戳指向 case-123；6) opt-worktree.sh commit gates:important-sync GATES.md → 新建 opt-gates-1782700031 worktree(方向分歧 engine→gates)。注：main GATES.md 被 hook/linter 还原，修复仅在 worktree 中——符合 opt-worktree 纪律(main 安全，等人工 merge)。",
+  "files_changed": ["GATES.md"],
+  "worktree": "opt-gates-1782700031 (commit 9527409, 1 ahead of main)",
+  "direction": "gates:important-sync",
+  "outcome": "succeeded",
+  "outcome_evidence": "git -C .opt-worktrees/autonomous-studio/opt-gates-1782700031 log HEAD=9527409 'opt(gates:important-sync): GATES.md IMPORTANT gate 修正'; git diff HEAD~1 --stat = 'GATES.md | 4 ++-- 1 file changed, 2 insertions(+), 2 deletions(-)'; distill-patterns.py dry-run stdout: '加载 149 个 case, 13 个已有 pattern' + 'patterns.md 追加 0 条缺失条目'; ls -la .claude/memory/decision-patterns.md exists with 279 lines; wc confirms line count.",
+  "next_suggestion": "1) 下轮可 merge opt-gates-1782700031 入 main(squash FF, 单文件低风险)；2) GATES.md IMPORTANT 仍有 3 个 [ ] 未过(连续自主行动<3 / L3降频自适应)，均依赖 CronCreate/settings.json 注册——引擎不可自改，需人工介入或标记为 wontfix；3) CRITICAL 段多个 hook 未注册同样阻塞——若下轮仍 AS #2 可起草 hooks-registration-plan.md 列出 settings.json 所需配置(只读计划不写 settings)；4) 否则转 #3 moni-master 或 #4 personal-assistant 文档润色。"
+}
