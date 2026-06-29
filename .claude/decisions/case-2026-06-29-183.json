@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-183",
+  "agent_id": "ralph-wiggum-loop",
+  "timestamp": "2026-06-29T06:15:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "review+merge pending worktree opt-cases-1782712977; sync optimization to new main",
+  "situation": "scout-scan #2 autonomous-studio (score=0.0, 待合并=1, 空=1)。opt-cases-1782712977 HEAD=014358f 父=8182fc9(当时 main HEAD),仅增 .claude/decisions/case-2026-06-29-182.json(15行)记录上一轮 reject-superseded 事实。FF-able,内容是对已落地事实的 case 归档,无代码改动,安全合并。空 worktree 已被上轮清理(scout-scan 缓存滞后显示 empty=1,实际 list 仅 main+optimization)。",
+  "action": "(1) bash scripts/opt-worktree.sh . merge opt-cases-1782712977 → squash FF 合并到 main(commit cca3412);worktree 目录+分支自动清理。(2) cd optimization && git merge --ff-only main → 把 optimization 从 8182fc9 同步到 cca3412,保持与 main 一致。",
+  "files_changed": [".claude/decisions/case-2026-06-29-182.json"],
+  "worktree": "opt-cases-1782712977 (merged+deleted); optimization (synced to cca3412)",
+  "direction": "cases:merge-pending+worktree-sync",
+  "outcome": "succeeded",
+  "outcome_evidence": "git log -3 main 显示 cca3412 为 HEAD;git worktree list 仅剩 main+optimization(均 cca3412);.claude/decisions/case-2026-06-29-182.json 在 main 存在;auto/opt-cases-1782712977 分支已删(merge 输出 '✓ worktree 清理');next-case 返回 case-2026-06-29-183.json。",
+  "next_suggestion": "(1) personal-assistant 仍有 opt-personal-assistant-1782711645 pending(case-176 产出),下轮复审并 merge/reject;(2) wechat-main scout-scan 报 1 pending+1 empty,但 .opt-worktrees/wechat-main/ 现只见 optimization,pending 需核实是否仍存在;(3) opt-worktree.sh line 27 'cd $CMD' 在缺 project 参数时把 CMD 当目录(本次 'bash scripts/opt-worktree.sh merge ...' 触发 'cd: merge: No such file'),属 tooling:cli-defaults 小工作单位可修——加参数校验或在 usage 阶段 fail-fast。"
+}
