@@ -14,15 +14,15 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-06-29T07:30Z（skills: gitignore stubs repeat → superseded, case-2026-06-29-037）**
+- **最后活跃: 2026-06-29T02:30Z（engine: scout-scan 死锁可见性横幅 + opt-worktree ensure_main_wt stale-dir 修复 → case-2026-06-29-038, commit a3fe07b in optimization worktree）**
 - **活跃项目**: 持续自治管线巡检——按 scout-scan 健康度排序轮转
-- **当前阶段**: 管线日常运行——scout-scan → 选项目 → 小工作单位 → worktree 提交
+- **当前阶段**: ⚠️ 全项目 blocked 死锁——24 个 opt worktree 待人工合并，scout-scan 已显式列出待合并清单（本轮修复使其可见）
 - **GOAL_STATUS**: active
 - **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动）
 - **LAST_UPDATED**: 2026-06-29
-- **LAST_WORKTREE**: opt-chore-1782680083 (skills gitignore stubs — superseded)
-- **LAST_OUTCOME**: blocked
-- **NEXT_SUGGESTION**: ⚠️ skills gitignore fix 已在 opt-skills-1782670300 + opt-chore-1782680083 累积≥5次重复提交，必须人工合并其中一个到 main 才能打破循环。建议: 1) 合并 opt-skills-1782670300（累计最全）→ reject 其余重复 worktree; 2) 合并 opt-gate-1782679188（commit-gate 扩拦）; 3) 批准合并 opt-docs-1782638147/opt-agent-dashboard-1782638553/opt-docs-1782638790 解锁 scout-scan 前3; 4) 下轮选 quanzhan 或 kaoqin（未被重复占用）
+- **LAST_WORKTREE**: optimization (a3fe07b — engine:scout-deadlock-banner — scout 死锁横幅+ensure_main_wt rev-parse 校验)
+- **LAST_OUTCOME**: in_progress
+- **NEXT_SUGGESTION**: ⚠️ 引擎已全项目 blocked 死锁（17/17 项目 actionable=false，24 个 opt worktree 待合并，main 不能 auto-push）。下轮唯一出路是人工合并：1) 合并本轮 optimization a3fe07b（scout 死锁可见性 + ensure_main_wt 修复，纯引擎脚本低风险）；2) 合并 opt-skills-1782670300（打破 ≥5 次 skills gitignore 重复循环）；3) 合并 opt-gate-1782679188（commit-gate 扩拦）；4) 上述合并后重跑 scout-scan，blocked 项应转 actionable 才有真活；5) 若仍全 blocked → 兜底做 quanzhan/shizi 文档润色（score=0 健康项，非自反馈）；6) 机制层可选：给 opt-worktree 加 auto-merge 纯文档 worktree 子命令消除死锁（需用户批准放开 push）
 - **自主循环**: 🟢 活跃
   - L1 Inline: 每次回复末尾内联检查 (+ git status)
   - L2 Heartbeat: CronCreate 每7分钟（执行轨——推进 Studio 阶段或主动扫描）
