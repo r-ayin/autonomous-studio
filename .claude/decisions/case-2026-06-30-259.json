@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-30-259",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-30T03:35:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "review + merge 1 个待合并 optimization worktree（opt-tests-1782761035：扩展 ⑧ 防漂移扫描覆盖 GATES.md + 修真实漂移 29→30 组件）",
+  "situation": "scout-scan #1 推荐 1BfrYW9R（score=0.0，健康度良好但持 1 待合并 worktree）。worktree opt-tests-1782761035 在 onedaybot-dev 之上有 1 个 commit（d7d8cf3），声称：(a) 把 test/smoke.test.js ⑧ 的 docNames 从 [README,CLAUDE,PROGRESS] 扩到含 GATES.md，(b) 修 GATES.md 全文 29→30 组件的真实漂移（第 30 组件加入后 build 报 30 但 GATES 仍「29」未被旧 ⑧ 捕获）。需人工审 diff + 实测后 merge/reject。",
+  "action": "（1）git show --stat 看改动面：3 文件（.opt-direction/GATES.md/test/smoke.test.js），15+/13-。（2）读 diff：GATES.md 把 5 处「29」改「30」并在 CRITICAL build 行落严格声明「30 个 JSX 组件」+ ⑧/NICE 描述同步；smoke.test.js docNames 加 'GATES.md'，注释更新说明真实漂移发现。（3）在 worktree 实跑 npm test → 22 pass 0 fail，确认不破回归。（4）突变复测锁真咬：sed 把 GATES.md 「30 个 JSX 组件」→「29」后 npm test → test13 转 not ok（pass 21 fail 1），git checkout 还原后再跑 → 22/22 绿，证明守卫非纸老虎。（5）opt-worktree.sh 1BfrYW9R merge opt-tests-1782761035：fast-forward + squash 成 commit 93c899b，worktree 清理。（6）main 工作树复跑 npm test → 22 pass 0 fail 确认 merge 后无回归。",
+  "files_changed": ["1BfrYW9R/GATES.md", "1BfrYW9R/test/smoke.test.js", "1BfrYW9R/.opt-direction"],
+  "worktree": "opt-tests-1782761035（已 merge 入 1BfrYW9R onedaybot-dev 为 squash commit 93c899b，worktree 已清理）",
+  "direction": "tests:gates-doc-drift-lock",
+  "outcome": "succeeded",
+  "outcome_evidence": "（1）worktree 实跑 npm test → '# pass 22 / # fail 0'（merge 前）；（2）突变复测：GATES.md 30→29 → 'not ok 13 - 文档组件计数...' + '# pass 21 / # fail 1'，还原后 '# pass 22 / # fail 0'——锁真咬；（3）opt-worktree.sh merge 输出 '✓ 已 squash 合并 opt-tests-1782761035 → onedaybot-dev' + '✓ worktree 清理'；（4）merge 后 git log -1 = '93c899b merge: 人工批准合并 optimization worktree opt-tests-1782761035'；（5）main 工作树复跑 npm test → '# tests 22 / # pass 22 / # fail 0'。",
+  "next_suggestion": "1BfrYW9R 现无待合并 worktree、健康度良好。下轮 scout-scan 大概率不再把 1BfrYW9R 列 #1（待合并=0）。可顺延 #2 autonomous-studio（延期已 triage TODO=6，做文档润色或跳过）或 #3 moni-master（受前端重构排除约束，但后端/量化任务允许，需 scout 给出具体小工作单位再做）。若无明确小工作单位，可跳过本轮或挑 sunset-prediction/wechat-main 的 GATES 核销类轻量任务。"
+}

@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-30-257",
+  "agent_id": "ralph-autonomous-studio",
+  "timestamp": "2026-06-30T19:30:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "review + merge pending worktree opt-build-1782760352 (build.js 计数正则漏认 class 组件)",
+  "situation": "scout-scan #1 推荐: 1BfrYW9R 有 1 个待合并 worktree (opt-build-1782760352, bb67cff)。该 worktree 单提交修复 build.js 计数正则漏认 `class X extends React.Component` 定义的组件——ErrorBoundary 被 defRe(引用解析集,含 class)认得故不触发 ref-res exit 1,却不入 componentDefs 计数,build 报 29 而真实 30;缺口因 ⑧ 文档一致性守卫比「文档N==buildN」(两者皆错成29)而长期静默。提交同步 README/CLAUDE 29→30 并加回归锁 ㉑。",
+  "action": "对 opt-build-1782760352 做人工 diff 审 + 三重实证后 squash merge 入 onedaybot-dev:\n1. 读 git show bb67cff: build.js 计数正则补 `|class\\s+[A-Z][A-Za-z0-9]+` 分支; README/CLAUDE 4 处 29→30 含组件清单补 ErrorBoundary; test/smoke.test.js 加新测注入「仅一个 class 组件+<Cls/>引用」bundle 断言 build 报 1。\n2. 在 worktree 跑 npm test → 22 pass 0 fail。\n3. 跑 npm run build → 'Build OK — 30 JSX components' exit 0。\n4. 独立 node 脚本对 index.html babel 块跑同正则 → 30 个定义(含 class ErrorBoundary),证实 30 是真值非正则偏移。\n5. 突变复测: sed 删 class 分支后 npm test → 'not ok 6 - 计数认得 class 定义的 React 组件'(锁真咬); cp 还原。\n6. opt-worktree.sh merge opt-build-1782760352 → squash commit f28bdbb; worktree dir 清理; 残留 branch auto/opt-build-1782760352 因 squash 非 ancestor 走 -D 删除。\n7. 合后 main 复测: npm test 22 pass 0 fail; npm run build 报 30 exit 0。",
+  "files_changed": ["1BfrYW9R/build.js", "1BfrYW9R/CLAUDE.md", "1BfrYW9R/README.md", "1BfrYW9R/test/smoke.test.js"],
+  "worktree": "opt-build-1782760352 (已 merge 入 onedaybot-dev f28bdbb, worktree 清理, branch 删除)",
+  "direction": "build:count-class-components",
+  "outcome": "succeeded",
+  "outcome_evidence": "merge commit f28bdbb HEAD on onedaybot-dev; `npm test` 合后 # pass 22 # fail 0; `npm run build` stdout 'Build OK — 30 JSX components'; 独立 node 计数 index.html=30(含 class ErrorBoundary); 突变删 class 分支→新测 'not ok 6' 证回归锁咬合; `git worktree list` 仅剩 optimization(待审); `git branch -D auto/opt-build-1782760352` 成功('was bb67cff')。",
+  "next_suggestion": "1BfrYW9R 仍剩常设 optimization worktree (auto/optimization, 2323837) 待审: 0 提交但 diff 含 test/smoke.test.js -947 行(删测试大半)+ dev-server.js -51 + build.js 改动。删 947 行测试可疑——下轮应 git show 逐文件审 optimization worktree: 是真冗余测试删除还是误删/回归? 确认后 merge 或 reject。注意 1BfrYW9R main 现已 fast-forward 领先 origin/onedaybot-dev 47 commits(无推送,内网不通 GitHub,保留本地积压)。"
+}
