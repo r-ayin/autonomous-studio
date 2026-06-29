@@ -134,9 +134,12 @@ def main():
         return
     cmd = (data.get("tool_input") or {}).get("command", "") or ""
 
-    # 用 tokenizer 取子命令(跨过 -C/-c 等 git 全局选项),只拦 commit/push/merge
+    # 用 tokenizer 取子命令(跨过 -C/-c 等 git 全局选项)
+    # 拦截:commit/push/merge + reset(ref-mover 模式) + branch(-f/-D/-m main) + update-ref(直写)
+    # 豁免:checkout/switch(opt-worktree.sh 内部用)不在拦截集合中
     sub, rest = _git_parse(cmd)
-    if sub not in ("commit", "push", "merge"):
+    _GUARDED = {"commit", "push", "merge", "reset", "branch", "update-ref"}
+    if sub not in _GUARDED:
         print("{}")
         return
 
@@ -145,35 +148,65 @@ def main():
         print("{}")
         return
 
-    # 目标分支是 main/master → 拦(分支从命令的 -C 解析,修复 workspace-root 失效)
     branch = current_branch(cmd)
-    targets_main = branch in MAIN_BRANCHES
-    if sub == "push":
-        # 显式推 main/master ref(如 `git -C <p> push origin main`)→ 即便当前在 feature 分支也拦
-        targets_main = targets_main or any(t in MAIN_BRANCHES for t in rest)
+    repo = repo_dir_from_cmd(cmd)
+    block_detail = None
 
-    if targets_main:
-        # 豁免:case 元数据归档(仅 .claude/decisions/case-*.json)按先例可直提 main
-        if sub == "commit":
-            files = staged_files(repo_dir_from_cmd(cmd))
-            if is_case_metadata_only(files):
-                print("{}")
-                return
-        print(json.dumps({
-            "decision": "block",
-            "reason": (
-                "🚫 autonomous 模式激活:禁止直接 commit/push/merge 到 main/master。\n"
-                "引擎的自动优化必须进 optimization worktree 等人工审合并——这样 main 永远安全,优化可大胆跑。\n"
-                "改用: bash scripts/opt-worktree.sh commit <area:subdirection> \"<提交说明>\"\n"
-                "  (方向格式如 engine:distillation / moni:quant;area 不同会自动开新 worktree)\n"
-                "提交后人工审: opt-worktree.sh show <worktree> → merge/reject\n"
-                "若确需直接提交 main(非自治优化),先 rm .claude/.autonomous_active 退出自治标记。\n"
-                "豁免:仅归档 .claude/decisions/case-*.json 的 case 元数据 commit 可直提 main(按先例)。"
-            )
-        }, ensure_ascii=False))
-        sys.exit(2)
-    # 当前在 feature/auto 分支 → 放行(本来就该在 worktree 分支提交)
-    print("{}")
+    if sub in ("commit", "push", "merge"):
+        # 目标分支是 main/master → 拦(分支从命令的 -C 解析,修复 workspace-root 失效)
+        targets_main = branch in MAIN_BRANCHES
+        if sub == "push":
+            # 显式推 main/master ref(如 `git -C <p> push origin main`)→ 即便当前在 feature 分支也拦
+            targets_main = targets_main or any(t in MAIN_BRANCHES for t in rest)
+        if targets_main:
+            # 豁免:case 元数据归档(仅 .claude/decisions/case-*.json)按先例可直提 main
+            if sub == "commit":
+                files = staged_files(repo)
+                if is_case_metadata_only(files):
+                    print("{}")
+                    return
+            block_detail = f"直接 {sub} 到 main/master"
+
+    elif sub == "reset":
+        # ref-mover 模式(--hard/--soft/--mixed)在 main 分支上会移动分支指针 → 拦
+        # 无模式标志的 reset(如 `git reset HEAD file`)是暂存区操作 → 放行
+        _REF_MOVER_FLAGS = {"--hard", "--soft", "--mixed"}
+        is_refmove = any(t in _REF_MOVER_FLAGS for t in rest)
+        if is_refmove and branch in MAIN_BRANCHES:
+            block_detail = "git reset --hard/--soft/--mixed 在 main 分支（移动分支指针）"
+
+    elif sub == "branch":
+        # -f/-D/-d/-m/-M 触及 main/master → 拦;纯列分支或创建新分支 → 放行
+        _BR_DANGEROUS = {"-f", "--force", "-D", "-d", "--delete", "-m", "-M", "--move"}
+        has_dangerous = any(t in _BR_DANGEROUS for t in rest)
+        branch_names = [t for t in rest if not t.startswith("-")]
+        if has_dangerous and any(b in MAIN_BRANCHES for b in branch_names):
+            flags_used = " ".join(t for t in rest if t.startswith("-"))
+            block_detail = f"git branch {flags_used} 操作 main/master"
+
+    elif sub == "update-ref":
+        # git update-ref refs/heads/main <sha> 直接写 main ref → 拦
+        _MAIN_REFS = {f"refs/heads/{b}" for b in MAIN_BRANCHES}
+        if any(t in _MAIN_REFS for t in rest):
+            block_detail = "git update-ref 直接写 refs/heads/main/master"
+
+    if block_detail is None:
+        print("{}")
+        return
+
+    print(json.dumps({
+        "decision": "block",
+        "reason": (
+            f"🚫 autonomous 模式激活:禁止 {block_detail}。\n"
+            "引擎的自动优化必须进 optimization worktree 等人工审合并——这样 main 永远安全,优化可大胆跑。\n"
+            "改用: bash scripts/opt-worktree.sh commit <area:subdirection> \"<提交说明>\"\n"
+            "  (方向格式如 engine:distillation / moni:quant;area 不同会自动开新 worktree)\n"
+            "提交后人工审: opt-worktree.sh show <worktree> → merge/reject\n"
+            "若确需直接修改 main(非自治优化),先 rm .claude/.autonomous_active 退出自治标记。\n"
+            "豁免:仅归档 .claude/decisions/case-*.json 的 case 元数据 commit 可直提 main(按先例)。"
+        )
+    }, ensure_ascii=False))
+    sys.exit(2)
 
 
 if __name__ == "__main__":
