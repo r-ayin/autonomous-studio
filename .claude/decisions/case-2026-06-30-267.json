@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-06-30-267",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-30T20:16:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "review + merge AS 待合并 worktree opt-cases-1782763943（case-264/265/266 三 ledger 归档）",
+  "situation": "scout-scan 2026-06-29T20:16Z 排荐 #1=1BfrYW9R（score=0.0，推荐原文「无明确小工作单位——可跳过或做文档润色」，PROGRESS 0.0天最鲜——无具体可操作工作单位，scanner 自身标「可跳过」）→ 顺延 #2=autonomous-studio（score=0.0，1 待合并 worktree opt-cases-1782763943 + 延期已 triage TODO=6/0/0）。待合并 worktree 单 commit b8b7de0，diff 仅 3 文件 +47/-0：case-2026-06-30-264.json（1BfrYW9R merge opt-docs-1782763101）、265（1BfrYW9R README drift，原 case-263 撞号重编号）、266（上轮 AS merge opt-as-1782762774 + 解 case-263 撞号）。git cherry main auto/opt-cases-1782763943 = '+ b8b7de0'（新提交非重复）。main 已有 case 至 263，264/265/266 顺序续号无撞。三文件均为纯 ledger（无代码、无行为变更），字段齐全且 outcome_evidence 引可观察事实（commit hash/worktree list/npm test 计数）。",
+  "action": "逐项核验后用 sanctioned 路径合并（非直 git commit main，gate 不触）：① git worktree list 确认 opt-cases-1782763943 = b8b7de0 超前 main a8a3322，standing optimization[766d7e5] 常设非 pending；② git status --short 空，main 干净满足 cmd_merge 前置；③ git cherry 确认新提交；④ 逐文件 git show 核验 case-264/265/266 JSON 合法、case_id 与文件名一致、无与 main 263 撞号；⑤ bash scripts/opt-worktree.sh . merge opt-cases-1782763943 —— squash 合并 + worktree 清理（cmd_merge 设计：删 worktree dir 不删分支，分支留 auto/opt-cases-1782763943 可恢复，非 bug；cmd_reject 才删分支）。",
+  "files_changed": [
+    ".claude/decisions/case-2026-06-30-264.json (squash-merged from opt-cases-1782763943)",
+    ".claude/decisions/case-2026-06-30-265.json (squash-merged from opt-cases-1782763943)",
+    ".claude/decisions/case-2026-06-30-266.json (squash-merged from opt-cases-1782763943)"
+  ],
+  "worktree": "opt-cases-1782763943 (merged → main d62055c, worktree cleaned; branch auto/opt-cases-1782763943 保留可恢复)",
+  "direction": "cases:archival-merge",
+  "outcome": "succeeded",
+  "outcome_evidence": "git log --oneline -1 = d62055c 'merge: 人工批准合并 optimization worktree opt-cases-1782763943'；git worktree list 仅余 autonomous-studio[main d62055c] + standing optimization[766d7e5]，opt-cases-1782763943 工作树已清；git status --short 空；git ls-files 确认 case-2026-06-30-264/265/266.json 三文件均 tracked；opt-worktree.sh 输出 '✓ 已 squash 合并 opt-cases-1782763943 → main / ✓ worktree 清理'。",
+  "next_suggestion": "AS main 已无 opt-cases 待合工作树（standing optimization[766d7e5] 常设不动，pending=0）。下轮 scout-scan 将再排 AS #2 或降级——可：(a) 查 standing optimization[766d7e5] 是否含未合 main 的 content（git log main..auto/optimization --oneline，若空则 standing 纯簿记可不动）；(b) 挑延期已 triage TODO=6/0/0 中一个做小修复（非新债，已 triage 标注）；(c) 顺延查 1BfrYW9R standing optimization[2323837] 是否有未合 content。另：遗留分支 auto/opt-cases-1782763943（已合未删）可下轮用 git branch -D 清理或留作可恢复——低优先。撞号根因（agent 手挑 case 号绕 cmd_next_case）仍未根治，可后续加 case-id 分配统一走 cmd_next_case。"
+}
