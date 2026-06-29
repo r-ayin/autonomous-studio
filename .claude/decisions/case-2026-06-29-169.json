@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-169",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-29T05:22:00Z",
+  "project": "wechat-main",
+  "work_unit": "cases:orphan-rehome — move case-164 from AS main to wechat-main opt-docs worktree (cross-project orphan cleanup)",
+  "situation": "scout-scan #1/#2 均健康(score=0.0)，AS #2 推荐审 pending worktree；但 AS main working tree dirty=1 因孤儿 case-2026-06-29-164.json(wechat-main docs:progress-stale)滞留(memory '跨项目工作致 case 文件孤儿' 已记此模式)。case-164 属 wechat-main 却在上轮 cross-project 工作中写入 AS main，致 AS dirty + wechat-main 缺归档。最小清理动作优先于新一轮开发。",
+  "action": "1) mkdir -p wechat-main/.claude/decisions(首次建目录)；2) mv AS main .claude/decisions/case-2026-06-29-164.json → wechat-main/.claude/decisions/；3) rmdir wechat-main/.claude/decisions(临时落点)；4) 再 mv 到真正归属枝 wechat-main opt-docs-1782709369 worktree 的 .claude/decisions/(与 case-164 同主题 work unit)；5) git add+commit 进 auto/opt-docs-1782709369(commit 520a5b2, msg='opt(cases:orphan-rehome): rehome case-164 from AS main (cross-project orphan) to wechat-main opt-docs worktree')；6) AS main git status --short 输出空(clean)",
+  "files_changed": [".claude/decisions/case-2026-06-29-164.json"],
+  "worktree": "auto/opt-docs-1782709369 (wechat-main)",
+  "direction": "cases:orphan-rehome",
+  "outcome": "succeeded",
+  "outcome_evidence": "git -C /home/admin/workspace/.opt-worktrees/wechat-main/opt-docs-1782709369 log -1 --oneline = '520a5b2 opt(cases:orphan-rehome): rehome case-164 from AS main (cross-project orphan) to wechat-main opt-docs worktree'；git diff HEAD~1 --stat = '.claude/decisions/case-2026-06-29-164.json | 1 file changed, 15 insertions(+)'；cd autonomous-studio && git status --short 输出为空(AS main clean)；wechat-main main HEAD=6fc14ee 未变(改动仅在 opt-docs worktree)",
+  "next_suggestion": "1) 下轮 scout-scan 重排——AS 待合并 opt-cases-1782710167(case-168)仍 pending，可人工审后合；2) wechat-main opt-docs-1782709369 现含 2 commit(5e0e576 PROGRESS.md + 520a5b2 case-164 rehome)，可一并 squash merge 入 wechat-main main；3) personal-assistant/shizi/sunset-prediction PROGRESS 均 0.1天且无标记，可做文档润色或跳过"
+}
