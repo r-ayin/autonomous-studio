@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-06-29-135",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-29T03:25:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "docs:contributing — add contributor guide for oneday-design",
+  "situation": "scout-scan #1 (score=0.0) 健康但无明确小工作单位；README/PROGRESS/GATES 已齐，唯缺 CONTRIBUTING.md（开发流程/代码约定/文档同步三件套未沉淀），新人或自治循环下轮接手时缺入口指引。",
+  "action": "新增 CONTRIBUTING.md（35 行）：覆盖 opt-worktree 工作流、Conventional Commits、JSX/Tailwind/hash-router 代码约定、README/PROGRESS/GATES 三件套同步要求、服务端+浏览器端验证步骤。通过 opt-worktree.sh commit 提交到新 worktree opt-docs-1782703305，main 未动。",
+  "files_changed": ["CONTRIBUTING.md"],
+  "worktree": "/home/admin/workspace/.opt-worktrees/1BfrYW9R/opt-docs-1782703305",
+  "direction": "docs:contributing",
+  "outcome": "succeeded",
+  "outcome_evidence": "git -C /home/admin/workspace/.opt-worktrees/1BfrYW9R/opt-docs-1782703305 log --oneline -1 → 250fe26 opt(docs:contributing): docs(contributing): add contributor guide (dev workflow/code conventions/doc sync); opt-worktree list 显示 1 提交 / 2 files changed, 36 insertions(+), 1 deletion(-)",
+  "next_suggestion": [
+    "1BfrYW9R: Phase 1 API 契约草案（planning/api-contract.md）——MockData.jsx 字段已对齐 storage 表结构，可抽出 REST endpoint 清单供 personal-assistant 后端对接",
+    "wechat-main/x-tool: PROGRESS.md 0.3-0.7天 stale，同步更新当前状态",
+    "autonomous-studio: 挑一个 deferred TODO 动手（bff_client.py:206 profile.json 兼容分支裁决）"
+  ]
+}
