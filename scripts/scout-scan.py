@@ -147,7 +147,13 @@ def count_markers(path):
                     continue
             except OSError:
                 continue
-            if not f.endswith((".py", ".js", ".ts", ".tsx", ".jsx", ".md", ".sh", ".go", ".rs")):
+            # 债务标记是代码注释约定，markdown 是文档/散文：.md 中 `# TODO:` 在标题、
+            # `TODO:` 在描述性正文都匹配 MARKER 形式但非真债。此前 autonomous-studio 的 4 个
+            # active TODO 全来自 decision-archive.md 标题/state.md 正文散文（真代码 TODO 均为
+            # `TODO(deferred)` 形式，只计 deferred），致其虚假霸榜 #1。剥离规则逐个补丁（【TODO】/
+            # `<!-- TODO -->` / 反引号引例）是打地鼠，排除 .md 一劳永逸。file_tree_and_symbols
+            # 仍独立索引 .md 标题，此处仅影响 marker 计数。
+            if not f.endswith((".py", ".js", ".ts", ".tsx", ".jsx", ".sh", ".go", ".rs")):
                 continue
             rel = os.path.relpath(fp, path)
             hit = False
