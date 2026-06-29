@@ -884,7 +884,17 @@
       "action_level": "ACT_NOTIFY",
       "confidence": 80,
       "next": "人工 merge 6 个 docs-only worktree(opt-worktree.sh <proj> merge <wt>)，或直接 reject 清理；loop 已停无需再处理堆积"
+    },
+    "2026-06-29T12:00:00Z": {
+      "finding": "worktree 积压已清零(9→0,用户/进程清理)。loop 已停。case 涨到 156。archive repo/global 分歧(repo 113>global 84)已同步。8 僵尸 pattern 跨 8+ 轮稳定不变。",
+      "worktrees": 0,
+      "case_count": 156,
+      "loop": "stopped",
+      "zombies": 8,
+      "action_level": "OBSERVE",
+      "confidence": 70,
+      "next": "无紧迫项。8 僵尸 pattern 可退役(distill 反复提示 case schema 加 outcome 字段)；archive 仍落后 case 总数(113/156)可后续补"
     }
   },
-  "last_distill": "2026-06-28T10:43:14Z"
+  "last_distill": "2026-06-29T11:09:19Z"
 }
