@@ -1,0 +1,20 @@
+{
+  "case_id": "case-2026-06-30-271",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-30",
+  "project": "1BfrYW9R",
+  "work_unit": "docs:readme-drift — README/CLAUDE 常用命令块补 npm test + npm start",
+  "situation": "scout-scan 排 #1 为 1BfrYW9R（score=0.0，健康度良好，推荐=可跳过或做文档润色）；该项目 .opt-direction 文件内容为 docs:readme-drift（18B，记录在案的待办方向）。读 README.md + CLAUDE.md 发现两文档的「快速开始」/「常用命令」bash 代码块仅列 npm install / npm run dev / npm run build 三条，遗漏 package.json 中已存在且被回归锁覆盖的两个一等命令：npm test（test/smoke.test.js，23 测，㉑ 与 GATES.md canonical pass 计数对账）与 npm start（生产部署入口，NICE 门禁 ⑬ npm start 脚本存在性 + ⑭ npm start 端到端实跑）。快速开始块是用户/agent 首读的运行说明，缺这两条属真实文档漂移（信息在 README「已完成」段存在但不在 canonical 命令块）。autonomous-constraints.md 未排除 1BfrYW9R。",
+  "action": "最小改动两文件：README.md 快速开始块在 npm run build 后追加 npm test（注释不硬编码 pass 数——㉑ 仅锁 GATES.md canonical 箭头形「npm test → N pass 0 fail」，README 写死 23 会造未被任何锁覆盖的新漂移面）+ npm start（注明 PaaS 注入 PORT、NICE ⑬⑭）；CLAUDE.md 常用命令块对齐追加同两行（npm test 注明 node --test + ㉑ 对账；npm start 注明生产入口 + NICE ⑬⑭）。不动 GATES.md（㉑ canonical 计数仍 23）、不动组件计数（⑧ 仍 30）、不动 smoke.test.js（注册数仍 23）。",
+  "files_changed": ["1BfrYW9R/README.md", "1BfrYW9R/CLAUDE.md"],
+  "worktree": "opt-docs-1782765429（1BfrYW9R 项目，方向 docs:readme-drift；与既有 optimization worktree 方向 engine→docs 分歧故开新枝）",
+  "direction": "docs:readme-drift",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "opt-worktree.sh commit 输出：✓ 提交到 opt-docs-1782765429 方向=docs:readme-drift",
+    "提交后 main 工作树恢复干净（README/CLAUDE 还原至 HEAD，dirty=0），改动仅存于 worktree",
+    "npm test 复测：# pass 23 # fail 0（⑧ 组件计数锁 + ㉑ gates-doc-drift 锁均未破，证文档增量未引入计数漂移）",
+    "未硬编码 pass 数到 README，避免造新漂移面（㉑ 锁范围仅 GATES.md canonical，README 不在其内）"
+  ],
+  "next_suggestion": "人工审 opt-docs-1782765429 diff 后 merge 入 1BfrYW9R main（纯文档两行追加，低风险）。下轮：scout-scan 仍可能排 1BfrYW9R #1 但已无 .opt-direction 记录的待办（本枝合并后 .opt-direction 应清或转向）；若 1BfrYW9R 再无明确工作单位，顺延 #2 autonomous-studio（1 个待合并 worktree 待人工审）或做 sunset-prediction/shizi 的 GATES 核销复查。1BfrYW9R 真实下一步是 Phase 1 接入 personal-assistant 后端 API 替换内联 const DATA mock（GATES NICE 未勾选项），但那非小工作单位。"
+}
