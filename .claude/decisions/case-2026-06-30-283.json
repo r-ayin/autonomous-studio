@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-30-283",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-06-30T00:00:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "review + merge 待合并 worktree opt-docs-1782768419（CONTRIBUTING §测试与验证 漂移修复）",
+  "situation": "scout-scan 推荐 #1 = 1BfrYW9R（score=0.0，1 个待合并 worktree）。worktree auto/opt-docs-1782768419 领先 onedaybot-dev 1 commit，仅改 CONTRIBUTING.md 1 行：§测试与验证 原硬编码「build.js exit 0 报 30 个 JSX 组件」改为指向 build.js 实测报告 + GATES.md ①–㉑ 全 facet 列举，并说明 CONTRIBUTING 不在 ⑧ 组件计数防漂移扫描范围（仅 README/CLAUDE/GATES 被锁），故不写死组件数以避免新增组件后静默漂移。同项目另有一 standing worktree auto/optimization（领先 base 0 commit，空枝），按 standing-worktree-not-stale 纪律不视为 churn，不动。",
+  "action": "1) 审 diff：1 行文档改动，无功能代码触及。2) 实测复核 commit message 的「23 测覆盖」claim——进 worktree 跑 npm test，输出 `# tests 23 # pass 23 # fail 0`，覆盖 dev-server 探针/MIME 派发/路径穿越/未知路由/目录 404/gates-doc-drift 等 facet，与 commit message 描述一致。3) 在项目主 worktree（1BfrYW9R, branch=onedaybot-dev）执行 git merge --no-ff auto/opt-docs-1782768419，merge commit 6b11487。4) 清理：git worktree remove + git branch -d 删除已合并 worktree 与 auto/opt-docs-1782768419 分支。",
+  "files_changed": ["1BfrYW9R/CONTRIBUTING.md"],
+  "worktree": "merged opt-docs-1782768419 → 1BfrYW9R main worktree (onedaybot-dev @6b11487)；worktree 已清理删除",
+  "direction": "docs:contributing-drift",
+  "outcome": "succeeded",
+  "outcome_evidence": "merge commit 6b11487 落 onedaybot-dev：`git log --oneline -2` 显示 6b11487 merge + 5988e53 原 opt commit；`git diff --stat onedaybot-dev..auto/opt-docs-1782768419` 合并前为 CONTRIBUTING.md 1+1-；npm test 在 worktree 内实测 `# pass 23 # fail 0`（commit message claim 属实非散文）；worktree remove + branch -d 均 exit 0 输出「Deleted branch auto/opt-docs-1782768419 (was 5988e53)」",
+  "next_suggestion": "下轮 scout-scan 应不再把 1BfrYW9R 列为待合并（已清）。可顺延看 autonomous-studio（#2）1 个待合并 worktree 或其 6 条延期已 triage TODO 是否有可推进项；moni 受约束排除前端，后端/量化方向若有健康缺口可做。"
+}
