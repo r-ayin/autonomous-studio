@@ -68,7 +68,11 @@ while true; do
   #   - autonomous-commit-gate: 拦 main 提交
   #   - discovery-gate / patterns-write-gate / stop-completion-gate: 各自门禁
   cd "$WORKSPACE"
+  # 显式指定模型：env ANTHROPIC_MODEL(=claude-opus-4-6) 经代理重映射为 GLM-5.2，
+  # 其配额易耗尽(402 quota exceeded)致每轮 fast-fail 不产 case。改用 qwen3.7-max
+  # （代理层已验证 200，有独立额度）。settings.json 的 model 字段对 claude -p 无效，必须 --model。
   claude -p "$PROMPT" \
+    --model qwen3.7-max \
     --permission-mode bypassPermissions 2>&1 | tail -30
   echo "[$(date +%H:%M:%S)] 轮次 $ITER 结束，提交在 opt-worktree（待人工 opt-worktree.sh show/merge）"
   sleep 2  # 短暂喘息，避免空转打爆 API
