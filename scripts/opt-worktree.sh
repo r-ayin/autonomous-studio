@@ -218,6 +218,14 @@ cmd_merge() {
   local dir="$WT_BASE/$wt"
   [[ -d "$dir" ]] || { echo "❌ worktree 不存在: $wt"; exit 1; }
   cd "$PROJECT"
+  # Fail-fast: main working tree 必须干净，否则 squash 会把脏文件混入 merge、失败后状态难恢复。
+  # （曾致 opt-tooling-1782713441 merge 误报冲突：main 残留上轮同内容修改，squash 误判为 diverged；
+  #   还原 dirty 文件后立即 merge 成功。）
+  if ! git diff --quiet 2>/dev/null || ! git diff --cached --quiet 2>/dev/null; then
+    echo "❌ main working tree 不干净，请先 commit/stash/restore 再 merge:" >&2
+    git status --short >&2
+    exit 1
+  fi
   git checkout "$MAIN_BRANCH" 2>/dev/null || true
   if git merge --squash "auto/$(basename "$dir" | sed 's/^opt-//;s/^/opt-/')" 2>/dev/null || git merge --squash "$wt" 2>/dev/null; then
     git -c user.name="autonomous-studio" -c user.email="opt@auto" commit -q -m "merge: 人工批准合并 optimization worktree '$wt'
