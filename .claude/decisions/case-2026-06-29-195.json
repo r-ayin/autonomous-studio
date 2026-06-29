@@ -1,0 +1,20 @@
+{
+  "case_id": "case-2026-06-29-195",
+  "agent_id": "ralph-wiggum-loop",
+  "timestamp": "2026-06-29T06:52:41Z",
+  "project": "1BfrYW9R",
+  "work_unit": "docs:claude-md — add CLAUDE.md for oneday-design (scout-scan #1, score=0.0, no urgent work unit; doc polish)",
+  "situation": "scout-scan 显示所有项目健康度良好（score=0.0），无紧迫小工作单位。#1 为 1BfrYW9R（oneday-design，个人助手控制面板 UI），README/GATES/PROGRESS/roadmap 齐全但缺 CLAUDE.md（新 agent 上手入口缺失）。dirty=1 仅 .claude/ untracked，main 安全。约束检查：不在排除项（moni 前端重构）内。",
+  "action": "在 opt-worktree opt-docs-1782715909 中新增 CLAUDE.md，内容涵盖技术栈、常用命令、架构要点（single-file bundle 29 组件）、质量门禁摘要、当前阶段、开发约定、相关项目。首次 commit 漏掉文件（opt-worktree.sh commit 报 '指定文件不存在' 因路径解析问题），手动 Write 到 worktree 后 git commit --amend 补入。",
+  "files_changed": ["CLAUDE.md"],
+  "worktree": "/home/admin/workspace/.opt-worktrees/1BfrYW9R/opt-docs-1782715909",
+  "direction": "docs:claude-md",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 8ad2d71 on branch auto/opt-docs-1782715909 shows '2 files changed, 49 insertions(+), 1 deletion(-)' with 'create mode 100644 CLAUDE.md'; git show --stat HEAD confirms CLAUDE.md present in commit tree.",
+  "next_suggestion": [
+    "1BfrYW9R: Phase 2 表单校验与错误提示（roadmap 待办，small unit）",
+    "1BfrYW9R: 加载/空状态骨架屏（Phase 2 另一 small unit）",
+    "autonomous-studio: triage 6 个延期 TODO（已标记不计入推荐，但可清理降低认知负担）",
+    "wechat-main: 清理 1 个空 pending worktree（scout-scan 提示 '空(可清理)=1'）"
+  ]
+}

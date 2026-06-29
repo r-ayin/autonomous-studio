@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-185",
+  "agent_id": "ralph-wiggum-loop",
+  "timestamp": "2026-06-29T06:14:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "tooling:cli-defaults — opt-worktree.sh PROJECT arg fail-fast",
+  "situation": "scout-scan #2 autonomous-studio (score=0.0, 待合并=1)。上轮 case-184 next_suggestion 第(3)条明确指出 'opt-worktree.sh line 27 cd $CMD 在缺 project 参数时把 CMD 当目录（bash scripts/opt-worktree.sh next-case 触发 cd: next-case: No such file or directory），属 tooling:cli-defaults 小工作单位可修——加参数校验或在 usage 阶段 fail-fast'。本轮跟进该建议。根因：PROJECT=${1:-.} + CMD=${2:-list} 后直接 cd $PROJECT，若用户省略 project 但传了 command（如 next-case），$1='next-case' 被当 PROJECT、CMD 落默认 list，cd 'next-case' 失败且 set -e 仅打印 bash 内置错误无上下文。",
+  "action": "在 PROJECT/CMD 赋值之后、cd 之前插入 fail-fast guard：[[ ! -d \"$PROJECT\" ]] → 打印带用法提示的错误到 stderr 并 exit 2。保留原 ${1:-.} 默认语义（无参仍 list），仅在误用路径时显式报错。测试三种调用模式：(1) `bash scripts/opt-worktree.sh next-case`（bug 复现）→ 新错误消息+exit 2；(2) `bash scripts/opt-worktree.sh . next-case` → 正常返回 case-2026-06-29-185.json；(3) `bash scripts/opt-worktree.sh`（无参默认 list）→ 正常列 worktree。",
+  "files_changed": ["scripts/opt-worktree.sh"],
+  "worktree": "opt-tooling-1782713441 (新 area=tooling, HEAD=3d4b410)",
+  "direction": "tooling:cli-defaults",
+  "outcome": "succeeded",
+  "outcome_evidence": "git -C .opt-worktrees/autonomous-studio/opt-tooling-1782713441 log -1 = 3d4b410 'opt(tooling:cli-defaults): fail-fast when PROJECT arg is not a directory'; git diff HEAD~1..HEAD --stat = scripts/opt-worktree.sh | 7 ++++; 手动验证 bug 调用 `bash scripts/opt-worktree.sh next-case` 现在输出 '错误: next-case 不是目录...' 且 exit 2（此前 exit 1 且只报 bash 内置 cd 错误）；正确调用 `. next-case` 和无参 list 均正常工作。main 未动（gate 安全）。",
+  "next_suggestion": "(1) opt-cases-1782713308 仍 pending（含 case-184），下轮复审并 merge/reject；(2) personal-assistant 仍有 opt-personal-assistant-1782711645 pending（case-176 产出），复审；(3) wechat-main scout-scan 报 1 pending+1 empty，核实 .opt-worktrees/wechat-main/ 实际状态；(4) 本次新开 opt-tooling-1782713441 待人工审后合并入 main。"
+}
