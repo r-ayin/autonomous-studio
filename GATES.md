@@ -1,6 +1,6 @@
 # autonomous-studio — 质量门禁
 
-> 最后核验：2026-06-29 (case-110: GATES audit — decision-log created, 3 IMPORTANT gates verified)
+> 最后核验：2026-06-29 (case-123: GATES IMPORTANT gate correction — decision-patterns.md exists & in sync)
 
 ## 🔴 CRITICAL（不通过则不得部署）
 
@@ -22,7 +22,7 @@
 - [x] decision-log.jsonl 有 ≥1 条真实用户交互记录 — 5 条 seed entries（人工批准合并 + 约束设定 + 预算解禁），created 2026-06-29
 - [x] 冷启动毕业指标（20 次交互）已检查 — 135 case files >> 20 threshold，graduated
 - [ ] 连续自主行动 <3（未触发冷却）
-- [ ] calibration patterns 与 decision-patterns.md 同步 — ⚠️ decision-patterns.md 缺失
+- [x] calibration patterns 与 decision-patterns.md 同步 — .claude/memory/decision-patterns.md 存在(279行, 13 patterns)；distill-patterns.py --project . 干跑确认 0 条缺失条目，patterns.md 与 calibration.json 一致（verified 2026-06-29）
 - [x] 案例归档 ≤30 天未处理 — 78 个 case 文件，最新 2026-06-28（1 天）
 - [ ] L3 降频自适应正常工作 — ⚠️ L3 未注册，无法降频
 - [x] git status 无运行时文件 churn（tracked+ignored 矛盾集为 0） — verified 2026-06-29: dirty=0, git status clean
