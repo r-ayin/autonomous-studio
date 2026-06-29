@@ -9,7 +9,8 @@
 - 平台预算硬上限已从 $0.50 提到 $3.00（实测 $0.50 在 17 轮中 16 次撞预算失败）。
 - prompt 已轻量化以适配每轮 ~$0.5 平台约束。
 - opt-worktree 支持 per-project WT_BASE 子目录 + 同 area 复用已有 worktree。
-- **worktree-hygiene 连胜（2026-06-29）**：case-146 merge opt-autonomous-studio-1782704965 + 删 optimization 枝；case-147 merge opt-worktree-hygiene-1782705299 + 清幻影 optimization worktree；AS 现仅 main 一个 worktree，零积压。
+- **case 归档持续进行中**：main 现含 12 个未跟踪 case-2026-06-29-{005,185,188-197}.json（跨多轮累积），下批 merge 应一并入库。
+- **待办池更新**：commit-gate reset-bypass (case-047) WIP 仍在 optimization worktree；延期 TODO=6 已全 triage（4 条 deferred + scaffold/discovery-gate 占位符不计真债）。
 
 ## 最近提交（自治循环硬化）
 
