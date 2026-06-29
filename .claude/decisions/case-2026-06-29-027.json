@@ -1,0 +1,17 @@
+{
+  "case_id": "case-2026-06-29-027",
+  "agent_id": "claude-sonnet-4-6",
+  "timestamp": "2026-06-29T03:45Z",
+  "project": "skills",
+  "work_unit": "实现 research-paper-writer-0.1.0/index.js 真实逻辑（替换 TODO 占位符）",
+  "situation": "scout-scan 报 skills 项目 TODO=5，其中 wendang/research-paper-writer-0.1.0/index.js:4 有一个真实代码 TODO（// TODO: implement actual logic for this skill）。其余 4 个 TODO 来自西班牙语文档（TODOS=所有）或示例文本中引号包裹的伪 TODO，不是真债务。PROGRESS.md 明确列出 '清理 TODO 标记' 为待办。Top-3 scout-scan 推荐项全部是 blocked worktrees（等人工合并），只能顺延处理真实可行项目。",
+  "action": "为 research-paper-writer-0.1.0/index.js 实现真实逻辑：使用 fs.readFileSync 加载 SKILL.md（作为 instructions），加载 references/ 下的 ieee_formatting_specs.md、acm_formatting_specs.md、writing_style_guide.md，根据 input.format 选择格式规范，当 input 缺少 topic/format/length/sections 时收集 clarificationsNeeded 列表，最终返回结构化对象供调用方使用。移除 TODO 占位符注释。",
+  "files_changed": [
+    "wendang/research-paper-writer-0.1.0/index.js"
+  ],
+  "worktree": "opt-skills-1782670300",
+  "direction": "skills:research-paper-writer",
+  "outcome": "succeeded",
+  "outcome_evidence": "git -C /home/admin/workspace/.opt-worktrees/skills/opt-skills-1782670300 log --oneline -1 显示 commit 58b7991 'opt(skills:research-paper-writer): implement index.js logic (load SKILL.md + refs, return clarifications)'。worktree 文件已验证包含完整实现，无 TODO 注释。main branch 干净（opt-worktree.sh 自动还原）。",
+  "next_suggestion": "1) 人工批准合并 opt-skills-1782670300 → skills master（3 commits 累积：gitignore + research-paper-writer 实现，安全可合并）；2) skills 项目仍需补 GATES.md 门禁定义（待合并 opt-docs-1782658244）；3) 若 scout-scan 再次报 skills TODO=5，排查 writing_style_guide 或 systematic-debugging 中的伪 TODO 是否触发误计，酌情更新 scout-scan 过滤规则。"
+}

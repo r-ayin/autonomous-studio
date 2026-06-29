@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-017",
+  "agent_id": "autonomous-loop-ralph",
+  "timestamp": "2026-06-29T17:42Z",
+  "project": "stagehand-analysis",
+  "work_unit": "补 planning/roadmap.md（功能地图 + 技术约束）",
+  "situation": "scout-scan --workspace /home/admin/workspace 显示 stagehand-analysis 为 #2（score=0.08），缺 planning/ 目录；#1 shizi 的 TODO 已 triage，但 dirty=16 涉及文件删除，opt-worktree.sh commit 不支持 D 类型（deleted）文件，故顺延 #2。",
+  "action": "在 stagehand-analysis 创建 planning/roadmap.md，内容包含：当前定位（参考分析·只读）、功能地图（P0 已完成 / P1 待评估 / P2 长期）、技术约束（9 个上游 TODO 非本地修复）；通过 opt-worktree.sh commit docs:planning 提交到 opt-docs-1782668597 worktree。",
+  "files_changed": ["planning/roadmap.md"],
+  "worktree": "opt-docs-1782668597",
+  "direction": "docs:planning",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh 输出：'↔ 方向分歧（engine → docs），开新 worktree: opt-docs-1782668597' + '✓ 提交到 opt-docs-1782668597  方向=docs:planning'；断言通过（main 已还原）。",
+  "next_suggestion": "1) 人工批准合并 opt-docs-1782668597（stagehand-analysis/planning/roadmap.md）；2) 人工批准合并 opt-moni-1782668136（x-tool moni/factors 3文件 TODO deferred 标注）；3) 合并后重跑 scout-scan 验证 stagehand-analysis score 降至 0；4) 处理 shizi dirty=16 问题（需支持 git 删除文件的 worktree 提交路径，或直接在 shizi 主分支做 git add + commit 经 gate 批准）"
+}
