@@ -3,15 +3,17 @@
 > 持续自治开发引擎（Ralph Wiggum 模式：每轮新 context，单个小工作单位 + 提交 + 退出）。
 > 进度按时间倒序，单条对应一次 opt-worktree 提交。
 
-## 当前状态（2026-06-27）
+## 当前状态（2026-06-29）
 
 - 自治循环已稳定跑通：scout-scan → 选小工作单位 → 最小改动 → opt-worktree 提交。
 - 平台预算硬上限已从 $0.50 提到 $3.00（实测 $0.50 在 17 轮中 16 次撞预算失败）。
 - prompt 已轻量化以适配每轮 ~$0.5 平台约束。
 - opt-worktree 支持 per-project WT_BASE 子目录 + 同 area 复用已有 worktree。
+- **worktree-hygiene 连胜（2026-06-29）**：case-146 merge opt-autonomous-studio-1782704965 + 删 optimization 枝；case-147 merge opt-worktree-hygiene-1782705299 + 清幻影 optimization worktree；AS 现仅 main 一个 worktree，零积压。
 
 ## 最近提交（自治循环硬化）
 
+- `merge(worktree-hygiene)` case-147 (2026-06-29)：merge opt-worktree-hygiene-1782705299 + remove 幻影 optimization worktree（与 main 同 SHA、无 diff），AS 归零积压。
 - `merge(reconcile)` 主线/worktree 历史分歧收口（2026-06-27）：patch-id 对账后，12 个 pending 分支中 9 个内容已由重放合并落入 main（删枝）；2 个 worktree（opt-cases/opt-scanner-1782570277）净提交经 FF+cherry-pick 合入后删枝；仅 `optimization` worktree 保留——其 case-047 reset-bypass 修复 WIP 未完，待续。
 - `fix(commit-gate)` 分支检测+子命令识别双失效修复（case-045，cherry-pick 6d1378a→748528a）：`_git_parse` tokenizer 跨过 `git -C`、`current_branch` 从 `-C` 解析 repo、case-*.json 元数据归档豁免
 - `feat(scout-scan)` deferred-marker 约定（cherry-pick 64dbab3→f197a06）：`TODO(deferred)` 不计入 triage 推荐分子，`_DEFERRED_RE` 单独计数；4 个已 triage TODO 转为 deferred 形式
