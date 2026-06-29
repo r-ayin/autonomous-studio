@@ -20,9 +20,9 @@ from datetime import datetime, timezone
 
 # 忽略的目录
 IGNORE_DIRS = {".git", "node_modules", ".venv", "__pycache__", ".pytest_cache",
-               "dist", "build", ".next", ".cache", "venv", "env", ".mypy_cache",
-               ".tox", "coverage", ".nyc_output", ".opt-worktrees", ".parallel-worktrees",
-               "site-packages", ".venv-sidecar"}
+               "dist", "build", "out", "target", ".next", ".cache", "venv", "env",
+               ".mypy_cache", ".tox", "coverage", ".nyc_output", ".opt-worktrees",
+               ".parallel-worktrees", "site-packages", ".venv-sidecar", "worktrees"}
 # 虚拟环境目录名变体繁多（.venv / .venv-foo / .venv-sidecar / venv-xxx），
 # 单靠精确集合匹配会漏（曾致 x-tool 的 聚合ai客服开发/.venv-sidecar/site-packages
 # 里 pydantic/h11/PyInstaller 的第三方 FIXME/HACK 被计入项目真债，虚高至 #1）。
@@ -301,7 +301,9 @@ def count_pending_worktrees(path):
     """统计项目的 pending opt-worktrees：total 数量 + stale(0-ahead) 数量 + 各 worktree 的 ahead count。
 
     当所有健康信号为绿时，pending worktree 积压是唯一可操作的结构性信号——
-    提示人工 review/merge。stale (0 ahead) worktree 则是可安全清理的废弃物。
+    提示人工 review/merge。stale (0 ahead) per-area worktree 则是可安全清理的废弃物；
+    但常设 "optimization" worktree 空闲时是 infra（下次 commit 重建），不计 stale、
+    不计入 total，否则每轮误推"清理空 worktree"。非 git 伪目录（嵌套 .opt-worktrees）一并跳过。
     """
     wt_root = os.path.join(os.path.dirname(path), ".opt-worktrees", os.path.basename(path))
     if not os.path.isdir(wt_root):
@@ -319,15 +321,29 @@ def count_pending_worktrees(path):
     with_content = 0
     details = []
     for entry in sorted(os.scandir(wt_root), key=lambda e: e.name):
-        if not entry.is_dir():
+        if not entry.is_dir() or entry.name.startswith("."):
+            continue  # 跳过 .opt-worktrees 等嵌套垃圾目录（引擎偶从 worktree 内调
+                     # opt-worktree 会在 worktree 里建嵌套 .opt-worktrees/<name>，非 git 仓）
+        # 只认真正的 git worktree——过滤嵌套伪目录，否则它们被当 pending 计入、虚高 total
+        try:
+            g = subprocess.run(["git", "rev-parse", "--is-inside-work-tree"],
+                               cwd=entry.path, capture_output=True, text=True, timeout=3)
+            if g.returncode != 0 or g.stdout.strip() != "true":
+                continue
+        except Exception:
             continue
-        total += 1
         try:
             r = subprocess.run(["git", "rev-list", "--count", f"{main_branch}..HEAD"],
                                cwd=entry.path, capture_output=True, text=True, timeout=5)
             ahead = int(r.stdout.strip()) if r.returncode == 0 else -1
         except Exception:
             ahead = -1
+        # ensure_main_wt 维护的常设 "optimization" worktree：空闲(0-ahead)时是 infra，
+        # 下次 commit 即重建——非 pending、非废弃物。整体跳过，否则每轮都推"清理空
+        # worktree"噪音、霸占 #1。仅当它真带未合并内容(ahead>0)时才计入（视同 pending 待合并）。
+        if entry.name == "optimization" and ahead == 0:
+            continue
+        total += 1
         if ahead == 0:
             stale += 1
         elif ahead > 0:
@@ -428,10 +444,11 @@ def health_priority(r):
         reasons.append(f"延期(已triage) TODO/FIXME/HACK={d.get('TODO', 0)}/{d.get('FIXME', 0)}/{d.get('HACK', 0)}（不计入triage推荐）")
     # FIXME/HACK 比 TODO 更可操作，额外加权（封顶）
     score += min((m["FIXME"] + m["HACK"]) * 0.2, 4)
-    # marker 文件已在待合并 worktree 动过——main 上的标记是"已 triage 待合并"而非"真未处理"，
-    # 降权使其不再因待合并债务霸榜 #1 让引擎重做（应推合并，不是重 triage）
+    # marker 文件已在待合并 worktree 动过——精确抵消 marker 贡献（密度+FIXME/HACK 加权），
+    # 而非 flat -1：flat -1 远大于小密度贡献（如 0.06），导致得分变负，
+    # 把有真实 TODO 的项目藏到完全健康项目之后（case-049 修复）
     if pend_triage:
-        score -= 1
+        score -= min(density * 10, 5) + min((m["FIXME"] + m["HACK"]) * 0.2, 4)
         reasons.append(f"marker 文件待合并({','.join(pend_triage)})，可能已 triage")
 
     # 推荐一个**具体的小工作单位**（tractable，不需深读大块代码）——给引擎现成抓手
