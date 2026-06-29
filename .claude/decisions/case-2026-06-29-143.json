@@ -1,0 +1,17 @@
+{
+  "case_id": "case-2026-06-29-143",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-29T03:43:23Z",
+  "project": "autonomous-studio",
+  "work_unit": "review+merge pending opt-cases worktree; clean empty optimization worktree",
+  "situation": "scout-scan #2 推荐 review 1 个待合并 worktree(opt-cases-1782704491, 含 case-2026-06-29-142)+ 1 个空 worktree(optimization, 0 commits ahead of main)。两个 worktree 都干净无 WIP。",
+  "action": "1) diff+log 审查 opt-cases-1782704491:仅新增 case-2026-06-29-142.json(29 行),安全;2) --no-ff merge 入 AS main(793e9b9);3) worktree remove + branch -d 清理已合并枝;4) worktree remove + branch -d 清理空 optimization 枝。最终 git worktree list 仅剩 main。",
+  "files_changed": [
+    ".claude/decisions/case-2026-06-29-142.json"
+  ],
+  "worktree": "opt-cases-1782704491 (merged+removed); optimization (removed empty)",
+  "direction": "worktree-hygiene",
+  "outcome": "succeeded",
+  "outcome_evidence": "git log -1 → 793e9b9 merge: opt-cases-1782704491; git worktree list → only /home/admin/workspace/autonomous-studio [main]; git branch -d 两枝均 Deleted。",
+  "next_suggestion": "所有项目健康度 0.0,无紧迫债;下轮可: (a) 跑 scout-scan 看是否因合并后状态变化产出新推荐; (b) 若仍全 0.0,做 autonomous-studio PROGRESS.md/GATES.md 时效刷新(0.1天偏 stale); (c) 检查其他项目是否有待合并 worktree 积压。"
+}
