@@ -19,6 +19,7 @@
 #   opt-worktree.sh [project] merge <worktree>            # 人工批准后：squash 合并→main + 清理
 #   opt-worktree.sh [project] reject <worktree>           # 人工拒绝：归档/删
 #   opt-worktree.sh [project] next-case                   # 查下一个可用 case 编号（扫 main + 所有 pending worktree，防撞号）
+#   opt-worktree.sh [project] new-case                    # 分配并原子预留 case 文件（写空 stub 落盘，杜绝 agent 手挑号撞号）
 # 例: opt-worktree.sh shizi commit "docs:governance" "说明" PROGRESS.md GATES.md
 set -euo pipefail
 
@@ -28,7 +29,7 @@ CMD="${2:-list}"
 # （曾致 'cd: next-case: No such file or directory'：用户省略 project 但写了 command，
 #  $1 被当作 PROJECT，CMD 落到默认 list，再 cd "$PROJECT" 失败且无提示）。
 if [[ ! -d "$PROJECT" ]]; then
-  echo "错误: '$PROJECT' 不是目录。用法: opt-worktree.sh [project] <init|commit|list|show|merge|reject|next-case>" >&2
+  echo "错误: '$PROJECT' 不是目录。用法: opt-worktree.sh [project] <init|commit|list|show|merge|reject|next-case|new-case>" >&2
   exit 2
 fi
 PROJECT="$(cd "$PROJECT" && pwd)"
@@ -297,6 +298,25 @@ cmd_next_case() {
   echo "case-${date}-${next3}.json"
 }
 
+# new-case: 分配并原子预留 case 文件（落空 stub），杜绝 agent 手挑号撞号。
+# 根治 case-id 撞号：next-case 只查号不预留，agent 仍可绕开自挑（case-034/263 均如此）；
+# new-case 在同一进程内 scan→create（noclobber=O_CREAT|O_EXCL），stub 落盘即被后续
+# 扫描计入，并发两调用各得不同号。agent 拿到路径后覆写 stub 为真实 case 内容。
+cmd_new_case() {
+  local date="${3:-$(date +%Y-%m-%d)}"
+  local name f n
+  name=$(cmd_next_case "$@")                       # case-<date>-NNN.json (basename)
+  f="$PROJECT/.claude/decisions/$name"
+  mkdir -p "$(dirname "$f")"
+  # noclobber: 文件已存在则 > 失败 → 增号重试（仅极并发撞号才到这，正常一次成）
+  while ! ( set -o noclobber; : > "$f" ) 2>/dev/null; do
+    n="${name#case-${date}-}"; n="${n%.json}"; n=$((10#$n + 1))
+    printf -v name "case-%s-%03d.json" "$date" "$n"
+    f="$PROJECT/.claude/decisions/$name"
+  done
+  echo "$f"
+}
+
 case "$CMD" in
   init) cmd_init ;;
   commit) cmd_commit "$@" ;;
@@ -305,5 +325,6 @@ case "$CMD" in
   merge) cmd_merge "$@" ;;
   reject) cmd_reject "$@" ;;
   next-case) cmd_next_case "$@" ;;
-  *) echo "用法: opt-worktree.sh <project> <init|commit|list|show|merge|reject|next-case> ..."; exit 1 ;;
+  new-case) cmd_new_case "$@" ;;
+  *) echo "用法: opt-worktree.sh <project> <init|commit|list|show|merge|reject|next-case|new-case> ..."; exit 1 ;;
 esac
