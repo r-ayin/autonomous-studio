@@ -24,6 +24,13 @@ set -euo pipefail
 
 PROJECT="${1:-.}"
 CMD="${2:-list}"
+# Fail-fast: 当 PROJECT 不是目录时立即报错，避免把 'next-case' 等命令误当路径
+# （曾致 'cd: next-case: No such file or directory'：用户省略 project 但写了 command，
+#  $1 被当作 PROJECT，CMD 落到默认 list，再 cd "$PROJECT" 失败且无提示）。
+if [[ ! -d "$PROJECT" ]]; then
+  echo "错误: '$PROJECT' 不是目录。用法: opt-worktree.sh [project] <init|commit|list|show|merge|reject|next-case>" >&2
+  exit 2
+fi
 PROJECT="$(cd "$PROJECT" && pwd)"
 # per-project 子目录，避免多项目 worktree 撞车（之前 $PROJECT/../.opt-worktrees 共享导致跨项目冲突）
 WT_BASE="$PROJECT/../.opt-worktrees/$(basename "$PROJECT")"
