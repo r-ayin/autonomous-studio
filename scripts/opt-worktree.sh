@@ -239,7 +239,13 @@ cmd_merge() {
     exit 1
   fi
   git checkout "$MAIN_BRANCH" 2>/dev/null || true
-  if git merge --squash "auto/$(basename "$dir" | sed 's/^opt-//;s/^/opt-/')" 2>/dev/null || git merge --squash "$wt" 2>/dev/null; then
+  # 分支命名约定（cmd_init）：auto/<worktree-dir-basename>（常设 worktree=auto/optimization，
+  #   新 area worktree=auto/opt-<area>-<ts>）。直接 basename 即可。
+  #   旧写法 sed 's/^opt-//;s/^/opt-/' 对 opt-* 名是恒等 noop（碰巧能用），但对常设
+  #   optimization worktree 产出不存在的 auto/opt-optimization；其 fallback
+  #   `git merge --squash "$wt"` 又用裸名（非 auto/ 前缀）也非有效 ref → 两路皆败 →
+  #   误报"合并冲突"（case-223 发现，case-226 修）。
+  if git merge --squash "auto/$(basename "$dir")" 2>/dev/null; then
     git -c user.name="autonomous-studio" -c user.email="opt@auto" commit -q -m "merge: 人工批准合并 optimization worktree '$wt'
 
 $(git log --oneline auto/$(basename "$dir") 2>/dev/null | head -5)"
