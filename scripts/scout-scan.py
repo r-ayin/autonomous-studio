@@ -502,6 +502,19 @@ def main():
 
     ws = os.path.abspath(args.workspace)
     projects = discover_projects(ws)
+
+    # Fallback: workspace 本身是一个 git 项目（而非项目容器）时自动上移到父目录。
+    # 场景：loop prompt 写死 --workspace /…/autonomous-studio，但实际容器是其父目录。
+    if not projects and not args.project:
+        ws_is_project = os.path.isdir(os.path.join(ws, ".git")) or \
+                        os.path.isfile(os.path.join(ws, "planning", "status.json"))
+        if ws_is_project:
+            parent_ws = os.path.dirname(ws)
+            parent_projects = discover_projects(parent_ws)
+            if parent_projects:
+                ws = parent_ws
+                projects = parent_projects
+
     if args.project:
         projects = [p for p in projects if p["name"] == args.project]
 
