@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-003",
+  "agent_id": "autonomous-loop/ralph-wiggum",
+  "timestamp": "2026-06-29T00:20Z",
+  "project": "pc_agent",
+  "work_unit": "补 planning/ROADMAP.md 路线图文档",
+  "situation": "scout-scan 以 /home/admin/workspace 为 workspace 扫描，pc_agent score=3.0（#1），缺 PROGRESS.md/GATES.md（已在 opt-docs-1782639934 待合并）且无 planning/ 目录，结构性文档缺口明显。",
+  "action": "在 /home/admin/workspace/pc_agent/planning/ 创建 ROADMAP.md，记录当前状态（15维度/SAGE/Shizi）及 P0~P2 优先级任务列表，通过 opt-worktree.sh 提交到已有 opt-docs-1782639934 worktree。",
+  "files_changed": ["planning/ROADMAP.md"],
+  "worktree": "pc_agent/opt-docs-1782639934",
+  "direction": "docs:planning",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh 输出 '✓ 提交到 opt-docs-1782639934 方向=docs:planning'，文件写入成功，无报错。",
+  "next_suggestion": "人工批准合并 pc_agent/opt-docs-1782639934（含 PROGRESS.md + GATES.md + planning/ROADMAP.md）；下轮可选 quanzhan 或 text-counter-extension（同为 score=3.0，补 planning/ 目录）。"
+}
