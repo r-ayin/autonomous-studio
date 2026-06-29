@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-227",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-29T14:10:00Z",
+  "project": "1BfrYW9R (oneday-design)",
+  "work_unit": "PROGRESS.md 同步 2026-06-29 门禁自动化里程碑（最近里程碑 header 由 stale e0b9f81 刷新 + 已完成 增补 npm test 自动化条目）",
+  "situation": "scout-scan 推荐排序：#1=1BfrYW9R(score=0.0,工作单位=doc polish/skip)、#2=autonomous-studio(score=0.0,review pending worktree)。取 #1（未被 autonomous-constraints.md 排除；1BfrYW9R 是 personal-assistant 控制面板 UI 非 moni 前端，允许）。1BfrYW9R GATES 全绿、npm test 4 pass。定位真债：PROGRESS.md 当前状态 header 的「最近里程碑」仍引用 commit e0b9f81（CLAUDE.md 已补）为最新里程碑，但 git log 显示 e0b9f81 之后有 7 个 merge commit 落地了 single-file bundle 模式(007027f)、JSX 引用解析检查(fd4dad3)、npm test 4 项冒烟——header 严重 stale，与「已完成」清单已更新的条目自相矛盾。",
+  "action": "改 1 个文件 1BfrYW9R/PROGRESS.md：(1)「最近里程碑」一行由 stale e0b9f81 文案刷新为 2026-06-29 门禁全量自动化里程碑（single-file bundle + JSX ref-res 检查 + npm test 4 项冒烟 + CRITICAL/IMPORTANT 复测全绿），引用真实 commit 007027f/fd4dad3；(2)「已完成」清单增补「门禁自动化（2026-06-29）」条目，列明 npm test 4 项断言内容。提交前实跑 npm test 复核 4 pass 0 fail，确保文档非散文而是可观察事实。",
+  "files_changed": ["1BfrYW9R/PROGRESS.md"],
+  "worktree": "opt-docs-1782742135 (auto/opt-docs-1782742135, branch off 1BfrYW9R cc9870f)",
+  "direction": "docs:progress-sync",
+  "outcome": "succeeded",
+  "outcome_evidence": "提交 8daaeb5 已落 worktree opt-docs-1782742135（git show --stat: .opt-direction + PROGRESS.md 2 files 3+/2-）；worktree 内 grep '门禁自动化' PROGRESS.md 命中 1（新条目存在）；提交前 npm test 实测输出 '# pass 4 / # fail 0'（4 项冒烟全绿，4=①single-file 形态 ②build exit 0+29组件 ③ref-res 负测 exit 1 ④dev-server 200+text/html+inline babel）；main 干净（git status 空），改动隔离在 worktree 待人工审合并。",
+  "next_suggestion": "下轮可顺延 scout #2：审 AS pending worktree opt-tooling-1782741850/optimization 的 diff（memory 警两点 diff 误读、root↔AS 副本漂移——须用 git show --stat 单提交审，勿整枝合）；或继续 1BfrYW9R 真债：GATES NICE 未勾选项「接入真实后端 API（替换 MockData）」是 Phase 1 目标，但属较大工作单位，须先确认 personal-assistant API 契约。"
+}

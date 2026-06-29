@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-232",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-29T14:35:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "review + merge 待合并 worktree opt-gates-1782743404（人工审 diff + merge/reject）",
+  "situation": "scout-scan #1 推荐 1BfrYW9R：1 个待合并 worktree。worktree list 显示两个——常设 `optimization`（按 memory scout-scan-standing-worktree-not-stale 不算待合并）+ `opt-gates-1782743404`（真·待合并，单提交 ad091e3）。该提交给 dev-server.js 加 server.on('error') 处理 EADDRINUSE，声称端口冲突时干净 exit 1 而非抛 uncaught 栈。",
+  "action": "审 diff（仅 dev-server.js +.opt-direction，+14/-3，聚焦正确）。验证三步：(1) node --check 语法 OK；(2) npm test 5/5 pass；(3) 实测修复路径——先误从 main 目录(onedaybot-dev 未含修复)跑第二次绑同端口仍抛 uncaught，纠正后从 worktree 路径跑：第二次绑 47822 输出 'ERROR: port 47822 already in use (EADDRINUSE) — choose another via node dev-server.js <port>' 且 exit=1，非 uncaught 栈。确认修复有效后 opt-worktree.sh 1BfrYW9R merge opt-gates-1782743404（squash→onedaybot-dev，main dirty=0 前置满足）。",
+  "files_changed": ["1BfrYW9R/dev-server.js", "1BfrYW9R/.opt-direction"],
+  "worktree": "opt-gates-1782743404 (merged → 1BfrYW9R@onedaybot-dev, commit 4cb1dc4, worktree cleaned)",
+  "direction": "gates:dev-server-listen-error",
+  "outcome": "succeeded",
+  "outcome_evidence": "git log 4cb1dc4 'merge: 人工批准合并 optimization worktree opt-gates-1782743404'；main dev-server.js:31 含 `server.on('error'`；merge 后 npm test pass=5 fail=0；worktree 路径实测第二次绑 47822 → stderr 仅 'ERROR: port 47822 already in use (EADDRINUSE)...' + exit=1（对照 main 未修版本同操作抛 'Unhandled error event' 栈）",
+  "next_suggestion": "1BfrYW9R 还有大量历史 auto/opt-* 分支（opt-docs-* ×7、opt-gates-* ×6、opt-scaffold/routing 等）——下轮可逐个 opt-worktree.sh 1BfrYW9R show <wt> 审是否已被 main 含（git cherry 对账）后 merge/reject 清债。或回到 #2 autonomous-studio 的 1 待合并 worktree 做同样审 merge。"
+}
