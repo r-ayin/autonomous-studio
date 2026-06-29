@@ -109,6 +109,7 @@ cmd_commit() {
     return 0
   fi
   local head_before; head_before=$(git -C "$target" rev-parse HEAD)
+  local copied=0
 
   # ① 迁移改动到 target worktree
   if [[ -n "$files" ]]; then
@@ -117,6 +118,7 @@ cmd_commit() {
       [[ -e "$f" ]] || { echo "⚠️ 指定文件不存在，跳过: $f" >&2; continue; }
       mkdir -p "$target/$(dirname "$f")"
       cp -p "$f" "$target/$f"
+      copied=$((copied+1))
     done
   else
     echo "⚠️ 未指定文件列表，cp 全部改动（含用户 WIP 风险，建议显式传文件）" >&2
@@ -127,7 +129,17 @@ cmd_commit() {
       [[ -e "$p" ]] || continue
       mkdir -p "$target/$(dirname "$p")"
       cp -p "$p" "$target/$p"
+      copied=$((copied+1))
     done < <(git status --porcelain -z)
+  fi
+
+  # 前置断言：cp 命中 0 则拒绝产空 commit（case-207：file 参数全不存在/全被跳过时
+  #   曾产仅 .opt-direction 的 bogus commit，且 ④ leak 断言因 $files 在 main 不存在
+  #   而误报成功——case-033 漏堵的平行路径）
+  if (( copied == 0 )); then
+    echo "❌ 断言失败：无任何改动被 cp 到 worktree（命中 0），拒绝产空 commit。" >&2
+    echo "  指定文件路径须 project-relative（相对 $PROJECT）。指定了: ${files:-（未指定，自动扫描全部改动）}" >&2
+    exit 1
   fi
 
   # ② worktree 内提交
