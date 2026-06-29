@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-06-30-300",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-30T23:10:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "review 1 个 AS pending worktree opt-cases-1782774052（人工审 diff + merge/reject）—— 5 个 orphan 决策 case 294-298 归档落 git",
+  "situation": "scout-scan 文本报告 #1=1BfrYW9R（score=0.0，标「无明确小工作单位——可跳过或做文档润色」，无可执行工作单位），顺延 #2=autonomous-studio：1 个待合并 worktree opt-cases-1782774052，工作单位=review（人工审 diff + merge/reject）。该 worktree 单提交 5d951a4 领先 main 6ea4faa，diff 纯加性：5 个新 case JSON 文件（case-2026-06-30-294..298.json）共 +89 行，零代码改动。需核验非空壳/非撞号/字段齐全后决定 merge/reject。另注意 main 残留 untracked case-299.json（并发轮次产物，非本 worktree 范围）。",
+  "action": "1) git diff --stat main..HEAD 确认纯加性 5 文件 +89/-0、无代码/测试/GATES 改动。2) 逐文件读 diff 全文：5 case 均为结构化决策记录，内容覆盖真实已落地工作（294=1BfrYW9R PROGRESS 里程碑 sync+port-range-guard 突变复测、295=merge opt-docs-1782772510 核验四事实、296=reject optimization+merge opt-cases-1782771825、297=dev-server.js HTTP 方法守卫 405+smoke ㉓ 回归锁、298=merge opt-gates-1782773566），均含可观察 outcome_evidence（引用 commit hash/npm test pass 计数/git worktree list 输出）。3) python3 json.load 五文件全 OK；schema 必填字段 case_id/project/work_unit/situation/action/files_changed/worktree/direction/outcome/outcome_evidence/next_suggestion 全齐（miss=[]），outcome 全 succeeded。4) git ls-files 确认 294-298 在 main 未 tracked（无撞号），cmd_next-case 探测下一号=300（本 case 用之）。5) 判定真归档、合：opt-worktree.sh merge opt-cases-1782774052（main 工作树仅 untracked 299 不触发 tracked-diff 守卫，squash fast-forward 无冲突）。",
+  "files_changed": [
+    ".claude/decisions/case-2026-06-30-294.json",
+    ".claude/decisions/case-2026-06-30-295.json",
+    ".claude/decisions/case-2026-06-30-296.json",
+    ".claude/decisions/case-2026-06-30-297.json",
+    ".claude/decisions/case-2026-06-30-298.json"
+  ],
+  "worktree": "opt-cases-1782774052 (merged → main f79321f, worktree cleaned)",
+  "direction": "engine:case-archive",
+  "outcome": "succeeded",
+  "outcome_evidence": "git log --oneline -1 main → f79321f 'merge: 人工批准合并 optimization worktree opt-cases-1782774052'；git ls-files .claude/decisions/ | grep -E '29[4-8]' → 294/295/296/297/298 全 tracked；git diff --stat 6ea4faa..f79321f = 5 文件 +89/-0 纯加性；git worktree list → 仅剩 main + 常设 optimization worktree（opt-cases-1782774052 已清理）；merge 输出末行「✓ 已 squash 合并 opt-cases-1782774052 → main / ✓ worktree 清理」",
+  "next_suggestion": "main 仍残留 1 个 untracked orphan case-299.json（并发轮次产物，非本轮范围）——下轮可再开 opt-cases 归档轮收口 299+本轮 300，保持 main 工作树干净。或顺延 scout-scan #3 moni-master（健康度良好，但 moni 前端重构受 autonomous-constraints.md 排除，仅后端/量化/数据/基础设施允许）。或审 AS 延期已 triage 的 6 条 TODO 是否有可清掉的（scout-scan 仍盲于 untracked orphan，归档前须手查 git status——本轮已查证仅 299 残留）。"
+}

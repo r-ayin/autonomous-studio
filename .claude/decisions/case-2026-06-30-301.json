@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-30-301",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-29T23:13:24Z",
+  "project": "1BfrYW9R (oneday-design)",
+  "work_unit": "dev-server.js HEAD 放行分支回归锁（smoke test ㉔）——锁定 HTTP 方法守卫 `req.method !== 'GET' && req.method !== 'HEAD'` 中 HEAD 被放行（非 405）的分支，补 ㉓ 明确排除 HEAD 后留下的零测覆盖缺口",
+  "situation": "scout-scan 排 1BfrYW9R 为 #1（score=0.0，健康度良好，推荐「文档润色或跳过」）。读 dev-server.js（90 行小文件）+ test/smoke.test.js 后发现：方法守卫测试 ㉓ 仅锁「非 GET/HEAD 方法 → 405」分支（POST/DELETE/PUT 被拒），其注释明言「HEAD 由 Node 协议层自动抑制 body 故与 GET 同路径放行不另测」。但「HEAD 被放行」是与「GET 被放行」不同的分支（守卫条件含独立的 `!== 'HEAD'` 子句）：若有人「收紧」守卫成 GET-only（删 `&& req.method !== 'HEAD'`，看似更安全），HEAD 会落 405，而 ㉓ 的 POST/DELETE/PUT 断言仍全绿（本就期望 405），全套 25 测无人捕获。真实场景：负载均衡/监控常用 HEAD 探针（HEAD / 或 HEAD /healthz 不下载 body 省带宽），守卫误拒 → 探针 405 → 实例被误判死/摘流。这是 ㉓ 注释自陈「无须额外锁」实则存在的回归缺口，与现有 ⑯/⑰/㉒/㉓ 同理念的「锁被放行分支非死代码」一致。",
+  "action": "在 test/smoke.test.js 末尾追加第 26 个 test（㉔）：注入 ONEDAY_DIR 临时目录含 index.html（inline babel），spawn dev-server.js（偏端口 3084，避开已用 3085-3099），先 GET / 200 证服务起来（控制组），再发 HEAD / 断言 200 + text/html + body==='' 、HEAD /healthz 断言 200 + application/json + body==='' 。body 恒空由 Node 协议层对 HEAD 自动抑制 body 保证。同步 GATES.md：IMPORTANT 行追加 ㉔ 条目描述、canonical 当前态声明 25→26 pass、历史日志追加「2026-06-30 追加 ㉔」、㉓ 条目内「不另测」措辞改为「HEAD 放行分支由 ㉔ 单独锁定」并 bump 计数 24→25→26（gates-doc-drift ㉑ 对账覆盖）。",
+  "files_changed": ["test/smoke.test.js", "GATES.md"],
+  "worktree": "opt-gates-1782774742 (auto/opt-gates-1782774742, commit 28f3b6b)",
+  "direction": "gates:head-guard",
+  "outcome": "succeeded",
+  "outcome_evidence": "1) `npm test` 全量 26 pass 0 fail（基线 25 → 加 ㉔ 后 26，㉑ gates-doc-drift 对账 N_claimed===N_actual 通过，证 GATES 计数已同步）。2) 突变复测：把 dev-server.js 守卫改为 `req.method !== 'GET'`（GET-only，删 HEAD 放行子句）后跑 npm test，㉔ 转红 `not ok 26 - dev-server.js HEAD 方法被服务...`，而 ㉓ 仍绿 `ok 25 - dev-server.js 非 GET/HEAD 方法返回 405...`——证锁真咬且精确捕获目标回归（守卫收紧成 GET-only 仅 HEAD 受影响，POST/DELETE/PUT 测不受扰）。还原守卫后重跑 26 pass 0 fail 证基线恢复。3) 提交在 worktree opt-gates-1782774742 commit 28f3b6b（git log 可见完整 commit message），main 1BfrYW9R 11e3354 工作树 clean（git status -s 空）——worktree 隔离生效，main 未动。4) 中途自纠：首版测试 `fs.writeFileSync(servedDir, 'index.html', ...)` 参数顺序写错（把目录当文件路径、'index.html' 当数据），npm test 报 ERR_INVALID_ARG_VALUE 2 fail，修正为 `path.join(servedDir, 'index.html')` 后通过——过程诚实记录。",
+  "next_suggestion": "1BfrYW9R/oneday-design 已 26 测覆盖 dev-server.js 方法/路径/MIME/探针/端口/穿越全维度，回归锁密度饱和，继续加测边际收益低。下轮建议：审 opt-gates-1782774742 worktree 后 merge（gates:head-guard 方向，diff 仅 smoke.test.js + GATES.md 两文件，无生产代码改动，风险低），或转 #2 autonomous-studio / #3 moni-master 后端（注意 moni 前端重构被 autonomous-constraints.md 排除）。1BfrYW9R 真正待办是 Phase 1 真实后端 API 接入（替换 MockData）与 Phase 2 表单校验/骨架屏——属较大工作单位，非本轮小工作单位范畴，留后。"
+}
