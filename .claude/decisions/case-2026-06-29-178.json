@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-06-29-178",
+  "agent_id": "ralph-wiggum-loop",
+  "timestamp": "2026-06-29T05:48:00Z",
+  "project": "autonomous-studio+wechat-main",
+  "work_unit": "merge-pending: AS opt-cases-1782711837 (case-177) + wechat-main opt-docs-1782709369 (case-164 rehome + PROGRESS stale refresh); sync both optimization worktrees; cleanup merged branches",
+  "situation": "scout-scan #2 autonomous-studio (score=0.0, 待合并=1, 空=1)。AS opt-cases-1782711837 vs main 仅 case-177.json(15行),FF-merge 安全。wechat-main opt-docs-1782709369 vs main 含 case-164.json(PROGRESS.md stale 刷新 + orphan rehome,23+/8-)且 merge-base=main HEAD,亦 FF-merge 安全。两枝都是上轮产出、本轮收口。",
+  "action": "(1) cd autonomous-studio && git merge --ff-only bcde360 → Updating 8a4c87a..bcde360;(2) cd optimization && git merge --ff-only main 同步至 bcde360;(3) git worktree remove opt-cases-1782711837 + branch -d auto/opt-cases-1782711837;(4) cd wechat-main && git merge --ff-only 520a5b2 → Updating 6fc14ee..520a5b2;(5) cd wechat-main/optimization && git merge --ff-only main 同步至 520a5b2;(6) worktree remove opt-docs-1782709369 因 .opt-direction 修改(dirty)失败,--force 移除(stale direction 文件非内容)+ branch -d。最终 AS/wechat-main 各剩 main+optimization,均与新 main HEAD 同步。",
+  "files_changed": [
+    "autonomous-studio/.claude/decisions/case-2026-06-29-177.json",
+    "wechat-main/.claude/decisions/case-2026-06-29-164.json",
+    "wechat-main/PROGRESS.md"
+  ],
+  "worktree": "opt-cases-1782711837 (merged+removed), opt-docs-1782709369 (merged+force-removed)",
+  "direction": "worktree:merge-pending+sync",
+  "outcome": "succeeded",
+  "outcome_evidence": "AS: main HEAD=bcde360,git worktree list=2行(main+optimization,bcde360);auto/opt-cases-1782711837 分支已删。wechat-main: main HEAD=520a5b2,git worktree list=2行(main+optimization,520a5b2);auto/opt-docs-1782709369 分支已删;PROGRESS.md head 显示 '> 最后更新：2026-06-29'。两优化枝均 ff 输出 'Updating <old>..<new>' 确认同步。",
+  "next_suggestion": "(1) personal-assistant 仍有 opt-personal-assistant-1782711645 pending(case-176 产出),下轮复审并 merge/reject;(2) 所有项目健康度 0.0,无紧迫任务,可跑文档润色或跳过;(3) opt-worktree.sh line 48 WT_BASE 路径拼接 bug(case-164 next_suggestion 提及)属 AS engine:tooling 小工作单位,若个人助手无待办可转修此。"
+}
