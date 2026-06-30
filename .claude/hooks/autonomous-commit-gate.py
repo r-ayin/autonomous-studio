@@ -25,7 +25,7 @@ r"""autonomous-commit-gate.py — PreToolUse Hook (matcher: Bash)
   正确识别分支。case-归档豁免配合此修复:分支检测修好后归档 commit 落 main 会被拦,
   需此豁免放行元数据归档(代码 commit 仍拦)。
 """
-import os, sys, json, re, subprocess, datetime, random, string
+import os, sys, json, re, subprocess, datetime, random, string, shlex
 
 if sys.platform == "win32":
     try:
@@ -46,12 +46,25 @@ _GUARDED = {"commit", "push", "merge", "reset", "branch", "update-ref"}
 _SHELL_OPS_RE = re.compile(r"\s*(?:&&|\|\||;|\||\n)\s*")
 
 
+def _tokenize(cmd):
+    """shell-aware 分词:用 shlex.split 尊重单/双引号与转义,使 `eval "git commit"`
+    正确产出 ['eval','git','commit'] 识别为 git 子命令(堵 case-372 finding-1:
+    cmd.split() 不感知引号→带引号 git 调用形如 `"git" commit` 拆出 '"git"' 而非
+    'git',index('git') 失败→gate 漏过)。shlex 在引号不平衡等畸形输入上抛
+    ValueError→回退 str.split 保持旧行为不崩(畸形命令本就罕见且后续 _git_segments/
+    branch 探测仍兜底)。"""
+    try:
+        return shlex.split(cmd, posix=True)
+    except ValueError:
+        return cmd.split()
+
+
 def _git_parse(cmd):
     """tokenize 命令,返回 (子命令 or None, 子命令之后的 token 列表)。
     跨过 git 与子命令之间的全局选项:取值的选项(-C <path> 等)连同其值一起跳过,
     其他 -/-- 开头的标志只跳过自身。这样 `git -C <path> commit` 正确识别子命令=commit。
     非 git 命令(无独立 "git" token)返回 (None, [])。"""
-    toks = cmd.split()
+    toks = _tokenize(cmd)
     try:
         i = toks.index("git")
     except ValueError:
@@ -76,7 +89,7 @@ def repo_dir_from_cmd(cmd):
     PROJECT_DIR。优先级 work-tree > git-dir > -C(显式指向 strongest 信号)。无上述
     任一时回退 PROJECT_DIR——若后者非 git repo,branch 探测返回空串(等价于"非
     main",放行)。引擎约定用 `git -C <project>` 而非 cd(见 autonomous-loop 纪律)。"""
-    toks = cmd.split()
+    toks = _tokenize(cmd)
     paths = []
     git_dir = None
     work_tree = None
@@ -157,14 +170,66 @@ def is_case_metadata_only(files):
     return all(CASE_FILE_RE.search(f) for f in files)
 
 
+def _unwrap_once(cmd):
+    """剥一层间接执行壳:eval/exec "<inner>" 或 sh/bash -c "<inner>" → 返回 inner
+    (shlex 已去引号,inner 为干净命令串);非该形态返回 None。仅处理壳在段首的形态——
+    命令链 `A && eval "..."` 先经 _git_segments 拆段,逐段进这里。source/. 执行脚本文件
+    (内容不可静态知)不展开。"""
+    toks = _tokenize(cmd)
+    if not toks:
+        return None
+    head, rest = toks[0], toks[1:]
+    # eval/exec <args...>: 真实 shell 的 eval 把所有参数按空格拼接后执行,
+    # 故 eval "git commit" -m wip → "git commit -m wip"(case-376 审计 finding:
+    # 原 len(rest)==1 限制使 `eval "git commit" -m wip` 因 rest 长度 2 而不展开→
+    # _git_parse 在 token 'git commit' 上 index('git') 失败→漏过 commit)。
+    # join 还原 shell 拼接语义,使多参数 eval 也能被剥层。
+    if head in ("eval", "exec") and rest:
+        return " ".join(rest)
+    # sh/bash/dash/ash/zsh -c <cmd>[: -c/-lc/-ec 等含 c 的短选项后跟命令串]
+    if head in ("sh", "bash", "dash", "ash", "zsh") and len(rest) >= 2 \
+            and rest[0].startswith("-") and not rest[0].startswith("--") and "c" in rest[0]:
+        return rest[1]
+    return None
+
+
+def _unwrap_indirect(cmd):
+    """递归剥层间接执行壳(eval/exec/sh -c/bash -c),展平成可直接分段评估的命令串。
+    堵 case-372 finding-1:`eval "git commit"` 原被 _git_parse 漏过——shlex 把引号内
+    `git commit` 当作单个 token,`index("git")` 失败→放行。剥层后 inner="git commit"
+    再分段评估即命中 commit。8 层上限防病态递归。"""
+    for _ in range(8):
+        inner = _unwrap_once(cmd)
+        if inner is None or inner == cmd:
+            return cmd
+        cmd = inner
+    return cmd
+
+
 def _git_segments(cmd):
     """把命令按 shell 顺序/管道控制符拆段(&&、||、;、|、换行),逐段独立评估。
+    先 _unwrap_indirect 剥 eval/exec/sh -c 壳(堵 case-372 finding-1 引号内 git 绕过),
+    再按控制符拆段,并对每个分段再次 _unwrap_indirect + 递归 _git_segments——堵 case-376
+    审计 finding:`A && eval "git commit"` 原仅对整命令剥层(head='A'→不展开),拆段后
+    段 `eval "git commit"` 直入 _git_parse,token 'git commit' 上 index('git') 失败→
+    漏过;逐段剥层并递归(因 inner 可能再含链 `eval "A && git commit"`)即命中。
     修命令链绕过:`A && git commit` 里危险 git 在链后段,原 `_git_parse` 用 `index("git")`
-    只取首个 git token——若前段也含 git(如 `git -C . status && git -C . commit`),commit
-    会被当成前段参数而放行;逐段评估即可命中后段真实 commit。分支与 repo 按本段 -C 解析,
-    故跨 repo 链(`-C A status && -C B commit`)也能正确定位 B 的分支。
-    残留:命令替换 $(git ...)/反引号不在拆分范围(需 LLM 刻意构造,低危)。"""
-    return [seg for seg in _SHELL_OPS_RE.split(cmd) if seg]
+    只取首个 git token——若前段也含 git(如 `git -C . status && git -C . commit`),
+    commit 会被当成前段参数而放行;逐段评估即可命中后段真实 commit。分支与 repo 按本段
+    -C 解析,故跨 repo 链(`-C A status && -C B commit`)也能正确定位 B 的分支。
+    递归终止:_unwrap_indirect 幂等(无壳时 inner==cmd),每层剥壳使命令严格变短,深度受
+    _unwrap_indirect 8 层上限束缚。残留:命令替换 $(git ...)/反引号、source/. 脚本文件
+    内容、--norc 等长选项 -c 形态不在展开范围(需 LLM 刻意构造,低危)。"""
+    expanded = _unwrap_indirect(cmd)
+    out = []
+    for seg in [s for s in _SHELL_OPS_RE.split(expanded) if s]:
+        inner = _unwrap_indirect(seg)
+        if inner != seg:
+            # 段本身是 eval/sh -c 壳:剥层后 inner 可能再含控制符链 → 递归拆段
+            out.extend(_git_segments(inner))
+        else:
+            out.append(seg)
+    return out
 
 
 def _push_refs_main(rest):
