@@ -192,29 +192,36 @@ def notify_via_dingtalk(level: str, title: str, message: str, policy: dict | Non
 
     if template:
         # 使用模板格式化消息
-        md_text = template.format(
-            stage=title,
-            score="",
-            issue=message,
-            suggestion="",
-            app_name=title,
-            build_id="",
-            check_items="",
-            batch_count="",
-            task_name=title,
-            failed_cases="",
-            error_message=message,
-            reason=message,
-            count="",
-            duration="",
-            conflict_files="",
-            workers="",
-            artifact="",
-            test_count="",
-            batch_index="",
-            total_batches="",
-            observation="",
-        )
+        # try 守卫：notification-policy.json 的 dingtalk_template 若格式说明符残缺/引用
+        # 不存在的字段，str.format 抛 KeyError/IndexError/ValueError——此前未捕获会
+        # 一路冒泡崩 send()/main() 致 hook 非零退出、静默丢通知（含 CRITICAL 确认）。
+        # 落兜底纯 markdown，保证通知通道不因模板瑕疵而断（case-388 security-review）。
+        try:
+            md_text = template.format(
+                stage=title,
+                score="",
+                issue=message,
+                suggestion="",
+                app_name=title,
+                build_id="",
+                check_items="",
+                batch_count="",
+                task_name=title,
+                failed_cases="",
+                error_message=message,
+                reason=message,
+                count="",
+                duration="",
+                conflict_files="",
+                workers="",
+                artifact="",
+                test_count="",
+                batch_index="",
+                total_batches="",
+                observation="",
+            )
+        except (KeyError, IndexError, ValueError):
+            md_text = f"# {title}\n\n{message}"
     else:
         md_text = f"# {title}\n\n{message}"
 
