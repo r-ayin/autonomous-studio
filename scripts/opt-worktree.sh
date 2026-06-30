@@ -29,6 +29,23 @@ CMD="${2:-list}"
 PROJECT="$(cd "$PROJECT" && pwd)"
 # per-project 子目录，避免多项目 worktree 撞车（之前 $PROJECT/../.opt-worktrees 共享导致跨项目冲突）
 WT_BASE="$PROJECT/../.opt-worktrees/$(basename "$PROJECT")"
+# audit_log <result> <worktree> <commit-sha|空> <reason>
+# DO B（autonomous-constraints.md）：cmd_merge 是 deploy/变更合并敏感路径（git exec + 代码入 main），
+# 落地与冲突均记 JSONL 审计日志，schema 对齐 .claude/decisions/audit-log.schema.json。append-only 写
+# $PROJECT/.audit/audit-YYYY-MM-DD.jsonl（.audit/ 已 gitignore，不污染 main）。result 如实反映，不恒 success。
+# 纯本地 JSONL，不新建库/不接外部系统。审计为可观测性，绝不阻断合并主流程（调用点带 || true）。
+audit_log() {
+  local result="$1" wt="$2" sha="$3" reason="$4"
+  local aud_dir="$PROJECT/.audit" ts id_date rid fpath
+  mkdir -p "$aud_dir" 2>/dev/null || return 0
+  ts="$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || printf '')"
+  id_date="$(date -u +%Y%m%d-%H%M%S 2>/dev/null || printf '00000000-000000')"
+  rid="$(od -An -tx1 -N3 /dev/urandom 2>/dev/null | tr -d ' \n' || printf '')"
+  [[ ${#rid} -ge 6 ]] || rid="$(printf '%06d' "$RANDOM" 2>/dev/null || printf '000000')"
+  fpath="$aud_dir/audit-$(date -u +%Y-%m-%d 2>/dev/null || printf '1970-01-01').jsonl"
+  printf '{"id":"audit-%s-%s","timestamp":"%s","userId":"autonomous-engine","userRole":"engine","action":"deploy","resource":{"type":"deployment","identifier":"%s","newValue":"%s"},"result":"%s","ip":"local","sensitive":true,"sensitiveLevel":"high","details":{"reason":"%s"}}\n' \
+    "$id_date" "$rid" "$ts" "$wt" "$sha" "$result" "$reason" >> "$fpath" 2>/dev/null || true
+}
 # 动态探测项目默认分支：x-tool/moni 用 master，autonomous-studio 用 main。
 # 硬编码 main 会导致 master 项目 worktree add 失败被 || true 吞、随后写 .opt-direction 崩。
 detect_main_branch() {
@@ -512,12 +529,20 @@ $(git log --oneline "$MAIN_BRANCH"..auto/$(basename "$dir") 2>/dev/null | head -
     # ↑ 只列 worktree 相对 main 的 ahead 提交（本 worktree 真实贡献）。旧 `git log --oneline auto/...`
     # 从根起 log 整条分支史，会把 main 已有提交灌进合并消息正文（实测 873f688 正文混入
     # 2aa0eba/0a2124d/4dc2565 等 main 提交，仅 734512b 属该 worktree），误导审阅。
+    local merge_sha; merge_sha="$(git rev-parse HEAD 2>/dev/null || printf '')"
+    audit_log success "$wt" "$merge_sha" "squash-merge worktree into $MAIN_BRANCH" || true
     echo "✓ 已 squash 合并 $wt → $MAIN_BRANCH"
     git -C "$PROJECT" worktree remove "$dir" --force 2>/dev/null || rm -rf "$dir"
     echo "✓ worktree 清理"
   else
-    echo "❌ 合并冲突，人工处理: cd $dir && 解决后 opt-worktree.sh merge"
-    git merge --abort 2>/dev/null || true
+    # case-361 真缺口修复：`git merge --squash` 冲突不写 MERGE_HEAD（squash 不记录 merge），
+    # 故 `git merge --abort` 报 `fatal: There is no merge to abort (MERGE_HEAD missing)` exit 128
+    # 被 `|| true` 吞 = no-op，冲突（UU 入 index）残留 $PROJECT 致重跑再撞同一冲突。fallback
+    # `git reset --merge`（实测 exit 0 清掉 UU、非破坏——保留未冲突本地改动）真正回滚 $PROJECT
+    # 至干净 $MAIN_BRANCH，去 $dir 修冲突文件提交到 auto/<wt> 后再跑可干净重试。
+    audit_log failure "$wt" "" "squash merge conflict, $PROJECT rolled back to clean $MAIN_BRANCH" || true
+    echo "❌ 合并冲突：已回滚 $PROJECT 至干净 $MAIN_BRANCH。去 $dir 解决冲突文件、提交到 auto/$(basename "$dir")，再跑 opt-worktree.sh merge \"$PROJECT\" \"$wt\"；或 opt-worktree.sh reject \"$PROJECT\" \"$wt\" 放弃"
+    git merge --abort 2>/dev/null || git reset -q --merge 2>/dev/null || true
     exit 1
   fi
 }
