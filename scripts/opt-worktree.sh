@@ -70,8 +70,16 @@ ensure_main_wt() {
   local dir="$WT_BASE/optimization"
   if [[ ! -d "$dir" ]]; then
     mkdir -p "$WT_BASE"
-    git -C "$PROJECT" worktree add -b auto/optimization "$dir" "$MAIN_BRANCH" 2>/dev/null || \
-      git -C "$PROJECT" worktree add "$dir" auto/optimization 2>/dev/null || true
+    # 两次 worktree add 都失败时不得吞错继续——旧实现尾部 `|| true` 吞掉失败后，
+    # 仍向 mkdir 建出的空 dir 写 .opt-direction 桩并打印「✓ 建 optimization worktree」，
+    # 造成功假象；后续 cmd_commit 在非 worktree 上 cp/commit 必败且报错晦涩（审计发现，
+    # 与 cmd_merge line471 失败即中止的纪律不一致）。改为校验：两次都败→清空 dir+中止。
+    if ! git -C "$PROJECT" worktree add -b auto/optimization "$dir" "$MAIN_BRANCH" 2>/dev/null && \
+       ! git -C "$PROJECT" worktree add "$dir" auto/optimization 2>/dev/null; then
+      echo "❌ 建 optimization worktree 失败: $dir——检查 $MAIN_BRANCH 分支可用性 / auto/optimization 残留分支 / 路径权限。中止，未写 .opt-direction 桩。" >&2
+      rmdir --ignore-fail-on-non-empty "$dir" 2>/dev/null || true
+      exit 1
+    fi
     echo "engine:general" > "$dir/.opt-direction"
     _ignore_opt_direction_marker "$dir"
     echo "✓ 建 optimization worktree: $dir"
