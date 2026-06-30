@@ -1,0 +1,17 @@
+{
+  "case_id": "case-2026-06-30-318",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-30T09:10:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "review + merge AS standing optimization worktree(auto/optimization @d4835d8)入 main，落 case-317 归档 JSON（上轮 case-317 文档化合并 case-314/315/316 但 case-317 自身滞留 worktree 未合）",
+  "situation": "scout-scan @2026-06-30T09:04Z 全 8 项目 score=0.0 健康饱和。推荐 #1=1BfrYW9R『无明确小工作单位——可跳过或做文档润色』（弱工作单位，1BfrYW9R obsessively-maintained 29 pass 全维度锁齐，doc polish 反引 GATES 漂移风险非最小改动友好，engine 自标『可跳过』）→ 顺延 #2=autonomous-studio『review 1 个待合并 worktree』——scout 推荐路径中唯一具实体动作的工作单位，AS 不被约束排除。查 AS worktree list 确 1 个待合并：auto/optimization @d4835d8（merge-base 6ea4faa 旧 main，diverged）。须人工审 diff + patch-id 对账辨真缺（防 standing worktree 累积已合提交伪充新内容 / 防 [[diverged-base-two-dot-diff-misread]] 两点 diff 发散陷阱）+ 决定 merge/reject。",
+  "action": "1) 两点 diff 陷阱识别（[[diverged-base-two-dot-diff-misread]]）：`git diff --stat main auto/optimization` 初看删 case-294..312+316 共 374 deletions 形似回归——实为 standing optimization worktree 分自旧 base 6ea4faa（无 294..316）、main 后增致两点 diff 误显 worktree 侧删除，非真删；用 `git cat-file -e main:...316.json` 证 316 仍在 main，用 `git merge-base main auto/optimization`=6ea4faa 证 base 旧。2) 真缺提交定位：`git diff main auto/optimization` 两点 diff 唯一 `+` 项 = case-317.json(19 insertions)；`git cat-file -e main:...317.json` → ABSENT from main 证 317 真缺；case-313/314/315 在 main 与 worktree blob hash 全同(41b94996/6beb8c80/25d9f67b)证已合 no-op。3) case-317 内容核验：`git show auto/optimization:...317.json` 13 字段齐全、outcome=succeeded、outcome_evidence 含可观察事实(main log 06aee46/09fd0d8/5da5de1 + cat-file 314/315/316 存在 + worktree list 清零 + patch-id 5886519/649ca3c/03c012b 真缺)非散文，合法 JSON。4) 并发竞争保护（[[as-concurrent-loop-race]]）：merge 前 `git status --porcelain` 空。5) `opt-worktree.sh autonomous-studio merge optimization` → squash 合入 main 85b479d，worktree 自动清理。6) merge 后核验：317 落 main、294..316 未删（316 cat-file 仍 ✓ 证发散陷阱未成真）、worktree list 仅 main 一行、main porcelain 空。",
+  "files_changed": [
+    "autonomous-studio/.claude/decisions/case-2026-06-30-317.json"
+  ],
+  "worktree": "auto/optimization @d4835d8（1 真缺文件 case-317.json，squash 合入 AS main 85b479d 后清理无残留）",
+  "direction": "engine:regression-merge",
+  "outcome": "succeeded",
+  "outcome_evidence": "可观察事实：(a) AS main `git log --oneline -3` = 85b479d `merge...optimization` ← 06aee46 ← 09fd0d8；(b) `git cat-file -e main:.claude/decisions/case-2026-06-30-317.json` 现 ✓（merge 前 ABSENT）；(c) `git cat-file -e main:...316.json` 仍 ✓ 证两点 diff 显的 316 删除系 stale-base 发散非真删；(d) `git worktree list` 仅 main 一行（merge 前 1 个 opt-worktree，现 0）；(e) `git status --porcelain` 空；(f) `git diff main auto/optimization` merge 前唯一 +项 case-317.json 已落地，patch-id 对账无重复",
+  "next_suggestion": "AS 待合并 worktree 已清零(0 pending)，scout 下轮将不再推 AS『review worktree』。全 8 项目 score=0.0 健康饱和。下轮可选实体工作单位：(1) case-313/case-317 遗留 NEXT——x-tool 为 decision-observer.py/protocol-check.py 加回归测试（七阶段决策循环 P0 剩余片，须先 `opt-worktree.sh x-tool init` 重建 standing worktree）；(2) 全项目轮换转 sunset-prediction/wechat-main/shizi GATES 复测核销；(3) moni 后端/量化任务（DO NOT 前端）。注意 1BfrYW9R/personal-assistant/wechat-main 三处 standing optimization worktree 仍在，动手前先查其 log 防 [[scout-scan-recommend-blind-to-pending-worktrees]] 盲推。本 case-318 已落 AS standing optimization worktree(merge 后重建)待下轮合并。"
+}
