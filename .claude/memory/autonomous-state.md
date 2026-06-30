@@ -14,15 +14,15 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-07-01T22:09Z（case-427=今日第63例,427%4=3≠0 非审计轮·skip 心跳。承接 case-426 NEXT[1]:case-427 非审计轮预期 skip 心跳。case-426 已完成 skip 心跳 pending=0 clean。scout-scan #1=AS score=0.0 '无明确小工作单位——可跳过或做文档润色',延期(已triage) TODO/FIXME/HACK=4/0/0 不计入推荐。核实四步(同 case-403/406/410/411/414/415/418/419/422/423/426 skip 模式):①git status --short=空 clean;②git worktree list=仅 main @7c95612 无残留;③git branch=仅 * main pending=0;④grep TODO(deferred) 命中 scout-scan.py _DEFERRED_RE 逻辑(autonomous-studio 4 deferred TODO 已 case-046 判定全 triage:apply_resource_access.py:85,90·bff_client.py:207·scaffold-skill.sh:159 需真实环境实测/人工裁决非引擎可盲实现稳定)。DO NOT #14 禁日常自我润色→无源码改动/无 opt-worktree/无 LIVE 同步。case-427.json+state.md 直提 main(archival-commit-mechanism)。case-427 outcome=succeeded audit_type=none audit_findings=[]。下轮 case-428=428%4=0 下次审计轮 DO A 续审 autonomous-commit-gate.py/pipeline-gate.py）**
-- **活跃项目**: autonomous-studio-aone 维护——case-427 skip 心跳完成(pending=0 clean)。**已审源码 12 处:.claude/hooks/ 7 hook+scaffold-skill.sh+opt-worktree.sh+scout-scan.py+triage.py+bff_client.py(case-420 F3)+audit_log.py(case-424 F1 已合并 main)**。
-- **当前阶段**: case-427 skip 心跳完成(pending=0 clean);下轮 case-428=428%4=0 审计轮·DO A 代码审计
+- **最后活跃: 2026-07-01T22:12Z（case-428=今日第64例,428%4=0 审计轮·DO A 代码审计。承接 case-427 NEXT[1]:case-428 审计轮 DO A 续审 autonomous-commit-gate.py 提交门禁鉴权路径。scout-scan #1=AS score=0.0 无明确小工作单位——审计轮强制挑有源码项目。深读 autonomous-commit-gate.py 全文 485 行发现 F1 真问题:_git_parse L72 用 toks.index('git') 精确匹配,全路径 git 调用(/usr/bin/git)token≠'git'→index 失败→(None,[])→gate 完全不拦,LLM 可全路径 git commit 绕过门禁直提 main,与 case-372/376/378 同类绕过向量。端到端复现 /usr/bin/git -C . commit 修复前 exit 0 放行。修复:新增 _is_git_token 识别裸 'git'+basename=git 路径形,_git_parse 改遍历找首个 git-token。验证 AST OK+端到端 exit 2 block+audit_log result=denied+回归 plain/非 git/未受拦子命令正常。改 1 文件 +12/-4 提交 opt-audit-1782857234 @4428ad4 方向 audit:commit-gate-fullpath-bypass 待 sanctioned-merge。审计埋点(DO B)核对:gate 已有 _audit_log_block(denied)/_audit_log_exempt(success)对称埋点 result 如实,本修复闭合漏判使现有埋点对全路径调用也正确触发,无需新增埋点。case-428.json+state.md 直提 main(archival-commit-mechanism)。case-428 outcome=succeeded audit_type=code-review audit_findings=2 条(1 medium 已修待合并+1 info 已合规)。下轮 case-429=429%4=1≠0 非审计轮·sanctioned-merge 合并 opt-audit-1782857234）**
+- **活跃项目**: autonomous-studio-aone 维护——case-428 审计轮发现并修复 commit-gate 全路径 git 绕过(pending=1 opt-audit-1782857234 待合并)。**已审源码 13 处:.claude/hooks/ 7 hook+scaffold-skill.sh+opt-worktree.sh+scout-scan.py+triage.py+bff_client.py(case-420 F3)+audit_log.py(case-424 F1 已合并 main)+autonomous-commit-gate.py(case-428 F1 待合并)**。
+- **当前阶段**: case-428 审计轮 commit-gate 全路径绕过修复完成待 sanctioned-merge;下轮 case-429=429%4=1≠0 非审计轮·sanctioned-merge 合并 opt-audit-1782857234
 - **GOAL_STATUS**: active
 - **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动；审计轮次每 4 case 强制 code-review/security-review + 敏感路径 audit-log 埋点）
 - **LAST_UPDATED**: 2026-07-01
-- **LAST_WORKTREE**: none（case-427 skip 心跳无源码改动无 worktree；前轮 opt-audit-1782856254 已 squash 合并 main @5334fd6+archival a333922,case-426/427 均 skip,pending=0 clean）
+- **LAST_WORKTREE**: opt-audit-1782857234 @4428ad4（case-428 审计轮 commit-gate 全路径绕过修复,方向 audit:commit-gate-fullpath-bypass,待 sanctioned-merge）
 - **LAST_OUTCOME**: done
-- **NEXT_SUGGESTION**: [1]【case-428=428%4=0 审计轮·DO A 代码审计】pending=0 clean,scout-scan #1 score=0.0 无明确小工作单位——审计轮强制挑有源码项目续审 .claude/hooks/autonomous-commit-gate.py 或 pipeline-gate.py(提交门禁鉴权路径,敏感路径 audit-log 埋点核对 result 字段如实反映成功/失败);[2]备选审计对象 dataworks audit_log.py(已 case-424 修 resource schema 合并 main @5334fd6)外其他敏感路径 apply_resource_access.py(资源访问鉴权,deferred TODO:85,90 待真实环境实测)。
+- **NEXT_SUGGESTION**: [1]【case-429=429%4=1≠0 非审计轮·sanctioned-merge】合并 opt-audit-1782857234:预审 merge-base=edcd433,git log/diff base..worktree=仅 4428ad4 autonomous-commit-gate.py +12/-4,main 自 base 仅改 case-428.json+state.md archival 不同文件无重叠;git merge-tree --write-tree main auto/opt-audit-1782857234 确认 EXIT 0 无冲突;ast.parse main 回归 OK;opt-worktree.sh . merge opt-audit-1782857234 squash 落 main+清理;[2]case-432=432%4=0 下次审计轮 DO A 续审 pipeline-gate.py(170 行流水线门禁,本轮未审)+apply_resource_access.py 资源访问鉴权 deferred TODO:85,90 待真实环境实测。
 - **自主循环**: 🟢 活跃
   - L1 Inline: 每次回复末尾内联检查 (+ git status)
   - L2 Heartbeat: CronCreate 每7分钟（执行轨——推进 Studio 阶段或主动扫描）
@@ -75,9 +75,9 @@ metadata:
 <!-- GOAL_STATUS: active -->
 <!-- ACTIVE_GOAL: ralph-wiggum-autonomous-loop (每轮一个小工作单位，scout-scan 排序选任务) -->
 <!-- LAST_UPDATED: 2026-07-01 -->
-<!-- LAST_WORKTREE: none（case-427 skip 心跳无源码改动无 worktree；前轮 opt-audit-1782856254 已 squash 合并 main @5334fd6+archival a333922,case-426/427 均 skip,pending=0 clean） -->
+<!-- LAST_WORKTREE: opt-audit-1782857234 @4428ad4（case-428 审计轮 commit-gate 全路径绕过修复,方向 audit:commit-gate-fullpath-bypass,待 sanctioned-merge） -->
 <!-- LAST_OUTCOME: done -->
-<!-- NEXT_SUGGESTION: [1]case-428=428%4=0 审计轮·DO A 代码审计(续审 autonomous-commit-gate.py/pipeline-gate.py 提交门禁鉴权路径);[2]备选 apply_resource_access.py 资源访问鉴权 deferred TODO 待真实环境实测 -->
+<!-- NEXT_SUGGESTION: [1]case-429=429%4=1≠0 非审计轮·sanctioned-merge 合并 opt-audit-1782857234(commit-gate 全路径绕过修复);[2]case-432=432%4=0 下次审计轮 DO A 续审 pipeline-gate.py+apply_resource_access.py -->
 
 | 字段 | 内容 |
 |------|------|
