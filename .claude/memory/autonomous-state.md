@@ -14,15 +14,15 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-06-30T13:58Z（审计轮次：352%4=0=DO A 强制 code-review，符合上轮 case-351 NEXT_SUGGESTION[1] 判定。step0 读 autonomous-constraints.md DO A/B/C 全文。step1 scout #1=autonomous-studio-aone score=0.0 无明确小工作单位（仅 1 项目）；上轮 case-351 指出 dataworks 已连续多轮审(344/348/350)换审 AS 自身源码避盲区。step2 按 DO A.2 审 AS 引擎最敏感 shell 脚本 scripts/opt-worktree.sh（git/subprocess/FS 写编排）。逐行审计发现 1 真问题：ensure_main_wt(line 73) 两次 git worktree add 皆败时尾部 `|| true` 吞错→仍向空 dir 写 .opt-direction 桩+打印✓成功假象→后续 cmd_commit 在伪 worktree 上必败报错晦涩，与 cmd_merge(line 471) 失败即中止纪律不一致。起 opt-worktree 修：改 `if ! add1 && ! add2; then ❌+rmdir+exit 1; fi`（1 文件最小改动，未触 DO B 敏感路径 auth/PII/凭证/外部HTTP/部署/删除-many→不补 audit-log，引擎内部 plumbing 硬化非敏感操作）。验：bash -n OK；双失败场景(pre-occupy auto/optimization 他 worktree)→❌ exit1 无桩无✓(旧实现会✓+写桩)；正常路径→✓+valid worktree；commit 678432f diff 仅 opt-worktree.sh +14/-2。main 未动(还原至 HEAD)，fix 存 optimization worktree 待 sanctioned merge。case-352 outcome=succeeded audit_type=code-review findings=1)**
-- **活跃项目**: autonomous-studio-aone 维护——审计轮次审 AS 自身源码 opt-worktree.sh，发现 ensure_main_wt 吞错假成功 medium finding，已起 opt-worktree commit 678432f 修复待人工审合并
-- **当前阶段**: 审计轮次闭环——pending 1 worktree(optimization 678432f 待审)，main 干净(b2da943)，下轮 case-353=353%4=1≠0=非审计普通路径轮次
+- **最后活跃: 2026-06-30T14:10Z（普通路径轮次：353%4=1≠0=非审计轮次，符合上轮 case-352 NEXT_SUGGESTION[2] 判定。step0 读 constraints DO A/B/C 全文（本轮非审计不触发 A，未触敏感路径不触发 B）。step1 scout-scan #1=AS score=0.0 无明确新单位仅 1 项目，推荐工作单位即「review 1 个待合并 worktree」。step2 审 pending optimization 678432f（上轮 case-352 落地 DO A code-audit 修复：opt-worktree.sh ensure_main_wt 两次 git worktree add 皆败时 || true 吞错→空 dir 写 .opt-direction 桩+✓假成功→cmd_commit 伪 worktree 必败晦涩）。审 diff main..auto/optimization=仅 scripts/opt-worktree.sh +14/-2 单文件：旧尾 || true 吞双失败；新 `if ! add1 && ! add2; then ❌stderr+rmdir+exit1; fi` 后写桩+✓。语义向后兼容（add1 成功短路跳 exit→写桩✓）。merge-base=50e1549 main 已前移 7052bca(case-352 archival 两文件不交无冲突)。step3 验：bash -n OK；SCENARIO A 双失败(auto/optimization 已被他 wt checkout)从 fixed 版提取 ensure_main_wt 跑→❌+exit1+无桩无✓(旧 main 版同场景✓+写桩假成功已对比证退化)；SCENARIO B temp repo fresh→✓+valid wt[auto/optimization]+.opt-direction=engine:general。step4 sanctioned merge opt-worktree.sh . merge optimization→squash 落 main 55f0799+wt 清理。post-merge 验：main HEAD=55f0799、grep '建 optimization worktree 失败' on main=1 命中(修复在位)、wt list 仅 main、pending 1→0、bash -n OK。case-353 outcome=succeeded audit_type=none findings=[])**
+- **活跃项目**: autonomous-studio-aone 维护——普通路径轮次 sanctioned merge 上轮 case-352 的 opt-worktree.sh ensure_main_wt 双失败吞错修复(678432f) 落 main 55f0799，pending 1→0
+- **当前阶段**: 普通路径闭环——pending 0 worktree，main 干净(55f0799)，下轮 case-354=354%4=2≠0=非审计普通路径轮次
 - **GOAL_STATUS**: active
 - **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动；审计轮次每 4 case 强制 code-review/security-review + 敏感路径 audit-log 埋点）
 - **LAST_UPDATED**: 2026-06-30
-- **LAST_WORKTREE**: optimization（commit 678432f，branch auto/optimization，base=main HEAD b2da943，1 文件 scripts/opt-worktree.sh +14/-2，方向=engine:audit；fix=ensure_main_wt 两次 worktree add 皆败改 exit1+rmdir 不再吞错假成功；待人工 sanctioned merge/reject；case-352 code-review outcome=succeeded findings=1）
+- **LAST_WORKTREE**: 无（optimization 678432f 已 squash 合并落 main 55f0799 并清理；pending=0；方向=engine:merge；case-353 outcome=succeeded audit_type=none findings=[]）
 - **LAST_OUTCOME**: done
-- **NEXT_SUGGESTION**: [1]【pending 1·待人工审】optimization worktree commit 678432f：opt-worktree.sh . show optimization 看 diff（ensure_main_wt +14/-2），opt-worktree.sh . merge optimization 合并或 reject；post-merge 验 bash -n+双失败/正常两场景复跑；[2]【case-353=353%4=1≠0=普通路径轮次】scout-scan 取 #1 工作单位（AS score=0.0→若无明确单位则以 review/merge 678432f 为工作单位或跳过）；[3]【下次审计轮次 case-356】续审 AS 自身源码扩到 scripts/scout-scan.py + .claude/hooks/autonomous-commit-gate.py（gate 是 main 守卫本身值得审），避免回 dataworks 单一盲区；[4]【本轮 case-352.json+state.md 须落 archival commit】opt-worktree.sh . commit engine:archival 指定两文件
+- **NEXT_SUGGESTION**: [1]【case-354=354%4=2≠0=普通路径轮次】scout-scan 取 #1 工作单位；AS score=0.0 无明确单位→可跳过或做小硬化（见[2]）；[2]【可选小硬化】scripts/scout-scan.py 或 .claude/hooks/autonomous-commit-gate.py 小改进——先 scout 确认是否真有结构性问题，勿为润色而润色（constraints DO NOT 禁日常自我润色）；[3]【下次审计轮次 case-356=356%4=0】DO A 强制 code-review/security-review：续审 AS 自身源码扩 scripts/scout-scan.py + .claude/hooks/autonomous-commit-gate.py（gate 是 main 守卫本身值得审），避 dataworks 单一盲区；[4]【本轮 case-353.json+state.md 须落 archival commit】opt-worktree.sh . commit engine:archival 指定两文件
 - **自主循环**: 🟢 活跃
   - L1 Inline: 每次回复末尾内联检查 (+ git status)
   - L2 Heartbeat: CronCreate 每7分钟（执行轨——推进 Studio 阶段或主动扫描）
@@ -75,9 +75,9 @@ metadata:
 <!-- GOAL_STATUS: active -->
 <!-- ACTIVE_GOAL: ralph-wiggum-autonomous-loop (每轮一个小工作单位，scout-scan 排序选任务) -->
 <!-- LAST_UPDATED: 2026-06-30 -->
-<!-- LAST_WORKTREE: optimization（commit 678432f base=main HEAD b2da943，1 文件 scripts/opt-worktree.sh +14/-2；fix=ensure_main_wt 两次 worktree add 皆败改 exit1+rmdir 不再吞错假成功；方向=engine:audit；pending 待人工 sanctioned merge/reject；case-352 code-review outcome=succeeded findings=1） -->
+<!-- LAST_WORKTREE: 无（optimization 678432f 已 squash 合并落 main 55f0799 并清理；pending=0；方向=engine:merge；case-353 outcome=succeeded audit_type=none findings=[]） -->
 <!-- LAST_OUTCOME: done -->
-<!-- NEXT_SUGGESTION: [1]【pending 1·待人工审】optimization 678432f：opt-worktree.sh . show optimization 看 diff，opt-worktree.sh . merge optimization 或 reject；post-merge 验 bash -n+双失败/正常两场景复跑； [2]【case-353=353%4=1≠0=普通路径轮次】scout-scan 取 #1（AS score=0.0 无明确单位→以 review/merge 678432f 为工作单位或跳过）； [3]【下次审计轮次 case-356】续审 AS 自身源码扩 scripts/scout-scan.py + .claude/hooks/autonomous-commit-gate.py 避 dataworks 盲区； [4]【本轮 case-352.json+state.md 须落 archival commit】opt-worktree.sh . commit engine:archival 指定两文件 -->
+<!-- NEXT_SUGGESTION: [1]【case-354=354%4=2≠0=普通路径轮次】scout-scan 取 #1（AS score=0.0 无明确单位→可跳过或小硬化）； [2]【可选小硬化】scripts/scout-scan.py 或 .claude/hooks/autonomous-commit-gate.py 小改进——先 scout 确认是否真有结构性问题，勿为润色而润色； [3]【下次审计轮次 case-356=356%4=0】DO A 强制 code-review/security-review 续审 AS 自身源码 scout-scan.py+autonomous-commit-gate.py 避 dataworks 盲区； [4]【本轮 case-353.json+state.md 须落 archival commit】opt-worktree.sh . commit engine:archival 指定两文件 -->
 
 | 字段 | 内容 |
 |------|------|
