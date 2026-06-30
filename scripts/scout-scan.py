@@ -91,6 +91,19 @@ def discover_projects(workspace):
         if has_git or has_status:
             projects.append({"name": entry.name, "path": entry.path,
                               "has_git": has_git, "has_studio": has_status})
+    # 兜底：workspace 自身就是一个独立项目仓（有 .git 或 planning/status.json），
+    # 但其直接子目录都不是项目时——典型如 loop 以引擎仓自身路径为 --workspace
+    # （autonomous-studio-aone 的 scripts/skills/phases 等子目录均非项目仓），
+    # 此前扫描得 0 项目、推荐列表空、引擎彻底失明。此时把 workspace 根本身当作
+    # 唯一项目上报，给出真实健康报告而非沉默的"发现 0 个项目"。
+    # 父级多项目 workspace（如 /home/admin/workspace）子项目齐全，此分支不触发。
+    if not projects:
+        has_git = os.path.isdir(os.path.join(workspace, ".git"))
+        has_status = os.path.isfile(os.path.join(workspace, "planning", "status.json"))
+        if has_git or has_status:
+            root_name = os.path.basename(workspace.rstrip("/")) or "root"
+            projects.append({"name": root_name, "path": workspace,
+                              "has_git": has_git, "has_studio": has_status})
     return projects
 
 
@@ -144,7 +157,12 @@ def count_markers(path):
                     continue
             except OSError:
                 continue
-            if not f.endswith((".py", ".js", ".ts", ".tsx", ".jsx", ".md", ".sh", ".go", ".rs")):
+            # 债务标记是代码注释约定，markdown 是文档/散文：.md 中 `# TODO:` 标题、
+            # `TODO:` 描述性正文都匹配 MARKER 形式但非真债（如 autonomous-studio 的
+            # decision-archive.md 标题/state.md 正文曾致虚假霸榜 #1）。逐个补丁（【TODO】/
+            # `<!-- TODO -->` / 反引号引例）是打地鼠，排除 .md 一劳永逸。
+            # file_tree_and_symbols 仍独立索引 .md 标题，此处仅影响 marker 计数。
+            if not f.endswith((".py", ".js", ".ts", ".tsx", ".jsx", ".sh", ".go", ".rs")):
                 continue
             rel = os.path.relpath(fp, path)
             hit = False
