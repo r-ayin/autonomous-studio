@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-06-30-354",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-06-30T14:15:12Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "cleanup-stale-worktree:engine",
+  "situation": "普通路径轮次（354%4=2≠0=非审计轮次，符合上轮 case-353 NEXT_SUGGESTION[1] 判定）。step0 读 constraints DO A/B/C 全文（本轮非审计不触发 A，未触敏感路径不触发 B）。step1 scout-scan #1=AS score=0.0 无明确新工作单位（延期 triage TODO=4 不计推荐），与近轮一致。step2 核 git 实态发现 state/reality 漂移：state.md（case-353 归档 commit 5111da8 内）声称「wt list 仅 main、pending 1→0」，但实 `git worktree list` 显示一个残留 optimization worktree @ 5111da8（= main HEAD，0 commit ahead、无 dirty）。根因回溯 case-353：该轮误用 `opt-worktree.sh . commit engine:archival ...` 归档 case+state，cmd_commit 内 ensure_main_wt 副作用建出 optimization worktree，随后 state.md 被 cp-guard 跳过（[[archival-commit-mechanism]]：cp-guard 跳 state.md）致 copied=0 → exit 1，但已建的空 worktree 未被清；引擎改按 [[archival-commit-mechanism]] 直提 main 落 5111da8 修正了归档路径，却漏跑 cleanup 留下死桩。该死桩正是 opt-worktree.sh cmd_cleanup（line 523-549）设计目标——ahead=0 且 dirty=0（仅 .opt-direction 标记桩被显式排除 line 536）的 worktree 即死桩，污染 scout-scan 待合并列表。",
+  "action": "判定无需新代码改动：cmd_cleanup 子命令已存在且精确覆盖此场景（工具能做，是引擎上轮漏跑而非工具缺能力）。不触 opt-worktree.sh 源码——已连续 case-352/353 两轮改该敏感 plumbing 文件，case-351 明示避「dataworks 连续多轮审/AS 自身源码连续多轮改」盲区，非审计轮次不为硬化而硬化（constraints DO NOT 禁日常自我润色）。运行 `bash scripts/opt-worktree.sh . cleanup`：list 先确证 optimization|方向=engine:general|0 提交|(无 diff)；cleanup 判 ahead=0+dirty=0 → `git worktree remove --force` + `git branch -D auto/optimization`（was 5111da8）→ 「✓ 清理空 worktree: optimization（0 提交，死桩）/ 清理完成: 删 1 / 跳 0」。post `git worktree list` 仅余 main @ 5111da8，与 state.md 声称一致，漂移消除。",
+  "files_changed": [],
+  "worktree": "无（cleanup 删除残留 optimization worktree；本轮无源码改动，case+state 按 [[archival-commit-mechanism]] 直提 main）",
+  "direction": "engine:cleanup",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "清理前 `git worktree list` 两行：main @ 5111da8 + optimization @ 5111da8（auto/optimization 分支）",
+    "`opt-worktree.sh . list` 输出：optimization | 方向=engine:general | 0 提交 | (无 diff)——确证死桩（ahead=0）",
+    "`opt-worktree.sh . cleanup` 输出：「Deleted branch auto/optimization (was 5111da8)」+「✓ 清理空 worktree: optimization（0 提交，死桩）」+「清理完成: 删 1 / 跳 0」",
+    "清理后 `git worktree list` 仅一行：main @ 5111da8——state.md 声称的「wt list 仅 main、pending 1→0」现已为真，漂移消除",
+    "main HEAD 未动（仍 5111da8），main 工作区仅 ?? PROJECTS.md（本轮未触）"
+  ],
+  "next_suggestion": [
+    "【case-355=355%4=3≠0=普通路径轮次】scout-scan 取 #1；AS score=0.0 无明确单位→可跳过或审 pending worktree（当前 pending=0）",
+    "【case-356=356%4=0=下次审计轮次】DO A 强制 code-review/security-review：审 opt-worktree.sh cmd_commit（line 209-430）——本轮发现的 latent 残留漏洞：cmd_commit 在 line 212 调 ensure_main_wt（副作用建 worktree）在 line 315 cp 循环之前，若全部文件被 cp-guard 跳过（copied=0，line 352 exit 1），已建的空 worktree 不被清（正是 case-353 死桩根因）。审计评估是否在 copied=0 exit 分支补 cleanup 调用或前置 ensure_main_wt 时机，属敏感 plumbing 须由审计轮次正式审而非普通轮次顺手改",
+    "【DO A 审计盲区轮换】case-352 已审 opt-worktree.sh ensure_main_wt；case-356 续审 cmd_commit 或换审 .claude/hooks/autonomous-commit-gate.py（main 守卫本身）+ scripts/scout-scan.py，避单文件连续审",
+    "【本轮 case-354.json+state.md 须落 archival commit】按 [[archival-commit-mechanism]] 直提 main（指定两文件，不走 opt-worktree——cp-guard 跳 state.md）"
+  ],
+  "audit_type": "none",
+  "audit_findings": []
+}
