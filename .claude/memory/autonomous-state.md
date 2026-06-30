@@ -14,15 +14,15 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-07-01T07:22Z（case-443=今日第79例,443%4=3≠0 非审计轮·skip 心跳。承接 case-442 NEXT[1]『case-443 非审计轮·skip 心跳或承接新 scout-scan 推荐』。scout-scan #1=AS score=0.0『无明确小工作单位——可跳过或做文档润色』,真债务 TODO/FIXME/HACK=0/0/0,延期 TODO=4 全历史已 triage(bff_client.py case-420 F3+case-436 F1 已合并 main@125a15e/apply_resource_access.py case-432 info deferred/scaffold-skill.sh case-046 模板占位),pending_worktrees.total=0。非审计轮+score 0.0+DO NOT #14 禁日常自我润色→无可执行小工作单位→skip 心跳(无源码改动/无 opt-worktree/无 LIVE 同步)。三验干净:git status=空、worktree list=仅 main @6d4f552、branch=仅 * main。case-443.json+state.md 直提 main(archival-commit-mechanism)。case-443 outcome=succeeded audit_type=none audit_findings=[]。下轮 case-444=444%4=0 审计轮·DO A 代码审计 选有源码项目）**
-- **活跃项目**: autonomous-studio-aone 维护——case-443 skip 心跳(非审计轮 score 0.0 无可执行小工作单位)。**已审源码 16 处:.claude/hooks/ 7 hook+scaffold-skill.sh+opt-worktree.sh+scout-scan.py(case-380/049)+triage.py+bff_client.py(case-420 F3+case-436 F1 _log_warn 孪生修 已合并 main@125a15e)+audit_log.py(case-424)+autonomous-commit-gate.py(case-428 全路径+case-440 commit-creating 补齐 已合并 main@051bb4b)+apply_resource_access.py(case-432 info deferred)+pipeline-gate.py(case-432/433 已合并 main)**。
-- **当前阶段**: case-443 skip 心跳完成(非审计轮无可执行小工作单位);下轮 case-444=444%4=0 审计轮·DO A 代码审计 选有源码项目
+- **最后活跃: 2026-07-01T23:24Z（case-444=今日第80例,444%4=0 审计轮·DO A security-review。承接 case-443 NEXT[1]『case-444 审计轮·DO A 代码审计 选有源码项目』。scout-scan #1=AS score=0.0 但审计轮不 skip,挑未深审的敏感路径 .claude/hooks/notify-phone.py（DO B 敏感:外部调用 socket/curl subprocess/urllib HTTP 出站 + secret DINGTALK_WEBHOOK URL 内嵌 access_token;此前仅 case-388 审 dingtalk_template str.format 守卫,is_do_not_disturb+dingtalk dispatch 未深审）。逐行 security-review 发现 F1(medium 真实):is_do_not_disturb(行90 原)解析 DND schedule 无异常守卫——条目缺 start/end→KeyError、值非 'HH:MM' 如 '9'→IndexError parts[1]、非数字如 'ab:cd'→ValueError int(),冒泡崩 send()/main() 致 hook 非零退出、静默丢全部通知(含 CRITICAL AskUserQuestion 确认,违背 case-388 通道不断的初衷)。修 1 文件 +59/-7:①per-entry try/except fail-open 跳过坏条目(合法条目仍生效);②DO B:notify_via_dingtalk 触及 secret 敏感路径,补 _audit_log_notify inline 埋点(同构 gate _audit_log_block,action=secret_access/level=critical/result 如实 success|failure/detail 绝不记 webhook 明文防 access_token 泄漏)。验证:AST OK+4 例 malformed schedule 全 fail-open 无 crash+dummy webhook 触发 URLError 审计条目 schema-conformant 写入 .audit/audit-2026-06-30.jsonl(id 模式/required 字段/action/level 全符,errorMessage=exception=URLError 无 URL/token 明文),测试污染已清理。提交 opt-worktree opt-security-1782861950 @b89c1be 待 sanctioned-merge。case-444.json+state.md 直提 main(archival-commit-mechanism)。case-444 outcome=succeeded audit_type=security-review audit_findings=2 条(F1 medium 已修待合并 + F2 low DO B 埋点已补待合并)。下轮 case-445=445%4=1≠0 非审计轮·sanctioned-merge opt-security-1782861950 @b89c1be）**
+- **活跃项目**: autonomous-studio-aone 维护——case-444 审计轮 security-review notify-phone.py(已修 F1+DO B 埋点 待合并 opt-security-1782861950)。**已审源码 17 处:.claude/hooks/ 7 hook+scaffold-skill.sh+opt-worktree.sh+scout-scan.py(case-380/049)+triage.py+bff_client.py(case-420 F3+case-436 F1 _log_warn 孪生修 已合并 main@125a15e)+audit_log.py(case-424)+autonomous-commit-gate.py(case-428 全路径+case-440 commit-creating 补齐 已合并 main@051bb4b)+apply_resource_access.py(case-432 info deferred)+pipeline-gate.py(case-432/433 已合并 main)+notify-phone.py(case-444 F1 is_do_not_disturb 守卫+DO B secret_access 埋点 待合并 opt-security-1782861950)**。
+- **当前阶段**: case-444 审计轮 security-review 完成(F1 修复+DO B 埋点提交 opt-security-1782861950 @b89c1be 待合并);下轮 case-445=445%4=1≠0 非审计轮·sanctioned-merge
 - **GOAL_STATUS**: active
 - **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动；审计轮次每 4 case 强制 code-review/security-review + 敏感路径 audit-log 埋点）
 - **LAST_UPDATED**: 2026-07-01
-- **LAST_WORKTREE**: none（case-443 skip 心跳，无 opt-worktree；上一合并 optimization @0353f7d 已 squash→main 051bb4b 分支已删）
+- **LAST_WORKTREE**: opt-security-1782861950 @b89c1be（case-444 审计轮 notify-phone.py F1 修复+DO B secret_access 埋点，待 sanctioned-merge；另存空 optimization worktree @1977c80 无 commit 待清理）
 - **LAST_OUTCOME**: done
-- **NEXT_SUGGESTION**: [1]【case-444=444%4=0 审计轮·DO A 代码审计】选有源码项目(gate 已 case-428/440 两轮审计,可挑新敏感路径复审：bff_client.py(case-420 F3+case-436 F1 _log_warn 修补后)/apply_resource_access.py(case-432 info deferred)/pipeline-gate.py(case-432/433),或审未审过的 triage.py/scout-scan.py)
+- **NEXT_SUGGESTION**: [1]【case-445=445%4=1≠0 非审计轮·sanctioned-merge】合并 opt-security-1782861950 @b89c1be（notify-phone.py F1 is_do_not_disturb 守卫+DO B _audit_log_notify 埋点）→ squash 落 main + 删分支 + worktree 清理(含空 optimization wt)；四步预审同 case-437/441（git show stat/merge-tree 无冲突/ast.parse main+wt/grep _audit_log_notify+try-except）
 - **自主循环**: 🟢 活跃
   - L1 Inline: 每次回复末尾内联检查 (+ git status)
   - L2 Heartbeat: CronCreate 每7分钟（执行轨——推进 Studio 阶段或主动扫描）
@@ -75,9 +75,9 @@ metadata:
 <!-- GOAL_STATUS: active -->
 <!-- ACTIVE_GOAL: ralph-wiggum-autonomous-loop (每轮一个小工作单位，scout-scan 排序选任务) -->
 <!-- LAST_UPDATED: 2026-07-01 -->
-<!-- LAST_WORKTREE: none（case-443 skip 心跳,无 opt-worktree;上一合并 optimization @0353f7d 已 squash→main 051bb4b 分支已删） -->
+<!-- LAST_WORKTREE: opt-security-1782861950 @b89c1be（case-444 审计轮 notify-phone.py F1 修复+DO B 埋点 待 sanctioned-merge;另存空 optimization wt @1977c80 待清理） -->
 <!-- LAST_OUTCOME: done -->
-<!-- NEXT_SUGGESTION: [1]case-444=444%4=0 审计轮·DO A 代码审计 选有源码项目(gate 已 case-428/440 两轮审计,可挑新敏感路径 bff_client.py/apply_resource_access.py/pipeline-gate.py 复审,或审未审过的 triage.py/scout-scan.py) -->
+<!-- NEXT_SUGGESTION: [1]case-445=445%4=1≠0 非审计轮·sanctioned-merge opt-security-1782861950 @b89c1be(notify-phone.py F1 守卫+DO B secret_access 埋点)→squash 落 main+删分支+worktree 清理;四步预审同 case-437/441 -->
 
 | 字段 | 内容 |
 |------|------|

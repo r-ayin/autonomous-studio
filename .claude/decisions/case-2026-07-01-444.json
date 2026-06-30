@@ -1,0 +1,32 @@
+{
+  "case_id": "case-444",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-01T23:24Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "code-audit:autonomous-studio-aone (.claude/hooks/notify-phone.py security-review)",
+  "situation": "审计轮：case-444=444%4=0 → DO A 强制代码审计工作单位。今日已 79 例 case（case-443=今日第79例）。scout-scan #1=autonomous-studio-aone score=0.0（仅 1 项目），但审计轮必须挑有源码项目做 code-review/security-review，不因 score 0.0 skip。state.md NEXT_SUGGESTION[1] 列已审源码 16 处（gate case-428/440、bff_client case-420/436、apply_resource_access case-432、pipeline-gate case-432/433、audit_log case-424、scout-scan case-380/049、triage 等）；notify-phone.py 此前仅 case-388 审过 dingtalk_template str.format 守卫，is_do_not_disturb 与 dingtalk dispatch 的 secret/外部调用路径未深审。notify-phone.py 是 DO B 敏感路径文件（外部调用：socket TCP、curl subprocess、urllib HTTP 出站；secret：DINGTALK_WEBHOOK URL 内嵌 access_token）。",
+  "action": "DO A security-review notify-phone.py（逐行）。发现 F1（medium 真实）：is_do_not_disturb（行 90-102 原）解析 DND schedule 无异常守卫——schedule 条目缺 start/end 键（KeyError）、值非 'HH:MM' 如 '9'（IndexError on parts[1]）、非数字如 'ab:cd'（ValueError on int()）→ 一路冒泡崩 send()→main()→hook 非零退出→静默丢全部通知（含 CRITICAL AskUserQuestion 确认，违背 case-388 保证通知通道不断的初衷）。修复 1 文件 .claude/hooks/notify-phone.py +59/-7：①per-entry try/except 捕 KeyError/IndexError/ValueError/AttributeError/TypeError，fail-open 跳过坏条目（合法条目仍生效），stderr 记 skip 原因；②DO B：notify_via_dingtalk 改动触及 secret 敏感路径（webhook URL 内嵌 access_token），补 _audit_log_notify inline 埋点（同构 autonomous-commit-gate.py _audit_log_block/_audit_log_exempt，append-only 写 <PROJECT_DIR>/.audit/audit-YYYY-MM-DD.jsonl），action=secret_access/sensitiveLevel=critical/result 如实 success|failure（errcode!=0 或异常→failure，不恒 success）/detail 严禁含 webhook 明文（仅记 errcode 或异常类型，防 access_token 泄漏审计日志）。验证：AST parse OK；4 例 malformed schedule（['start':'9']、['ab:cd']、['foo':'bar']、混合）全 fail-open 返回 False 无 crash；dummy webhook（http://127.0.0.1:1）触发 URLError → 审计条目 schema-conformant 写入 .audit/audit-2026-06-30.jsonl（id 匹配 audit-\\d{8}-\\d{6}-[A-Za-z0-9]{6}、required 字段全在、action=secret_access/result=failure/sensitiveLevel=critical/resource.identifier=dingtalk-webhook-token、errorMessage='exception=URLError' 无 URL/token 明文）；测试污染条目已清理。提交 opt-worktree opt-security-1782861950 @b89c1be 待 sanctioned-merge。",
+  "files_changed": [".claude/hooks/notify-phone.py"],
+  "worktree": "opt-security-1782861950 @b89c1be (待 sanctioned-merge)",
+  "direction": "audit",
+  "outcome": "succeeded",
+  "outcome_evidence": "git -C opt-security-1782861950 show HEAD --stat = .claude/hooks/notify-phone.py | 66 +++-- 59 insertions 7 deletions；commit b89c1be 'opt(security:notify-phone-hardening): case-444...'；worktree 文件 grep try: =12、_audit_log_notify=2、import random=1（三处编辑俱在）；AST ast.parse OK；4 例 malformed DND schedule 全返回 False 无异常（fail-open 验证）；.audit/audit-2026-06-30.jsonl 末条 id=audit-20260630-232355-4eg8an action=secret_access result=failure sensitiveLevel=critical resource.identifier=dingtalk-webhook-token errorMessage=exception=URLError（schema required 字段 id/timestamp/userId/action/resource/result/ip 全在，id 模式匹配，无 webhook 明文泄漏）。",
+  "next_suggestion": ["case-445=445%4=1≠0 非审计轮·sanctioned-merge opt-security-1782861950 @b89c1be（notify-phone.py F1 修复+DO B 埋点）→ squash 落 main + 删分支 + worktree 清理；四步预审同 case-437/441（git show stat/merge-tree 无冲突/ast.parse main+wt/grep _audit_log_notify+try-except）"],
+  "audit_type": "security-review",
+  "audit_findings": [
+    {
+      "file": ".claude/hooks/notify-phone.py",
+      "line": 90,
+      "severity": "medium",
+      "finding": "is_do_not_disturb 的 DND schedule 解析循环无异常守卫：schedule 条目缺 start/end 键→KeyError；值非 'HH:MM' 格式（如 '9'）→IndexError on parts[1]；非数字（如 'ab:cd'）→ValueError on int()。任一冒泡崩 send()→main()→hook 非零退出，静默丢全部通知，含 CRITICAL AskUserQuestion 确认（违背 case-388 通知通道不因配置瑕疵而断的保证）。",
+      "remediation": "per-entry try/except 捕 KeyError/IndexError/ValueError/AttributeError/TypeError，fail-open 跳过坏条目（合法条目仍生效），stderr 记 skip 原因。已修复 @b89c1be。"
+    },
+    {
+      "file": ".claude/hooks/notify-phone.py",
+      "line": 239,
+      "severity": "low",
+      "finding": "notify_via_dingtalk 调用嵌入 access_token 的 webhook URL（secret）做 HTTP 出站，DO B 列为敏感路径（外部调用+secret），但此前无审计埋点——secret 的使用/成功/失败不可观测。",
+      "remediation": "DO B 补 _audit_log_notify inline 埋点（action=secret_access/sensitiveLevel=critical），result 如实记 success|failure，detail 绝不记 webhook 明文（防 access_token 入审计日志）。已埋点 @b89c1be。"
+    }
+  ]
+}
