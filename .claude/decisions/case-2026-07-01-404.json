@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-07-01-404",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-07-01T05:30:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "清扫已合并的 stale auto/* 本地分支（predates case-322 merge-cleanup 修复的历史遗留）",
+  "situation": "scout-scan 全项目 score 0.0、#1 1BfrYW9R 全部门禁绿、npm test 38/38 过、无 dirty 信号。按 case-391 纪律下移找真实信号：1BfrYW9R 是唯一在非 main 分支且 git branch 列出 6 个 auto/* 本地分支，其中 5 个时间戳在 1782639526-1782734568（Jun 28-29），早于 case-322（2026-06-30）给 cmd_merge/cmd_reject 加 branch -D auto/<wt> 的修复，故从未被自动清扫。dev（onedaybot-dev）的 squash-merge 提交名引用的 worktree 时间戳与这些 stale 分支时间戳多数不一致，无法凭 merge-log 名字判定，且 cherry/numstat 在 squash 下不可靠（case-327/git-cherry-unreliable）。",
+  "action": "对每个 stale auto/* 分支逐文件做 blob 一致性核验（case-364 法）：取分支 tip 提交相对其 parent 改动的每个非 .opt-direction 文件，得分支侧 blob，再在 dev 的该文件历史 git log 中搜同 blob。命中=该文件版本曾在 dev 出现=已合并=超前可删；未命中=未合并须保留。结果：opt-scaffold（roadmap.md 命中 dev a73579e）、opt-routing-1782640895（PROGRESS.md+index.html 命中 dev 24a16c3）、opt-gates-1782640593（build.js+dev-server.js+package.json 命中 dev f135d36）、opt-gates-1782734568（GATES.md+package.json+test/smoke.test.js 命中 dev 9fff8af）四分支全文件命中=可删；opt-1BfrYW9R-1782640068（PROGRESS.md+index.html blob 均未在 dev）保留——核验为 opt-routing-1782640895 的同祖姊妹早 14 分钟的 hash-routing 草案，功能已被 opt-routing 合并版本取代但 blob 不等，保守保留。auto/optimization 为 standing worktree ref（指向 dev tip 0affb7a），不动。执行 git branch -D 删 4 分支（gate 豁 auto/* 放行 exit 0）。",
+  "files_changed": [],
+  "worktree": "无文件改动——ref 级清扫，直接在 1BfrYW9R 主 checkout（onedaybot-dev）执行 git branch -D；dev tip 删除前后均为 0affb7a 不变",
+  "direction": "stale-branch-sweep",
+  "outcome": "succeeded",
+  "outcome_evidence": "git branch -D 输出 Deleted branch auto/opt-scaffold-1782640068(33efa30)/opt-routing-1782640895(5559c1f)/opt-gates-1782640593(59066b6)/opt-gates-1782734568(2a998e0) 四行；删除后 git branch 仅剩 auto/opt-1BfrYW9R-1782640068 与 auto/optimization；onedaybot-dev tip 删除前后均 0affb7a867d8083b6e2049226b719bae12dcb7dc（未动 main）；npm test 删除后 38 pass 0 fail（与删除前一致）证无回归；4 分支删除前每文件 blob 均经 git log dev <file> 命中历史提交证内容已在 dev",
+  "next_suggestion": "opt-1BfrYW9R-1782640068 为未合并的 hash-routing 早期草案（blob 不在 dev 但功能被 opt-routing 取代），下轮可决定是否归档为 tag 或确认无独有价值后删除；另 autonomous-studio #2 仍待合并 1 worktree + 7 延期 TODO，但属 case-record-lag 纯 merge 模式勿独占轮次；scout 全 0.0 持续时可启动霸榜项目结构性大项（如 1BfrYW9R Phase 2 浏览器端到端实测，GATES 多处标注待 Phase 2）"
+}
