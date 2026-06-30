@@ -50,6 +50,7 @@ from runtime import (
 )
 from pagination import PaginationMixin
 from output import OutputMixin
+from audit_log import record as _audit_write
 
 __version__ = _read_skill_version()
 
@@ -529,6 +530,19 @@ class BFFClient(PaginationMixin, OutputMixin):
 
         cost_ms = (time.time() - start_time) * 1000
         self._log(path, method, params, data, json_body, result, cost_ms)
+
+        # 审计埋点（DO B）：写操作执行即落审计。_do_request 是唯一 HTTP chokepoint，
+        # 经 confirm_write()（write_confirmed 非空 = sanctioned 两阶段确认）或 call_raw()
+        # （write_confirmed 为空 = 绕过确认门禁）都在此统一记录，使绕过不再 silent。
+        if api_meta.get("is_write_operation"):
+            _audit_write(
+                self._work_dir,
+                api_name=api_name,
+                params_summary=",".join(kwargs.keys()),
+                result_code=result.get("code") if isinstance(result, dict) else None,
+                user_id=getattr(self, "_cached_base_id", None) or os.getenv("DW_USER_BASE_ID") or "unknown",
+                bypass=write_confirmed is None,
+            )
 
         return result
 
