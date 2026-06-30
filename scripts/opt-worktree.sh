@@ -36,6 +36,25 @@ if [[ ! -d "$PROJECT" ]]; then
   exit 2
 fi
 PROJECT="$(cd "$PROJECT" && pwd)"
+# 嵌套根治（standing-wt-from-standing-wt，case-402）：从 standing optimization worktree
+# 内跑本脚本时，PROJECT 落在 .opt-worktrees/<proj>/<wt> 内，下方 WT_BASE 会算成
+# .../.opt-worktrees/<proj>/<wt>/../.opt-worktrees/<wt> → 双嵌到不存在的空壳目录，
+# cmd init 会据此建伪 .opt-worktrees（[[opt-worktree-standing-wt-staleness]] 同源嵌套）。
+# 上溯到 .opt-worktrees 之前的真 main checkout，让 WT_BASE 重新锚定真项目根。
+case "$PROJECT" in
+  */.opt-worktrees/*)
+    _real_prefix="${PROJECT%%/.opt-worktrees/*}"   # .opt-worktrees 之前的工作区根
+    _rest="${PROJECT#*/.opt-worktrees/}"            # <proj>/<wt>[/<sub>]
+    _proj_name="${_rest%%/*}"                       # .opt-worktrees 下与 basename(PROJECT) 同名的真项目目录
+    _candidate="$_real_prefix/$_proj_name"
+    if [[ -d "$_candidate/.git" || -f "$_candidate/.git" ]]; then
+      PROJECT="$_candidate"
+    else
+      echo "错误: 在 .opt-worktrees 内运行但找不到真 main checkout '$_candidate'——请从项目根目录跑本脚本" >&2
+      exit 2
+    fi
+    ;;
+esac
 # per-project 子目录，避免多项目 worktree 撞车（之前 $PROJECT/../.opt-worktrees 共享导致跨项目冲突）
 WT_BASE="$PROJECT/../.opt-worktrees/$(basename "$PROJECT")"
 # 动态探测项目默认分支：x-tool/moni 用 master，autonomous-studio 用 main。
