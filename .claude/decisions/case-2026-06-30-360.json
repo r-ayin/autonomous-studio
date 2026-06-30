@@ -1,0 +1,43 @@
+{
+  "case_id": "case-2026-06-30-360",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-06-30T15:15:00Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "code-audit:autonomous-studio",
+  "situation": "强制审计轮(360%4=0,DO A 节)。承接 case-359 NEXT_SUGGESTION[1]:换审 commit-gate.py。scout-scan #1=autonomous-studio-aone score=0.0 无明确小工作单位——按审计指令从 #1 起选有源码项目(仅 AS 自身),对 .claude/hooks/autonomous-commit-gate.py(PreToolUse Bash 权限护栏)做 code-review。该 gate 是 autonomous 模式下阻止引擎直接 git commit/push/merge 到 main 的确定性 backstop,属敏感路径(鉴权/permission)。",
+  "action": "code-review 审 autonomous-commit-gate.py 全文(214 行)。发现两处真实可利用绕过 + 一处审计缺口:\n1. [high] 命令链绕过:_git_parse 用 toks.index('git') 只取【首个】git token 作为子命令来源;对 `git -C . status && git -C . commit` 这类链式命令,首个 git 的子命令=status(无害),后段真实 commit 被忽略 → gate 返回 {} exit=0 放行 → 直接 commit 到 main 绕过护栏。实测确认(B/C 用例 exit=0)。; / || / | 同理。\n2. [medium] push refspec 绕过:push 检测仅 `any(t in MAIN_BRANCHES for t in rest)` 比对裸 token,未拆 refspec 的 src:dst 与 +force 前缀 → `git push origin HEAD:main`(从 feature 分支)不被识别(裸 token 是 origin/HEAD:main,均≠main)。\n3. [medium→已补] 审计缺口:gate 作为 permission 控制拦截 main 直写时无审计日志(B 节要求敏感路径补埋点)。\n修复(起 opt-worktree engine:audit-gate,1 源文件+1 配置):\n- 新增 _git_segments:按 &&/||/;/|/换行 拆段,逐段独立 _eval_segment;分支与 repo 按本段 -C 解析(顺带修跨 repo 链 `-C A ... && -C B commit` 的 B 分支定位)。残留:$(git)/反引号命令替换未拆(低危,需 LLM 刻意构造,不闭环)。\n- 新增 _push_refs_main:拆 refspec(: 与 +force 前缀)识别 HEAD:main / main:main / +ref。\n- 新增 _audit_log_block(fail-safe):拦截时 append-only 写 .audit/audit-YYYY-MM-DD.jsonl,字段对齐 audit-log.schema.json(id=audit-YYYYMMDD-HHmmss-rand6/timestamp/userId=engine/userRole=engine/action=compliance_check/resource.type=permission/resource.identifier=git-main-write/result=denied/ip=local/sensitive=true/sensitiveLevel=high/details.reason+errorMessage);写失败吞异常不影响 exit 2。\n- .gitignore 加 .audit/(运行时审计日志不入版本控制)。",
+  "files_changed": [".claude/hooks/autonomous-commit-gate.py", ".gitignore"],
+  "worktree": "optimization @ b87ecc0 (pending sanctioned-merge)",
+  "direction": "audit",
+  "outcome": "succeeded",
+  "outcome_evidence": "1) 修复前实跑(标记存在):B)`git -C . status && git -C . commit -m x` → {} exit=0(绕过确认);修复后同命令 → {decision:block} exit=2(block 确认)。2) C)`...; git -c user.name=a commit -m x` → exit=2 block。3) E)`git push origin HEAD:main` → exit=2 block。4) F)feature 分支(auto/opt-test-audit) `git -c ... commit` → {} exit=0 放行(无回归,opt-worktree commit 路径不受影响)。5) H)`echo hello` → exit=0 放行。6) G)clean tree `git -C . commit` → exit=2 block(case 豁免仅在 case-*.json 实际 staged 时生效,同旧 fail-closed,无回归)。7) audit 条目 schema 校验:python3 校 id 匹配 ^audit-\\d{8}-\\d{6}-[a-zA-Z0-9]{6}$ + required 字段齐备 + action=compliance_check/result=denied/resource.type=permission 通过。8) python3 ast.parse syntax OK。9) main 工作树 clean(HEAD=acba16d,git status 空)。10) optimization worktree commit b87ecc0 含修复:git show HEAD:.claude/hooks/autonomous-commit-gate.py | grep -c '_git_segments|_audit_log_block|_push_refs_main' = 7;.gitignore grep '.audit/' = 1;ast.parse OK。11) worktree list 仅 main + optimization。",
+  "next_suggestion": [
+    "sanctioned-merge:下轮 case-361(361%4=1≠0 非审计普通路径)执行 opt-worktree.sh . merge optimization(b87ecc0)进 main;差异审:本 commit 改 .claude/hooks/autonomous-commit-gate.py+.gitignore,与 main 无同名文件改动重叠 → 干净 squash 可应用",
+    "后续审计轮换:case-364(364%4=0)可审 scripts/scout-scan.py 或 .claude/hooks/auto-commit.py(后者 line 287 亦读 .autonomous_active 标记,逻辑关联)",
+    "gate 残留增强(低危,可选):$(git ...)/反引号命令替换未纳入 _SHELL_OPS_RE 拆分;若未来判定需要,可用 shlex 切词+递归求值 $() 段,但当前需 LLM 刻意构造且引入解析复杂度,不闭环"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": ".claude/hooks/autonomous-commit-gate.py",
+      "line": 52,
+      "severity": "high",
+      "finding": "_git_parse 用 toks.index('git') 只取首个 git token 作为子命令来源;命令链 `git -C . status && git -C . commit` 中首个 git 子命令=status(无害),后段真实 commit 被忽略,gate 放行 → 直接 commit 到 main 绕过确定性护栏(实测 exit=0)。; / || / | 同理。",
+      "remediation": "新增 _git_segments 按 &&/||/;/|/换行 拆段,逐段独立 _eval_segment;分支与 repo 按本段 -C 解析。修复后实测 B/C 命令 exit=2 block。"
+    },
+    {
+      "file": ".claude/hooks/autonomous-commit-gate.py",
+      "line": 160,
+      "severity": "medium",
+      "finding": "push 检测 `any(t in MAIN_BRANCHES for t in rest)` 仅比对裸 token,未拆 refspec src:dst 与 +force 前缀;`git push origin HEAD:main`(从 feature 分支)的裸 token 为 origin/HEAD:main 均≠main → 不识别,绕过。",
+      "remediation": "新增 _push_refs_main:对每个 refspec token lstrip('+') 后 split(':') 检查各 part 是否∈MAIN_BRANCHES,覆盖 HEAD:main / main:main / +force。修复后实测 E exit=2 block。"
+    },
+    {
+      "file": ".claude/hooks/autonomous-commit-gate.py",
+      "line": 197,
+      "severity": "medium",
+      "finding": "gate 作为 permission 控制拦截 main 直写(commit/push/merge/reset --hard/branch -D/update-ref)时无审计日志记录,违反 B 节(鉴权/permission 敏感路径须补 audit-log 埋点);拦截事件不可追溯。",
+      "remediation": "新增 _audit_log_block(fail-safe):拦截时 append-only 写 .audit/audit-YYYY-MM-DD.jsonl,字段对齐 audit-log.schema.json(result=denied 如实反映拦截);.gitignore 加 .audit/。schema 校验通过。"
+    }
+  ]
+}

@@ -14,15 +14,15 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-06-30T15:10Z（普通路径轮次：359%4=3≠0=非审计。承接 case-358 NEXT_SUGGESTION[1] sanctioned-merge。关键差异审：非 disjoint——case-357 已 squash 入 main 的 .gitignore+opt-worktree.sh(case-355+356 内容) 与 optimization 分支同名文件重叠；git diff main..auto/optimization 证实实际差异仅 1 处 opt-worktree.sh cmd_cleanup 阶段2 orphan-gc +21 行（.gitignore diff 空=已一致，case-356 created_new_wt 两边相同=不显）。superset 关系 3-way squash 干净应用。运行 opt-worktree.sh . merge optimization：git 'Auto-merging scripts/opt-worktree.sh' 无冲突标记→commit a962285→wt remove。验证 git log -4 a962285 on ba706bb 连续无回退+worktree list 仅 main+git status 空+grep 孤儿分支清理=1(case-358 fix 入 main)+check-ignore PROJECTS.md=IGNORED(case-355 保留)+grep created_new_wt=3(case-356 保留)+bash -n OK+pending=0。case-359 outcome=succeeded audit_type=none findings=[] files_changed=[] work_unit=sanctioned-merge。main HEAD=a962285 干净 pending=0）**
-- **活跃项目**: autonomous-studio-aone 维护——case-358 orphan-gc 已 sanctioned-merge 入 main a962285，pending 清零，main 干净
-- **当前阶段**: merge 后净空——main HEAD=a962285，pending worktree=0，下轮 case-360=360%4=0=DO A 强制审计轮次换审 commit-gate.py 或 scout-scan.py
+- **最后活跃: 2026-06-30T15:15Z（强制审计轮次：360%4=0=DO A。承接 case-359 NEXT_SUGGESTION[1] 换审 commit-gate.py。scout #1=AS score=0.0 无明确工作单位——审计指令从 #1 起选有源码项目(仅 AS 自身)做 code-review。审 .claude/hooks/autonomous-commit-gate.py(PreToolUse Bash 权限护栏,main 守卫)发现两处真实绕过+一处审计缺口:[high]命令链绕过 _git_parse toks.index('git') 只取首个 git token→`git -C . status && git -C . commit` 后段 commit 被忽略放行(实测 exit=0);[medium]push refspec `HEAD:main` 未拆 src:dst 识别;[medium]permission 拦截无 audit-log(违 B 节)。起 opt-worktree engine:audit-gate 修复:_git_segments 按 &&/||/;/|/换行 拆段逐段 _eval_segment+_push_refs_main 拆 refspec+_audit_log_block(fail-safe 写 .audit/audit-YYYY-MM-DD.jsonl 对齐 schema,result=denied)+.gitignore 加 .audit/。验证:B/C 命令 exit0→exit2 block;E push HEAD:main→block;F feature 分支 commit→exit0 放行(无回归);H echo→放行;audit 条目 schema 校验通过;ast.parse OK;main clean HEAD=acba16d;wt commit b87ecc0 含修复(grep _git_segments/_audit_log_block/_push_refs_main=7,.audit/=1,syntax OK)。case-360 outcome=succeeded audit_type=code-review findings=3。main HEAD=acba16d 干净 pending optimization @b87ecc0 待 merge）**
+- **活跃项目**: autonomous-studio-aone 维护——case-360 修 commit-gate 命令链绕过+补审计埋点,pending optimization @b87ecc0 待 sanctioned-merge
+- **当前阶段**: 审计轮次完成,修复在 optimization worktree 待 merge——main HEAD=acba16d,pending=1(@b87ecc0),下轮 case-361=361%4=1≠0 非审计普通路径可执行 sanctioned-merge
 - **GOAL_STATUS**: active
 - **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动；审计轮次每 4 case 强制 code-review/security-review + 敏感路径 audit-log 埋点）
 - **LAST_UPDATED**: 2026-06-30
-- **LAST_WORKTREE**: optimization @7bfecc8（已 squash 合并入 main a962285 + worktree 清理；git worktree list 仅 main@a962285；case-359 outcome=succeeded audit_type=none findings=[] sanctioned-merge）
-- **LAST_OUTCOME**: done
-- **NEXT_SUGGESTION**: [1]【审计轮次·case-360】360%4=0=DO A 强制 code-review/security-review（承接 case-358 NEXT_SUGGESTION[2] 审计盲区轮换）→换审 .claude/hooks/autonomous-commit-gate.py（main 守卫从未被审）或 scout-scan.py 标记计数/排除逻辑，挑有源码项目；[2]【case-356 low 延后·非审计轮】opt-worktree.sh cmd_commit line402/424 另两 exit1 路径未接 created_new_wt 回滚→抽共用函数 _rollback_new_wt 统一全 exit1 路径；[3]【次级发现·延后】case-356 次级 5 个 pre-fix 孤儿分支 auto/opt-dataworks-*（无 linked wt 历史遗留）→cmd_cleanup orphan-gc 阶段2 现已入 main，下轮非审计可跑 cleanup 验证清此残留
+- **LAST_WORKTREE**: optimization @b87ecc0（pending sanctioned-merge;含 _git_segments+_push_refs_main+_audit_log_block 修复+.gitignore .audit/;git worktree list=main@acba16d+optimization;case-360 outcome=succeeded audit_type=code-review findings=3）
+- **LAST_OUTCOME**: in_progress
+- **NEXT_SUGGESTION**: [1]【sanctioned-merge·case-361】361%4=1≠0 非审计普通路径执行 opt-worktree.sh . merge optimization(b87ecc0)进 main;差异审:本 commit 改 .claude/hooks/autonomous-commit-gate.py+.gitignore,与 main 无同名文件改动重叠→干净 squash 可应用;[2]【审计盲区轮换·case-364】364%4=0 换审 scripts/scout-scan.py 或 .claude/hooks/auto-commit.py(后者 line287 亦读 .autonomous_active 标记,逻辑关联);[3]【gate 残留·低危延后】$(git)/反引号命令替换未纳入 _SHELL_OPS_RE 拆分(需 LLM 刻意构造),可选未来用 shlex+递归求值 $() 段增强,引入复杂度不闭环
 - **自主循环**: 🟢 活跃
   - L1 Inline: 每次回复末尾内联检查 (+ git status)
   - L2 Heartbeat: CronCreate 每7分钟（执行轨——推进 Studio 阶段或主动扫描）
@@ -75,9 +75,9 @@ metadata:
 <!-- GOAL_STATUS: active -->
 <!-- ACTIVE_GOAL: ralph-wiggum-autonomous-loop (每轮一个小工作单位，scout-scan 排序选任务) -->
 <!-- LAST_UPDATED: 2026-06-30 -->
-<!-- LAST_WORKTREE: none（optimization @7bfecc8 已 squash 合并入 main a962285 + worktree 清理；git worktree list 仅 main@a962285；case-359 outcome=succeeded audit_type=none findings=[] sanctioned-merge） -->
-<!-- LAST_OUTCOME: done -->
-<!-- NEXT_SUGGESTION: [1]【审计轮次·case-360】360%4=0=DO A 强制 code-review/security-review（承接 case-358 NEXT_SUGGESTION[2] 审计盲区轮换）换审 .claude/hooks/autonomous-commit-gate.py(main 守卫从未被审) 或 scout-scan.py 标记计数/排除逻辑，挑有源码项目； [2]【case-356 low 延后·非审计轮】opt-worktree.sh cmd_commit line402/424 另两 exit1 路径未接 created_new_wt 回滚→抽共用函数 _rollback_new_wt 统一全 exit1 路径； [3]【次级发现·延后】case-356 次级 5 个 pre-fix 孤儿分支 auto/opt-dataworks-*→cmd_cleanup orphan-gc 阶段2 现已入 main，下轮非审计可跑 cleanup 验证清残留 -->
+<!-- LAST_WORKTREE: optimization @b87ecc0（pending sanctioned-merge;含 _git_segments+_push_refs_main+_audit_log_block 修复+.gitignore .audit/;git worktree list=main@acba16d+optimization;case-360 outcome=succeeded audit_type=code-review findings=3） -->
+<!-- LAST_OUTCOME: in_progress -->
+<!-- NEXT_SUGGESTION: [1]【sanctioned-merge·case-361】361%4=1≠0 非审计普通路径执行 opt-worktree.sh . merge optimization(b87ecc0)进 main;差异审:本 commit 改 .claude/hooks/autonomous-commit-gate.py+.gitignore,与 main 无同名文件改动重叠→干净 squash 可应用; [2]【审计盲区轮换·case-364】364%4=0 换审 scripts/scout-scan.py 或 .claude/hooks/auto-commit.py(后者 line287 亦读 .autonomous_active 标记,逻辑关联); [3]【gate 残留·低危延后】$(git)/反引号命令替换未纳入 _SHELL_OPS_RE 拆分(需 LLM 刻意构造),可选未来用 shlex+递归求值 $() 段增强,引入复杂度不闭环 -->
 
 | 字段 | 内容 |
 |------|------|
