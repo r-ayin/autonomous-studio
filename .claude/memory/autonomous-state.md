@@ -14,15 +14,15 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-07-01T19:10Z（case-389=389%4=1≠0 非审计轮承接 sanctioned-merge。预审 opt-optimization worktree @ea02e81:merge-base=70c02b2,git diff --stat 确认 changeset 仅 .claude/hooks/notify-phone.py 1file +30/-23 与 main 归档环无源码重叠→clean。show 复核 diff:try 守卫 template.format(...) except (KeyError,IndexError,ValueError) 落 md_text=f'# {title}\\n\\n{message}' 兜底,与 case-388 审计结论一致,非敏感路径改动。sanctioned-merge:bash scripts/opt-worktree.sh . merge optimization→squash 合并→main @47128f1+worktree 清理。回归:sed -n 192,230p 确认守卫落 main+py_compile OK+git branch -D auto/optimization(was ea02e81)清残留。notify-phone.py 非 LIVE 部署文件→无 LIVE cp。DO B:纯部署合并轮无新源码触敏感路径→无 audit-log 埋点。case-389 outcome=succeeded audit_type=none audit_findings=[]。pending=0。main HEAD=47128f1→归档后新 HEAD。下轮 case-390=390%4=2≠0 非审计——pending=0 预期 skip;case-392=392%4=0 下次审计轮）**
-- **活跃项目**: autonomous-studio-aone 维护——case-390 心跳轮 skip(pending=0,AS score=0.0 无紧迫单位,git clean+无 worktree/分支残留,deferred TODO=4 稳定均需人工/真实环境)。case-389 sanctioned-merge opt-optimization-1782844378→main 47128f1(notify-phone.py L195 template.format 异常守卫+兜底 markdown)。case-388 security-review notify-phone.py 发现 1 low+修复。case-387 skip、case-386 skip、case-385 sanctioned-merge opt-optimization-1782844378→main fedf2a0(codegraph-sync.py L291 timestamp 误标 UTC 修复)。case-384 security-review、case-382 opt-worktree.sh _validate_wt 名、case-380 scout-scan.py 修复均已落 main。
-- **当前阶段**: case-390 心跳 skip 完成(pending=0);下轮 case-391=391%4=3≠0 非审计轮预期仍 skip,pending=0;case-392=392%4=0 下次审计轮
+- **最后活跃: 2026-07-01T19:35Z（case-391=今日第27例,27%4=3≠0 非审计轮·合规 skip(亦符 global 391%4=3≠0)。承接 case-390 NEXT_SUGGESTION[1]:pending=0,AS score=0.0 无紧迫单位。scout-scan #1=autonomous-studio-aone score=0.0 推『无明确小工作单位』,DO NOT 禁日常自我润色→不润色。核实无可做单位四步:①git status --short 空 clean②git worktree list 仅 main @53ab9f5 无残留③git branch auto/ 无④scout-scan markers_deferred TODO=4 稳定,grep 复核 4 处真 deferred(apply_resource_access.py:85,90 Hologres·Lindorm getDetail 未实测/bff_client.py:207 profile.json 兼容分支删除条件待人工裁决/scaffold-skill.sh:136 待真实运行回放)均非引擎可盲实现,正确留 triage。无源码改动→无 opt-worktree→无 LIVE 同步→DO B 不触发(无敏感路径改动)无 audit-log 埋点。仅写 case-391+回写 state 作心跳(archival 直提 main)。case-391 outcome=succeeded audit_type=none audit_findings=[]。pending=0。下轮 case-392=392%4=0=0 下次审计轮 DO A 强制）**
+- **活跃项目**: autonomous-studio-aone 维护——case-391 心跳轮 skip(pending=0,AS score=0.0 无紧迫单位,git clean+无 worktree/分支残留,deferred TODO=4 稳定均需人工/真实环境)。case-390 心跳 skip。case-389 sanctioned-merge opt-optimization-1782844378→main 47128f1(notify-phone.py L195 template.format 异常守卫+兜底 markdown)。case-388 security-review notify-phone.py 发现 1 low+修复。case-387 skip、case-386 skip、case-385 sanctioned-merge opt-optimization-1782844378→main fedf2a0(codegraph-sync.py L291 timestamp 误标 UTC 修复)。case-384 security-review、case-382 opt-worktree.sh _validate_wt 名、case-380 scout-scan.py 修复均已落 main。
+- **当前阶段**: case-391 心跳 skip 完成(pending=0);下轮 case-392=392%4=0 审计轮 DO A 强制——挑有源代码项目审计
 - **GOAL_STATUS**: active
 - **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动；审计轮次每 4 case 强制 code-review/security-review + 敏感路径 audit-log 埋点）
 - **LAST_UPDATED**: 2026-07-01
-- **LAST_WORKTREE**: none（case-390 心跳轮无源码改动,无 opt-worktree;main HEAD=1e27436 干净,git worktree list 仅 main,无 auto/ 残留分支;case-390 outcome=succeeded audit_type=none audit_findings=[]）
+- **LAST_WORKTREE**: none（case-391 心跳轮无源码改动,无 opt-worktree;main HEAD=53ab9f5 干净,git worktree list 仅 main,无 auto/ 残留分支;case-391 outcome=succeeded audit_type=none audit_findings=[]）
 - **LAST_OUTCOME**: done
-- **NEXT_SUGGESTION**: [1]【case-391=391%4=3≠0 非审计轮】pending=0,AS score 预期 0.0 无紧迫单位——预期仍 skip;scout-scan 烟测核 deferred TODO 真实性(bff_client.py:207 profile.json 兼容分支删除条件/scaffold-skill.sh:136 真实运行回放/apply_resource_access.py:85,90 Hologres·Lindorm getDetail 实测均需人工/真实环境,引擎不盲实现)。无源码改动→无 opt-worktree→DO B 不触发。[2]【case-392=392%4=0 下次审计轮】继续审 .claude/hooks/ 未审 hook:discovery-gate.py(387L)/decision-observer.py(688L)/auto-commit.py(377L)/pipeline-gate.py(167L deploy 敏感),notify-phone.py 已 case-388 审+case-389 修落 main 勿重审;或审 scripts/ 未审源文件(scout-scan.py/route-health-scorer.py/triage.py)。
+- **NEXT_SUGGESTION**: [1]【case-392=392%4=0 审计轮 DO A 强制】scout-scan 拿项目排序后从 #1 起挑有源代码项目审计(跳纯文档/配置)。优先审 .claude/hooks/ 未审 hook:discovery-gate.py(387L)/decision-observer.py(688L)/auto-commit.py(377L)/pipeline-gate.py(167L deploy 敏感);notify-phone.py 已 case-388 审+case-389 修落 main 勿重审。或审 scripts/ 未审源文件(scout-scan.py/route-health-scorer.py/triage.py)。用 security-review skill(hook 多涉外部调用/凭证/部署敏感面),发现真问题→起 opt-worktree 修(1-3 文件);无真问题→写 case 存档 outcome_evidence 引具体文件/行号。[2]【若审计轮无源码可审】回退审 main HEAD 最近 1-3 commit,或审 route-health-scorer.py 评分逻辑正确性。
 - **自主循环**: 🟢 活跃
   - L1 Inline: 每次回复末尾内联检查 (+ git status)
   - L2 Heartbeat: CronCreate 每7分钟（执行轨——推进 Studio 阶段或主动扫描）
@@ -75,9 +75,9 @@ metadata:
 <!-- GOAL_STATUS: active -->
 <!-- ACTIVE_GOAL: ralph-wiggum-autonomous-loop (每轮一个小工作单位，scout-scan 排序选任务) -->
 <!-- LAST_UPDATED: 2026-07-01 -->
-<!-- LAST_WORKTREE: none（case-390 心跳轮无源码改动,无 opt-worktree;main HEAD=1e27436 干净;git worktree list 仅 main,无 auto/ 残留分支;case-390 outcome=succeeded audit_type=none audit_findings=[]） -->
+<!-- LAST_WORKTREE: none（case-391 心跳轮无源码改动,无 opt-worktree;main HEAD=53ab9f5 干净;git worktree list 仅 main,无 auto/ 残留分支;case-391 outcome=succeeded audit_type=none audit_findings=[]） -->
 <!-- LAST_OUTCOME: done -->
-<!-- NEXT_SUGGESTION: [1]【case-391=391%4=3≠0 非审计轮】pending=0,AS score 预期 0.0 无紧迫单位——预期仍 skip;scout-scan 烟测核 deferred TODO 真实性(bff_client.py:207 profile.json 兼容分支删除条件/scaffold-skill.sh:136 真实运行回放/apply_resource_access.py:85,90 Hologres·Lindorm getDetail 实测均需人工/真实环境,引擎不盲实现)。无源码改动→无 opt-worktree→DO B 不触发。[2]【case-392=392%4=0 下次审计轮】继续审 .claude/hooks/ 未审 hook:discovery-gate.py(387L)/decision-observer.py(688L)/auto-commit.py(377L)/pipeline-gate.py(167L deploy 敏感),notify-phone.py 已 case-388 审+case-389 修落 main 勿重审;或审 scripts/ 未审源文件(scout-scan.py/route-health-scorer.py/triage.py)。 -->
+<!-- NEXT_SUGGESTION: [1]【case-392=392%4=0 审计轮 DO A 强制】scout-scan 拿项目排序后从 #1 起挑有源代码项目审计(跳纯文档/配置)。优先审 .claude/hooks/ 未审 hook:discovery-gate.py(387L)/decision-observer.py(688L)/auto-commit.py(377L)/pipeline-gate.py(167L deploy 敏感);notify-phone.py 已 case-388 审+case-389 修落 main 勿重审。或审 scripts/ 未审源文件(scout-scan.py/route-health-scorer.py/triage.py)。用 security-review skill(hook 多涉外部调用/凭证/部署敏感面),发现真问题→起 opt-worktree 修(1-3 文件);无真问题→写 case 存档 outcome_evidence 引具体文件/行号。[2]【若审计轮无源码可审】回退审 main HEAD 最近 1-3 commit,或审 route-health-scorer.py 评分逻辑正确性。 -->
 
 | 字段 | 内容 |
 |------|------|
