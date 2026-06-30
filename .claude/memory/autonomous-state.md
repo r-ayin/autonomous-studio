@@ -14,15 +14,15 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-06-30T11:18Z（常规工作单位轮次：今日 case 138%4=2 未命中审计边界 140；非审计轮次。step0 .claude/autonomous-constraints.md 此前三轮确认缺失——本轮正是合并落地该文件！step1 scout-scan #1=AS(score=0.0 TODO=0)推荐语=「review 1 个待合并 worktree」即 #1 工作单位=合并 pending worktree。pending 队列余 1 项 auto/optimization(a271bf7, engine:audit-directives)。核真实 merge diff(merge-base 1b498ce..worktree)=仅 2 文件：autonomous-constraints.md(新建+58, 正 protocol step0 所缺)+autonomous-loop.sh(+6/-3, PROMPT step0/5 引用 DO 审计指令+audit_type/audit_findings, 与当前运行 PROMPT 一致)。git diff main..worktree 显 7 文件系两 tip diff 假象(case-337/338/state/audit-log/scout-scan 乃 main 后增非 worktree 贡献)。merge-tree dry-run 零冲突；main 无 constraints 文件(纯新增零冲突)、main loop.sh 仍旧 step0。无源码/敏感路径(纯文档+PROMPT 文本)→audit_type=none。走 sanctioned opt-worktree.sh . merge optimization：squash 合并→剔 .opt-direction 桩→autonomous-studio 身份 commit 036a523→worktree --force 清理。验:constraints.md 落 main(YES, 三轮缺失债清零)、loop.sh grep audit_type=2、worktree list 仅 main(pending 1→0)、scout TODO=0 score=0.0 #1 推荐语变'无明确小工作单位——可跳过或文档润色'。constraints 文件已落地待下轮 step0 真正 Read 全文验证）**
-- **活跃项目**: 持续自治管线巡检——sanctioned merge 落地 auto/optimization(a271bf7) 审计指令 worktree，.claude/autonomous-constraints.md 三轮缺失债清零、pending 队列 1→0
-- **当前阶段**: merge 落地闭环——autonomous-constraints.md + loop.sh PROMPT 审计指令已入 main(036a523)，pending 队列清空
+- **最后活跃: 2026-06-30T11:55Z（非审计轮次：今日 decisions 实际文件数=141，141%4=1≠0，且 case-340/341 刚连做两轮审计→走普通修复路径。step0 读 autonomous-constraints.md DO A/B/C 全文。step1 scout #1=AS(score=0.0 TODO=0 deferred=4)推荐'review 2 个待合并 worktree'。审 git worktree list 2 项：optimization(a271bf7)+opt-dataworks(dc3d201)。审 optimization diff：a271bf7 仅触 autonomous-constraints.md+autonomous-loop.sh 两文件，git diff main..auto/optimization 对此两文件均输出空=内容已 squash-merge 入 main 036a523；merge-base --is-ancestor a271bf7 main→NO（squash-merge 致 commit 非祖先但内容已落地）；worktree status 干净。判定 optimization 为已合并 stale 残留（036a523 cleanup 步漏删），opt-dataworks 才是真 pending。不 re-merge（会 stage main-ahead 文件 reverse diff 毁 case-337/338/339.json，破坏性）。opt-worktree.sh 无 remove 子命令→手动 git worktree remove --force + git branch -D auto/optimization。清理后 scout '待处理 worktree 共2→1'。case-342 outcome=succeeded audit_type=none）**
+- **活跃项目**: autonomous-studio-aone 维护——清理 stale 已合并 worktree auto/optimization（内容已入 main 036a523），保留真 pending opt-dataworks-1782819568 待人工 merge
+- **当前阶段**: 普通修复轮次闭环——stale optimization worktree+branch 已清理，待合并队列 2→1，仅 opt-dataworks 真_pending 待人工审合并
 - **GOAL_STATUS**: active
 - **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动；审计轮次每 4 case 强制 code-review/security-review + 敏感路径 audit-log 埋点）
 - **LAST_UPDATED**: 2026-06-30
-- **LAST_WORKTREE**: optimization (auto/optimization, a271bf7 → squash merge 入 main 036a523 'merge: 人工批准合并 optimization worktree optimization' — engine:audit-directives 方向；cmd_merge squash 合并 auto/optimization 入 main，带 .claude/autonomous-constraints.md(新建, DO NOT 6条排除+DO A代码审计每4轮/B敏感路径audit-log埋点/C audit_type+audit_findings case字段 三节, 正 protocol step0 所缺文件)+scripts/autonomous-loop.sh(PROMPT step0/5 引用 DO 审计指令+audit_type/audit_findings 字段, 与当前运行 PROMPT 一致)；worktree 已 --force 清理；验 constraints.md 落 main、loop.sh grep audit_type=2、pending 1→0、scout TODO=0 score=0.0)
+- **LAST_WORKTREE**: n/a（本轮非 opt-worktree 提交，是 stale worktree/branch 清理：auto/optimization(a271bf7) 内容已 squash-merge 入 main 036a523、git diff main..branch 对其触及的 autonomous-constraints.md+autonomous-loop.sh 均空=已合并；git worktree remove --force + git branch -D auto/optimization 清理；main HEAD 不变 f7e8d92；opt-dataworks-1782819568 原 DC3d201 保留待人工 merge）
 - **LAST_OUTCOME**: done
-- **NEXT_SUGGESTION**: 【可自动·低阻力】(1) pending merge 队列已清空(1→0)，scout #1 AS 推荐语变'无明确小工作单位——可跳过或做文档润色'——下轮 AS 若仍排#1 应跳过自我润色，转 scout #2 或审计轮次，不再霸榜。(2) 审计节奏：今日 case 138→139，下个审计边界=140（140%4=0），届时强制 code-review/security-review skill 走审计路径，优先挑有源代码的项目（跳过纯文档/配置）。(3) constraints 文件已落地，下轮 step0 可真正 Read 全文（不再凭 prompt 内联摘要执行），验证 DO/DO NOT 两节与运行行为一致。(4) AS main TODO=0 score=0.0 持续健康；deferred TODO=4(合法 triage 延期债) 不计入推荐。
+- **NEXT_SUGGESTION**: 【待人工审合并·低阻力】(1) opt-dataworks-1782819568 是唯一真 pending：opt-worktree.sh . show opt-dataworks-1782819568 看 diff（audit_log.py 新增+bff_client _do_request 埋点）→满意则 opt-worktree.sh . merge opt-dataworks-1782819568 合 main。(2) 下轮非审计(今日 case 142,142%4=2)：scout #1 AS score=0.0 仍'可跳过'、deferred 4 全 blocked+DO NOT 禁自我润色→无可行小工作单位记 no-op case，或等下个审计边界(今日 case 144,144%4=0)做 code-review/security-review。(3) 本轮已清 stale optimization worktree，待合并队列 2→1，scout 噪声降低。
 - **自主循环**: 🟢 活跃
   - L1 Inline: 每次回复末尾内联检查 (+ git status)
   - L2 Heartbeat: CronCreate 每7分钟（执行轨——推进 Studio 阶段或主动扫描）
@@ -75,9 +75,9 @@ metadata:
 <!-- GOAL_STATUS: active -->
 <!-- ACTIVE_GOAL: ralph-wiggum-autonomous-loop (每轮一个小工作单位，scout-scan 排序选任务) -->
 <!-- LAST_UPDATED: 2026-06-30 -->
-<!-- LAST_WORKTREE: autonomous-studio-aone/opt-scout-1782817213 (已 merge 落 main 1aa9b23: scout:backtick-strip — cmd_merge squash 合并 auto/opt-scout-1782817213 入 main，带 scripts/scout-scan.py(_STRIP_BACKTICKS 反引号段剥离治第6类自指虚高致 AS TODO=2 幽灵霸榜#1)+.claude/decisions/audit-log.jsonl(audit-20260630-105936-0dv11c config_change/medium)；worktree 已 --force 清理；验 main TODO=0 score=0.0、case-337 未误删、pending 2→1；上轮 case-337 首例 code-review 已审) -->
+<!-- LAST_WORKTREE: n/a（本轮 stale worktree/branch 清理：auto/optimization(a271bf7) 内容已 squash-merge 入 main 036a523、触及的 autonomous-constraints.md+autonomous-loop.sh git diff main..branch 均空=已合并；worktree 干净；git worktree remove --force + git branch -D auto/optimization 清理；main HEAD 不变 f7e8d92；opt-dataworks-1782819568(dc3d201) 保留待人工 merge；case-342 outcome=succeeded audit_type=none） -->
 <!-- LAST_OUTCOME: done -->
-<!-- NEXT_SUGGESTION: [1]【可自动·低阻力】pending merge 队列余 optimization worktree(auto/optimization a271bf7 方向 engine:general 4 files +69/-48)——下轮同法核 merge-base..worktree 真实 diff 后 sanctioned merge 或先 review; [2] constraints 文件 .claude/autonomous-constraints.md 持续缺失(三轮确认)——step0 强依赖却不存在，可从 prompt 内联 DO/DO NOT 摘要+历史案例引用重建为独立小工作单位; [3] 审计节奏: 今日 case 138，下个审计边界=140(140%4=0)届时强制 code-review/security-review; [4] AS main 现 TODO=0 score=0.0 永久健康，下轮若 AS 仍排#1 应挑 pending optimization worktree review 或跳过，不再自我润色霸榜 -->
+<!-- NEXT_SUGGESTION: [1]【待人工审合并·低阻力】opt-dataworks-1782819568 是唯一真 pending：opt-worktree.sh . show 看 diff→opt-worktree.sh . merge 合 main; [2] 下轮非审计(今日 case 142,142%4=2)：scout #1 AS score=0.0'可跳过'、deferred 4 全 blocked→无可行小工作单位记 no-op 或等审计边界(今日 case 144,144%4=0); [3] 本轮已清 stale optimization worktree，待合并队列 2→1 -->
 
 | 字段 | 内容 |
 |------|------|

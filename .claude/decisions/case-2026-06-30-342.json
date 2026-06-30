@@ -1,0 +1,26 @@
+{
+  "case_id": "case-2026-06-30-342",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-30T11:55Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "cleanup-stale-worktree:auto/optimization（scout #1 score=0.0 推荐 review 2 个待合并 worktree→审 diff 发现 optimization 已 squash-merge 入 main 036a523、为 stale 残留，清理之）",
+  "situation": "scout-scan #1=AS score=0.0 推荐'review 2 个待合并 worktree'。今日 decisions 实际文件数=141，141%4=1≠0 → 非审计轮次（且 case-340/341 刚连做两轮审计），走普通修复路径。git worktree list 显示 2 个待合并：optimization(a271bf7) 与 opt-dataworks-1782819568(dc3d201)。审 optimization：git diff main..auto/optimization --stat 显示 main 在 case-337/338/339.json+audit-log.jsonl+autonomous-state.md+scout-scan.py 上 ahead（branch 是旧快照、无独有内容）；a271bf7 仅触 2 文件(autonomous-constraints.md+autonomous-loop.sh)，两文件 git diff main..auto/optimization 均为空=内容已在 main；git merge-base --is-ancestor a271bf7 main 返回 NO（squash-merge 致 commit 对象非 main 祖先，但内容已落地）。即 optimization 为已合并的 stale 残留 worktree（036a523 'merge: 人工批准合并 optimization worktree' 的 cleanup 步骤漏删）。opt-dataworks 才是真 pending（audit_log.py+bff_client.py diff 非空，待人工审合并）。",
+  "action": "不 re-merge optimization（git merge --squash auto/optimization 会 stage main-ahead 文件的 reverse diff、毁掉 main 的 case-337/338/339.json 等已归档 case——破坏性，禁行）。opt-worktree.sh 无 remove 子命令，故手动清理：(1) git worktree remove --force <optimization dir>；(2) git branch -D auto/optimization（内容已验证合并；-D 因 squash-merge 使 commit 非 main 祖先、-d 会拒，commit 留 reflog 可恢复）。opt-dataworks 原样保留待人工 merge。",
+  "files_changed": [],
+  "worktree": "n/a（本工作单位是 worktree/branch 清理，非代码改动，无 opt-worktree 提交；main HEAD 不变 f7e8d92）",
+  "direction": "maintenance:stale-worktree-cleanup",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "清理前 git worktree list 含 optimization(a271bf7) + opt-dataworks(dc3d201) 共 2 项",
+    "git diff main..auto/optimization -- .claude/autonomous-constraints.md 输出空（a271bf7 触及的该文件已与 main 一致）",
+    "git diff main..auto/optimization -- scripts/autonomous-loop.sh 输出空（同上，a271bf7 仅触此 2 文件，全已合并）",
+    "git merge-base --is-ancestor a271bf7 main → NO（squash-merge 入 036a523，commit 对象非祖先但内容已落地）",
+    "git -C <optimization wt> status --short 输出空（worktree 干净、无未提交/未跟踪工作，可安全删）",
+    "git worktree remove --force 成功 + git branch -D auto/optimization 输出 'Deleted branch auto/optimization (was a271bf7)'",
+    "清理后 git worktree list 仅 main + opt-dataworks(dc3d201)；opt-dataworks 原样保留",
+    "重跑 scout-scan：'待处理 worktree: 共1, 待合并=1'（清理前为 共2, 待合并=2），#1 推荐语更新为 'review 1 个待合并 worktree'"
+  ],
+  "next_suggestion": "【待人工审合并·低阻力】opt-dataworks-1782819568 是唯一真 pending：opt-worktree.sh . show opt-dataworks-1782819568 看 diff（audit_log.py 新增+bff_client _do_request 埋点）→满意则 opt-worktree.sh . merge opt-dataworks-1782819568 合 main。下轮非审计(今日 case 142,142%4=2)：scout #1 AS score=0.0 仍'可跳过'、deferred 4 全 blocked+DO NOT 禁自我润色→无可行小工作单位时记 no-op case，或等下个审计边界(今日 case 144,144%4=0)做 code-review/security-review。",
+  "audit_type": "none",
+  "audit_findings": []
+}
