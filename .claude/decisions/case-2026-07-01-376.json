@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-01-376",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-01T01:05:00+08:00",
+  "project": "1BfrYW9R",
+  "work_unit": "review + merge pending worktree opt-tests-1782838083 (HEAD × 静态 .js charset 回归锁) into onedaybot-dev main",
+  "situation": "scout-scan #1 = 1BfrYW9R「review 1 个待合并 worktree（人工审 diff + merge/reject）」。待合并 worktree opt-tests-1782838083 (branch auto/opt-tests-1782838083, 1 commit 784cda7) 含 test/smoke.test.js ㉔ 增 HEAD /app.js 三断言（200 + Content-Type application/javascript; charset=utf-8 + body===''）+ GATES.md ㉔ 2026-07-01 强化注记 + PROGRESS.md 2026-07-01 增量条目，3 files 16 insertions 1 deletion。上一轮 case-375 已写记录但 worktree 未 merge（pending）。state NEXT_SUGGESTION 列此 merge 为首选。",
+  "action": "人工审 diff：git show 784cda7 验 3 files 改动集合与上一轮 case-375 记录一致（test/smoke.test.js +14 行 HEAD /app.js 断言，GATES/PROGRESS 文档同步，无意外文件、无 main 直提交）。验真咬：worktree 内 npm test → 35 pass 0 fail（含新 ㉔ HEAD /app.js 断言）。merge：bash scripts/opt-worktree.sh 1BfrYW9R merge opt-tests-1782838083 → squash 合并 76ab524..784cda7，auto/opt-tests-1782838083 分支删除、worktree 目录清理。merge 后 main 侧 npm test 再验 → 35 pass 0 fail（merge commit e3b78e1）。",
+  "files_changed": [
+    "1BfrYW9R/test/smoke.test.js",
+    "1BfrYW9R/GATES.md",
+    "1BfrYW9R/PROGRESS.md"
+  ],
+  "worktree": "1BfrYW9R/opt-tests-1782838083 (merged → onedaybot-dev e3b78e1, branch+dir cleaned)",
+  "direction": "tests:HEAD × 静态 .js charset 回归锁",
+  "outcome": "succeeded",
+  "outcome_evidence": "git log 1BfrYW9R onedaybot-dev → e3b78e1 'merge: 人工批准合并 optimization worktree opt-tests-1782838083' 在 76ab524 之上；main 侧 npm test 输出 '# tests 35 / # pass 35 / # fail 0'；opt-worktree.sh 1BfrYW9R list 已无 opt-tests-1782838083 条目（仅余 0 提交 optimization standing wt）；auto/opt-tests-1782838083 分支 Deleted (was 784cda7)。",
+  "next_suggestion": "1BfrYW9R HEAD×charset 维度已合围（.html/.css/.js × GET/HEAD 全集）勿再推。AS 待合并 case-record worktree opt-case-record-1782838328（case-375）应随本轮真实工作 ride-merge（已随 case-376 一并合入，非独占纯 merge 轮）[[scout-scan-case-record-lag-break]]。下轮 scout-scan 重跑选 #1；候选：personal-assistant ECS grounding[[ecs-deploy-target]]、main 侧 .opt-direction tracked-leak 清理（wechat-main/personal-assistant）、AS 7 延期 TODO 复审。"
+}
