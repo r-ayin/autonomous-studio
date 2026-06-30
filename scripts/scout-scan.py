@@ -63,6 +63,13 @@ _STRIP_PLACEHOLDERS = re.compile(r"【[^】]*】")
 # 此前 x-tool 的 TODO=44 中 38 个全来自这类桩，致其标记密度虚高霸榜 #1。
 # 真债务行内注释（井号或双斜杠后跟标记加冒号）不在 HTML 注释里，不受影响。
 _STRIP_HTML_COMMENTS = re.compile(r"<!--.*?-->")
+# 剥离反引号代码段（markdown 代码段 + JS 模板字面量）：_STRIP_STRINGS 只剥单/双引号串，
+# 不识反引号。本文件自身的计数约定注释曾用反引号引述 markdown 散文标记形式来文档化
+# "这类散文非真债"，结果反引号内的标记形式反被 _MARKER_RE 计为真债——扫描器把自己
+# 文档里的引例算成了自己的债，是继 字符串字面量/全角括号/HTML注释/归档标题散文 之后的
+# 第 6 类标记自指虚高。剥离反引号段一劳永逸：真债务行内注释（标记后跟冒号/破折号）
+# 不会写在反引号里，JS 模板字面量内的标记是串内容非债。
+_STRIP_BACKTICKS = re.compile(r"`[^`]*`")
 _MARKER_RE = {m: re.compile(rf"\b{m}\b\s*[:-]") for m in ("TODO", "FIXME", "HACK")}
 # 延期债约定：债务标记单词后接 (deferred) 后缀（标记与括号间可有空白），表示已 triage 标注
 # 但确认延期（非清掉、非盲实现）的债——与 moni broker_qmt.py 既有约定一致。主 _MARKER_RE
@@ -175,6 +182,8 @@ def count_markers(path):
                         stripped = _STRIP_PLACEHOLDERS.sub("", stripped)
                         # 剥离 HTML 注释占位符 <!-- TODO... --> project-protocol 模板桩不算真债务
                         stripped = _STRIP_HTML_COMMENTS.sub("", stripped)
+                        # 剥离反引号代码段 `# TODO:` 文档引例/JS 模板字面量不算真债务
+                        stripped = _STRIP_BACKTICKS.sub("", stripped)
                         for m, rx in _DEFERRED_RE.items():
                             if rx.search(stripped):
                                 deferred[m] += 1
