@@ -644,9 +644,19 @@ cmd_cleanup() {
     git -C "$PROJECT" branch -D "auto/$name" 2>/dev/null || true
     # DO B：cleanup 批量删空 worktree（worktree remove + branch -D）是删除/批量敏感路径，
     # 逐条记 JSONL 审计日志（action=delete, resource=artifact），与 cmd_merge/reject 对称。
-    audit_log success "$name" "" "cleanup empty worktree (0 commits, dead stub); branch auto/$name -D" delete artifact || true
-    echo "✓ 清理空 worktree: $name（0 提交，死桩）"
-    removed=$((removed + 1))
+    # case-412 审计修复：result 如实反映删除是否生效，不恒 success（autonomous-constraints.md
+    # DO B 明令"确保 result 字段如实反映成功/失败"）。旧实现无条件 audit_log success——若
+    # worktree remove --force 与 rm -rf 双双失败（权限/挂载占用），目录仍在却记 success，审计
+    # 日志失真。与 cmd_reject(L610) 对称：按 [[ -d "$d" ]] 实判，branch -D best-effort 仅 reason 标注。
+    if [[ ! -d "$d" ]]; then
+      audit_log success "$name" "" "cleanup empty worktree (0 commits, dead stub); branch auto/$name -D (best-effort)" delete artifact || true
+      echo "✓ 清理空 worktree: $name（0 提交，死桩）"
+      removed=$((removed + 1))
+    else
+      audit_log failure "$name" "" "cleanup incomplete: $d still exists after remove --force + rm -rf" delete artifact || true
+      echo "⚠️ 清理失败（目录仍在）: $name" >&2
+      skipped=$((skipped + 1))
+    fi
   done
   echo "清理完成: 删 $removed / 跳 $skipped（有真提交或未提交改动）"
 
@@ -665,11 +675,17 @@ cmd_cleanup() {
       orphan_skipped=$((orphan_skipped + 1))
       continue
     fi
-    git -C "$PROJECT" branch -D "$branch" 2>/dev/null || true
-    # DO B：孤儿分支删除（branch -D，无 linked worktree）记审计日志。
-    audit_log success "$branch" "" "cleanup orphan branch auto/opt-* (no linked worktree)" delete artifact || true
-    echo "✓ 清理孤儿分支: $branch（无 linked worktree）"
-    orphan_removed=$((orphan_removed + 1))
+    # case-412 审计修复：branch -D 失败须记 failure，不恒 success（DO B）。
+    # 用 git branch -D 的退出码直接判（if-conditional 不触发 set -e）。
+    if git -C "$PROJECT" branch -D "$branch" 2>/dev/null; then
+      audit_log success "$branch" "" "cleanup orphan branch auto/opt-* (no linked worktree)" delete artifact || true
+      echo "✓ 清理孤儿分支: $branch（无 linked worktree）"
+      orphan_removed=$((orphan_removed + 1))
+    else
+      audit_log failure "$branch" "" "orphan branch -D failed (checked out elsewhere? refs/heads still present)" delete artifact || true
+      echo "⚠️ 孤儿分支删除失败: $branch（refs/heads 仍在）" >&2
+      orphan_skipped=$((orphan_skipped + 1))
+    fi
   done < <(git -C "$PROJECT" branch --list 'auto/opt-*' 2>/dev/null)
   echo "孤儿分支清理: 删 $orphan_removed / 跳 $orphan_skipped（有 linked wt）"
 }
