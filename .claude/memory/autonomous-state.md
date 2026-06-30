@@ -14,15 +14,15 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-07-01T05:11Z（case-415=今日第51例,415%4=3≠0 非审计轮·skip 心跳。承接 case-414 NEXT[1]:case-415 非审计轮 skip 心跳。case-414 已完成非审计轮 skip 心跳,pending=0 clean。scout-scan #1=AS score=0.0 无明确小工作单位(延期已triage TODO/FIXME/HACK=4/0/0 不计入推荐)。核实四步(同 case-403/406/410/411/414 skip 模式):①git status --short=空 clean;②git worktree list=仅 main @5923ad1 无残留;③git branch=仅 * main pending=0;④grep 'TODO(deferred)' 4 命中全已 triage(apply_resource_access.py:85,90·bff_client.py:207·scaffold-skill.sh:159)需真实环境实测/人工裁决非引擎可盲实现稳定。DO NOT 禁日常自我润色→无源码改动/无 opt-worktree/无 LIVE 同步。case-415.json+state.md 直提 main(archival-commit-mechanism)。case-415 outcome=succeeded audit_type=none audit_findings=[]。下轮 case-416=416%4=0 下次审计轮 DO A 强制续审 scout-scan.py/triage.py）**
-- **活跃项目**: autonomous-studio-aone 维护——case-415 非审计轮 skip 心跳。case-414 非审计轮 skip 心跳。case-413 非审计轮 sanctioned-merge optimization @93a581b→main d884c24(squash,opt-worktree.sh cmd_cleanup audit_log 恒 success 修复已上线)。case-412 审计轮 security-review opt-worktree.sh 修复(已合并)。**已审源码 9 处:.claude/hooks/ 7 hook+scaffold-skill.sh(已合并)+opt-worktree.sh(已合并 d884c24)**。
-- **当前阶段**: case-415 非审计轮 skip 心跳完成(pending=0 clean);下轮 case-416=416%4=0 下次审计轮 DO A 强制续审 scout-scan.py/triage.py
+- **最后活跃: 2026-06-30T21:13Z（case-416=今日第52例,416%4=0 审计轮 DO A 强制 code-audit:autonomous-studio engine scripts。承接 case-415 NEXT[1]:审计轮续审 scout-scan.py/triage.py。case-415 已完成非审计轮 skip 心跳,pending=0 clean。手动 code-review 审两脚本(不深读大块:triage.py 全读 136L,scout-scan.py grep 敏感模式 subprocess/eval/exec/shell=True/open/unlink/shutil + 读4关键区段 git_info/count_markers walk/IGNORE_DIRS/索引写入)。核实:①scout-scan 所有 subprocess.run list 形式+cwd+capture_output+timeout 3-5s 无 shell=True 无注入面;②不读 .env/secret,只对 TODO/FIXME/HACK 正则计数不外泄无 PII 泄漏;③triage.py 纯 json/Path 无 subprocess/eval/exec。发现两处真 low 已修:①scout-scan.py L567 idx_dir 死赋值(被 L569 无条件覆盖,早期 .opt-worktrees/_indexes 方案残留)删冗余行;②triage.py L93 unlink 缺 missing_ok=True,load→unlink 间竞态下 current.json 已被并发进程删则抛 FileNotFoundError,补 missing_ok=True 防御。另观察 L90 归档命名 len(glob)+1 并发计数竞态 deferred(改时间戳命名需排查 history/ 读取方超最小范围)。AST+功能回归通过(scout-scan 正常产索引/triage --kind small→--done 归档+unlink 正常/rerun 走早返回不崩/missing_ok 支持已验 inspect.signature)。改动落 opt-worktree engine:audit @0a5e4fa(auto/optimization) pending=1 待下轮 sanctioned-merge。case-416.json+state.md 直提 main(archival-commit-mechanism)。case-416 outcome=succeeded audit_type=code-review audit_findings=[low L567 死赋值/low L93 unlink 缺 missing_ok/low L90 归档命名竞态 deferred]。下轮 case-417=417%4=1≠0 非审计轮·sanctioned-merge @0a5e4fa→main;case-420=420%4=0 下次审计轮 续审 pipeline-gate.py/autonomous-commit-gate.py 或 bff_client.py 鉴权路径）**
+- **活跃项目**: autonomous-studio-aone 维护——case-416 审计轮 code-audit scout-scan.py/triage.py(2 处 low 修复落 auto/optimization @0a5e4fa 待合并)。case-415 非审计轮 skip 心跳。case-413 非审计轮 sanctioned-merge optimization @93a581b→main d884c24(squash,opt-worktree.sh cmd_cleanup audit_log 恒 success 修复已上线)。case-412 审计轮 security-review opt-worktree.sh 修复(已合并)。**已审源码 10 处:.claude/hooks/ 7 hook+scaffold-skill.sh(已合并)+opt-worktree.sh(已合并 d884c24)+scout-scan.py+triage.py(@0a5e4fa 待合并)**。
+- **当前阶段**: case-416 审计轮 code-audit 完成(pending=1 auto/optimization @0a5e4fa 待合并);下轮 case-417=417%4=1≠0 非审计轮·sanctioned-merge @0a5e4fa→main
 - **GOAL_STATUS**: active
 - **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动；审计轮次每 4 case 强制 code-review/security-review + 敏感路径 audit-log 埋点）
 - **LAST_UPDATED**: 2026-07-01
-- **LAST_WORKTREE**: 无（case-415 非审计轮 skip 心跳，无源码改动；上一 sanctioned-merge=optimization @93a581b→main d884c24 已合并,pending=0）
+- **LAST_WORKTREE**: auto/optimization @ 0a5e4fa（case-416 审计轮 code-audit scout-scan.py+triage.py 2 处 low 修复，pending=1 待 case-417 sanctioned-merge→main）
 - **LAST_OUTCOME**: done
-- **NEXT_SUGGESTION**: [1]【case-416=416%4=0 下次审计轮】DO A 强制续审 scout-scan.py(677L)+triage.py(136L),case-412 已审 opt-worktree.sh(攻击面最大者已合并),此二文件未及,届时用 code-review/security-review skill 审 main HEAD 最近 1-3 commit。[2]【非审计轮空窗】若 case-416 前无新提交,审 main HEAD 最近 1-3 commit(`git log -3 --stat`)即归档 commit 自身,可审归档机制 case/state 直提 main 的 cp-guard 跳过逻辑是否安全。
+- **NEXT_SUGGESTION**: [1]【case-417=417%4=1≠0 非审计轮·sanctioned-merge】合并 auto/optimization @0a5e4fa→main（2file scout-scan.py 删死行+triage.py 加 missing_ok，+4/-4 无源码逻辑变更，预检 git merge-tree --write-tree main auto/optimization 应无冲突；opt-worktree.sh . merge optimization + git branch -D auto/optimization；回归 bash -n/python3 ast.parse+grep 命中）。[2]【case-420=420%4=0 下次审计轮】续审其他敏感引擎脚本——候选 scripts/pipeline-gate.py(hook 拦截逻辑)、scripts/autonomous-commit-gate.py(提交门)，或审 autonomous-studio 子项目 bff_client.py 鉴权路径（case-415 标注 apply_resource_access.py:85,90·bff_client.py:207 有 TODO(deferred) 需真实环境实测）。
 - **自主循环**: 🟢 活跃
   - L1 Inline: 每次回复末尾内联检查 (+ git status)
   - L2 Heartbeat: CronCreate 每7分钟（执行轨——推进 Studio 阶段或主动扫描）
@@ -75,9 +75,9 @@ metadata:
 <!-- GOAL_STATUS: active -->
 <!-- ACTIVE_GOAL: ralph-wiggum-autonomous-loop (每轮一个小工作单位，scout-scan 排序选任务) -->
 <!-- LAST_UPDATED: 2026-07-01 -->
-<!-- LAST_WORKTREE: 无（case-415 非审计轮 skip 心跳；上一 sanctioned-merge=optimization @93a581b→main d884c24 已合并,pending=0） -->
+<!-- LAST_WORKTREE: auto/optimization @ 0a5e4fa（case-416 审计轮 code-audit scout-scan.py+triage.py 2 处 low 修复，pending=1 待 case-417 sanctioned-merge→main） -->
 <!-- LAST_OUTCOME: done -->
-<!-- NEXT_SUGGESTION: [1]case-416 审计轮 续审 scout-scan.py/triage.py;[2]非审计轮空窗可审归档 commit cp-guard 跳过逻辑 -->
+<!-- NEXT_SUGGESTION: [1]case-417 非审计轮 sanctioned-merge @0a5e4fa→main;[2]case-420 下次审计轮 续审 pipeline-gate.py/autonomous-commit-gate.py 或 bff_client.py 鉴权路径 -->
 
 | 字段 | 内容 |
 |------|------|
