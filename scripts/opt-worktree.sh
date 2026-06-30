@@ -36,6 +36,10 @@ WT_BASE="$PROJECT/../.opt-worktrees/$(basename "$PROJECT")"
 # 纯本地 JSONL，不新建库/不接外部系统。审计为可观测性，绝不阻断合并主流程（调用点带 || true）。
 audit_log() {
   local result="$1" wt="$2" sha="$3" reason="$4"
+  # action/resource_type 参数化（case-366）：cmd_merge 用默认 deploy/deployment；
+  # cmd_reject/cmd_cleanup 删 worktree+分支是 delete/artifact（DO B 删除/批量敏感路径）。
+  # 默认值保证既有 cmd_merge 两处调用（line 533/543）行为不变。
+  local action="${5:-deploy}" rtype="${6:-deployment}"
   local aud_dir="$PROJECT/.audit" ts id_date rid fpath
   mkdir -p "$aud_dir" 2>/dev/null || return 0
   ts="$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || printf '')"
@@ -43,8 +47,8 @@ audit_log() {
   rid="$(od -An -tx1 -N3 /dev/urandom 2>/dev/null | tr -d ' \n' || printf '')"
   [[ ${#rid} -ge 6 ]] || rid="$(printf '%06d' "$RANDOM" 2>/dev/null || printf '000000')"
   fpath="$aud_dir/audit-$(date -u +%Y-%m-%d 2>/dev/null || printf '1970-01-01').jsonl"
-  printf '{"id":"audit-%s-%s","timestamp":"%s","userId":"autonomous-engine","userRole":"engine","action":"deploy","resource":{"type":"deployment","identifier":"%s","newValue":"%s"},"result":"%s","ip":"local","sensitive":true,"sensitiveLevel":"high","details":{"reason":"%s"}}\n' \
-    "$id_date" "$rid" "$ts" "$wt" "$sha" "$result" "$reason" >> "$fpath" 2>/dev/null || true
+  printf '{"id":"audit-%s-%s","timestamp":"%s","userId":"autonomous-engine","userRole":"engine","action":"%s","resource":{"type":"%s","identifier":"%s","newValue":"%s"},"result":"%s","ip":"local","sensitive":true,"sensitiveLevel":"high","details":{"reason":"%s"}}\n' \
+    "$id_date" "$rid" "$ts" "$action" "$rtype" "$wt" "$sha" "$result" "$reason" >> "$fpath" 2>/dev/null || true
 }
 # 动态探测项目默认分支：x-tool/moni 用 master，autonomous-studio 用 main。
 # 硬编码 main 会导致 master 项目 worktree add 失败被 || true 吞、随后写 .opt-direction 崩。
@@ -553,6 +557,14 @@ cmd_reject() {
   [[ -d "$dir" ]] || { echo "❌ worktree 不存在: $wt"; exit 1; }
   git -C "$PROJECT" worktree remove "$dir" --force 2>/dev/null || rm -rf "$dir"
   git -C "$PROJECT" branch -D "auto/$(basename "$dir")" 2>/dev/null || true
+  # DO B（autonomous-constraints.md）：reject 是删除敏感路径（worktree remove + branch -D），
+  # 与 cmd_merge 对称记 JSONL 审计日志（action=delete, resource=artifact）。result 如实反映：
+  # worktree 目录已消失=success（branch -D best-effort，失败仅 reason 标注），仍在=failure。
+  if [[ ! -d "$dir" ]]; then
+    audit_log success "$wt" "" "rejected worktree; branch auto/$(basename "$dir") -D (best-effort)" delete artifact || true
+  else
+    audit_log failure "$wt" "" "reject incomplete: $dir still exists after remove --force" delete artifact || true
+  fi
   echo "✗ 已拒绝并删除 worktree: $wt（分支 auto/$(basename "$dir") 保留可恢复，或手动删）"
 }
 
@@ -583,6 +595,9 @@ cmd_cleanup() {
     fi
     git -C "$PROJECT" worktree remove "$d" --force 2>/dev/null || rm -rf "$d"
     git -C "$PROJECT" branch -D "auto/$name" 2>/dev/null || true
+    # DO B：cleanup 批量删空 worktree（worktree remove + branch -D）是删除/批量敏感路径，
+    # 逐条记 JSONL 审计日志（action=delete, resource=artifact），与 cmd_merge/reject 对称。
+    audit_log success "$name" "" "cleanup empty worktree (0 commits, dead stub); branch auto/$name -D" delete artifact || true
     echo "✓ 清理空 worktree: $name（0 提交，死桩）"
     removed=$((removed + 1))
   done
@@ -604,6 +619,8 @@ cmd_cleanup() {
       continue
     fi
     git -C "$PROJECT" branch -D "$branch" 2>/dev/null || true
+    # DO B：孤儿分支删除（branch -D，无 linked worktree）记审计日志。
+    audit_log success "$branch" "" "cleanup orphan branch auto/opt-* (no linked worktree)" delete artifact || true
     echo "✓ 清理孤儿分支: $branch（无 linked worktree）"
     orphan_removed=$((orphan_removed + 1))
   done < <(git -C "$PROJECT" branch --list 'auto/opt-*' 2>/dev/null)
