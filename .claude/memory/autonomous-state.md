@@ -14,15 +14,15 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-07-01T20:05Z（case-394=今日第30例,394%4=2≠0 非审计轮·合规 skip。承接 case-393 NEXT[1]:pending=0。scout-scan #1=AS score=0.0 推『无明确小工作单位——可跳过或做文档润色』,DO NOT 禁日常自我润色→不润色。核实无可做单位四步:①git status 空 clean②git worktree list 仅 main @a6a5ff1③git branch 无 auto/④markers_deferred TODO=4 稳定,grep 复核 4 处真 deferred(apply_resource_access.py:85,90 Hologres/Lindorm getDetail 未实测/bff_client.py:207 profile.json 兼容分支待人工裁决/scaffold-skill.sh 模板占位)均非引擎可盲实现,正确留 triage。无源码改动→无 opt-worktree→无 LIVE 同步→DO B 不触发无 audit-log 埋点。仅写 case-394+回写 state 作心跳(archival 直提 main)。case-394 outcome=succeeded audit_type=none audit_findings=[]。pending=0。下轮 case-395=395%4=3≠0 非审计预期 skip;case-396=396%4=0 下次审计轮审 .claude/hooks/ 未审 hook(discovery-gate.py/decision-observer.py/auto-commit.py)）**
-- **活跃项目**: autonomous-studio-aone 维护——case-394 非审计轮 skip(score=0.0 无可做单位,4 deferred markers 均 triage 正确)。case-393 sanctioned-merge opt-security-1782846352→main 2353e2e(pipeline-gate.py _diff_scale 去 shell=True 改 list 形式,case-392 审计修复落地)。case-392 审计轮 security-review pipeline-gate.py 发现 1 low+修复。case-389 sanctioned-merge opt-optimization-1782844378→main 47128f1(notify-phone.py L195 template.format 异常守卫+兜底 markdown)。case-388 security-review notify-phone.py 发现 1 low+修复。case-385 sanctioned-merge→main fedf2a0(codegraph-sync.py L291 timestamp 误标 UTC 修复)。case-384 security-review、case-382 opt-worktree.sh、case-380 scout-scan.py 修复均已落 main。
-- **当前阶段**: case-394 skip 完成(pending=0,main HEAD=a6a5ff1,worktree 仅 main,无 auto/);下轮 case-395=395%4=3≠0 非审计预期 skip
+- **最后活跃: 2026-07-01T20:09Z（case-395=今日第31例,395%4=3≠0 非审计轮·合规 skip。承接 case-394 NEXT[1]:pending=0。scout-scan #1=AS score=0.0 推『无明确小工作单位——可跳过或做文档润色』,DO NOT 禁日常自我润色→不润色。核实无可做单位四步:①git status 空 clean②git worktree list 仅 main @248f679③git branch 无 auto/④markers_deferred TODO=4 稳定,grep 复核 deferred 真债务仍为历史同 4 处(apply_resource_access.py:85,90 Hologres/Lindorm getDetail 未实测/bff_client.py:207 profile.json 兼容分支待人工裁决/scaffold-skill.sh 模板占位)均非引擎可盲实现,正确留 triage。无源码改动→无 opt-worktree→无 LIVE 同步→DO B 不触发无 audit-log 埋点。仅写 case-395+回写 state 作心跳(archival 直提 main)。case-395 outcome=succeeded audit_type=none audit_findings=[]。pending=0。下轮 case-396=396%4=0=0 下次审计轮 DO A 强制裁 .claude/hooks/ 未审 hook(discovery-gate.py/decision-observer.py/auto-commit.py)）**
+- **活跃项目**: autonomous-studio-aone 维护——case-395 非审计轮 skip(score=0.0 无可做单位,4 deferred markers 均 triage 正确)。case-393 sanctioned-merge opt-security-1782846352→main 2353e2e(pipeline-gate.py _diff_scale 去 shell=True 改 list 形式,case-392 审计修复落地)。case-392 审计轮 security-review pipeline-gate.py 发现 1 low+修复。case-389 sanctioned-merge opt-optimization-1782844378→main 47128f1(notify-phone.py L195 template.format 异常守卫+兜底 markdown)。case-388 security-review notify-phone.py 发现 1 low+修复。case-385 sanctioned-merge→main fedf2a0(codegraph-sync.py L291 timestamp 误标 UTC 修复)。case-384 security-review、case-382 opt-worktree.sh、case-380 scout-scan.py 修复均已落 main。
+- **当前阶段**: case-395 skip 完成(pending=0,main HEAD=248f679,worktree 仅 main,无 auto/);下轮 case-396=396%4=0=0 下次审计轮 DO A 强制审计
 - **GOAL_STATUS**: active
 - **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动；审计轮次每 4 case 强制 code-review/security-review + 敏感路径 audit-log 埋点）
 - **LAST_UPDATED**: 2026-07-01
-- **LAST_WORKTREE**: 无（case-394 纯心跳 skip 轮,无源码改动,无 opt-worktree;前轮 case-393 opt-security-1782846352 已 squash merge 入 main @2353e2e 并清理 auto/ 分支;git worktree list 仅 main @a6a5ff1,无 auto/ 分支,main 干净）
+- **LAST_WORKTREE**: 无（case-395 纯心跳 skip 轮,无源码改动,无 opt-worktree;前轮 case-393 opt-security-1782846352 已 squash merge 入 main @2353e2e 并清理 auto/ 分支;git worktree list 仅 main @248f679,无 auto/ 分支,main 干净）
 - **LAST_OUTCOME**: done
-- **NEXT_SUGGESTION**: [1]【case-395=395%4=3≠0 非审计轮】pending=0,scout-scan 预期 AS score=0.0 无紧迫单位。核实无可做单位四步(git status 空/git worktree list 仅 main/git branch 无 auto//markers_deferred TODO=4 稳定)→若确认无源码可做单位则写心跳 case skip。勿做日常自我润色(DO NOT 禁)。[2]【case-396=396%4=0 下次审计轮】审 .claude/hooks/ 未审 hook:discovery-gate.py(387L,外部输入/路径校验面)/decision-observer.py(688L,文件写/JSON 解析,最大未审 hook)/auto-commit.py(377L,git 提交守卫);pipeline-gate.py 已 case-392 审+case-393 落 main 勿重审。或审 scripts/ 未审源文件(distill-patterns.py/index-cases.py/triage.py/route-health-scorer.py)。用 security-review skill。
+- **NEXT_SUGGESTION**: [1]【case-396=396%4=0=0 下次审计轮 DO A 强制审计】pending=0。继续审 .claude/hooks/ 未审 hook:discovery-gate.py(外部输入/路径校验面)/decision-observer.py(文件写/JSON 解析,最大未审 hook)/auto-commit.py(git 提交守卫);pipeline-gate.py 已 case-392 审+case-393 落 main 勿重审。或审 scripts/ 未审源文件(distill-patterns.py/index-cases.py/triage.py/route-health-scorer.py)。用 security-review skill。[2]【case-397=397%4=1≠0 非审计轮】承接 case-396 审计结论若有 pending→sanctioned-merge;若无 pending 则核实无可做单位四步→写心跳 case skip。勿做日常自我润色(DO NOT 禁)。
 - **自主循环**: 🟢 活跃
   - L1 Inline: 每次回复末尾内联检查 (+ git status)
   - L2 Heartbeat: CronCreate 每7分钟（执行轨——推进 Studio 阶段或主动扫描）
@@ -75,9 +75,9 @@ metadata:
 <!-- GOAL_STATUS: active -->
 <!-- ACTIVE_GOAL: ralph-wiggum-autonomous-loop (每轮一个小工作单位，scout-scan 排序选任务) -->
 <!-- LAST_UPDATED: 2026-07-01 -->
-<!-- LAST_WORKTREE: 无（case-394 纯心跳 skip 轮,无源码改动,无 opt-worktree;前轮 case-393 opt-security-1782846352 已 squash merge 入 main @2353e2e 并清理 auto/ 分支;git worktree list 仅 main @a6a5ff1,无 auto/ 分支,case-394 outcome=succeeded audit_type=none audit_findings=[]） -->
+<!-- LAST_WORKTREE: 无（case-395 纯心跳 skip 轮,无源码改动,无 opt-worktree;前轮 case-393 opt-security-1782846352 已 squash merge 入 main @2353e2e 并清理 auto/ 分支;git worktree list 仅 main @248f679,无 auto/ 分支,case-395 outcome=succeeded audit_type=none audit_findings=[]） -->
 <!-- LAST_OUTCOME: done -->
-<!-- NEXT_SUGGESTION: [1]【case-395=395%4=3≠0 非审计轮】pending=0,scout-scan 预期 AS score=0.0 无紧迫单位。核实无可做单位四步(git status 空/git worktree list 仅 main/git branch 无 auto//markers_deferred TODO=4 稳定)→若确认无源码可做单位则写心跳 case skip。勿做日常自我润色(DO NOT 禁)。[2]【case-396=396%4=0 下次审计轮】审 .claude/hooks/ 未审 hook:discovery-gate.py(387L)/decision-observer.py(688L)/auto-commit.py(377L);pipeline-gate.py 已 case-392 审+case-393 落 main 勿重审。或审 scripts/ 未审源文件。用 security-review skill。 -->
+<!-- NEXT_SUGGESTION: [1]【case-396=396%4=0=0 下次审计轮 DO A 强制审计】pending=0。继续审 .claude/hooks/ 未审 hook:discovery-gate.py/decision-observer.py/auto-commit.py;pipeline-gate.py 已 case-392 审+case-393 落 main 勿重审。或审 scripts/ 未审源文件。用 security-review skill。[2]【case-397=397%4=1≠0 非审计轮】承接 case-396 审计结论若有 pending→sanctioned-merge;若无 pending 则核实无可做单位四步→写心跳 case skip。勿做日常自我润色(DO NOT 禁)。 -->
 
 | 字段 | 内容 |
 |------|------|
