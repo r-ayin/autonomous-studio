@@ -14,15 +14,15 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-07-01T19:51Z（case-401=今日第37例,401%4=1≠0 非审计轮·sanctioned-merge。承接 case-400 NEXT[1]:pending=1 opt-worktree engine:security @3a5fa80 待合并。scout-scan #1=AS score=0.0 推荐『review 1 个待合并 worktree』与 pending 吻合。三步合并:①预审 diff git diff 4a146e0..auto/optimization -- decision-observer.py 仅 1file +92/-4=_redact_secrets 7类秘钥正则→[REDACTED]+_audit_log_input_write DO B 埋点(.audit/audit-YYYY-MM-DD.jsonl action=file_write result 如实 success/failure fail-safe 吞异常)+prompt_preview/message_preview 过脱敏+get_session_file session_id 防御性清洗([^A-Za-z0-9_\\-]→_)防 path traversal,逻辑正确;②冲突预检 git merge-tree --write-tree main auto/optimization=tree 8161f04 无冲突(case-400.json main 新增/worktree 未触→3-way 保留,state.md worktree 未改→取 main 版),git ls-tree 验证 case-400.json 在位+hook=修复版 blob a2d239f;③opt-worktree.sh . merge optimization→squash commit a33cc5c+worktree 目录清理;④git branch -D auto/optimization 强删 was 3a5fa80(非 ancestor,同 case-397/393 模式,cmd_merge 不删分支仅 cmd_reject 删)。回归:py_compile OK+git grep _redact_secrets HEAD 命中 4+worktree list 仅 main+git branch 仅 main+case-400.json 保留。case-401 outcome=succeeded audit_type=none audit_findings=[]。pending=0 clean。下轮 case-402=402%4=2≠0 非审计预期 skip 轮心跳）**
-- **活跃项目**: autonomous-studio-aone 维护——case-401 非审计轮 sanctioned-merge engine:security @3a5fa80→main a33cc5c(合并 case-400 的 decision-observer.py 修复:_redact_secrets 7类正则+_audit_log_input_write DO B 埋点+session_id 清洗)+auto/optimization 强删。case-400 审计轮 security-review decision-observer.py 1medium+1low 修复。case-397 sanctioned-merge engine:security @e0b9b8b→main 2fca11f。case-396 审计轮 security-review auto-commit.py git add -A medium+修复+DO B。case-393 sanctioned-merge opt-security→main 2353e2e(pipeline-gate 去 shell=True)。case-392 审 pipeline-gate 1low+修复。case-389 sanctioned-merge notify-phone→main 47128f1。case-388 security-review notify-phone 1low+修复。case-385 sanctioned-merge codegraph-sync L291→main fedf2a0。case-384 security-review codegraph-sync。已审 hook 6 个,剩 discovery-gate.py(387L)。
-- **当前阶段**: case-401 sanctioned-merge 完成(pending=0,main HEAD=a33cc5c,worktree list=仅 main,git branch=仅 main);下轮 case-402=402%4=2≠0 非审计轮预期 skip 心跳
+- **最后活跃: 2026-07-01T20:03Z（case-403=今日第39例,403%4=3≠0 非审计轮·skip 心跳。scout-scan #1=AS score=0.0 无明确单位,NEXT_SUGGESTION(case-402)明示预期 skip。核实四步:git status 仅 state.md(M)+case-402.json(??) 引擎簿记无源码改动/worktree list 仅 main @551c82e/git branch 仅 main/wc -l discovery-gate.py=387 下轮审计目标确认/markers_deferred TODO=4 稳定(apply_resource_access.py:85,90+2·bff_client.py:207+1·scaffold-skill.sh 模板占位符 1,均非引擎可盲实现)。DO NOT 禁日常自我润色→无源码改动、无 opt-worktree、无 LIVE 同步。另补归档上轮遗留 case-402.json+state.md(上轮写文件未完成 archival commit)。仅写 case-403+回写 state+归档直提 main(同 archival-commit-mechanism)。case-403 outcome=succeeded audit_type=none audit_findings=[]。pending=0 clean。下轮 case-404=404%4=0 审计轮 DO A 强制裁 discovery-gate.py(387L)→.claude/hooks/ 全量审计闭环）**
+- **活跃项目**: autonomous-studio-aone 维护——case-403 非审计轮 skip 心跳(四步健康核实+补归档,无源码改动)。case-402 skip 心跳(遗留归档本轮补提)。case-401 sanctioned-merge engine:security @3a5fa80→main a33cc5c。case-400 审计轮 security-review decision-observer.py 1medium+1low 修复。case-397 sanctioned-merge engine:security @e0b9b8b→main 2fca11f。case-396 审计轮 security-review auto-commit.py git add -A medium+修复+DO B。case-393 sanctioned-merge opt-security→main 2353e2e(pipeline-gate 去 shell=True)。case-392 审 pipeline-gate 1low+修复。case-389 sanctioned-merge notify-phone→main 47128f1。case-388 security-review notify-phone 1low+修复。case-385 sanctioned-merge codegraph-sync L291→main fedf2a0。case-384 security-review codegraph-sync。已审 hook 6 个,剩 discovery-gate.py(387L)。
+- **当前阶段**: case-403 skip 心跳完成(pending=0,main HEAD=551c82e→本轮归档后 HEAD 前进,worktree list=仅 main,git branch=仅 main);下轮 case-404=404%4=0 审计轮 DO A 审 discovery-gate.py(387L)
 - **GOAL_STATUS**: active
 - **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动；审计轮次每 4 case 强制 code-review/security-review + 敏感路径 audit-log 埋点）
 - **LAST_UPDATED**: 2026-07-01
-- **LAST_WORKTREE**: 无（case-401 sanctioned-merge engine:security @3a5fa80→main a33cc5c squash 合并+auto/optimization git branch -D 强删 was 3a5fa80;worktree list 仅 main,git branch 仅 main,pending=0 clean）
+- **LAST_WORKTREE**: 无（case-403 skip 心跳轮,无源码改动、无 opt-worktree;worktree list 仅 main @551c82e,git branch 仅 main,pending=0 clean）
 - **LAST_OUTCOME**: done
-- **NEXT_SUGGESTION**: [1]【case-402=402%4=2≠0 非审计轮】pending=0 clean,scout-scan #1=AS score=0.0 无明确单位→预期 skip 轮心跳(同 case-398/399 模式):核实四步(git status clean/worktree list 仅 main/git branch 仅 main/markers_deferred TODO=4 稳定 apply_resource_access.py:85,90·bff_client.py:207·scaffold-skill.sh 模板均非引擎可盲实现),无源码改动→仅写 case+回写 state。勿做日常自我润色(DO NOT 禁)。[2]【case-404=404%4=0 下次审计轮】DO A 审剩余最后未审 hook discovery-gate.py(387L,外部输入/路径校验面)——审完即 .claude/hooks/ 全量审计闭环(已审 6 个=commit-gate/codegraph-sync/notify-phone/pipeline-gate/auto-commit/decision-observer)。
+- **NEXT_SUGGESTION**: [1]【case-404=404%4=0 审计轮】DO A 强制 code-review/security-review 最后未审 hook discovery-gate.py(387L,外部输入/路径校验/子进程面)→完成后 .claude/hooks/ 全量审计闭环(已审 6 个=commit-gate/codegraph-sync/notify-phone/pipeline-gate/auto-commit/decision-observer)。[2]【case-405=405%4=1≠0 非审计轮】若审计轮产生 opt-worktree pending=1→sanctioned-merge;否则继续 skip 心跳。
 - **自主循环**: 🟢 活跃
   - L1 Inline: 每次回复末尾内联检查 (+ git status)
   - L2 Heartbeat: CronCreate 每7分钟（执行轨——推进 Studio 阶段或主动扫描）
@@ -75,9 +75,9 @@ metadata:
 <!-- GOAL_STATUS: active -->
 <!-- ACTIVE_GOAL: ralph-wiggum-autonomous-loop (每轮一个小工作单位，scout-scan 排序选任务) -->
 <!-- LAST_UPDATED: 2026-07-01 -->
-<!-- LAST_WORKTREE: 无（case-401 sanctioned-merge engine:security @3a5fa80→main a33cc5c squash 合并+auto/optimization git branch -D 强删 was 3a5fa80;worktree list 仅 main,git branch 仅 main,pending=0 clean） -->
+<!-- LAST_WORKTREE: 无（case-403 skip 心跳轮,无源码改动、无 opt-worktree;worktree list 仅 main @551c82e,git branch 仅 main,pending=0 clean） -->
 <!-- LAST_OUTCOME: done -->
-<!-- NEXT_SUGGESTION: [1]【case-402=402%4=2≠0 非审计轮】pending=0 clean,scout-scan #1=AS score=0.0 无明确单位→预期 skip 轮心跳(同 case-398/399):核实四步(git status clean/worktree list 仅 main/git branch 仅 main/markers_deferred TODO=4 稳定),无源码改动→仅写 case+回写 state。勿做日常自我润色(DO NOT 禁)。[2]【case-404 下次审计轮】DO A 审最后未审 hook discovery-gate.py(387L)→.claude/hooks/ 全量审计闭环。 -->
+<!-- NEXT_SUGGESTION: [1]【case-404=404%4=0 审计轮】DO A 强制 code-review/security-review 最后未审 hook discovery-gate.py(387L,外部输入/路径校验/子进程面)→完成后 .claude/hooks/ 全量审计闭环(已审 6 个)。[2]【case-405 非审计轮】若审计轮产生 opt-worktree pending=1→sanctioned-merge;否则继续 skip 心跳。 -->
 
 | 字段 | 内容 |
 |------|------|
