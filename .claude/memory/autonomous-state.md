@@ -14,15 +14,15 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-07-01T04:15Z（case-404=今日第40例,40%4=0 审计轮 DO A 强制。手动 security-review .claude/hooks/discovery-gate.py(原387L 第7个已审 hook,.claude/hooks/ 全量审计闭环完成)。发现 1medium+1info:①medium L236 _create_lock + L335 UserPromptSubmit 轮次写回 open('w')+json.dump 非原子,PreToolUse/UserPromptSubmit 并发→读端 json.load 半写 JSON→except:return/lock_data={} 静默放行→门禁绕过;②info L274 sys.stdin.read() 无上限但 harness 注入非网络入口风险可控。修复 1file:_atomic_write_lock(tmp+fsync+os.replace)+_safe_read_lock(JSONDecodeError 退避重读)+_audit_log_lock_op(DO B lock_create/release 埋点)。验证:py_compile OK+E2E lifecycle+audit-log JSONL 落盘(id=audit-20260630-201145-22d1k6 lock_create+id=audit-20260630-201145-2l42rz lock_release)。linter 中途回退文件,重应用后 diff 与 worktree 一致。改动落 opt-worktree engine:security @f2b767b(auto/optimization) pending=1 待下轮 sanctioned-merge。case-404 outcome=succeeded audit_type=security-review audit_findings=[medium L236 非原子锁写入/info L274 stdin 无上限]。）**
-- **活跃项目**: autonomous-studio-aone 维护——case-404 审计轮 security-review discovery-gate.py 1medium+1info 修复+DO B 埋点(pending=1 @f2b767b)。case-403 skip 心跳。case-402 skip 心跳。case-401 sanctioned-merge engine:security @3a5fa80→main a33cc5c。case-400 审计轮 security-review decision-observer.py 1medium+1low 修复。case-397 sanctioned-merge engine:security @e0b9b8b→main 2fca11f。case-396 审计轮 security-review auto-commit.py git add -A medium+修复+DO B。case-393 sanctioned-merge opt-security→main 2353e2e(pipeline-gate 去 shell=True)。case-392 审 pipeline-gate 1low+修复。case-389 sanctioned-merge notify-phone→main 47128f1。case-388 security-review notify-phone 1low+修复。case-385 sanctioned-merge codegraph-sync L291→main fedf2a0。case-384 security-review codegraph-sync。**已审 hook 7 个(commit-gate/codegraph-sync/notify-phone/pipeline-gate/auto-commit/decision-observer/discovery-gate),.claude/hooks/ 全量审计闭环完成**。
-- **当前阶段**: case-404 审计轮完成(pending=1 opt-worktree auto/optimization @f2b767b,main HEAD=cc3c9db,worktree list=main+auto/optimization);下轮 case-405=405%4=1≠0 非审计轮 sanctioned-merge @f2b767b
+- **最后活跃: 2026-07-01T20:25Z（case-405=今日第41例,405%4=1≠0 非审计轮·sanctioned-merge。承接 case-404 NEXT[1]:pending=1 opt-worktree auto/optimization @f2b767b 待合并。scout-scan #1=AS score=0.0 推荐 review 1 个待合并 worktree 与 pending 吻合。四步合并:①预审 git show f2b767b --stat 仅 1file discovery-gate.py +101/-28(case-404 security 修复 _atomic_write_lock/_safe_read_lock/_audit_log_lock_op),源 diff 逻辑正确;②冲突预检 git merge-tree --write-tree main auto/optimization=tree 048dd94 无冲突,merge-base=cc3c9db,main 仅 +38aaf4e 归档未碰 discovery-gate.py;③首次 merge 报冲突回滚——根因:main 工作树有 case-404 linter 遗留未提交 M discovery-gate.py,该 dirty 版本==worktree f2b767b(git diff auto/optimization 空)阻塞 squash merge;无损 git checkout -- 还原至 HEAD(同内容已存分支)→重跑 merge ✓ squash 合并+worktree 清理;④git branch -D auto/optimization 强删 was f2b767b(非 ancestor,同 case-401 模式)。回归:py_compile OK+grep 三 helper HEAD 命中 14+worktree list 仅 main+git branch 仅 main+case-404.json 保留+git status clean。case-405 outcome=succeeded audit_type=none audit_findings=[]。pending=0 clean。）**
+- **活跃项目**: autonomous-studio-aone 维护——case-405 sanctioned-merge engine:security @f2b767b→main 998136b(discovery-gate.py 原子锁+审计埋点)。case-404 审计轮 security-review discovery-gate.py 1medium+1info 修复+DO B 埋点。case-403 skip 心跳。case-402 skip 心跳。case-401 sanctioned-merge engine:security @3a5fa80→main a33cc5c。case-400 审计轮 security-review decision-observer.py 1medium+1low 修复。case-397 sanctioned-merge engine:security @e0b9b8b→main 2fca11f。case-396 审计轮 security-review auto-commit.py git add -A medium+修复+DO B。case-393 sanctioned-merge opt-security→main 2353e2e(pipeline-gate 去 shell=True)。case-392 审 pipeline-gate 1low+修复。case-389 sanctioned-merge notify-phone→main 47128f1。case-388 security-review notify-phone 1low+修复。case-385 sanctioned-merge codegraph-sync L291→main fedf2a0。case-384 security-review codegraph-sync。**已审 hook 7 个(commit-gate/codegraph-sync/notify-phone/pipeline-gate/auto-commit/decision-observer/discovery-gate),.claude/hooks/ 全量审计闭环完成**。
+- **当前阶段**: case-405 sanctioned-merge 完成(main HEAD=998136b,worktree list=仅 main,git branch=仅 main,pending=0 clean);下轮 case-406=406%4=2≠0 非审计轮预期 skip 心跳
 - **GOAL_STATUS**: active
 - **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动；审计轮次每 4 case 强制 code-review/security-review + 敏感路径 audit-log 埋点）
 - **LAST_UPDATED**: 2026-07-01
-- **LAST_WORKTREE**: auto/optimization @ f2b767b（case-404 审计轮 discovery-gate.py 原子锁+DO B 埋点,pending=1 待合并）
-- **LAST_OUTCOME**: in_progress
-- **NEXT_SUGGESTION**: [1]【case-405=405%4=1≠0 非审计轮】sanctioned-merge opt-worktree auto/optimization @f2b767b(discovery-gate.py 原子锁+审计埋点)到 main,回归 py_compile+grep helpers+worktree cleanup。[2]【case-408=408%4=0 下次审计轮】.claude/hooks/ 全量闭环已完成,转审其他有源码项目(scout-scan #1 若有变更)或剩余未审脚本(scaffold-skill.sh 模板等)。
+- **LAST_WORKTREE**: auto/optimization @ f2b767b（case-405 sanctioned-merge→main 998136b,branch 已删,worktree 已清,pending=0 clean）
+- **LAST_OUTCOME**: done
+- **NEXT_SUGGESTION**: [1]【case-406=406%4=2≠0 非审计轮】预期 skip 心跳:无 pending worktree、无源码改动,核实 git status clean+worktree list 仅 main 即可,不造无意义提交。[2]【case-408=408%4=0 下次审计轮】.claude/hooks/ 全量闭环已完成,转审其他有源码项目(scout-scan #1 若有变更)或剩余未审脚本(scaffold-skill.sh 模板、scripts/ 下未审脚本)。
 - **自主循环**: 🟢 活跃
   - L1 Inline: 每次回复末尾内联检查 (+ git status)
   - L2 Heartbeat: CronCreate 每7分钟（执行轨——推进 Studio 阶段或主动扫描）
@@ -75,9 +75,9 @@ metadata:
 <!-- GOAL_STATUS: active -->
 <!-- ACTIVE_GOAL: ralph-wiggum-autonomous-loop (每轮一个小工作单位，scout-scan 排序选任务) -->
 <!-- LAST_UPDATED: 2026-07-01 -->
-<!-- LAST_WORKTREE: auto/optimization @ f2b767b（case-404 审计轮 discovery-gate.py 原子锁+DO B 埋点,pending=1 待合并） -->
-<!-- LAST_OUTCOME: in_progress -->
-<!-- NEXT_SUGGESTION: [1]【case-405=405%4=1≠0 非审计轮】sanctioned-merge opt-worktree auto/optimization @f2b767b(discovery-gate.py 原子锁+审计埋点)到 main。[2]【case-408=408%4=0 下次审计轮】.claude/hooks/ 全量闭环完成,转审其他有源码项目或剩余未审脚本。 -->
+<!-- LAST_WORKTREE: auto/optimization @ f2b767b（case-405 sanctioned-merge→main 998136b,branch 已删,worktree 已清,pending=0 clean） -->
+<!-- LAST_OUTCOME: done -->
+<!-- NEXT_SUGGESTION: [1]【case-406=406%4=2≠0 非审计轮】预期 skip 心跳:无 pending worktree、无源码改动,核实 git status clean+worktree list 仅 main 即可,不造无意义提交。[2]【case-408=408%4=0 下次审计轮】.claude/hooks/ 全量闭环完成,转审其他有源码项目或剩余未审脚本。 -->
 
 | 字段 | 内容 |
 |------|------|
