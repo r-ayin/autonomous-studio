@@ -84,6 +84,24 @@ ensure_main_wt() {
     echo "engine:general" > "$dir/.opt-direction"
     _ignore_opt_direction_marker "$dir"
     echo "✓ 建 optimization worktree: $dir"
+  else
+    # standing worktree 在历次他枝 merge 后会落后 main（main 推进而本枝未 reset）。
+    # 不纠正则下轮同 area cmd_commit 把新改动 cp 到过时内容上（基于旧文件提交，case-365）。
+    # 仅当工作区干净且 auto/optimization 是 main 祖先（落后、无 ahead 提交）时 ff-only 快进；
+    # 脏或有 ahead 提交一律跳过——保住未合并工作，绝不丢改动（destructive reset 禁用）。
+    if [[ -z "$(git -C "$dir" status --porcelain 2>/dev/null)" ]] \
+       && git -C "$PROJECT" merge-base --is-ancestor auto/optimization "$MAIN_BRANCH" 2>/dev/null; then
+      local mb_head cur
+      mb_head=$(git -C "$PROJECT" rev-parse "$MAIN_BRANCH" 2>/dev/null)
+      cur=$(git -C "$dir" rev-parse HEAD 2>/dev/null)
+      if [[ -n "$mb_head" && -n "$cur" && "$mb_head" != "$cur" ]]; then
+        if git -C "$dir" merge --ff-only "$MAIN_BRANCH" >/dev/null 2>&1; then
+          echo "↻ standing optimization worktree 快进至 $MAIN_BRANCH（$cur → $mb_head，落后内容已同步）"
+        else
+          echo "⚠ standing optimization worktree 快进失败（已确认祖先+干净仍失败？），跳过不阻断"
+        fi
+      fi
+    fi
   fi
 }
 
