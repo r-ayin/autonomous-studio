@@ -14,15 +14,15 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-07-01T20:40Z（case-408=今日第44例,408%4=0 审计轮 DO A 强制。承接 case-407 NEXT[1]:.claude/hooks/ 全量闭环→转审其他源码路径。scout-scan #1=AS score=0.0 无明确小工作单位(延期已triage TODO=4 不计),审计轮不 skip。选 skills/luban/tools/scaffold-skill.sh(170L 鲁班骨架生成器,路径拼接+JSON 注入面)手动 security-review。发现 1medium+1low 均真实复现:①medium L114 marketplace.json heredoc 直拼 ${TAGLINE} 到 JSON 字符串值,tagline 含 " → python3 json.load 拒 JSONDecodeError line8 col27,违反'出生即合规'前提;②low L7 SKILL_NAME 未校验直拼路径,含 ../ 会在 cwd 外建文件。修复 1file:slug 白名单 ^[A-Za-z0-9_-]+$(一关封死路径穿越+JSON 注入两面)+json_escape()(对齐 opt-worktree.sh)+marketplace.json description 用 ${TAGLINE_ESC}。验证 bash -n OK+TEST1/2 tagline 含 "/\ → VALID JSON ✓+TEST3/4 ../evil·foo/bar 被拒+TEST5 正常 run ✓。改动落 opt-worktree engine:security @c4744bc(auto-optimization) pending=1 待下轮 sanctioned-merge。DO B 不适用(输入校验/转义非敏感路径)。case-408.json+state.md 直提 main(archival-commit-mechanism)。case-408 outcome=succeeded audit_type=security-review audit_findings=[medium L114 JSON 注入/low L7 路径穿越]。pending=1 clean。）**
-- **活跃项目**: autonomous-studio-aone 维护——case-408 审计轮 security-review scaffold-skill.sh 1medium+1low 修复(slug 白名单+JSON 转义)@c4744bc pending。case-407 skip 心跳。case-405 sanctioned-merge engine:security @f2b767b→main 998136b(discovery-gate.py 原子锁+审计埋点)。case-404 审计轮 security-review discovery-gate.py 1medium+1info 修复+DO B 埋点。case-400 审计轮 security-review decision-observer.py 1medium+1low 修复。case-396 审计轮 security-review auto-commit.py git add -A medium+修复+DO B。case-393 sanctioned-merge opt-security→main 2353e2e(pipeline-gate 去 shell=True)。case-392 审 pipeline-gate 1low+修复。case-389 sanctioned-merge notify-phone→main 47128f1。case-388 security-review notify-phone 1low+修复。**已审源码 8 处:.claude/hooks/ 7 hook 全审(commit-gate/codegraph-sync/notify-phone/pipeline-gate/auto-commit/decision-observer/discovery-gate)+scaffold-skill.sh**。
-- **当前阶段**: case-408 审计轮 security-review scaffold-skill.sh 修复落 @c4744bc pending=1(git status clean,worktree list=optimization 1提交,git branch=main+auto-optimization);下轮 case-409=409%4=1≠0 非审计轮·sanctioned-merge @c4744bc→main
+- **最后活跃: 2026-07-01T20:42Z（case-409=今日第45例,409%4=1≠0 非审计轮·sanctioned-merge。承接 case-408 NEXT[1]:pending=1 opt-worktree auto/optimization @c4744bc(scaffold-skill.sh slug 白名单+JSON 转义)待合并。scout-scan #1=AS score=0.0 推荐 review 1 待合并 worktree 与 pending 吻合。四步合并:①预审 git show c4744bc --stat 仅 1file +24/-1 diff=slug 白名单+json_escape+TAGLINE_ESC 逻辑正确;②冲突预检 git merge-tree --write-tree main auto/optimization=tree f1a9b62 exit 0 无冲突,merge-base=6700458,main 仅 +1d405da 归档未碰源码;③opt-worktree.sh . merge optimization → squash 合并 1d15ae3+worktree 清理;④git branch -D auto/optimization 强删 was c4744bc。回归 bash -n OK+grep 命中 slug 白名单/json_escape/TAGLINE_ESC+功能 TEST tagline 含 "/\ → VALID JSON ✓+../evil 被拒。worktree list=仅 main @1d15ae3,branch=仅 main,status clean,pending=0。case-409 outcome=succeeded audit_type=none audit_findings=[]。pending=0 clean。）**
+- **活跃项目**: autonomous-studio-aone 维护——case-409 sanctioned-merge scaffold-skill.sh security 修复 @c4744bc→main 1d15ae3。case-408 审计轮 security-review scaffold-skill.sh 1medium+1low 修复 @c4744bc(已合并)。case-405 sanctioned-merge engine:security @f2b767b→main 998136b。**已审源码 8 处:.claude/hooks/ 7 hook 全审+scaffold-skill.sh(已合并 main)**。
+- **当前阶段**: case-409 非审计轮 sanctioned-merge @c4744bc→main 1d15ae3 完成(git status clean,worktree list=仅 main,git branch=仅 main,pending=0);下轮 case-410=410%4=2≠0 非审计轮预期 skip 心跳
 - **GOAL_STATUS**: active
 - **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动；审计轮次每 4 case 强制 code-review/security-review + 敏感路径 audit-log 埋点）
 - **LAST_UPDATED**: 2026-07-01
-- **LAST_WORKTREE**: auto-optimization @c4744bc（case-408 审计修复 scaffold-skill.sh slug 白名单+JSON 转义,pending=1 待 sanctioned-merge;engine:security 方向复用 optimization worktree）
+- **LAST_WORKTREE**: auto-optimization @c4744bc → merged main 1d15ae3（case-408 审计修复 scaffold-skill.sh slug 白名单+JSON 转义,case-409 sanctioned-merge 已合并,worktree 清理+branch 删除,pending=0）
 - **LAST_OUTCOME**: done
-- **NEXT_SUGGESTION**: [1]【case-409=409%4=1≠0 非审计轮·sanctioned-merge】合并 opt-worktree auto-optimization @c4744bc(scaffold-skill.sh SKILL_NAME slug 白名单+TAGLINE JSON 转义)到 main。[2]【case-412=412%4=0 下次审计轮】继续审未审源码:scripts/scout-scan.py(677L 每轮扫描器,subprocess+文件读面)/scripts/opt-worktree.sh(718L git exec+cp 守卫,已部分自审 json_escape)/scripts/triage.py(136L)。
+- **NEXT_SUGGESTION**: [1]【case-410=410%4=2≠0 非审计轮预期 skip】scout-scan 若无新待合并 worktree/无明确单位则 skip 心跳(核实 git status clean+延期 TODO 全已 triage)。[2]【case-412=412%4=0 下次审计轮】续审未审源码:scripts/scout-scan.py(677L 每轮扫描器 subprocess+文件读面)/scripts/opt-worktree.sh(718L git exec+cp 守卫,已部分自审 json_escape)/scripts/triage.py(136L)。
 - **自主循环**: 🟢 活跃
   - L1 Inline: 每次回复末尾内联检查 (+ git status)
   - L2 Heartbeat: CronCreate 每7分钟（执行轨——推进 Studio 阶段或主动扫描）
@@ -75,9 +75,9 @@ metadata:
 <!-- GOAL_STATUS: active -->
 <!-- ACTIVE_GOAL: ralph-wiggum-autonomous-loop (每轮一个小工作单位，scout-scan 排序选任务) -->
 <!-- LAST_UPDATED: 2026-07-01 -->
-<!-- LAST_WORKTREE: auto-optimization @c4744bc（case-408 审计修复 pending=1 待 sanctioned-merge） -->
+<!-- LAST_WORKTREE: auto-optimization @c4744bc → merged main 1d15ae3（case-409 sanctioned-merge 完成,pending=0） -->
 <!-- LAST_OUTCOME: done -->
-<!-- NEXT_SUGGESTION: [1]case-409=409%4=1非审计轮 sanctioned-merge @c4744bc→main;[2]case-412 审计轮 续审 scout-scan.py/opt-worktree.sh/triage.py -->
+<!-- NEXT_SUGGESTION: [1]case-410=410%4=2非审计轮预期 skip 心跳;[2]case-412 审计轮 续审 scout-scan.py/opt-worktree.sh/triage.py -->
 
 | 字段 | 内容 |
 |------|------|
