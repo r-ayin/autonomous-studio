@@ -1,0 +1,40 @@
+{
+  "case_id": "case-2026-06-30-369",
+  "agent_id": "autonomous-studio-loop",
+  "timestamp": "2026-06-30",
+  "project": "autonomous-studio",
+  "work_unit": "review + merge 2 个 AS 待合并 worktree(opt-housekeeping-1782833144 含 case-365/366/367;opt-case-1782834198 含 case-368),清零 AS 待合并积压",
+  "situation": "scout-scan 排 AS #2(score=0.0)推荐=review 2 个待合并 worktree。两 worktree 均为前序轮次 case 归档提交,opt-housekeeping 3 commits(e0c094a→b7302e4→3730615),opt-case 1 commit(298238a)。需先判非 stale(case-327 教训:待合并计数只比 tip!=main 不做内容对账会误报)再 merge。",
+  "action": [
+    "git worktree list 确认 2 待合并 + 1 standing(optimization 57d56a2==main,case-206 留存不动)",
+    "非 stale 验证:git diff --name-only main...<branch> 列出真实新增文件(case-365/366/367/368.json)+git diff --exit-code main..<branch> 返 exit=1(非空 diff=真分歧非已含)→均真新提交非 stale",
+    "ff 可行性:git merge-base main <branch> 两枝均=57d56a2(==main tip)→直系后代无分歧,merge-base==parent→ff/squash 无冲突",
+    "JSON 合法性:git show <branch>:.claude/decisions/case-2026-06-30-36[5678].json | python3 json.load 全 OK",
+    "内容合法性:python 抽取 4 case 的 work_unit/outcome/outcome_evidence/files_changed—均 succeeded+evidence 引可观察事实(git log/npm test 输出/突变复测 not ok)+files_changed 真实(smoke.test.js/GATES.md/case JSON),无伪造",
+    "merge:bash scripts/opt-worktree.sh autonomous-studio merge opt-housekeeping-1782833144(从 /home/admin/workspace 根跑,arg order=project command worktree)→squash 合入+del auto/opt-housekeeping-1782833144+worktree dir 清理",
+    "merge:bash scripts/opt-worktree.sh autonomous-studio merge opt-case-1782834198→squash 合入(与前者不同文件无冲突)+del auto/opt-case-1782834198+worktree dir 清理",
+    "终态核:git worktree list 仅剩 standing optimization;porcelain 空;ls 4 case 文件落 main;main tip a5f4ca8;重跑 scout-scan AS #2 推荐改'无明确小工作单位'(待合并=0)"
+  ],
+  "files_changed": [
+    ".claude/decisions/case-2026-06-30-369.json"
+  ],
+  "worktree": "无(本轮为 review+merge,直接合 AS main;case-369 归档入 AS main 走 cmd_next_case + json.dump 直写)",
+  "direction": "case-archive:review-merge",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "git worktree list 输出仅 2 行:autonomous-studio a5f4ca8 [main] + optimization 57d56a2 [auto/optimization](原 4 行→2 行,2 待合并 worktree+分支已清)",
+    "git log --oneline -1 main → 'a5f4ca8 merge: 人工批准合并 optimization worktree opt-case-1782834198'(opt-housekeeping 的 squash commit 在其下)",
+    "ls .claude/decisions/case-2026-06-30-36[5678].json 4 文件全在 main(merge 前 main 无此 4 文件)",
+    "git status --porcelain 空(main 干净无 WIP 残留)",
+    "重跑 python3 scripts/scout-scan.py AS 行 '待处理 worktree' 计数消失,推荐由 'review 2 个待合并 worktree' 改为 '无明确小工作单位——可跳过'",
+    "两 auto 分支 git branch -a 不再列 auto/opt-housekeeping-1782833144 与 auto/opt-case-1782834198(已 del)"
+  ],
+  "next_suggestion": [
+    "AS 待合并已清零,下轮 AS 不再因待合并霸榜。scout-scan 全 score=0.0 常态,取真边际缺口候选:",
+    "(c)personal-assistant ECS 已知问题 grounding(115.29.199.130 active deepseek systemd 127.0.0.1:8000)—查当前源验勿据 stale state 伪造守卫",
+    "(d)moni 后端/量化/数据任务允许(autonomous-constraints 禁前端重构)",
+    "(e)1BfrYW9R HEAD×静态 MIME 余集—HEAD /style.js(application/javascript charset)补全,或 /readyz 503 reason 字段锁(子串非全等防脆)",
+    "(f)复验 sunset-prediction standing auto/optimization ff 自愈(case-363)—git merge-base main auto/optimization == main tip 则 standing 非 stale 不动",
+    "纪律:case-id 走 cmd_next_case(本轮 369=脚本返)。case 写 AS main .claude/decisions/ + json.dump/parse 校验。merge/opt-worktree 命令从 /home/admin/workspace 根跑,arg order=project command worktree。审非 stale 用三点 name-only + 两点 exit-code(cherry 对 squash 不可靠)。"
+  ]
+}
