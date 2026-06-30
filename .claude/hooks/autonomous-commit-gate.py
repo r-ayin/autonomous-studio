@@ -25,7 +25,7 @@ r"""autonomous-commit-gate.py — PreToolUse Hook (matcher: Bash)
   正确识别分支。case-归档豁免配合此修复:分支检测修好后归档 commit 落 main 会被拦,
   需此豁免放行元数据归档(代码 commit 仍拦)。
 """
-import os, sys, json, re, subprocess
+import os, sys, json, re, subprocess, datetime, random, string
 
 if sys.platform == "win32":
     try:
@@ -40,6 +40,10 @@ MAIN_BRANCHES = {"main", "master"}
 CASE_FILE_RE = re.compile(r"(^|/)\.claude/decisions/case-[^/]+\.json$")
 # 取一个值的 git 全局选项(-C <path>、-c <k=v>、--git-dir <path>、--work-tree <path>)
 _GIT_VALOPTS = {"-C", "-c", "--git-dir", "--work-tree", "-b", "-B"}
+# 拦截的 git 子命令(commit/push/merge/reset/branch/update-ref);豁免 checkout/switch(opt-worktree 内部用)
+_GUARDED = {"commit", "push", "merge", "reset", "branch", "update-ref"}
+# shell 顺序/管道控制符——命令链按此拆段逐段评估,堵 `A && git commit` 类绕过(见 _git_segments)
+_SHELL_OPS_RE = re.compile(r"\s*(?:&&|\|\||;|\||\n)\s*")
 
 
 def _git_parse(cmd):
@@ -123,6 +127,98 @@ def is_case_metadata_only(files):
     return all(CASE_FILE_RE.search(f) for f in files)
 
 
+def _git_segments(cmd):
+    """把命令按 shell 顺序/管道控制符拆段(&&、||、;、|、换行),逐段独立评估。
+    修命令链绕过:`A && git commit` 里危险 git 在链后段,原 `_git_parse` 用 `index("git")`
+    只取首个 git token——若前段也含 git(如 `git -C . status && git -C . commit`),commit
+    会被当成前段参数而放行;逐段评估即可命中后段真实 commit。分支与 repo 按本段 -C 解析,
+    故跨 repo 链(`-C A status && -C B commit`)也能正确定位 B 的分支。
+    残留:命令替换 $(git ...)/反引号不在拆分范围(需 LLM 刻意构造,低危)。"""
+    return [seg for seg in _SHELL_OPS_RE.split(cmd) if seg]
+
+
+def _push_refs_main(rest):
+    """push 的 refspec 是否触及 main/master。覆盖裸 ref、HEAD:main、main:main、+force 前缀。"""
+    for t in rest:
+        if t in MAIN_BRANCHES:
+            return True
+        if any(p in MAIN_BRANCHES for p in t.lstrip("+").split(":")):
+            return True
+    return False
+
+
+def _eval_segment(seg):
+    """评估单段命令,返回 block_detail 文本或 None(未命中/豁免)。"""
+    sub, rest = _git_parse(seg)
+    if sub not in _GUARDED:
+        return None
+    branch = current_branch(seg)
+    repo = repo_dir_from_cmd(seg)
+    if sub in ("commit", "push", "merge"):
+        # 目标分支是 main/master → 拦(分支从本段 -C 解析)
+        targets_main = branch in MAIN_BRANCHES
+        if sub == "push":
+            # 显式推 main/master ref(含 HEAD:main / main:main / +force)→ 即便在 feature 分支也拦
+            targets_main = targets_main or _push_refs_main(rest)
+        if targets_main:
+            # 豁免:case 元数据归档(仅 .claude/decisions/case-*.json)按先例可直提 main
+            if sub == "commit" and is_case_metadata_only(staged_files(repo)):
+                return None
+            return f"直接 {sub} 到 main/master"
+    elif sub == "reset":
+        # ref-mover 模式(--hard/--soft/--mixed)在 main 移动分支指针 → 拦;无模式标志的暂存区操作放行
+        _REF_MOVER_FLAGS = {"--hard", "--soft", "--mixed"}
+        if any(t in _REF_MOVER_FLAGS for t in rest) and branch in MAIN_BRANCHES:
+            return "git reset --hard/--soft/--mixed 在 main 分支（移动分支指针）"
+    elif sub == "branch":
+        # -f/-D/-d/-m/-M 触及 main/master → 拦;纯列分支或新建分支放行
+        _BR_DANGEROUS = {"-f", "--force", "-D", "-d", "--delete", "-m", "-M", "--move"}
+        has_dangerous = any(t in _BR_DANGEROUS for t in rest)
+        branch_names = [t for t in rest if not t.startswith("-")]
+        if has_dangerous and any(b in MAIN_BRANCHES for b in branch_names):
+            flags_used = " ".join(t for t in rest if t.startswith("-"))
+            return f"git branch {flags_used} 操作 main/master"
+    elif sub == "update-ref":
+        # git update-ref refs/heads/main <sha> 直接写 main ref → 拦
+        _MAIN_REFS = {f"refs/heads/{b}" for b in MAIN_BRANCHES}
+        if any(t in _MAIN_REFS for t in rest):
+            return "git update-ref 直接写 refs/heads/main/master"
+    return None
+
+
+def _audit_log_block(cmd, block_detail):
+    """审计埋点(按 .claude/decisions/audit-log.schema.json):gate 拦下 main 直写尝试时
+    append-only 写一条 JSONL 到 <PROJECT_DIR>/.audit/audit-YYYY-MM-DD.jsonl。
+    fail-safe——日志写失败绝不影响拦截决策(吞异常,仍按原 block 路径 exit 2)。"""
+    try:
+        now = datetime.datetime.now(datetime.timezone.utc)
+        date = now.strftime("%Y%m%d")        # id 用紧凑 8 位(对齐 schema id 模式)
+        date_dashed = now.strftime("%Y-%m-%d")  # 文件名用 dashed(对齐约束文档 .audit/audit-YYYY-MM-DD.jsonl)
+        rid = now.strftime("%H%M%S")
+        suffix = "".join(random.choices(string.ascii_lowercase + string.digits, k=6))
+        entry = {
+            "id": f"audit-{date}-{rid}-{suffix}",
+            "timestamp": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "userId": "engine",
+            "userRole": "engine",
+            "action": "compliance_check",
+            "resource": {"type": "permission", "identifier": "git-main-write",
+                         "newValue": block_detail},
+            "result": "denied",
+            "ip": "local",
+            "sensitive": True,
+            "sensitiveLevel": "high",
+            "details": {"reason": f"autonomous-commit-gate 拦截:{block_detail}",
+                        "errorMessage": cmd[:200]},
+        }
+        adir = os.path.join(PROJECT_DIR, ".audit")
+        os.makedirs(adir, exist_ok=True)
+        with open(os.path.join(adir, f"audit-{date_dashed}.jsonl"), "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except Exception:
+        pass  # 审计写失败不影响拦截决策
+
+
 def main():
     try:
         data = json.loads(sys.stdin.read() or "{}")
@@ -132,68 +228,24 @@ def main():
     if data.get("tool_name") != "Bash":
         print("{}")
         return
-    cmd = (data.get("tool_input") or {}).get("command", "") or ""
-
-    # 用 tokenizer 取子命令(跨过 -C/-c 等 git 全局选项)
-    # 拦截:commit/push/merge + reset(ref-mover 模式) + branch(-f/-D/-m main) + update-ref(直写)
-    # 豁免:checkout/switch(opt-worktree.sh 内部用)不在拦截集合中
-    sub, rest = _git_parse(cmd)
-    _GUARDED = {"commit", "push", "merge", "reset", "branch", "update-ref"}
-    if sub not in _GUARDED:
-        print("{}")
-        return
-
-    # 只在 autonomous 模式激活时拦
+    # 只在 autonomous 模式激活时拦(标记存在);用户直接指挥的提交(标记不存在)放行
     if not os.path.exists(MARKER):
         print("{}")
         return
+    cmd = (data.get("tool_input") or {}).get("command", "") or ""
 
-    branch = current_branch(cmd)
-    repo = repo_dir_from_cmd(cmd)
+    # 逐段评估命令链——堵 `A && git commit` 类绕过(原 index("git") 只看首个 git token)
     block_detail = None
-
-    if sub in ("commit", "push", "merge"):
-        # 目标分支是 main/master → 拦(分支从命令的 -C 解析,修复 workspace-root 失效)
-        targets_main = branch in MAIN_BRANCHES
-        if sub == "push":
-            # 显式推 main/master ref(如 `git -C <p> push origin main`)→ 即便当前在 feature 分支也拦
-            targets_main = targets_main or any(t in MAIN_BRANCHES for t in rest)
-        if targets_main:
-            # 豁免:case 元数据归档(仅 .claude/decisions/case-*.json)按先例可直提 main
-            if sub == "commit":
-                files = staged_files(repo)
-                if is_case_metadata_only(files):
-                    print("{}")
-                    return
-            block_detail = f"直接 {sub} 到 main/master"
-
-    elif sub == "reset":
-        # ref-mover 模式(--hard/--soft/--mixed)在 main 分支上会移动分支指针 → 拦
-        # 无模式标志的 reset(如 `git reset HEAD file`)是暂存区操作 → 放行
-        _REF_MOVER_FLAGS = {"--hard", "--soft", "--mixed"}
-        is_refmove = any(t in _REF_MOVER_FLAGS for t in rest)
-        if is_refmove and branch in MAIN_BRANCHES:
-            block_detail = "git reset --hard/--soft/--mixed 在 main 分支（移动分支指针）"
-
-    elif sub == "branch":
-        # -f/-D/-d/-m/-M 触及 main/master → 拦;纯列分支或创建新分支 → 放行
-        _BR_DANGEROUS = {"-f", "--force", "-D", "-d", "--delete", "-m", "-M", "--move"}
-        has_dangerous = any(t in _BR_DANGEROUS for t in rest)
-        branch_names = [t for t in rest if not t.startswith("-")]
-        if has_dangerous and any(b in MAIN_BRANCHES for b in branch_names):
-            flags_used = " ".join(t for t in rest if t.startswith("-"))
-            block_detail = f"git branch {flags_used} 操作 main/master"
-
-    elif sub == "update-ref":
-        # git update-ref refs/heads/main <sha> 直接写 main ref → 拦
-        _MAIN_REFS = {f"refs/heads/{b}" for b in MAIN_BRANCHES}
-        if any(t in _MAIN_REFS for t in rest):
-            block_detail = "git update-ref 直接写 refs/heads/main/master"
+    for seg in _git_segments(cmd):
+        block_detail = _eval_segment(seg)
+        if block_detail is not None:
+            break
 
     if block_detail is None:
         print("{}")
         return
 
+    _audit_log_block(cmd, block_detail)  # 审计埋点(fail-safe,不影响拦截)
     print(json.dumps({
         "decision": "block",
         "reason": (

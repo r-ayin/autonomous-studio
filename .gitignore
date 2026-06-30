@@ -12,6 +12,8 @@
 .claude/.autonomous_active
 .claude/.stop_autonomous
 .codebase-index/
+# autonomous-commit-gate.py 拦截事件审计日志(append-only,按 audit-log.schema.json)
+.audit/
 # scout-scan.py 每轮自动刷新的 workspace 项目清单（生成物，never tracked）
 PROJECTS.md
 .claude/decision-log.jsonl
