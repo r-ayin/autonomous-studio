@@ -14,6 +14,7 @@
 import json
 import os
 import secrets
+import sys
 from datetime import datetime
 
 
@@ -78,6 +79,12 @@ def record(work_dir, api_name, params_summary, result_code, *, user_id="unknown"
         path = os.path.join(log_dir, "audit-" + datetime.now().strftime("%Y-%m-%d") + ".jsonl")
         with open(path, "a", encoding="utf-8") as f:
             f.write(json.dumps(entry, ensure_ascii=False, default=str) + "\n")
-    except Exception:
-        # 审计日志失败不应阻断业务写操作
-        pass
+    except Exception as exc:
+        # 审计日志失败不应阻断业务写操作（不 re-raise），但须可观测——
+        # 落 stderr 而非 silent pass，避免审计写失败被静默吞掉（DO B：result 须如实反映成功/失败，不可恒静默）。
+        try:
+            sys.stderr.write(
+                "[audit_log] write failed (non-blocking): api={api} result_code={code} err={err}\n".format(
+                    api=api_name, code=result_code, err=repr(exc)))
+        except Exception:
+            pass
