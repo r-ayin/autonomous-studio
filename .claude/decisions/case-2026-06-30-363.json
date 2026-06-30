@@ -1,0 +1,31 @@
+{
+  "case_id": "case-2026-06-30-363",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-30T14:58:00Z",
+  "project": "autonomous-studio (engine script, affects all projects)",
+  "work_unit": "fix opt-worktree.sh ensure_main_wt: standing optimization worktree 落后 main 时 ff-only 快进",
+  "situation": "scout-scan 全项目 score=0.0 无紧迫缺口；#1 1BfrYW9R 是 stale-blind 推荐（state 已断言 Content-Type 早已守卫，跳过，[[state-next-suggestion-stale-blind]]）。取 state NEXT_SUGGESTION 第一条：sunset-prediction standing auto/optimization worktree 真 stale。复现确认：git -C sunset log main..auto/optimization 空（无 ahead）；merge-base --is-ancestor ff6c70b main=YES（全合并祖先）；三点 name-only main...auto/optimization 空（无独有改动）；但两点 diff main..auto/optimization -- src/routes.js 显 worktree 侧 routes.js 缺 /xhs/generate 整段+exec/PROJECT_ROOT import（旧版快照，main 已含新版）；grep /xhs/generate: standing wt=0 vs main=2。即 standing worktree 的 auto/optimization 分支落后 main 3 提交（他枝 opt-api/opt-gates merge 推进 main 而本枝未同步）。根因：ensure_main_wt 仅在 `[[ ! -d dir ]]` 时建 worktree（从 main 分叉）；已存在的 standing worktree 从不 reset，main 推进即累积落后。危害：下轮同 area cmd_commit 复用该 worktree（target=WT_BASE/optimization）会把新改动 cp 到过时文件上提交（基于旧 routes.js 编辑）。",
+  "action": "在 ensure_main_wt 加 else 分支：仅当 `git status --porcelain` 空（工作区干净）且 `git merge-base --is-ancestor auto/optimization MAIN_BRANCH` 真（落后、无 ahead 提交）时，比较 mb_head vs cur 不等则 `git -C dir merge --ff-only MAIN_BRANCH` 快进；脏或有 ahead 一律跳过保工作，禁 destructive reset。ff-only 而非 reset --hard：gate（hooks/reference-transaction）拦 reset/branch-D/update-ref 直移 main ref，但豁免 auto/*；ff-only 不在拦截列且只前进不丢工作，最安全。两副本同改：root live scripts/opt-worktree.sh + AS git autonomous-studio/scripts/opt-worktree.sh（[[opt-worktree-root-as-copy-drift]]），cp 后 diff IDENTICAL，bash -n 过。实跑验证（sunset）：init 前 wt HEAD=ff6c70b，运行 `bash scripts/opt-worktree.sh sunset-prediction init` 输出『↻ 快进 ff6c70b→a88f153』，after HEAD=a88f153==main，routes.js /xhs/generate count 0→2，porcelain 空。幂等：再跑 init 无快进输出。ahead-guard：throwaway 建 auto/opt-test-ffguard 含 1 ahead 提交，merge-base --is-ancestor 返非→guard 正确跳过 reset，throwaway 清理。提交：opt-worktree.sh autonomous-studio commit engine:worktree-staleness（同 area=engine 复用 standing wt）——commit 自身触发新代码路径：AS standing wt 亦落后（e385a85 vs main 3bb2c33），ensure_main_wt 快进 e385a85→3bb2c33 后 cp 文件提交。standing wt ahead=1（c1268f9），三点 name-only 仅 scripts/opt-worktree.sh，AS main porcelain 空。git show --stat c1268f9 仅 1 文件 +18 行。merge optimization→AS main：squash FF 3bb2c33→7f30f56，auto/optimization 分支+worktree 目录清理。merge 后 cp AS→root 再同步（diff IDENTICAL）。",
+  "files_changed": [
+    "scripts/opt-worktree.sh (root live, non-git)",
+    "autonomous-studio/scripts/opt-worktree.sh (AS git, merged→main 7f30f56)"
+  ],
+  "worktree": "autonomous-studio standing optimization worktree (auto/optimization) — commit 时被本修复 ff 快进 e385a85→3bb2c33 后提交 c1268f9；merge 后 squash FF 入 main 7f30f56，standing wt+auto/optimization 分支已清理",
+  "direction": "engine:worktree-staleness",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "AS main HEAD=7f30f56（merge: 人工批准合并 optimization worktree 'optimization'）",
+    "git -C autonomous-studio show 7f30f56 --stat: scripts/opt-worktree.sh | 18 ++++++++++ (1 file, +18)",
+    "grep 'merge --ff-only' autonomous-studio/scripts/opt-worktree.sh:98 命中；'快进至' line 99 命中",
+    "AS main porcelain 空（git -C autonomous-studio status --porcelain 无输出）",
+    "diff scripts/opt-worktree.sh autonomous-studio/scripts/opt-worktree.sh: IDENTICAL（root live==AS git，无漂移）",
+    "sunset standing wt 实跑：ff6c70b→a88f153==main，routes.js /xhs/generate count 0→2，porcelain 空",
+    "幂等+ahead-guard 双测通过（throwaway auto/opt-test-ffguard 正确跳过并清理）",
+    "bash -n scripts/opt-worktree.sh 语法过"
+  ],
+  "next_suggestion": [
+    "本修复 merge 后 AS standing optimization worktree 已被 cmd_merge 清理；下轮首次 commit 会从 fresh main 重建（ensure_main_wt 建+新 else 分支不再触发因已在 main）。可回归验：人造一个落后场景（建 standing wt 后 main 推进 1 提交）跑 init 确认 ff 输出。",
+    "state 承接未做：AS 45 个 auto/opt-cases-* 旧分支清理（结构债）——三 diff main...<branch> 过滤 case 文件后看非-case 残留，草删前逐分支 git diff <branch>..main 验 main 新于 branch，再批量 git branch -D。auto/optimization(standing)勿删。",
+    "scout-scan 全 score=0.0 已成常态——取 state NEXT_SUGGESTION 真缺口（旧分支清）优先于纯 housekeeping。审单提交用 git show --stat 勿被两点 diff 误读([[diverged-base-two-dot-diff-misread]])。"
+  ]
+}
