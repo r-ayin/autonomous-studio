@@ -14,15 +14,15 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-06-30T11:55Z（非审计轮次：今日 decisions 实际文件数=141，141%4=1≠0，且 case-340/341 刚连做两轮审计→走普通修复路径。step0 读 autonomous-constraints.md DO A/B/C 全文。step1 scout #1=AS(score=0.0 TODO=0 deferred=4)推荐'review 2 个待合并 worktree'。审 git worktree list 2 项：optimization(a271bf7)+opt-dataworks(dc3d201)。审 optimization diff：a271bf7 仅触 autonomous-constraints.md+autonomous-loop.sh 两文件，git diff main..auto/optimization 对此两文件均输出空=内容已 squash-merge 入 main 036a523；merge-base --is-ancestor a271bf7 main→NO（squash-merge 致 commit 非祖先但内容已落地）；worktree status 干净。判定 optimization 为已合并 stale 残留（036a523 cleanup 步漏删），opt-dataworks 才是真 pending。不 re-merge（会 stage main-ahead 文件 reverse diff 毁 case-337/338/339.json，破坏性）。opt-worktree.sh 无 remove 子命令→手动 git worktree remove --force + git branch -D auto/optimization。清理后 scout '待处理 worktree 共2→1'。case-342 outcome=succeeded audit_type=none）**
-- **活跃项目**: autonomous-studio-aone 维护——清理 stale 已合并 worktree auto/optimization（内容已入 main 036a523），保留真 pending opt-dataworks-1782819568 待人工 merge
+- **最后活跃: 2026-06-30T12:08Z（非审计轮次：今日 decisions 实际文件数=142，142%4=2≠0→普通路径。step0 读 autonomous-constraints.md DO A/B/C 全文。step1 scout #1=AS(score=0.0 TODO=0 deferred=4)推荐'review 1 个待合并 worktree'。审 opt-dataworks-1782819568(dc3d201)：git show --stat 分支单 commit 仅触 2 skill 文件(audit_log.py+83 / bff_client.py+14 _do_request chokepoint 埋点)，未触 state.md/case；merge-base=f7e8d92=main 上轮归档前 HEAD，main 自 base 仅推进 case-340/341/342+state.md，与分支 2 文件零重叠→3-way squash 无冲突。代码审：audit_log.py append-only JSONL 对齐 audit-log.schema.json、result 据 code 0/200 判 success/failure(非恒success)、except 吞错不阻断业务写；bff_client _do_request 对 is_write_operation 统一埋点 bypass=write_confirmed is None 区分 call_raw 绕过——正中 DO B 'HTTP 出站敏感路径 audit-log 埋点'。无拒理由→opt-worktree.sh . merge opt-dataworks-1782819568：git merge --squash 干净落地 main 0ff6fcd + worktree 清理。scout 复跑'待处理 worktree'段消失、#1 推荐语变'可跳过'、索引 678→679 fn 1763→1766。case-343 outcome=succeeded audit_type=none）**
+- **活跃项目**: autonomous-studio-aone 维护——sanctioned merge 落地 opt-dataworks-1782819568(dc3d201)→main 0ff6fcd（dataworks bff_client HTTP chokepoint audit-log 埋点 + 新建 core/audit_log.py），pending 队列 1→0 清零
 - **当前阶段**: 普通修复轮次闭环——stale optimization worktree+branch 已清理，待合并队列 2→1，仅 opt-dataworks 真_pending 待人工审合并
 - **GOAL_STATUS**: active
 - **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动；审计轮次每 4 case 强制 code-review/security-review + 敏感路径 audit-log 埋点）
 - **LAST_UPDATED**: 2026-06-30
-- **LAST_WORKTREE**: n/a（本轮非 opt-worktree 提交，是 stale worktree/branch 清理：auto/optimization(a271bf7) 内容已 squash-merge 入 main 036a523、git diff main..branch 对其触及的 autonomous-constraints.md+autonomous-loop.sh 均空=已合并；git worktree remove --force + git branch -D auto/optimization 清理；main HEAD 不变 f7e8d92；opt-dataworks-1782819568 原 DC3d201 保留待人工 merge）
+- **LAST_WORKTREE**: n/a（本轮非新开 opt-worktree，是 pending worktree 审+合并：opt-dataworks-1782819568(dc3d201 单 commit 仅触 audit_log.py+83 / bff_client.py+14)经 opt-worktree.sh . merge → git merge --squash 干净落地 main 0ff6fcd；merge-base=f7e8d92 与 main 自 base 推进的 case-340/341/342+state.md 零重叠无冲突；worktree 清理；main HEAD 053d259→0ff6fcd）
 - **LAST_OUTCOME**: done
-- **NEXT_SUGGESTION**: 【待人工审合并·低阻力】(1) opt-dataworks-1782819568 是唯一真 pending：opt-worktree.sh . show opt-dataworks-1782819568 看 diff（audit_log.py 新增+bff_client _do_request 埋点）→满意则 opt-worktree.sh . merge opt-dataworks-1782819568 合 main。(2) 下轮非审计(今日 case 142,142%4=2)：scout #1 AS score=0.0 仍'可跳过'、deferred 4 全 blocked+DO NOT 禁自我润色→无可行小工作单位记 no-op case，或等下个审计边界(今日 case 144,144%4=0)做 code-review/security-review。(3) 本轮已清 stale optimization worktree，待合并队列 2→1，scout 噪声降低。
+- **NEXT_SUGGESTION**: 【审计边界·下一轮】(1) 今日 case 143，143%4=3，下一案 case-144 落 144%4=0=审计轮次：scout #1 AS score=0.0'可跳过'但审计轮次须从 #1 起选有源码项目（AS 自身或 dataworks skill），用 code-review/security-review 审 main HEAD 最近 1-3 commit（含本轮落地 0ff6fcd 的 audit_log.py/bff_client.py 埋点）查注入/权限/PII/错误处理。(2) pending 队列已 1→0 清零、main 干净（仅 ?? PROJECTS.md 未跟踪）、无 stale worktree 残留。(3) 若审计无发现→审 deferred TODO=4 是否仍全 blocked（DO NOT 禁自我润色，确认无解禁项）。
 - **自主循环**: 🟢 活跃
   - L1 Inline: 每次回复末尾内联检查 (+ git status)
   - L2 Heartbeat: CronCreate 每7分钟（执行轨——推进 Studio 阶段或主动扫描）
@@ -75,9 +75,9 @@ metadata:
 <!-- GOAL_STATUS: active -->
 <!-- ACTIVE_GOAL: ralph-wiggum-autonomous-loop (每轮一个小工作单位，scout-scan 排序选任务) -->
 <!-- LAST_UPDATED: 2026-06-30 -->
-<!-- LAST_WORKTREE: n/a（本轮 stale worktree/branch 清理：auto/optimization(a271bf7) 内容已 squash-merge 入 main 036a523、触及的 autonomous-constraints.md+autonomous-loop.sh git diff main..branch 均空=已合并；worktree 干净；git worktree remove --force + git branch -D auto/optimization 清理；main HEAD 不变 f7e8d92；opt-dataworks-1782819568(dc3d201) 保留待人工 merge；case-342 outcome=succeeded audit_type=none） -->
+<!-- LAST_WORKTREE: n/a（本轮 pending worktree 审+合并：opt-dataworks-1782819568(dc3d201 单 commit 仅触 audit_log.py+83 / bff_client.py+14)经 opt-worktree.sh . merge → git merge --squash 干净落地 main 0ff6fcd；merge-base=f7e8d92 与 main 自 base 推进的 case-340/341/342+state.md 零重叠无冲突；worktree 清理；main HEAD 053d259→0ff6fcd；case-343 outcome=succeeded audit_type=none） -->
 <!-- LAST_OUTCOME: done -->
-<!-- NEXT_SUGGESTION: [1]【待人工审合并·低阻力】opt-dataworks-1782819568 是唯一真 pending：opt-worktree.sh . show 看 diff→opt-worktree.sh . merge 合 main; [2] 下轮非审计(今日 case 142,142%4=2)：scout #1 AS score=0.0'可跳过'、deferred 4 全 blocked→无可行小工作单位记 no-op 或等审计边界(今日 case 144,144%4=0); [3] 本轮已清 stale optimization worktree，待合并队列 2→1 -->
+<!-- NEXT_SUGGESTION: [1]【审计边界·下一轮】今日 case 143,143%4=3,下一案 case-144 落 144%4=0=审计轮次：scout #1 AS score=0.0'可跳过'但须从 #1 起选有源码项目用 code-review/security-review 审 main HEAD 最近 1-3 commit(含 0ff6fcd audit_log.py/bff_client.py 埋点)查注入/权限/PII/错误处理; [2] pending 队列已 1→0 清零、main 干净(仅 ?? PROJECTS.md 未跟踪)、无 stale worktree; [3] 审计无发现则审 deferred TODO=4 是否仍全 blocked(DO NOT 禁自我润色) -->
 
 | 字段 | 内容 |
 |------|------|
