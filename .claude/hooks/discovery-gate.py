@@ -10,6 +10,10 @@ import re
 import sys
 import json
 import glob as _glob
+import time as _time
+from datetime import datetime, timezone
+import random
+import string
 
 if sys.platform == "win32":
     try:
@@ -187,13 +191,11 @@ def _is_technical_tool_call(tool_name: str, tool_input: dict) -> bool:
             return False
 
         # 解析 lock 文件中的项目路径
-        try:
-            with open(LOCK_FILE, "r", encoding="utf-8") as f:
-                lock_data = json.load(f)
-            locked_project = lock_data.get("project_dir", "")
-        except Exception:
+        lock_data = _safe_read_lock(LOCK_FILE)
+        if not lock_data:
             return False
 
+        locked_project = lock_data.get("project_dir", "")
         if not locked_project:
             return False
 
@@ -222,8 +224,78 @@ def _is_technical_tool_call(tool_name: str, tool_input: dict) -> bool:
     return False
 
 
+def _atomic_write_lock(lock_path: str, lock_data: dict) -> None:
+    """原子写入 LOCK_FILE：先写临时文件再 os.replace，避免并发 hook 读到半写 JSON。
+
+    安全审计 case-404 (2026-07-01): 原 open('w')+json.dump 非原子，PreToolUse 与
+    UserPromptSubmit 并发触发时读端可能 json.load 失败 → 静默放行 → 门禁绕过。
+    """
+    dir_path = os.path.dirname(lock_path)
+    os.makedirs(dir_path, exist_ok=True)
+    tmp_fd = None
+    tmp_path = lock_path + ".tmp"
+    try:
+        tmp_fd = os.open(tmp_path, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o644)
+        payload = json.dumps(lock_data, ensure_ascii=False, indent=2).encode("utf-8")
+        os.write(tmp_fd, payload)
+        os.fsync(tmp_fd)
+    finally:
+        if tmp_fd is not None:
+            os.close(tmp_fd)
+    os.replace(tmp_path, lock_path)
+
+
+def _safe_read_lock(lock_path: str, retries: int = 1) -> dict | None:
+    """容错读取 LOCK_FILE：JSONDecodeError 时短暂退避重读一次，对抗并发半写窗口。"""
+    for attempt in range(retries + 1):
+        try:
+            with open(lock_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except json.JSONDecodeError:
+            if attempt < retries:
+                _time.sleep(0.05)
+                continue
+            return None
+        except Exception:
+            return None
+    return None
+
+
+def _audit_log_lock_op(action: str, result: str, project_name: str = "", detail: str = "") -> None:
+    """审计埋点(DO B / .claude/decisions/audit-log.schema.json):
+    discovery-gate 写 LOCK_FILE 属"文件系统写非 worktree"敏感路径。
+    仅在 lock 创建/释放时记录；读操作高频不埋。fail-safe:日志失败吞异常不影响门禁主流程。"""
+    try:
+        now = datetime.now(timezone.utc)
+        date = now.strftime("%Y%m%d")
+        date_dashed = now.strftime("%Y-%m-%d")
+        rid = now.strftime("%H%M%S")
+        suffix = "".join(random.choices(string.ascii_lowercase + string.digits, k=6))
+        entry = {
+            "id": f"audit-{date}-{rid}-{suffix}",
+            "timestamp": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "userId": "engine",
+            "userRole": "engine",
+            "action": action,
+            "resource": {"type": "lock_file", "identifier": LOCK_FILE,
+                         "project": project_name, "newValue": detail[:200]},
+            "result": result,
+            "ip": "local",
+            "sensitive": True,
+            "sensitiveLevel": "low",
+            "details": {"reason": "discovery-gate.py LOCK_FILE 状态变更",
+                        "errorMessage": detail[:200]},
+        }
+        adir = os.path.join(WORKSPACE_ROOT, ".audit")
+        os.makedirs(adir, exist_ok=True)
+        with open(os.path.join(adir, f"audit-{date_dashed}.jsonl"), "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except Exception:
+        pass  # fail-safe
+
+
 def _create_lock(project_dir: str, trigger_reason: str) -> dict:
-    """创建发现门禁锁文件。"""
+    """创建发现门禁锁文件（原子写入）。"""
     lock_data = {
         "project_dir": project_dir,
         "project_name": os.path.basename(project_dir),
@@ -232,15 +304,26 @@ def _create_lock(project_dir: str, trigger_reason: str) -> dict:
         "discovery_rounds": 0,
         "direction_confirmed": False,
     }
-    os.makedirs(os.path.dirname(LOCK_FILE), exist_ok=True)
-    with open(LOCK_FILE, "w", encoding="utf-8") as f:
-        json.dump(lock_data, f, ensure_ascii=False, indent=2)
+    _atomic_write_lock(LOCK_FILE, lock_data)
+    _audit_log_lock_op("lock_create", "success", os.path.basename(project_dir), trigger_reason)
+    return lock_data
 
 
 def _release_lock() -> None:
     """释放发现门禁锁。"""
+    proj = ""
+    try:
+        ld = _safe_read_lock(LOCK_FILE)
+        if ld:
+            proj = ld.get("project_name", "")
+    except Exception:
+        pass
     if os.path.exists(LOCK_FILE):
-        os.remove(LOCK_FILE)
+        try:
+            os.remove(LOCK_FILE)
+            _audit_log_lock_op("lock_release", "success", proj)
+        except Exception as e:
+            _audit_log_lock_op("lock_release", "failure", proj, str(e)[:200])
 
 
 def _inject_discovery_prompt(lock_data: dict) -> str:
@@ -281,10 +364,8 @@ def main():
         if not os.path.exists(LOCK_FILE):
             return  # 无锁 → 放行
 
-        try:
-            with open(LOCK_FILE, "r", encoding="utf-8") as f:
-                lock_data = json.load(f)
-        except Exception:
+        lock_data = _safe_read_lock(LOCK_FILE)
+        if not lock_data:
             return
 
         locked_project = lock_data.get("project_dir", "")
@@ -315,11 +396,7 @@ def main():
     if event == "UserPromptSubmit":
         # 先检查是否已激活 — 如果是，检测用户确认信号
         if os.path.exists(LOCK_FILE):
-            try:
-                with open(LOCK_FILE, "r", encoding="utf-8") as f:
-                    lock_data = json.load(f)
-            except Exception:
-                lock_data = {}
+            lock_data = _safe_read_lock(LOCK_FILE) or {}
 
             if _detect_confirm_signal(user_input):
                 _release_lock()
@@ -330,10 +407,9 @@ def main():
                 }, ensure_ascii=False))
                 return
 
-            # 更新轮次计数
+            # 更新轮次计数（原子写回）
             lock_data["discovery_rounds"] = lock_data.get("discovery_rounds", 0) + 1
-            with open(LOCK_FILE, "w", encoding="utf-8") as f:
-                json.dump(lock_data, f, ensure_ascii=False, indent=2)
+            _atomic_write_lock(LOCK_FILE, lock_data)
 
             # 超时保护: > 5 轮 → 建议放行
             if lock_data["discovery_rounds"] > 5:
@@ -358,8 +434,7 @@ def main():
             return
 
         _create_lock(proj_dir, "项目 CLAUDE.md 含未填充模板 或 PROGRESS.md 无实质任务")
-        with open(LOCK_FILE, "r", encoding="utf-8") as f:
-            lock_data = json.load(f)
+        lock_data = _safe_read_lock(LOCK_FILE) or {"project_name": os.path.basename(proj_dir)}
 
         print(json.dumps({
             "decision": "activate",
@@ -371,10 +446,8 @@ def main():
     # ── Stop: 检查锁状态，注入提醒 ─────────────────────
     if event == "Stop":
         if os.path.exists(LOCK_FILE):
-            try:
-                with open(LOCK_FILE, "r", encoding="utf-8") as f:
-                    lock_data = json.load(f)
-            except Exception:
+            lock_data = _safe_read_lock(LOCK_FILE)
+            if not lock_data:
                 return
             print(json.dumps({
                 "decision": "remind",
