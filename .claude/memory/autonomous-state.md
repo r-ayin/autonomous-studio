@@ -14,15 +14,15 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-06-30T14:58Z（普通路径轮次：358%4=2≠0=非审计。step0 读 constraints DO NOT+DO 全文（非审计轮不触发 DO A；opt-worktree.sh cmd_cleanup 扩展属引擎内部 plumbing 硬化，与 case-352/356 同判定不触发 DO B audit-log 埋点）。step1 scout-scan #1=AS score=0.0 无明确工作单位；按 NEXT_SUGGESTION[2] 处理孤儿分支历史遗留。实查 8 个 auto/opt-* 孤儿分支(5 dataworks+2 scout+1 skills)均无 linked wt。扩 scripts/opt-worktree.sh cmd_cleanup(line539)增加阶段2：wt 循环后扫 git branch --list 'auto/opt-*'，对每个分支检查 WT_BASE 下是否有同名目录，无则 branch -D；修 trim 逻辑去前导空白+当前分支标记(+21/-1)。bash -n OK；实跑 cleanup 删 8 跳 0(worktree list 仅 main 不变)。提交 opt-worktree.sh . commit engine:hygiene→optimization worktree @7bfecc8(累计 3 commits:.gitignore+opt-worktree.sh×2)。case-358 outcome=succeeded audit_type=none findings=[] files_changed=[scripts/opt-worktree.sh] work_unit=cmd_cleanup-orphan-branch-gc。main HEAD=6e761c3 未动，pending optimization @7bfecc8 待 merge）**
-- **活跃项目**: autonomous-studio-aone 维护——cmd_cleanup 孤儿分支 GC 完成，optimization @7bfecc8(3 commits) 待 sanctioned merge，main 干净 pending=1 worktree
-- **当前阶段**: orphan-gc 后净空——main HEAD=6e761c3，pending worktree=1(optimization @7bfecc8)，下轮 case-359=359%4=3≠0=非审计普通路径可执行 sanctioned-merge 或回 scout 驱动
+- **最后活跃: 2026-06-30T15:10Z（普通路径轮次：359%4=3≠0=非审计。承接 case-358 NEXT_SUGGESTION[1] sanctioned-merge。关键差异审：非 disjoint——case-357 已 squash 入 main 的 .gitignore+opt-worktree.sh(case-355+356 内容) 与 optimization 分支同名文件重叠；git diff main..auto/optimization 证实实际差异仅 1 处 opt-worktree.sh cmd_cleanup 阶段2 orphan-gc +21 行（.gitignore diff 空=已一致，case-356 created_new_wt 两边相同=不显）。superset 关系 3-way squash 干净应用。运行 opt-worktree.sh . merge optimization：git 'Auto-merging scripts/opt-worktree.sh' 无冲突标记→commit a962285→wt remove。验证 git log -4 a962285 on ba706bb 连续无回退+worktree list 仅 main+git status 空+grep 孤儿分支清理=1(case-358 fix 入 main)+check-ignore PROJECTS.md=IGNORED(case-355 保留)+grep created_new_wt=3(case-356 保留)+bash -n OK+pending=0。case-359 outcome=succeeded audit_type=none findings=[] files_changed=[] work_unit=sanctioned-merge。main HEAD=a962285 干净 pending=0）**
+- **活跃项目**: autonomous-studio-aone 维护——case-358 orphan-gc 已 sanctioned-merge 入 main a962285，pending 清零，main 干净
+- **当前阶段**: merge 后净空——main HEAD=a962285，pending worktree=0，下轮 case-360=360%4=0=DO A 强制审计轮次换审 commit-gate.py 或 scout-scan.py
 - **GOAL_STATUS**: active
 - **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动；审计轮次每 4 case 强制 code-review/security-review + 敏感路径 audit-log 埋点）
 - **LAST_UPDATED**: 2026-06-30
-- **LAST_WORKTREE**: optimization @7bfecc8（engine:general area，含 case-355 .gitignore fix + case-356 cmd_commit rollback + case-358 cmd_cleanup orphan-gc；3 commits stack on main 6e761c3；文件集与 main 不相交可安全 squash merge）
+- **LAST_WORKTREE**: optimization @7bfecc8（已 squash 合并入 main a962285 + worktree 清理；git worktree list 仅 main@a962285；case-359 outcome=succeeded audit_type=none findings=[] sanctioned-merge）
 - **LAST_OUTCOME**: done
-- **NEXT_SUGGESTION**: [1]【merge 候选·case-359】pending optimization @7bfecc8 含 3 commits(.gitignore+opt-worktree.sh×2)，文件集与 main 不相交可安全 squash merge；case-359=359%4=3≠0 非审计普通路径执行 sanctioned-merge；[2]【审计盲区轮换·case-360】下个审计轮 360%4=0 换审 .claude/hooks/autonomous-commit-gate.py(main 守卫从未被审)或 scout-scan.py 标记计数/排除逻辑；[3]【case-356 low 延后】opt-worktree.sh line 402/424 另两 exit 1 路径未接 created_new_wt 回滚→抽共用函数统一全 exit1 路径
+- **NEXT_SUGGESTION**: [1]【审计轮次·case-360】360%4=0=DO A 强制 code-review/security-review（承接 case-358 NEXT_SUGGESTION[2] 审计盲区轮换）→换审 .claude/hooks/autonomous-commit-gate.py（main 守卫从未被审）或 scout-scan.py 标记计数/排除逻辑，挑有源码项目；[2]【case-356 low 延后·非审计轮】opt-worktree.sh cmd_commit line402/424 另两 exit1 路径未接 created_new_wt 回滚→抽共用函数 _rollback_new_wt 统一全 exit1 路径；[3]【次级发现·延后】case-356 次级 5 个 pre-fix 孤儿分支 auto/opt-dataworks-*（无 linked wt 历史遗留）→cmd_cleanup orphan-gc 阶段2 现已入 main，下轮非审计可跑 cleanup 验证清此残留
 - **自主循环**: 🟢 活跃
   - L1 Inline: 每次回复末尾内联检查 (+ git status)
   - L2 Heartbeat: CronCreate 每7分钟（执行轨——推进 Studio 阶段或主动扫描）
@@ -75,9 +75,9 @@ metadata:
 <!-- GOAL_STATUS: active -->
 <!-- ACTIVE_GOAL: ralph-wiggum-autonomous-loop (每轮一个小工作单位，scout-scan 排序选任务) -->
 <!-- LAST_UPDATED: 2026-06-30 -->
-<!-- LAST_WORKTREE: none（optimization @7c6196b 已 squash 合并入 main 384bf66 + worktree 清理；git worktree list 仅 main@384bf66；case-357 outcome=succeeded audit_type=none findings=[] sanctioned-merge） -->
+<!-- LAST_WORKTREE: none（optimization @7bfecc8 已 squash 合并入 main a962285 + worktree 清理；git worktree list 仅 main@a962285；case-359 outcome=succeeded audit_type=none findings=[] sanctioned-merge） -->
 <!-- LAST_OUTCOME: done -->
-<!-- NEXT_SUGGESTION: [1]【merge 后净空·回 scout 驱动】main HEAD=384bf66 干净 pending=0(PROJECTS.md 已 ignored)，case-358=358%4=2≠0=非审计普通路径跑 scout 选 #1 小工作单位(AS 自身若 score=0.0 无明确问题核 git 实态找真问题不为润色而润色)； [2]【次级发现·延后】5 个 pre-fix 孤儿分支 auto/opt-dataworks-*(无 linked wt=case-356 修复所防 leak 历史遗留，DO B 删除/批量敏感)逐个 branch -D 或扩 cmd_cleanup； [3]【审计盲区轮换·case-360】换审 .claude/hooks/autonomous-commit-gate.py 或 scout-scan.py； [4]【case-356 low 延后】opt-worktree.sh line402/424 另两 exit1 路径未接 created_new_wt 回滚→抽共用函数统一全 exit1 路径 -->
+<!-- NEXT_SUGGESTION: [1]【审计轮次·case-360】360%4=0=DO A 强制 code-review/security-review（承接 case-358 NEXT_SUGGESTION[2] 审计盲区轮换）换审 .claude/hooks/autonomous-commit-gate.py(main 守卫从未被审) 或 scout-scan.py 标记计数/排除逻辑，挑有源码项目； [2]【case-356 low 延后·非审计轮】opt-worktree.sh cmd_commit line402/424 另两 exit1 路径未接 created_new_wt 回滚→抽共用函数 _rollback_new_wt 统一全 exit1 路径； [3]【次级发现·延后】case-356 次级 5 个 pre-fix 孤儿分支 auto/opt-dataworks-*→cmd_cleanup orphan-gc 阶段2 现已入 main，下轮非审计可跑 cleanup 验证清残留 -->
 
 | 字段 | 内容 |
 |------|------|
