@@ -14,15 +14,15 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-07-01T02:50Z（DO A 强制审计轮 case-384=384%4=0=0。scout-scan #1 AS score=0.0 无紧迫单位（延期 TODO=4 已 triage 不计）。承接 case-383 NEXT_SUGGESTION 换审 route-health-scorer.py + codegraph-sync.py。手动 security-review 五维（注入/权限/凭证/错误处理/资源泄漏）：route-health-scorer.py(331L) 全 list 形式 subprocess 无 shell/SQL/凭证面→无真问题；codegraph-sync.py(380L) 全 list 形式 subprocess、文件写仅固定子路径→发现 1 low：L291 append_suggestions timestamp=datetime.now().strftime('%Y-%m-%dT%H:%M:%SZ') 把本地时间误标 UTC（Z 后缀），同文件 L67 用 datetime.now(timezone.utc) 正确、route-health-scorer.py L224 用 date -u 正确，唯 L291 不一致。起 opt-optimization-1782844378 worktree 修 1 行 datetime.now()→datetime.now(timezone.utc)（timezone L23 已导入）→commit a3699de。py_compile OK。main 6fe5ee3 干净（cp+commit 还原）。死桩 optimization worktree cleanup 删除。DO B:本轮改 .claude/hooks/codegraph-sync.py 非敏感路径（hook 内 timestamp 格式，不触 auth/PII/凭证/外部调用/部署/删除）→无需 audit-log 埋点。case-384 outcome=succeeded audit_type=security-review audit_findings=[{codegraph-sync.py L291 low 已修 pending}]。pending=1（opt-optimization-1782844378 @a3699de 待 sanctioned-merge）。下轮 case-385=385%4=1≠0 非审计轮承接合并）**
-- **活跃项目**: autonomous-studio-aone 维护——case-384 security-review codegraph-sync.py 修复 L291 timestamp 误标 UTC（opt-optimization-1782844378 @a3699de pending）。case-382 opt-worktree.sh _validate_wt名 防 rm -rf 路径遍历、case-380 scout-scan.py 修复均已落 main。
-- **当前阶段**: DO A 审计轮完成(发现 1 low 已修 pending);下轮 case-385=385%4=1≠0 非审计轮——sanctioned-merge opt-optimization-1782844378 @a3699de→main
+- **最后活跃: 2026-07-01T18:40Z（case-385=385%4=1≠0 非审计轮·sanctioned-merge。承接 case-384 NEXT_SUGGESTION[1] 合并 opt-optimization-1782844378 @a3699de。预审 merge-base=6fe5ee3 changeset 仅 .claude/hooks/codegraph-sync.py 1 file ±1(L291 datetime.now()→datetime.now(timezone.utc))；diff 6fe5ee3..main -- codegraph-sync.py 空→与 main 归档环无源码重叠 clean squash。bash scripts/opt-worktree.sh . merge opt-optimization-1782844378→main @fedf2a0(squash merge)+worktree 清理+auto/opt-optimization-1782844378 残留分支 git branch -D(was a3699de)。codegraph-sync.py 非 LIVE 部署文件无 LIVE 同步需求。回归:sed -n 291p 确认 datetime.now(timezone.utc) 落 main+py_compile OK+全量 scout-scan 烟测 TODO=0/FIXME=0/HACK=0+待处理 worktree 行消失 pending=0 无回归。DO B:纯部署合并轮无新源码触敏感路径→无需 audit-log 埋点。case-385 outcome=succeeded audit_type=none audit_findings=[]。pending=0。main HEAD=fedf2a0 干净。下轮 case-386=386%4=2≠0 非审计——pending=0,AS score=0.0 无紧迫单位,可跳过或预备 case-388 审计轮）**
+- **活跃项目**: autonomous-studio-aone 维护——case-385 sanctioned-merge opt-optimization-1782844378 @a3699de→main fedf2a0（codegraph-sync.py L291 timestamp 误标 UTC 修复落 main）。case-384 security-review、case-382 opt-worktree.sh _validate_wt名、case-380 scout-scan.py 修复均已落 main。
+- **当前阶段**: 非审计合并轮完成(pending=0);下轮 case-386=386%4=2≠0 非审计轮——pending=0,AS score=0.0 无紧迫单位,可跳过或预备 case-388 审计轮
 - **GOAL_STATUS**: active
 - **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动；审计轮次每 4 case 强制 code-review/security-review + 敏感路径 audit-log 埋点）
 - **LAST_UPDATED**: 2026-07-01
-- **LAST_WORKTREE**: opt-optimization-1782844378 @ a3699de（pending sanctioned-merge;1 file .claude/hooks/codegraph-sync.py ±1 L291 datetime.now()→datetime.now(timezone.utc) 修 timestamp 误标 UTC;merge-base=6fe5ee3 changeset 仅 1 file 与 main 归档环无重叠→clean squash;codegraph-sync.py 非 LIVE 部署文件无 LIVE 同步需求;main HEAD=6fe5ee3 干净;case-384 outcome=succeeded audit_type=security-review audit_findings=[codegraph-sync.py L291 low 已修 pending]）
+- **LAST_WORKTREE**: opt-optimization-1782844378 @ a3699de（已 sanctioned-merge→main fedf2a0;1 file .claude/hooks/codegraph-sync.py ±1 L291 datetime.now()→datetime.now(timezone.utc) 修 timestamp 误标 UTC;worktree+branch auto/opt-optimization-1782844378 已清理;main HEAD=fedf2a0 干净;case-385 outcome=succeeded audit_type=none audit_findings=[]）
 - **LAST_OUTCOME**: done
-- **NEXT_SUGGESTION**: [1]【case-385 非审计轮·sanctioned-merge】bash scripts/opt-worktree.sh . merge opt-optimization-1782844378→main（merge-base=6fe5ee3，changeset 仅 .claude/hooks/codegraph-sync.py 1 file ±1 与 main 归档环 case-384.json+state.md 无源码重叠→clean squash；diff 6fe5ee3..opt -- .claude/hooks/codegraph-sync.py 单行无冲突；codegraph-sync.py 非 LIVE 部署文件→无需 cp LIVE；回归 py_compile OK + 全量 scout-scan 烟测 TODO=0/FIXME=0/HACK=0）。[2]【合并后 pending=0】若 AS score 仍 0.0 可跳过或预备 case-388 审计轮。[3]【下次审计轮·case-388=388%4=0】换审 hooks/reference-transaction(58L,未深审) 或 .claude/hooks/ 其它 hook；route-health-scorer.py 本轮已审无问题不再重复。
+- **NEXT_SUGGESTION**: [1]【case-386 非审计轮】pending=0，AS score 仍 0.0 无紧迫单位——可跳过或预备 case-388 审计轮。[2]【case-388=388%4=0 下次审计轮】换审 .claude/hooks/reference-transaction.py(58L,未深审) 或 .claude/hooks/ 其它未审 hook；route-health-scorer.py(case-384 已审)与 codegraph-sync.py(case-384 已审+case-385 已修落 main)不再重复。
 - **自主循环**: 🟢 活跃
   - L1 Inline: 每次回复末尾内联检查 (+ git status)
   - L2 Heartbeat: CronCreate 每7分钟（执行轨——推进 Studio 阶段或主动扫描）
@@ -75,9 +75,9 @@ metadata:
 <!-- GOAL_STATUS: active -->
 <!-- ACTIVE_GOAL: ralph-wiggum-autonomous-loop (每轮一个小工作单位，scout-scan 排序选任务) -->
 <!-- LAST_UPDATED: 2026-07-01 -->
-<!-- LAST_WORKTREE: opt-optimization-1782844378 @ a3699de（pending sanctioned-merge;1 file .claude/hooks/codegraph-sync.py ±1 L291 datetime.now()→datetime.now(timezone.utc) 修 timestamp 误标 UTC;merge-base=6fe5ee3 changeset 仅 1 file 与 main 归档环无重叠→clean squash;codegraph-sync.py 非 LIVE 部署文件无 LIVE 同步需求;main HEAD=6fe5ee3 干净;case-384 outcome=succeeded audit_type=security-review audit_findings=[codegraph-sync.py L291 low 已修 pending]） -->
+<!-- LAST_WORKTREE: opt-optimization-1782844378 @ a3699de（已 sanctioned-merge→main fedf2a0;1 file .claude/hooks/codegraph-sync.py ±1 L291 datetime.now()→datetime.now(timezone.utc) 修 timestamp 误标 UTC;worktree+branch auto/opt-optimization-1782844378 已清理;main HEAD=fedf2a0 干净;case-385 outcome=succeeded audit_type=none audit_findings=[]） -->
 <!-- LAST_OUTCOME: done -->
-<!-- NEXT_SUGGESTION: [1]【case-385 非审计轮·sanctioned-merge】bash scripts/opt-worktree.sh . merge opt-optimization-1782844378→main（merge-base=6fe5ee3，changeset 仅 .claude/hooks/codegraph-sync.py 1 file ±1 与 main 归档环无重叠→clean squash；codegraph-sync.py 非 LIVE→无需 cp LIVE；回归 py_compile OK + scout-scan 烟测）。[2]【合并后 pending=0】若 AS score 仍 0.0 可跳过或预备 case-388 审计轮。[3]【下次审计轮·case-388=388%4=0】换审 hooks/reference-transaction(58L,未深审) 或 .claude/hooks/ 其它 hook；route-health-scorer.py 本轮已审无问题不再重复。 -->
+<!-- NEXT_SUGGESTION: [1]【case-386 非审计轮】pending=0，AS score 仍 0.0 无紧迫单位——可跳过或预备 case-388 审计轮。[2]【case-388=388%4=0 下次审计轮】换审 .claude/hooks/reference-transaction.py(58L,未深审) 或 .claude/hooks/ 其它未审 hook；route-health-scorer.py(case-384 已审)与 codegraph-sync.py(case-384 已审+case-385 已修落 main)不再重复。 -->
 
 | 字段 | 内容 |
 |------|------|
