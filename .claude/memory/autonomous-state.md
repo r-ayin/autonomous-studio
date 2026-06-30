@@ -14,15 +14,15 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-07-01T18:46Z（case-387=387%4=3≠0 非审计轮·合规 skip。承接 case-386 NEXT_SUGGESTION[1]：预期 pending=0,AS score=0.0 无紧迫单位。scout-scan #1=autonomous-studio-aone score=0.0 推『无明确小工作单位——可跳过或做文档润色』,但 DO NOT 禁日常自我润色→不润色。核实无可做单位四步:①git status --short 空 clean②git worktree list 仅 main 64b5260 无残留③git branch auto/ 无④deferred TODO 真实性复核 grep 命中 4 处真 deferred 标记(apply_resource_access.py:85 HologresTable getDetail 未实测/apply_resource_access.py:90 LindormTable getDetail 未实测/bff_client.py:207 待人工裁决 profile.json 兼容分支删除条件/scaffold-skill.sh:136 待真实运行回放)均非引擎可盲实现,正确留 triage。无源码改动→无 opt-worktree→无 LIVE 同步→DO B 不触发(无敏感路径改动)无 audit-log 埋点。仅写 case-387+回写 state 作心跳(archival 直提 main)。case-387 outcome=succeeded audit_type=none audit_findings=[]。pending=0。main HEAD=64b5260→归档后新 HEAD。下轮 case-388=388%4=0 下次审计轮 security-review reference-transaction.py/其它未审 hook）**
-- **活跃项目**: autonomous-studio-aone 维护——case-387 合规 skip 轮(非审计,pending=0,AS score=0.0 无单位,deferred TODO=4 均待人工/真实环境测试不盲实现)。case-386 skip、case-385 sanctioned-merge opt-optimization-1782844378 @a3699de→main fedf2a0（codegraph-sync.py L291 timestamp 误标 UTC 修复落 main）。case-384 security-review、case-382 opt-worktree.sh _validate_wt名、case-380 scout-scan.py 修复均已落 main。
-- **当前阶段**: 非审计 skip 轮完成(pending=0);下轮 case-388=388%4=0 下次审计轮·DO A 强制 security-review reference-transaction.py/其它未审 hook
+- **最后活跃: 2026-07-01T18:55Z（case-388=388%4=0=0 DO A 强制审计轮。承接 case-387 NEXT_SUGGESTION[1] 原推 reference-transaction.py——核实仓内不存在(find 无命中,上次 NEXT_SUGGESTION 失实);route-health-scorer.py+codegraph-sync.py 已 case-384 审+case-385 修落 main 不重审。改挑 .claude/hooks/notify-phone.py(383L,未审,属 DO B 外部调用敏感面:TCP/ntfy curl/钉钉 urllib 三出站+DINGTALK_WEBHOOK env 凭证)。五维 security-review:注入(ntfy curl list 形式无 shell=True/title 硬编码无 CRLF 头注入)·凭证(webhook env 不入日志,urllib HTTPError/URLError str 不含 url→access_token 不泄)·资源(socket finally close/subprocess timeout=10/urllib timeout=5)均无真问题;错误处理发现 1 low:L195 template.format(...) 在 L232 try 块外,模板残缺抛 KeyError/IndexError/ValueError 冒泡崩 hook 致静默丢通知(含 CRITICAL 确认)→起 opt-optimization worktree 修 1 文件:try 守卫 template.format 落兜底纯 markdown。py_compile OK。worktree commit ea02e81 1file +30/-23 pending。main 干净。DO B:本轮改动仅及 template 字符串格式化错误处理,未新增/改外部 HTTP 或凭证读取代码路径→非敏感路径改动,无需 audit-log 埋点。notify-phone.py 非 LIVE 部署文件→无 LIVE cp。case-388 outcome=succeeded audit_type=security-review audit_findings=[{notify-phone.py L195 low 已修 pending 待 sanctioned-merge}]。pending=1。main HEAD=70c02b2→归档后新 HEAD。下轮 case-389=389%4=1≠0 非审计轮承接 sanctioned-merge）**
+- **活跃项目**: autonomous-studio-aone 维护——case-388 DO A 审计轮 security-review notify-phone.py 发现 1 low(模板 format 异常未守卫)+修复 pending worktree @ea02e81 待合并。case-387 skip、case-386 skip、case-385 sanctioned-merge opt-optimization-1782844378→main fedf2a0(codegraph-sync.py L291 timestamp 误标 UTC 修复)。case-384 security-review、case-382 opt-worktree.sh _validate_wt名、case-380 scout-scan.py 修复均已落 main。
+- **当前阶段**: DO A 审计轮完成(pending=1 worktree @ea02e81 待合并);下轮 case-389=389%4=1≠0 非审计轮承接 sanctioned-merge
 - **GOAL_STATUS**: active
 - **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动；审计轮次每 4 case 强制 code-review/security-review + 敏感路径 audit-log 埋点）
 - **LAST_UPDATED**: 2026-07-01
-- **LAST_WORKTREE**: 无（case-387 skip 轮无源码改动无 opt-worktree;main HEAD=64b5260 干净;pending=0;case-387 outcome=succeeded audit_type=none audit_findings=[]）
-- **LAST_OUTCOME**: done
-- **NEXT_SUGGESTION**: [1]【case-388=388%4=0 下次审计轮·DO A 强制】security-review .claude/hooks/reference-transaction.py（约58L,未深审）或 .claude/hooks/ 其它未审 hook;route-health-scorer.py 与 codegraph-sync.py(case-384 已审+case-385 已修落 main)不重复审;dataworks deferred TODO 需人工/真实环境测试,审计轮不盲实现。[2]【非审计轮后续 case-389+】预期仍 pending=0,AS score=0.0 无紧迫单位——继续 skip,直到下一审计轮 case-392=392%4=0。
+- **LAST_WORKTREE**: optimization @ ea02e81（auto/optimization 分支,1 file .claude/hooks/notify-phone.py +30/-23,notify-phone.py L195 template.format 异常守卫修复,待 sanctioned-merge;main HEAD=70c02b2 干净;case-388 outcome=succeeded audit_type=security-review audit_findings=[{notify-phone.py L195 low 已修 pending}]）
+- **LAST_OUTCOME**: in_progress
+- **NEXT_SUGGESTION**: [1]【case-389=389%4=1≠0 非审计轮】承接本案 pending=1:opt-optimization worktree @ea02e81 待人工审 diff(bash scripts/opt-worktree.sh . show optimization)后 sanctioned-merge 入 main(bash scripts/opt-worktree.sh . merge optimization)——1 文件 +30/-23 纯错误处理守卫,无敏感路径改动,merge 不需 audit-log 埋点。[2]【case-392=392%4=0 下次审计轮】继续审 .claude/hooks/ 未审 hook:discovery-gate.py(387L)/decision-observer.py(688L)/auto-commit.py(377L)/pipeline-gate.py(167L deploy 敏感),notify-phone.py 已本轮审勿重审;或审 scripts/ 未审源文件。dataworks deferred TODO 需人工/真实环境测试,审计轮不盲实现。
 - **自主循环**: 🟢 活跃
   - L1 Inline: 每次回复末尾内联检查 (+ git status)
   - L2 Heartbeat: CronCreate 每7分钟（执行轨——推进 Studio 阶段或主动扫描）
@@ -75,9 +75,9 @@ metadata:
 <!-- GOAL_STATUS: active -->
 <!-- ACTIVE_GOAL: ralph-wiggum-autonomous-loop (每轮一个小工作单位，scout-scan 排序选任务) -->
 <!-- LAST_UPDATED: 2026-07-01 -->
-<!-- LAST_WORKTREE: 无（case-387 skip 轮无源码改动无 opt-worktree;main HEAD=64b5260 干净;pending=0;case-387 outcome=succeeded audit_type=none audit_findings=[]） -->
-<!-- LAST_OUTCOME: done -->
-<!-- NEXT_SUGGESTION: [1]【case-388=388%4=0 下次审计轮·DO A 强制】security-review .claude/hooks/reference-transaction.py（约58L,未深审）或 .claude/hooks/ 其它未审 hook;route-health-scorer.py 与 codegraph-sync.py(case-384 已审+case-385 已修落 main)不重复审;dataworks deferred TODO 需人工/真实环境测试,审计轮不盲实现。[2]【非审计轮后续 case-389+】预期仍 pending=0,AS score=0.0 无紧迫单位——继续 skip,直到下一审计轮 case-392=392%4=0。 -->
+<!-- LAST_WORKTREE: optimization @ ea02e81（auto/optimization 分支,1 file .claude/hooks/notify-phone.py +30/-23,notify-phone.py L195 template.format 异常守卫修复,待 sanctioned-merge;main HEAD=70c02b2 干净;case-388 outcome=succeeded audit_type=security-review audit_findings=[{notify-phone.py L195 low 已修 pending}]） -->
+<!-- LAST_OUTCOME: in_progress -->
+<!-- NEXT_SUGGESTION: [1]【case-389=389%4=1≠0 非审计轮】承接本案 pending=1:opt-optimization worktree @ea02e81 待人工审 diff(bash scripts/opt-worktree.sh . show optimization)后 sanctioned-merge 入 main(bash scripts/opt-worktree.sh . merge optimization)——1 文件 +30/-23 纯错误处理守卫,无敏感路径改动,merge 不需 audit-log 埋点。[2]【case-392=392%4=0 下次审计轮】继续审 .claude/hooks/ 未审 hook:discovery-gate.py(387L)/decision-observer.py(688L)/auto-commit.py(377L)/pipeline-gate.py(167L deploy 敏感),notify-phone.py 已本轮审勿重审;或审 scripts/ 未审源文件。dataworks deferred TODO 需人工/真实环境测试,审计轮不盲实现。 -->
 
 | 字段 | 内容 |
 |------|------|
