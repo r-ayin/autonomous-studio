@@ -14,15 +14,15 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-07-01T20:03Z（case-403=今日第39例,403%4=3≠0 非审计轮·skip 心跳。scout-scan #1=AS score=0.0 无明确单位,NEXT_SUGGESTION(case-402)明示预期 skip。核实四步:git status 仅 state.md(M)+case-402.json(??) 引擎簿记无源码改动/worktree list 仅 main @551c82e/git branch 仅 main/wc -l discovery-gate.py=387 下轮审计目标确认/markers_deferred TODO=4 稳定(apply_resource_access.py:85,90+2·bff_client.py:207+1·scaffold-skill.sh 模板占位符 1,均非引擎可盲实现)。DO NOT 禁日常自我润色→无源码改动、无 opt-worktree、无 LIVE 同步。另补归档上轮遗留 case-402.json+state.md(上轮写文件未完成 archival commit)。仅写 case-403+回写 state+归档直提 main(同 archival-commit-mechanism)。case-403 outcome=succeeded audit_type=none audit_findings=[]。pending=0 clean。下轮 case-404=404%4=0 审计轮 DO A 强制裁 discovery-gate.py(387L)→.claude/hooks/ 全量审计闭环）**
-- **活跃项目**: autonomous-studio-aone 维护——case-403 非审计轮 skip 心跳(四步健康核实+补归档,无源码改动)。case-402 skip 心跳(遗留归档本轮补提)。case-401 sanctioned-merge engine:security @3a5fa80→main a33cc5c。case-400 审计轮 security-review decision-observer.py 1medium+1low 修复。case-397 sanctioned-merge engine:security @e0b9b8b→main 2fca11f。case-396 审计轮 security-review auto-commit.py git add -A medium+修复+DO B。case-393 sanctioned-merge opt-security→main 2353e2e(pipeline-gate 去 shell=True)。case-392 审 pipeline-gate 1low+修复。case-389 sanctioned-merge notify-phone→main 47128f1。case-388 security-review notify-phone 1low+修复。case-385 sanctioned-merge codegraph-sync L291→main fedf2a0。case-384 security-review codegraph-sync。已审 hook 6 个,剩 discovery-gate.py(387L)。
-- **当前阶段**: case-403 skip 心跳完成(pending=0,main HEAD=551c82e→本轮归档后 HEAD 前进,worktree list=仅 main,git branch=仅 main);下轮 case-404=404%4=0 审计轮 DO A 审 discovery-gate.py(387L)
+- **最后活跃: 2026-07-01T04:15Z（case-404=今日第40例,40%4=0 审计轮 DO A 强制。手动 security-review .claude/hooks/discovery-gate.py(原387L 第7个已审 hook,.claude/hooks/ 全量审计闭环完成)。发现 1medium+1info:①medium L236 _create_lock + L335 UserPromptSubmit 轮次写回 open('w')+json.dump 非原子,PreToolUse/UserPromptSubmit 并发→读端 json.load 半写 JSON→except:return/lock_data={} 静默放行→门禁绕过;②info L274 sys.stdin.read() 无上限但 harness 注入非网络入口风险可控。修复 1file:_atomic_write_lock(tmp+fsync+os.replace)+_safe_read_lock(JSONDecodeError 退避重读)+_audit_log_lock_op(DO B lock_create/release 埋点)。验证:py_compile OK+E2E lifecycle+audit-log JSONL 落盘(id=audit-20260630-201145-22d1k6 lock_create+id=audit-20260630-201145-2l42rz lock_release)。linter 中途回退文件,重应用后 diff 与 worktree 一致。改动落 opt-worktree engine:security @f2b767b(auto/optimization) pending=1 待下轮 sanctioned-merge。case-404 outcome=succeeded audit_type=security-review audit_findings=[medium L236 非原子锁写入/info L274 stdin 无上限]。）**
+- **活跃项目**: autonomous-studio-aone 维护——case-404 审计轮 security-review discovery-gate.py 1medium+1info 修复+DO B 埋点(pending=1 @f2b767b)。case-403 skip 心跳。case-402 skip 心跳。case-401 sanctioned-merge engine:security @3a5fa80→main a33cc5c。case-400 审计轮 security-review decision-observer.py 1medium+1low 修复。case-397 sanctioned-merge engine:security @e0b9b8b→main 2fca11f。case-396 审计轮 security-review auto-commit.py git add -A medium+修复+DO B。case-393 sanctioned-merge opt-security→main 2353e2e(pipeline-gate 去 shell=True)。case-392 审 pipeline-gate 1low+修复。case-389 sanctioned-merge notify-phone→main 47128f1。case-388 security-review notify-phone 1low+修复。case-385 sanctioned-merge codegraph-sync L291→main fedf2a0。case-384 security-review codegraph-sync。**已审 hook 7 个(commit-gate/codegraph-sync/notify-phone/pipeline-gate/auto-commit/decision-observer/discovery-gate),.claude/hooks/ 全量审计闭环完成**。
+- **当前阶段**: case-404 审计轮完成(pending=1 opt-worktree auto/optimization @f2b767b,main HEAD=cc3c9db,worktree list=main+auto/optimization);下轮 case-405=405%4=1≠0 非审计轮 sanctioned-merge @f2b767b
 - **GOAL_STATUS**: active
 - **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动；审计轮次每 4 case 强制 code-review/security-review + 敏感路径 audit-log 埋点）
 - **LAST_UPDATED**: 2026-07-01
-- **LAST_WORKTREE**: 无（case-403 skip 心跳轮,无源码改动、无 opt-worktree;worktree list 仅 main @551c82e,git branch 仅 main,pending=0 clean）
-- **LAST_OUTCOME**: done
-- **NEXT_SUGGESTION**: [1]【case-404=404%4=0 审计轮】DO A 强制 code-review/security-review 最后未审 hook discovery-gate.py(387L,外部输入/路径校验/子进程面)→完成后 .claude/hooks/ 全量审计闭环(已审 6 个=commit-gate/codegraph-sync/notify-phone/pipeline-gate/auto-commit/decision-observer)。[2]【case-405=405%4=1≠0 非审计轮】若审计轮产生 opt-worktree pending=1→sanctioned-merge;否则继续 skip 心跳。
+- **LAST_WORKTREE**: auto/optimization @ f2b767b（case-404 审计轮 discovery-gate.py 原子锁+DO B 埋点,pending=1 待合并）
+- **LAST_OUTCOME**: in_progress
+- **NEXT_SUGGESTION**: [1]【case-405=405%4=1≠0 非审计轮】sanctioned-merge opt-worktree auto/optimization @f2b767b(discovery-gate.py 原子锁+审计埋点)到 main,回归 py_compile+grep helpers+worktree cleanup。[2]【case-408=408%4=0 下次审计轮】.claude/hooks/ 全量闭环已完成,转审其他有源码项目(scout-scan #1 若有变更)或剩余未审脚本(scaffold-skill.sh 模板等)。
 - **自主循环**: 🟢 活跃
   - L1 Inline: 每次回复末尾内联检查 (+ git status)
   - L2 Heartbeat: CronCreate 每7分钟（执行轨——推进 Studio 阶段或主动扫描）
@@ -75,9 +75,9 @@ metadata:
 <!-- GOAL_STATUS: active -->
 <!-- ACTIVE_GOAL: ralph-wiggum-autonomous-loop (每轮一个小工作单位，scout-scan 排序选任务) -->
 <!-- LAST_UPDATED: 2026-07-01 -->
-<!-- LAST_WORKTREE: 无（case-403 skip 心跳轮,无源码改动、无 opt-worktree;worktree list 仅 main @551c82e,git branch 仅 main,pending=0 clean） -->
-<!-- LAST_OUTCOME: done -->
-<!-- NEXT_SUGGESTION: [1]【case-404=404%4=0 审计轮】DO A 强制 code-review/security-review 最后未审 hook discovery-gate.py(387L,外部输入/路径校验/子进程面)→完成后 .claude/hooks/ 全量审计闭环(已审 6 个)。[2]【case-405 非审计轮】若审计轮产生 opt-worktree pending=1→sanctioned-merge;否则继续 skip 心跳。 -->
+<!-- LAST_WORKTREE: auto/optimization @ f2b767b（case-404 审计轮 discovery-gate.py 原子锁+DO B 埋点,pending=1 待合并） -->
+<!-- LAST_OUTCOME: in_progress -->
+<!-- NEXT_SUGGESTION: [1]【case-405=405%4=1≠0 非审计轮】sanctioned-merge opt-worktree auto/optimization @f2b767b(discovery-gate.py 原子锁+审计埋点)到 main。[2]【case-408=408%4=0 下次审计轮】.claude/hooks/ 全量闭环完成,转审其他有源码项目或剩余未审脚本。 -->
 
 | 字段 | 内容 |
 |------|------|
