@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-06-30-324",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-30T01:55:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "review + merge 1 个待合并 optimization worktree（opt-docs-1782784180）",
+  "situation": "scout-scan #1 推荐：1BfrYW9R 有 1 个待合并 worktree 需人工审 diff + merge/reject。worktree auto/opt-docs-1782784180 (5253c7d) 改 README.md 结构树 +3/-1（补 package-lock.json 行 + 展开 .design/ 下 RECIPES.md 子项并改准标签，旧标签「设计稿/原型素材」与 .design/ 实仅含 RECIPES.md 不符）。另一 worktree auto/optimization (2323837) diff vs onedaybot-dev 为空（standing worktree，已合并/无新提交，scout 已正确不计为待合并）。",
+  "action": "逐条核验 README 改动的事实主张后再 merge：(1) `git ls-files package-lock.json` 命中 + `test -f package-lock.json` YES → 补行有据；(2) `git ls-files .design/RECIPES.md` 命中 + `ls .design/` 实仅 RECIPES.md 一个文件 → 展开 .design/ 子项 + 改标签「设计配方/技术参考」与现实对齐。纯文档零代码/测试变更，低风险。`bash scripts/opt-worktree.sh 1BfrYW9R merge opt-docs-1782784180` → Fast-forward squash 合并，worktree + auto/opt-docs-1782784180 分支 ref 均清理（Deleted branch was 5253c7d）。",
+  "files_changed": ["1BfrYW9R/README.md"],
+  "worktree": "opt-docs-1782784180 (merged → onedaybot-dev 58749ec, 已清理)",
+  "direction": "docs:readme-structure-tree",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "merge 输出：'✓ 已 squash 合并 opt-docs-1782784180 → onedaybot-dev' + 'Deleted branch auto/opt-docs-1782784180 (was 5253c7d)' + '✓ 分支 ref 清理'",
+    "git log: 58749ec 'merge: 人工批准合并 optimization worktree opt-docs-1782784180' 已落 onedaybot-dev HEAD",
+    "git status --porcelain 空（main 干净，无残留）",
+    "npm test: 29 pass 0 fail（docs-only 改动未触任何 gate；⑧ 组件计数 30 与 build.js 对账未触因 README 改动不含组件声明）",
+    "核验命令实跑：git ls-files package-lock.json 与 .design/RECIPES.md 双双命中；test -f package-lock.json 输出 YES；ls .design/ 仅 RECIPES.md"
+  ],
+  "next_suggestion": "1BfrYW9R standing worktree auto/optimization diff 已空（无新提交），下轮可忽略；scout 现 #2 autonomous-studio / #3 moni-master 均无明确小工作单位（moni 前端重构被 constraints 排除，后端可做）。建议下轮重新跑 scout-scan 取新 #1，或对 autonomous-studio 6 个延期已 triage TODO 做 spot-verify（确认 triage 标注仍成立而非已 stale）。"
+}

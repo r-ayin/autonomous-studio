@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-30-323",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-30T01:50:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "docs:readme-structure-tree —— README「项目结构」树与磁盘现实对齐",
+  "situation": "scout-scan 全项目健康度 0.0、无紧迫工作单位，#1=1BfrYW9R 且 main .opt-direction 记录 docs:readme-structure-tree。读 README 结构树发现两处漂移：(a) 树缺 package-lock.json（git ls-files 确认 tracked 实存，根目录真实文件 build.js/CLAUDE.md/CONTRIBUTING.md/dev-server.js/GATES.md/.gitignore/.gitkeep/index.html/.opt-direction/package.json/package-lock.json/PROGRESS.md/README.md）；(b) `.design/` 树标注「设计稿/原型素材」但 ls .design/ 实际只含 RECIPES.md（首行 '# Design Recipes — on-demand technical reference'，实现机制参考，非设计稿素材），子项未展开且标签误导。组件计数 30 经 build.js stdout '30 JSX components' 与 README 三处「30 个 JSX/React 组件」声明一致，无漂移（⑧ 测试已覆盖）。",
+  "action": "最小改动单文件 README.md 结构树代码块：①package.json 后补 package-lock.json 行（带「依赖锁定（npm install 生成）」注释）；②`.design/` 由叶子行展开为目录 + 子项 `└── RECIPES.md`（带「设计配方/技术参考（按需查阅的实现机制，非设计稿素材）」注释），纠正旧标签。零代码/测试变更。先 npm test 复测 29 pass 0 fail 证 ⑧ doc-drift 扫描器（regex `(\\d+)\\s*个\\s*(?:JSX|React)\\s*组件`）未受树改动影响——新行无数组件声明、不贡献断言；再 bash scripts/opt-worktree.sh 1BfrYW9R commit docs:readme-structure-tree ... README.md 提交。",
+  "files_changed": ["1BfrYW9R/README.md"],
+  "worktree": "opt-docs-1782784180",
+  "direction": "docs:readme-structure-tree",
+  "outcome": "succeeded",
+  "outcome_evidence": "git -C .opt-worktrees/1BfrYW9R/opt-docs-1782784180 log --oneline -1 = 5253c7d opt(docs:readme-structure-tree):...；git show --stat HEAD = README.md | 3 insertions(+), 1 deletion(-)；1BfrYW9R main git status --porcelain 空（干净还原）；npm test 29 pass 0 fail；opt-worktree 输出「方向分歧（engine → docs），开新 worktree: opt-docs-1782784180 / ✓ 提交到 opt-docs-1782784180 方向=docs:readme-structure-tree」",
+  "next_suggestion": "1BfrYW9R 结构树现已对齐，待人工审合并 opt-docs-1782784180（merge 后 main .opt-direction 仍 docs:readme-structure-tree 可清或转下方向）。下轮若 scout-scan 仍全 0.0：可顺延 #2 autonomous-studio（有 6 延期已 triage TODO，但均不计入 triage 推荐故非紧迫）；或对 1BfrYW9R 待办「接入真实后端 API 替换内联 const DATA mock」做前置骨架（Phase 1，需 personal-assistant 后端协同，跨项目）。注意本 case 跨项目写入 AS main，将如 case-319/320 滞留 AS main dirty（已知孤儿模式，见 [[case-file-orphan-on-cross-project-work]]），merge 1BfrYW9R worktree 不影响。"
+}
