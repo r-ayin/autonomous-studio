@@ -18,9 +18,15 @@ import sys
 from datetime import datetime
 
 
-def _audit_id():
-    """audit-YYYYMMDD-HHmmss-rand6 —— 对齐 schema id pattern。"""
-    return "audit-" + datetime.now().strftime("%Y%m%d-%H%M%S") + "-" + secrets.token_hex(3)
+def _audit_id(now=None):
+    """audit-YYYYMMDD-HHmmss-rand6 —— 对齐 schema id pattern。
+
+    可选传 now 以让 id 与 record() 内的 timestamp/filename 三者同源，避免在秒/午夜
+    边界分别调用 datetime.now() 致 id 日期(YYYYMMDD) 与落盘文件日期(YYYY-MM-DD) 不一致
+    （如 23:59:59.999 生成 id → 00:00:00.001 落盘 → id 标昨日、文件属今日）。
+    """
+    now = now or datetime.now()
+    return "audit-" + now.strftime("%Y%m%d-%H%M%S") + "-" + secrets.token_hex(3)
 
 
 def _action_for(api_name):
@@ -58,10 +64,13 @@ def record(work_dir, api_name, params_summary, result_code, *, user_id="unknown"
     try:
         log_dir = os.path.join(work_dir, ".dataworks", ".audit")
         os.makedirs(log_dir, exist_ok=True)
+        # 单次捕获 now：id/timestamp/filename 三者同源，避免跨秒/午夜边界调用多次
+        # datetime.now() 致 id 日期与落盘文件日期不一致（审计记录内部一致性）。
+        now = datetime.now()
         result = "success" if result_code in (0, 200) else "failure"
         entry = {
-            "id": _audit_id(),
-            "timestamp": datetime.now().isoformat(),
+            "id": _audit_id(now),
+            "timestamp": now.isoformat(),
             "userId": str(user_id),
             "userRole": user_role,
             "action": _action_for(api_name),
@@ -76,7 +85,7 @@ def record(work_dir, api_name, params_summary, result_code, *, user_id="unknown"
                 "bypassed_two_phase_confirm": bypass,
             },
         }
-        path = os.path.join(log_dir, "audit-" + datetime.now().strftime("%Y-%m-%d") + ".jsonl")
+        path = os.path.join(log_dir, "audit-" + now.strftime("%Y-%m-%d") + ".jsonl")
         with open(path, "a", encoding="utf-8") as f:
             f.write(json.dumps(entry, ensure_ascii=False, default=str) + "\n")
     except Exception as exc:
