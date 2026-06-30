@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# polyglot shim: the loop convention calls `bash scripts/scout-scan.py`, but this is a
+# python3 script. The next line re-execs under python3 when invoked via bash/sh, and is
+# a no-op string literal under direct python3 execution. Leave as-is.
+''''exec python3 -- "$0" "$@" # '''
 """scout-scan.py — 确定性项目发现 + 健康扫描 + 文件索引（零 LLM token）
 
 修复缺口：
