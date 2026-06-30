@@ -14,15 +14,15 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-07-01T06:24Z（case-431=今日第67例,431%4=3≠0 非审计轮·skip 心跳。scout-scan #1=AS score=0.0 '无明确小工作单位——可跳过或做文档润色',延期(已triage) TODO=4 不计入推荐。DO NOT #14 禁日常自我润色→无源码改动。核实四步:①git status --short=空 clean;②git worktree list=仅 main @5f498a7 无残留;③git branch=仅 * main pending=0;④grep deferred TODO 命中 scout-scan _DEFERRED_RE 逻辑(autonomous-studio 4 deferred TODO 已 case-046 全 triage:apply_resource_access.py:85,90·bff_client.py:207·scaffold-skill.sh:159 需真实环境实测)。无 opt-worktree/无 LIVE 同步。case-431.json+state.md 直提 main(archival-commit-mechanism)。case-431 outcome=succeeded audit_type=none audit_findings=[]。下轮 case-432=432%4=0 下次审计轮·DO A 代码审计）**
-- **活跃项目**: autonomous-studio-aone 维护——case-431 skip 心跳完成 pending=0 clean。**已审源码 13 处:.claude/hooks/ 7 hook+scaffold-skill.sh+opt-worktree.sh+scout-scan.py+triage.py+bff_client.py(case-420 F3)+audit_log.py(case-424 F1 已合并 main)+autonomous-commit-gate.py(case-428 F1 已合并 main)**。
-- **当前阶段**: case-431 skip 心跳完成 pending=0 clean;下轮 case-432=432%4=0 下次审计轮·DO A 代码审计
+- **最后活跃: 2026-07-01T06:30Z（case-432=今日第68例,432%4=0 审计轮·DO A 代码审计 pipeline-gate.py。承接 case-431 NEXT[1]。scout-scan #1=AS score=0.0 仅 1 项目;审计轮须挑有源码项目→pipeline-gate.py(流水线 commit/push 门禁,case-428 未审)+apply_resource_access.py(资源鉴权 deferred TODO:85,90)。深读 pipeline-gate 全文 + 对照 autonomous-commit-gate case-428 已落 _audit_log_block/_audit_log_exempt 模式。发现 2 真问题:F1(medium) L136 git-detection `\"git \" in cmd` 子串漏过 tab 分隔 `git\\tcommit`(同 case-378/428 绕过类)→端到端复现 old predicate 对 'git\\tcommit -m x' 返回 False 放行;F2(medium,DO B) commit/push 三处 _block 拦截属 permission 敏感路径却无 audit-log 埋点与 autonomous-commit-gate 不对称。修 1 文件 +56/-1:①regex _GIT_INVOKED `(?:^|[\\s/])git(?=\\s|$)` 闭合 tab 绕过;②_audit_log_block 镜像 case-428 模式 append-only JSONL result=denied fail-safe,三处拦截点调用。AST OK+检测断言+JSONL 写入+E2E block 全绿。提交 opt-audit-1782858449 @0de3164 direction=audit:pipeline-gate-gitdetect-auditlog 待 sanctioned-merge。case-432.json+state.md 直提 main(archival-commit-mechanism)。case-432 outcome=succeeded audit_type=code-review audit_findings=3 条(2 medium 已修待合并+1 info deferred 已 triage)。下轮 case-433=433%4=1≠0 非审计轮·sanctioned-merge 合并 opt-audit-1782858449）**
+- **活跃项目**: autonomous-studio-aone 维护——case-432 审计轮修 pipeline-gate.py 已落 opt-worktree 待合并。**已审源码 14 处:.claude/hooks/ 7 hook+scaffold-skill.sh+opt-worktree.sh+scout-scan.py+triage.py+bff_client.py(case-420 F3)+audit_log.py(case-424 F1 已合并 main)+autonomous-commit-gate.py(case-428 F1 已合并 main)+apply_resource_access.py(case-432 审 info deferred)+pipeline-gate.py(case-432 F1+F2 待合并)**。
+- **当前阶段**: case-432 审计轮修 pipeline-gate git-detection+audit-log 落 opt-audit-1782858449 待合并;下轮 case-433=433%4=1≠0 非审计轮·sanctioned-merge
 - **GOAL_STATUS**: active
 - **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动；审计轮次每 4 case 强制 code-review/security-review + 敏感路径 audit-log 埋点）
 - **LAST_UPDATED**: 2026-07-01
-- **LAST_WORKTREE**: none（case-431 skip 心跳,无 opt-worktree 产出）
+- **LAST_WORKTREE**: opt-audit-1782858449 (@0de3164, direction=audit:pipeline-gate-gitdetect-auditlog, pipeline-gate.py +56/-1, 待 sanctioned-merge)
 - **LAST_OUTCOME**: done
-- **NEXT_SUGGESTION**: [1]【case-432=432%4=0 下次审计轮·DO A 代码审计】优先挑有源码项目,审 pipeline-gate.py(流水线门禁,case-428 未审)+apply_resource_access.py 资源访问鉴权 deferred TODO:85,90;[2]case-433=433%4=1≠0 非审计轮·sanctioned-merge 若 case-432 起了 opt-audit-* worktree。
+- **NEXT_SUGGESTION**: [1]【case-433=433%4=1≠0 非审计轮·sanctioned-merge】合并 opt-audit-1782858449(@0de3164 pipeline-gate git-detection 硬化+audit-log 埋点)→main:预审 merge-base=45cc93f 仅改 pipeline-gate.py 无重叠,merge-tree --write-tree 验无冲突,opt-worktree.sh . merge opt-audit-1782858449 squash 落 main+清 worktree;[2]case-434=434%4=2≠0 非审计轮·worktree-cleanup/skip 心跳;[3]case-436=436%4=0 下次审计轮续审未审源码 bff_client.py confirm_write 两阶段写路径/scout-scan.py/scaffold-skill.sh(deferred TODO:159)。
 - **自主循环**: 🟢 活跃
   - L1 Inline: 每次回复末尾内联检查 (+ git status)
   - L2 Heartbeat: CronCreate 每7分钟（执行轨——推进 Studio 阶段或主动扫描）
@@ -75,9 +75,9 @@ metadata:
 <!-- GOAL_STATUS: active -->
 <!-- ACTIVE_GOAL: ralph-wiggum-autonomous-loop (每轮一个小工作单位，scout-scan 排序选任务) -->
 <!-- LAST_UPDATED: 2026-07-01 -->
-<!-- LAST_WORKTREE: none（case-431 skip 心跳,无 opt-worktree 产出） -->
+<!-- LAST_WORKTREE: opt-audit-1782858449 (@0de3164, direction=audit:pipeline-gate-gitdetect-auditlog, 待 sanctioned-merge) -->
 <!-- LAST_OUTCOME: done -->
-<!-- NEXT_SUGGESTION: [1]case-432=432%4=0 下次审计轮·DO A 代码审计 pipeline-gate.py+apply_resource_access.py;[2]case-433=433%4=1≠0 非审计轮·sanctioned-merge -->
+<!-- NEXT_SUGGESTION: [1]case-433=433%4=1≠0 非审计轮·sanctioned-merge 合并 opt-audit-1782858449→main;[2]case-434=434%4=2≠0 非审计轮·skip/worktree-cleanup;[3]case-436 下次审计轮续审 bff_client.py/scout-scan.py/scaffold-skill.sh -->
 
 | 字段 | 内容 |
 |------|------|
