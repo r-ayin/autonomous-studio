@@ -550,6 +550,12 @@ $(git log --oneline "$MAIN_BRANCH"..auto/$(basename "$dir") 2>/dev/null | head -
     # 误报待合并）。2>/dev/null||true 容错：分支名解析失败/已删不阻断合并收尾。
     git -C "$PROJECT" branch -D "auto/$(basename "$dir")" 2>/dev/null || true
     echo "✓ worktree 清理（worktree 目录 + auto/<wt> 分支）"
+    # 合并使 main 推进；standing optimization worktree 此时落后 main（差本次合并内容）。
+    # 仅靠 cmd_commit 首行 ensure_main_wt 自愈（case-363）会留「merge→下次 commit」间的
+    # 陈旧窗口：期间任何对 standing WT 的读取（含引擎查 pending case log）看到旧快照，
+    # 缺最新 case 文件（2026-07-01 实踩：merge opt-bookkeep-7398 后 standing WT 仍停 7324，
+    # 缺 case-2026-07-01-391.json）。合并即 ff，关闭窗口；ff-only+祖先校验保未合并改动不丢。
+    ensure_main_wt
   else
     echo "❌ 合并冲突，人工处理: cd $dir && 解决后 opt-worktree.sh merge"
     git merge --abort 2>/dev/null || true
