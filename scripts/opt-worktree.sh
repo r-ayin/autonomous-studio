@@ -212,6 +212,12 @@ cmd_commit() {
   ensure_main_wt
   local cur_area; cur_area=$(current_area)
   local new_area; new_area=$(area_of "$direction")
+  # 审计修复（case-356）：跟踪本调用是否新建了分歧 worktree。copied=0 中止（line 352）
+  # 时须回滚它，否则 git worktree add 建出的 opt-<area>-<ts> worktree+分支成孤儿，
+  # 污染 git worktree list / scout-scan（case-353 残留 wt 漂移根因的分歧-wt 面；
+  # optimization 持久 wt 由 ensure_main_wt 建、cmd_cleanup 可收，不在此列）。
+  local created_new_wt=0
+  local new_wt_branch=""
 
   # 选目标 worktree：方向 area 一致 → 主 worktree；不一致 → 复用或开新
   local target
@@ -229,10 +235,12 @@ cmd_commit() {
     else
       local ts; ts=$(date +%s)
       target="$WT_BASE/opt-$(slug "$new_area")-$ts"
+      new_wt_branch="auto/opt-$(slug "$new_area")-$ts"
       mkdir -p "$target"
-      git -C "$PROJECT" worktree add -b "auto/opt-$(slug "$new_area")-$ts" "$target" "$MAIN_BRANCH" 2>/dev/null
+      git -C "$PROJECT" worktree add -b "$new_wt_branch" "$target" "$MAIN_BRANCH" 2>/dev/null
       echo "$direction" > "$target/.opt-direction"
       _ignore_opt_direction_marker "$target"
+      created_new_wt=1
       echo "↔ 方向分歧（$cur_area → $new_area），开新 worktree: $(basename "$target")"
     fi
   fi
@@ -352,6 +360,14 @@ cmd_commit() {
   if (( copied == 0 )); then
     echo "⚠️ 无文件被实际迁移（全部被 cp-guard 跳过或不存在）——无内容可提交，中止，不生成空提交。被跳过文件 main 改动已保留，请人工 merge 对应 worktree 后重做。" >&2
     if (( ${#skipped[@]} > 0 )); then echo "   跳过文件: ${skipped[*]}" >&2; fi
+    # 审计修复（case-356）：回滚本调用新建的分歧 worktree——copied=0 中止时它无任何提交内容，
+    # 留下即成孤儿 wt+分支（污染 worktree list / scout-scan）。仅清本调用新建者，不动复用/
+    # optimization 持久 wt。worktree remove --force 因 wt 无 commit 可净移；branch -D 删空分支。
+    if (( created_new_wt )) && [[ -n "$new_wt_branch" ]]; then
+      git -C "$PROJECT" worktree remove --force "$target" 2>/dev/null || true
+      git -C "$PROJECT" branch -D "$new_wt_branch" 2>/dev/null || true
+      echo "   已回滚本调用新建的分歧 worktree: $(basename "$target")（避免孤儿）" >&2
+    fi
     exit 1
   fi
 

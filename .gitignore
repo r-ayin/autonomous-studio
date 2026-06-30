@@ -12,6 +12,8 @@
 .claude/.autonomous_active
 .claude/.stop_autonomous
 .codebase-index/
+# scout-scan.py 每轮自动刷新的 workspace 项目清单（生成物，never tracked）
+PROJECTS.md
 .claude/decision-log.jsonl
 .claude/scheduled_tasks.json
 .claude/memory/autonomous-state-runtime.md
