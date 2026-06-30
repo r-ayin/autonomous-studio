@@ -47,6 +47,24 @@ def _action_for(api_name):
     return "update"
 
 
+def _resource_type_for(action):
+    """将 schema action 映射到 schema resource.type 枚举。
+
+    audit-log.schema.json 规定 resource 为对象 {type, identifier}，type 取值限于
+    file/artifact/deployment/config/permission/secret/pipeline/model/session。
+    DataWorks 写 API 操作的资源类型由此按 action 近似推导（无完整元数据时取最贴近项），
+    使审计记录符合 schema 契约——此前 resource 写成裸字符串 api_name 违反 required 结构，
+    任何 schema 校验器会拒收全部记录（DO B：字段对齐 schema）。
+    """
+    if action == "permission_change":
+        return "permission"
+    if action in ("deploy", "pipeline_cancel"):
+        return "pipeline"
+    if action in ("create", "delete"):
+        return "artifact"
+    return "config"  # update / compliance_check 及未知写操作归 config
+
+
 def record(work_dir, api_name, params_summary, result_code, *, user_id="unknown",
            user_role="engine", ip="local", bypass=False,
            correlation_id=None, attempt=None):
@@ -73,14 +91,18 @@ def record(work_dir, api_name, params_summary, result_code, *, user_id="unknown"
         # 单次捕获 now：id/timestamp/filename 三者同源，避免跨秒/午夜边界调用多次
         # datetime.now() 致 id 日期与落盘文件日期不一致（审计记录内部一致性）。
         now = datetime.now()
+        action = _action_for(api_name)
         result = "success" if result_code in (0, 200) else "failure"
         entry = {
             "id": _audit_id(now),
             "timestamp": now.isoformat(),
             "userId": str(user_id),
             "userRole": user_role,
-            "action": _action_for(api_name),
-            "resource": api_name,
+            "action": action,
+            "resource": {
+                "type": _resource_type_for(action),
+                "identifier": api_name,
+            },
             "result": result,
             "ip": ip,
             "sensitive": True,
