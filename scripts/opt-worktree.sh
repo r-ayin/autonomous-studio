@@ -26,6 +26,15 @@ set -euo pipefail
 
 PROJECT="${1:-.}"
 CMD="${2:-list}"
+# Fail-fast: 当 PROJECT 不是目录时立即报错，避免把 'next-case' 等命令误当路径
+# （曾致 'cd: next-case: No such file or directory'：用户省略 project 但写了 command，
+#  $1 被当作 PROJECT，CMD 落到默认 list，再 cd "$PROJECT" 失败且无提示）。
+# 2026-06-30 case-345 从 root live 副本回graft AS main：root 独有此守卫，AS 缺，
+# 整体 cp AS→root 会丢失它（[[opt-worktree-root-as-copy-drift]] 双向漂移收口）。
+if [[ ! -d "$PROJECT" ]]; then
+  echo "错误: '$PROJECT' 不是目录。用法: opt-worktree.sh [project] <init|commit|list|show|merge|reject|cleanup|next-case|new-case|precommit|install-hooks|install-ref-hooks>" >&2
+  exit 2
+fi
 PROJECT="$(cd "$PROJECT" && pwd)"
 # per-project 子目录，避免多项目 worktree 撞车（之前 $PROJECT/../.opt-worktrees 共享导致跨项目冲突）
 WT_BASE="$PROJECT/../.opt-worktrees/$(basename "$PROJECT")"
@@ -573,6 +582,27 @@ cmd_next_case() {
   echo "case-${date}-${next3}.json"
 }
 
+# new-case: 分配并原子预留 case 文件（落空 stub），杜绝 agent 手挑号撞号。
+# 根治 case-id 撞号：next-case 只查号不预留，agent 仍可绕开自挑（case-034/263 均如此）；
+# new-case 在同一进程内 scan→create（noclobber=O_CREAT|O_EXCL），stub 落盘即被后续
+# 扫描计入，并发两调用各得不同号。agent 拿到路径后覆写 stub 为真实 case 内容。
+# 2026-06-30 case-345 从 root live 副本回graft AS main：root 独有，AS 缺，
+# 整体 cp AS→root 会丢失它（[[opt-worktree-root-as-copy-drift]] 双向漂移收口）。
+cmd_new_case() {
+  local date="${3:-$(date +%Y-%m-%d)}"
+  local name f n
+  name=$(cmd_next_case "$@")                       # case-<date>-NNN.json (basename)
+  f="$PROJECT/.claude/decisions/$name"
+  mkdir -p "$(dirname "$f")"
+  # noclobber: 文件已存在则 > 失败 → 增号重试（仅极并发撞号才到这，正常一次成）
+  while ! ( set -o noclobber; : > "$f" ) 2>/dev/null; do
+    n="${name#case-${date}-}"; n="${n%.json}"; n=$((10#$n + 1))
+    printf -v name "case-%s-%03d.json" "$date" "$n"
+    f="$PROJECT/.claude/decisions/$name"
+  done
+  echo "$f"
+}
+
 case "$CMD" in
   init) cmd_init "$@" ;;
   commit) cmd_commit "$@" ;;
@@ -582,8 +612,9 @@ case "$CMD" in
   reject) cmd_reject "$@" ;;
   cleanup) cmd_cleanup ;;
   next-case) cmd_next_case "$@" ;;
+  new-case) cmd_new_case "$@" ;;
   precommit) cmd_precommit ;;
   install-hooks) cmd_install_hooks "$@" ;;
   install-ref-hooks) cmd_install_ref_hooks "$@" ;;
-  *) echo "用法: opt-worktree.sh <project> <init|commit|list|show|merge|reject|cleanup|next-case|precommit|install-hooks|install-ref-hooks> ..."; exit 1 ;;
+  *) echo "用法: opt-worktree.sh <project> <init|commit|list|show|merge|reject|cleanup|next-case|new-case|precommit|install-hooks|install-ref-hooks> ..."; exit 1 ;;
 esac
