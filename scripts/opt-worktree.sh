@@ -29,11 +29,26 @@ CMD="${2:-list}"
 PROJECT="$(cd "$PROJECT" && pwd)"
 # per-project 子目录，避免多项目 worktree 撞车（之前 $PROJECT/../.opt-worktrees 共享导致跨项目冲突）
 WT_BASE="$PROJECT/../.opt-worktrees/$(basename "$PROJECT")"
+# json_escape <string>（case-368 security-review defense-in-depth）：audit_log 的
+# reason/identifier/sha 经 printf %s 直拼 JSON，未转义 " 与 \。git refname 禁这些字符
+# 故 branch 名派生值实践不可注入；但 $PROJECT 路径 / $(basename "$dir") 非 refname 受控，
+# slug() 仅剥 : / 不剥 " \——含 " 会 corrupt JSONL 破 jq 解析。转义 \ " 及控制符保证输出
+# 始终合法 JSON。不阻断主流程：空输入 / 异常均原样返回。
+json_escape() {
+  local s="${1:-}"
+  s="${s//\\/\\\\}"
+  s="${s//\"/\\\"}"
+  s="${s//$'\n'/\\n}"
+  s="${s//$'\r'/\\r}"
+  s="${s//$'\t'/\\t}"
+  printf '%s' "$s"
+}
 # audit_log <result> <worktree> <commit-sha|空> <reason>
 # DO B（autonomous-constraints.md）：cmd_merge 是 deploy/变更合并敏感路径（git exec + 代码入 main），
 # 落地与冲突均记 JSONL 审计日志，schema 对齐 .claude/decisions/audit-log.schema.json。append-only 写
 # $PROJECT/.audit/audit-YYYY-MM-DD.jsonl（.audit/ 已 gitignore，不污染 main）。result 如实反映，不恒 success。
 # 纯本地 JSONL，不新建库/不接外部系统。审计为可观测性，绝不阻断合并主流程（调用点带 || true）。
+# case-368：wt/sha/reason 经 json_escape 后再拼 JSON，闭合 case-366 low 级 finding。
 audit_log() {
   local result="$1" wt="$2" sha="$3" reason="$4"
   # action/resource_type 参数化（case-366）：cmd_merge 用默认 deploy/deployment；
@@ -47,8 +62,14 @@ audit_log() {
   rid="$(od -An -tx1 -N3 /dev/urandom 2>/dev/null | tr -d ' \n' || printf '')"
   [[ ${#rid} -ge 6 ]] || rid="$(printf '%06d' "$RANDOM" 2>/dev/null || printf '000000')"
   fpath="$aud_dir/audit-$(date -u +%Y-%m-%d 2>/dev/null || printf '1970-01-01').jsonl"
+  # action/rtype 为代码内 enum 字面量（调用方传 delete/artifact 等），不转义；
+  # wt/sha/reason 含外部派生值，必转义。
+  local wt_e sha_e reason_e
+  wt_e="$(json_escape "$wt")"
+  sha_e="$(json_escape "$sha")"
+  reason_e="$(json_escape "$reason")"
   printf '{"id":"audit-%s-%s","timestamp":"%s","userId":"autonomous-engine","userRole":"engine","action":"%s","resource":{"type":"%s","identifier":"%s","newValue":"%s"},"result":"%s","ip":"local","sensitive":true,"sensitiveLevel":"high","details":{"reason":"%s"}}\n' \
-    "$id_date" "$rid" "$ts" "$action" "$rtype" "$wt" "$sha" "$result" "$reason" >> "$fpath" 2>/dev/null || true
+    "$id_date" "$rid" "$ts" "$action" "$rtype" "$wt_e" "$sha_e" "$result" "$reason_e" >> "$fpath" 2>/dev/null || true
 }
 # 动态探测项目默认分支：x-tool/moni 用 master，autonomous-studio 用 main。
 # 硬编码 main 会导致 master 项目 worktree add 失败被 || true 吞、随后写 .opt-direction 崩。
