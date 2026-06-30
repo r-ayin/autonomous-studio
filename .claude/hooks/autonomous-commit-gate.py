@@ -38,6 +38,10 @@ MARKER = os.path.join(PROJECT_DIR, ".claude", ".autonomous_active")
 MAIN_BRANCHES = {"main", "master"}
 # case 元数据文件:.claude/decisions/case-*.json(允许任意前导子路径)
 CASE_FILE_RE = re.compile(r"(^|/)\.claude/decisions/case-[^/]+\.json$")
+# 引擎状态文件:.claude/memory/autonomous-state.md——归档环每轮回写 state.md 直提 main
+# (见 [[archival-commit-mechanism]])。gate 激活后须与 case-*.json 同列豁免,否则 state.md
+# commit 被 gate 拦→归档环断裂(case-377 闭合 case-376 audit_findings[3] 部署态隐患)。
+STATE_FILE_RE = re.compile(r"(^|/)\.claude/memory/autonomous-state\.md$")
 # 取一个值的 git 全局选项(-C <path>、-c <k=v>、--git-dir <path>、--work-tree <path>)
 _GIT_VALOPTS = {"-C", "-c", "--git-dir", "--work-tree", "-b", "-B"}
 # 拦截的 git 子命令(commit/push/merge/reset/branch/update-ref);豁免 checkout/switch(opt-worktree 内部用)
@@ -164,10 +168,12 @@ def staged_files(repo):
 
 
 def is_case_metadata_only(files):
-    """豁免判定:全部已暂存文件都是 .claude/decisions/case-*.json。"""
+    """豁免判定:全部已暂存文件都是归档环元数据——.claude/decisions/case-*.json 或
+    .claude/memory/autonomous-state.md(后者每轮回写,见 [[archival-commit-mechanism]])。
+    全部命中豁免集才放行直提 main;混入源码则不豁免(走 opt-worktree)。"""
     if not files:
         return False
-    return all(CASE_FILE_RE.search(f) for f in files)
+    return all(CASE_FILE_RE.search(f) or STATE_FILE_RE.search(f) for f in files)
 
 
 def _unwrap_once(cmd):
@@ -256,8 +262,10 @@ def _eval_segment(seg):
             # 显式推 main/master ref(含 HEAD:main / main:main / +force)→ 即便在 feature 分支也拦
             targets_main = targets_main or _push_refs_main(rest)
         if targets_main:
-            # 豁免:case 元数据归档(仅 .claude/decisions/case-*.json)按先例可直提 main
-            if sub == "commit" and is_case_metadata_only(staged_files(repo)):
+            # 豁免:归档环元数据(case-*.json + autonomous-state.md)按先例可直提 main
+            staged = staged_files(repo)
+            if sub == "commit" and is_case_metadata_only(staged):
+                _audit_log_exempt(seg, staged)  # 豁免埋点(DO B,对称于 _audit_log_block)
                 return None
             return f"直接 {sub} 到 main/master"
     elif sub == "reset":
@@ -312,6 +320,40 @@ def _audit_log_block(cmd, block_detail):
             f.write(json.dumps(entry, ensure_ascii=False) + "\n")
     except Exception:
         pass  # 审计写失败不影响拦截决策
+
+
+def _audit_log_exempt(cmd, files):
+    """审计埋点(DO B:鉴权/permission 敏感路径变更——case-377 broadened 豁免集纳入
+    state.md):gate 激活态下放行归档环元数据 commit 直提 main 时,append-only 写一条
+    JSONL 到 <PROJECT_DIR>/.audit/audit-YYYY-MM-DD.jsonl。与 _audit_log_block 对称——
+    拦(denied)/放(success)两端均可观测,豁免行为不再静默。fail-safe:写失败不影响放行。"""
+    try:
+        now = datetime.datetime.now(datetime.timezone.utc)
+        date = now.strftime("%Y%m%d")
+        date_dashed = now.strftime("%Y-%m-%d")
+        rid = now.strftime("%H%M%S")
+        suffix = "".join(random.choices(string.ascii_lowercase + string.digits, k=6))
+        entry = {
+            "id": f"audit-{date}-{rid}-{suffix}",
+            "timestamp": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "userId": "engine",
+            "userRole": "engine",
+            "action": "compliance_check",
+            "resource": {"type": "permission", "identifier": "git-main-write-exempt",
+                         "newValue": ",".join(sorted(files))[:200]},
+            "result": "success",
+            "ip": "local",
+            "sensitive": True,
+            "sensitiveLevel": "medium",
+            "details": {"reason": "autonomous-commit-gate 豁免:归档环元数据(case-*.json/autonomous-state.md)直提 main",
+                        "errorMessage": cmd[:200]},
+        }
+        adir = os.path.join(PROJECT_DIR, ".audit")
+        os.makedirs(adir, exist_ok=True)
+        with open(os.path.join(adir, f"audit-{date_dashed}.jsonl"), "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
 
 
 def main():
