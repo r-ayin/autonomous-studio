@@ -1,0 +1,36 @@
+{
+  "case_id": "case-2026-07-01-392",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-01T19:04Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "code-audit:autonomous-studio-aone",
+  "direction": "audit",
+  "situation": "DO A 强制审计轮 case-392=392%4=0=0。承接 case-391 NEXT_SUGGESTION[1]（非审计轮 skip，建议下轮审计 .claude/hooks/ 未审 hook 或 scripts/ 未审源文件）。scout-scan #1=autonomous-studio-aone score=0.0 无紧迫单位。审计轮须挑有源代码项目（仅 AS 自身），按 case-391 建议从 .claude/hooks/ 未审 hook 中挑——已审集合={autonomous-commit-gate.py(case-376/377/378)、codegraph-sync.py(case-384)、notify-phone.py(case-388)}；未审集合={auto-commit.py、decision-observer.py、discovery-gate.py、incremental-save.py、patterns-write-gate.py、pipeline-gate.py、post-edit-lint.py、protocol-check.py、resume-checkpoint.py、save-checkpoint.py、stop-completion-gate.py}。挑 pipeline-gate.py(167L)——其 _diff_scale 用 subprocess.run(shell=True) 跑 git diff，属 DO B '外部调用(subprocess/shell exec)' 敏感面，且与 case-378 autonomous-commit-gate.py 同源类问题可比对。无 diff 无 pending worktree，按 DO A.2 '审 main 源文件' 路径人工 security-review。",
+  "action": "人工 security-review pipeline-gate.py 五维（注入/权限/PII-凭证/错误处理/资源）。注入：发现 1 真低危——_diff_scale(L76-96) 两处 subprocess.run(shell=True, f'git -C {root} diff --cached --numstat') 与 f'git -C {root} diff --numstat'，root 为 Path 对象经 f-string 直插 shell 字符串未引用。root 来源链：Bash git commit/push 分支(L131-149) cwd=_parse_git_cwd(cmd)(L99-101 正则 -C\\s+(\\S+) 从用户 git 命令抽) or tool_input.cwd or os.getcwd() → _project_root(cwd)(L31-42 Path.resolve()+exists() 门控,需 anc/planning/status.json 存在才返回)。利用前提：需构造一个路径名含 shell 元字符($/;/`等)且其下有 planning/status.json 的真实目录——exists() 门控使利用难度高，但 shell=True+未引用插值本身是反模式且 case-378 已在 autonomous-commit-gate.py 修同源类，应一并消除。权限：hook 仅读 current.json/numstat,无鉴权面。PII-凭证：无 PII/凭证读取。错误处理：_diff_scale 全包 try/except 返 None(L95)、_load_current json 异常返 None(L50)、Stop iterdir 异常吞(L161)——均合理兜底。资源：subprocess timeout=10(L81/86) 合理。→起 opt-security worktree 修 1 文件：两处 shell=True 字符串改 list 形式 ['git','-C',str(root),'diff','--cached','--numstat']（去 shell 彻底消除注入面）。py_compile OK。opt-worktree.sh . commit security:shell-injection → worktree opt-security-1782846352 commit 7f7256b，1 file +7/-4，main 还原干净。DO B：pipeline-gate.py subprocess 为本地只读 git diff（无网络/凭证/PII/部署/删除），本轮是硬化既有 subprocess 调用非新增敏感路径代码，同 case-388 推理→无需 audit-log 埋点。pipeline-gate.py 非 LIVE 部署文件（hook 经 core.hooksPath 指向 .claude/hooks）→无 LIVE cp。",
+  "files_changed": [".claude/hooks/pipeline-gate.py"],
+  "worktree": "opt-security-1782846352 @ 7f7256b（auto/opt-security-1782846352 分支，1 file +7/-4，pending 待 sanctioned-merge）",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "security-review 五维逐项核：权限(无鉴权面,仅读 current.json/numstat)·PII-凭证(无 PII/凭证读取)·错误处理(_diff_scale try/except 返 None L95 / _load_current json 异常返 None L50 / Stop iterdir 异常吞 L161 均合理)·资源(subprocess timeout=10 L81/86) 均无真问题",
+    "发现 1 真低危 finding：pipeline-gate.py L80-81 与 L85-86 _diff_scale 两处 subprocess.run(shell=True, f'git -C {root} diff ...')，root 经 f-string 直插 shell 字符串未引用；root 经 _project_root exists() 门控故利用需构造含 shell 元字符的真实项目路径，难度高但属 case-378 同源注入反模式",
+    "修复落 worktree：git -C opt-security-1782846352 show HEAD:.claude/hooks/pipeline-gate.py L79-91 确认 list 形式 ['git','-C',str(root),'diff','--cached','--numstat'] 已落、shell=True 已去、grep 'shell=True' 无命中",
+    "py_compile .claude/hooks/pipeline-gate.py → OK（无语法错）",
+    "git -C opt-security-1782846352 diff --stat HEAD~1 → .claude/hooks/pipeline-gate.py 1 file +7/-4",
+    "git status --short → 空（main 干净，源码改动已 cp 走 worktree）",
+    "git worktree list → opt-security-1782846352 7f7256b 一行 pending，无其它残留"
+  ],
+  "next_suggestion": [
+    "【case-393=393%4=1≠0 非审计轮】承接本案 pending=1：opt-security-1782846352 @7f7256b 待人工审 diff（opt-worktree.sh . show opt-security-1782846352）后 sanctioned-merge 入 main（opt-worktree.sh . merge opt-security-1782846352）——1 文件 +7/-4 纯 subprocess 硬化无敏感路径改动，merge 不需 audit-log 埋点",
+    "【case-396=396%4=0 下次审计轮】继续审 .claude/hooks/ 未审 hook：discovery-gate.py(387L,外部输入/路径校验面)、decision-observer.py(688L,文件写/JSON 解析,最大未审 hook)、auto-commit.py(377L,git 提交守卫)；pipeline-gate.py 本轮已审勿重审。或审 scripts/ 未审源文件（distill-patterns.py/index-cases.py/triage.py/route-health-scorer.py）"
+  ],
+  "audit_type": "security-review",
+  "audit_findings": [
+    {
+      "file": ".claude/hooks/pipeline-gate.py",
+      "line": 80,
+      "severity": "low",
+      "finding": "_diff_scale 内 subprocess.run(shell=True, f'git -C {root} diff --cached --numstat') —— root 为 Path 对象经 f-string 直插 shell 字符串且未引用。root 经 _project_root 的 exists() 门控（需 anc/planning/status.json 真实存在才返回），利用需构造路径名含 shell 元字符($/;/`等)且其下有 planning/status.json 的真实目录，难度高；但 shell=True+未引用插值本身是命令注入反模式，与 case-378 autonomous-commit-gate.py 同源类。L85 unstaged 回退分支同问题。",
+      "remediation": "已修（worktree 7f7256b）：两处改 list 形式 subprocess.run(['git','-C',str(root),'diff','--cached','--numstat'], capture_output=True, text=True, timeout=10)（unstaged 分支同改），彻底去 shell=True 消除注入面。待 sanctioned-merge 入 main。"
+    }
+  ]
+}
