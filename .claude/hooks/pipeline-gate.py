@@ -76,14 +76,17 @@ def _is_doc_or_meta(file_path: str, root: Path) -> bool:
 def _diff_scale(root: Path):
     """返回 (files, added_lines) 估 diff 规模,失败 None。"""
     try:
+        # case-392 security-review：原 shell=True + f"git -C {root} ..." 字符串插值，
+        # root 虽经 _project_root exists() 门控，但路径名含 shell 元字符时可注入（与
+        # autonomous-commit-gate.py case-378 同源类）。改 list 形式彻底去 shell。
         r = subprocess.run(
-            f"git -C {root} diff --cached --numstat",
-            shell=True, capture_output=True, text=True, timeout=10)
+            ["git", "-C", str(root), "diff", "--cached", "--numstat"],
+            capture_output=True, text=True, timeout=10)
         out = r.stdout
         if not out.strip():  # 回退到 unstaged
             r = subprocess.run(
-                f"git -C {root} diff --numstat",
-                shell=True, capture_output=True, text=True, timeout=10)
+                ["git", "-C", str(root), "diff", "--numstat"],
+                capture_output=True, text=True, timeout=10)
             out = r.stdout
         files = added = 0
         for line in out.splitlines():
