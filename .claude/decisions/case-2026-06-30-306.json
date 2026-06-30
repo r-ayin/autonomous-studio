@@ -1,0 +1,24 @@
+{
+  "case_id": "case-2026-06-30-306",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-30T00:30:00Z",
+  "project": "1BfrYW9R (oneday-design)",
+  "work_unit": "deploy:graceful-shutdown — dev-server.js 加 SIGTERM/SIGINT 优雅关闭处理器 + smoke ㉖ 回归锁",
+  "situation": "scout-scan @2026-06-29T23:36Z 全 8 项目健康度并列 0.0，#1=1BfrYW9R「无明确小工作单位——可跳过或做文档润色」(27 测近饱和,Phase1 真实后端 API 大单位需 personal-assistant 后端就位、被阻塞)。审 dev-server.js 发现部署/生命周期维度的真实未覆盖缺口:启动(⑤⑥㉒)/服务(⑦⑧⑩⑯⑰⑱⑲⑮⑳㉕)/方法(㉓㉔)全维已锁,但**关闭半边零覆盖**——无 SIGTERM/SIGINT 处理器。PaaS 滚动发布/实例回收发 SIGTERM 时走默认动作(被信号杀 status=null/signal=SIGTERM),在途响应中途中断、grace period 内流量仍打半死实例。与已落地的 /healthz(存活探针)、⑬⑭(npm start 部署通道)对称——Phase 3「部署与监控」缺关闭半边。非 churn:是真实未覆盖行为维度(生命周期/关闭),与路径/方法/MIME/端口维度正交。",
+  "action": "1) dev-server.js 末尾加 shutdown(sig){server.close(()=>process.exit(0)); setTimeout(()=>process.exit(0),3000).unref()} + process.on SIGTERM/SIGINT 注册(server.close 等在途连接、3s 兜底强退防 PaaS grace 后 SIGKILL 留脏;unref 不阻退出)。2) smoke.test.js 加 ㉖ 测试:起服务(偏端口 3083,ONEDAY_DIR 临时目录)→GET / 200 控制组→发 SIGTERM→等 exit(5s 上限)→断言 status===0 && signal===null(干净退出非被信号杀)→退出后再 GET / 断言 ECONNREFUSED(证 server.close 真停监听非 handler 空跑 no-op)。3) GATES.md IMPORTANT 测试枚举加 ㉖ 条目 + canonical 计数 27→28 bump + 叙事追加 ㉖ 条(gates-doc-drift ㉑ 强制 GATES pass 计数 == test 注册数,不 bump 则㉑ 转红)。",
+  "files_changed": [
+    "1BfrYW9R/dev-server.js (+14 行:shutdown 函数 + SIGTERM/SIGINT 注册)",
+    "1BfrYW9R/test/smoke.test.js (+82 行:㉖ SIGTERM 优雅关闭回归锁)",
+    "1BfrYW9R/GATES.md (㉖ 条目 + 计数 27→28 + 叙事)"
+  ],
+  "worktree": "opt-deploy-1782776549 (1BfrYW9R, 从 onedaybot-dev@1eef14d 分叉, commit 264ae75)",
+  "direction": "deploy:graceful-shutdown",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "worktree 264ae75 npm test 实测 28 pass 0 fail(基线 27→加 ㉖ 后 28,gates-doc-drift ㉑ 同步过)",
+    "突变复测:删 process.on('SIGTERM') 行后 ㉖ 转红 not ok 1 — 报「dev-server SIGTERM 后应 exit 0,实际 status=null signal=SIGTERM」(默认动作信号杀被捕获),还原后 ok 1 pass 1 fail 0,证锁真咬",
+    "main(onedaybot-dev) git status clean(opt-worktree commit 后自动还原),无 dirty 泄漏",
+    "git worktree list 仅 main + opt-deploy-1782776549 + standing optimization(auto/optimization@2323837),无 stale"
+  ],
+  "next_suggestion": "opt-deploy-1782776549 待人工批准 merge 入 1BfrYW9R onedaybot-dev(方向 deploy,与 standing optimization@gates:mime-rest-coverage 分歧,不可同枝)。下轮可选:(a)审 merge opt-deploy-1782776549;(b)1BfrYW9R Phase 2 表单校验/加载骨架屏(UI 小单位,非 moni 不受 DO-NOT 限,但需读 index.html 源超 2 文件预算,慎);(c)轮换 x-tool(PROGRESS 1.1天最久未更,可同步润色)或 sunset-prediction/wechat-main GATES 复测。1BfrYW9R deploy 维度至此启动+服务+方法+关闭四域全锁,dev-server.js 回归测近真饱和,继续叠测边际收益低——下个项目应轮换。"
+}
