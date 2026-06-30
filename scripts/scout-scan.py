@@ -22,7 +22,15 @@ from datetime import datetime, timezone
 IGNORE_DIRS = {".git", "node_modules", ".venv", "__pycache__", ".pytest_cache",
                "dist", "build", "out", "target", ".next", ".cache", "venv", "env",
                ".mypy_cache", ".tox", "coverage", ".nyc_output", ".opt-worktrees",
-               ".parallel-worktrees", "site-packages", ".venv-sidecar", "worktrees"}
+               ".parallel-worktrees", "site-packages", ".venv-sidecar", "worktrees",
+               "decisions"}
+# decisions/ 是引擎决策归档（.claude/decisions/decision-archive.md + case-*.json），
+# 属引擎元数据非项目源码。其 markdown ATX 标题散文 `## Case NN: triage ... 真 TODO 标记`
+# 会被 _MARKER_RE 的 `\bTODO\b\s*[:-]` 误匹配为真债务（TODO 后跟冒号），致 autonomous-studio
+# 永远计 3 个幽灵 TODO 霸榜 #2、每轮推 "triage TODO" 却无可 triage 之物（case-046 已判定
+# 856/864/872 三条历史案例标题"非扫描器可解，按纪律未动"）。这是继字符串字面量/【TODO】
+# 占位符/<!-- TODO --> HTML 注释之后的第 5 类标记虚高：归档标题散文。整目录排除即可，
+# case-*.json 本就不在扩展名白名单（.json 不扫），仅 decision-archive.md 受影响。
 # 虚拟环境目录名变体繁多（.venv / .venv-foo / .venv-sidecar / venv-xxx），
 # 单靠精确集合匹配会漏（曾致 x-tool 的 聚合ai客服开发/.venv-sidecar/site-packages
 # 里 pydantic/h11/PyInstaller 的第三方 FIXME/HACK 被计入项目真债，虚高至 #1）。
