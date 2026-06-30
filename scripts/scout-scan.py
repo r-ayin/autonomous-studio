@@ -66,7 +66,14 @@ _STRIP_PLACEHOLDERS = re.compile(r"【[^】]*】")
 # `<!-- TODO -->` 待人工补充）。HTML 注释非可执行代码，按项目约定属占位提示不算真债。
 # 此前 x-tool 的 TODO=44 中 38 个全来自这类桩，致其标记密度虚高霸榜 #1。
 # 真债务行内注释（井号或双斜杠后跟标记加冒号）不在 HTML 注释里，不受影响。
-_STRIP_HTML_COMMENTS = re.compile(r"<!--.*?-->")
+_STRIP_HTML_COMMENTS = re.compile(r"<!--.*?-->", re.DOTALL)
+# 剥离多行 docstring/三引号串：_STRIP_STRINGS 只处理单行单/双引号串，逐行 sub 时
+# 跨行 `"""...TODO:..."""` 的内层标记会被 _MARKER_RE 误计为真债——与 line 53
+# 文档化意图（"docstring 里的标记名不算债务"）相悖，是字符串字面量/全角括号/
+# HTML注释/反引号/归档标题 之外残留的第 7 类自指虚高。三引号段天然跨行，必须
+# 在整文件内容上一次性剥（sub 后再分行），逐行 sub 无法闭合跨行三引号。
+# case-380 code-audit:scripts/scout-scan.py 发现并修复。
+_STRIP_TRIPLE = re.compile(r'"""[\s\S]*?"""|\'\'\'[\s\S]*?\'\'\'')
 # 剥离反引号代码段（markdown 代码段 + JS 模板字面量）：_STRIP_STRINGS 只剥单/双引号串，
 # 不识反引号。本文件自身的计数约定注释曾用反引号引述 markdown 散文标记形式来文档化
 # "这类散文非真债"，结果反引号内的标记形式反被 _MARKER_RE 计为真债——扫描器把自己
@@ -179,23 +186,27 @@ def count_markers(path):
             hit = False
             try:
                 with open(fp, encoding="utf-8", errors="ignore") as fh:
-                    for line in fh:
-                        # 剥离字符串字面量 counts={"FIXME":0} / f"...FIXME..." 不再自指误算
-                        stripped = _STRIP_STRINGS.sub("", line)
-                        # 剥离全角括号占位符 【TODO...】 scaffold 模板提示不算真债务
-                        stripped = _STRIP_PLACEHOLDERS.sub("", stripped)
-                        # 剥离 HTML 注释占位符 <!-- TODO... --> project-protocol 模板桩不算真债务
-                        stripped = _STRIP_HTML_COMMENTS.sub("", stripped)
-                        # 剥离反引号代码段 `# TODO:` 文档引例/JS 模板字面量不算真债务
-                        stripped = _STRIP_BACKTICKS.sub("", stripped)
-                        for m, rx in _DEFERRED_RE.items():
-                            if rx.search(stripped):
-                                deferred[m] += 1
-                                hit = True
-                        for m, rx in _MARKER_RE.items():
-                            if rx.search(stripped):
-                                counts[m] += 1
-                                hit = True
+                    content = fh.read()
+                # 先在整文件内容上剥多行三引号串（跨行 docstring），再分行走其余
+                # 逐行 stripper。三引号剥离只能整内容做，否则逐行 sub 无法闭合跨行段。
+                content = _STRIP_TRIPLE.sub("", content)
+                for line in content.splitlines():
+                    # 剥离字符串字面量 counts={"FIXME":0} / f"...FIXME..." 不再自指误算
+                    stripped = _STRIP_STRINGS.sub("", line)
+                    # 剥离全角括号占位符 【TODO...】 scaffold 模板提示不算真债务
+                    stripped = _STRIP_PLACEHOLDERS.sub("", stripped)
+                    # 剥离 HTML 注释占位符 <!-- TODO... --> project-protocol 模板桩不算真债务
+                    stripped = _STRIP_HTML_COMMENTS.sub("", stripped)
+                    # 剥离反引号代码段 `# TODO:` 文档引例/JS 模板字面量不算真债务
+                    stripped = _STRIP_BACKTICKS.sub("", stripped)
+                    for m, rx in _DEFERRED_RE.items():
+                        if rx.search(stripped):
+                            deferred[m] += 1
+                            hit = True
+                    for m, rx in _MARKER_RE.items():
+                        if rx.search(stripped):
+                            counts[m] += 1
+                            hit = True
             except Exception:
                 continue
             if hit:
