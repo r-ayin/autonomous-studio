@@ -288,7 +288,7 @@ def append_suggestions(diff, new_matches):
     if not diff and not new_matches:
         return
 
-    timestamp = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
+    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     lines = [
         f"\n---",
         f"## CodeGraph 融合层变更检测 — {timestamp}",
