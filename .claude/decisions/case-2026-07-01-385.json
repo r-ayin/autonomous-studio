@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-07-01-385",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-07-01T18:15:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "review + merge pending worktree opt-test-1782842852 (/readyz 503 路径 nosniff+charset 头部回归锁)",
+  "situation": "scout-scan 推荐 #1=1BfrYW9R（score=0.0，review 1 个待合并 worktree）。opt-test-1782842852 单 commit 74809d0 领先 onedaybot-dev，cherry 显 + 证真 pending 非 stale（case-327 误报防御：patch-id 未入 main）。diff 仅 +11 行无删除（PROGRESS.md +1 / test/smoke.test.js +10），给 ⑪ /readyz 503 负测增两条断言锁 503 分支响应头（X-Content-Type-Options:nosniff + Content-Type 含 charset=utf-8），闭合 ㉞/㉝ 只发 /readyz 200 路径致 503 分支头零覆盖的盲区。",
+  "action": "人工审 diff 全文 + npm test 实跑验 36 pass 0 fail（与 commit 声称一致）+ grep GATES.md canonical 箭头形 'npm test → 36 pass 0 fail' 与 ㉑ gates-doc-drift 计数对账一致（⑪ 加断言不新增 test 注册数，计数守 36）→ 判 merge。执行 opt-worktree.sh 1BfrYW9R merge opt-test-1782842852：squash fast-forward onedaybot-dev 2ee25c3..74809d0，auto/opt-test-1782842852 分支 + worktree 目录自动清理（case-322 修复的 branch -D 生效）。",
+  "files_changed": ["1BfrYW9R/PROGRESS.md", "1BfrYW9R/test/smoke.test.js"],
+  "worktree": "opt-test-1782842852 (已 squash 合并入 onedaybot-dev 并清理)",
+  "direction": "test:readyz-503-headers",
+  "outcome": "succeeded",
+  "outcome_evidence": "merge 后 onedaybot-dev tip=b6a9d2c 'merge: 人工批准合并 optimization worktree opt-test-1782842852'（git log --oneline -1 实测）；post-merge npm test 实测 '# tests 36 / # pass 36 / # fail 0'；merge 输出含 'Squash commit -- not updating HEAD' + '已 squash 合并 opt-test-1782842852 → onedaybot-dev' + 'Deleted branch auto/opt-test-1782842852 (was 74809d0)' + 'worktree 清理'。scout-scan 报告 1BfrYW9R 待合并 worktree 数应下轮归零。",
+  "next_suggestion": "下轮 scout-scan 重跑应见 1BfrYW9R 待合并=0（若仍显 1 则是 case-327 类 standing-ref 误报，patch-id 对账后 reject）。1BfrYW9R dev-server.js 响应路径头部三件套（Content-Type 有无/charset 截短/nosniff 整头）已对 200+503 全路径合围；可转向 404 路径同理补 nosniff 503-对称缺口已闭合，下一结构性维度候选：dev-server.js 静态分发缓存头（Cache-Control）此前零覆盖——PaaS/CDN 缓存语义无锁，可补 Cache-Control 回归锁。或顺延 #2 autonomous-studio 延期 TODO=7（已 triage 不计推荐，真实工作轮再 ride）。"
+}
