@@ -248,6 +248,20 @@ _assert_no_collateral_revert() {
 # 不改 staged、不中止（与 _assert_no_collateral_revert 语义一致）。
 cmd_precommit() { _assert_no_collateral_revert; }
 
+# 删除路径名校验（case-382 security-review）：cmd_merge/reject/show 的 <worktree> 参数
+# (CLI $3) 原样拼进 dir="$WT_BASE/$wt"，其中 cmd_merge(L569)/cmd_reject(L588) 有
+# `git worktree remove "$dir" --force || rm -rf "$dir"` fallback。wt 未校验为 basename——
+# 若传 `../`、`.` 或 `..`，`[[ -d "$dir" ]]` 命中遍历目标后 worktree remove 对未注册路径
+# 失败，`|| rm -rf "$dir"` 即删遍历目标（删除敏感路径的路径遍历）。引擎自身只传 basename
+# （cmd_list 输出），但删除路径须纵深防御：wt 须为纯 basename（非空、非 . / ..、不含 /）。
+_validate_wt_name() {
+  local wt="$1"
+  if [[ -z "$wt" || "$wt" == "." || "$wt" == ".." || "$wt" == *"/"* ]]; then
+    echo "❌ worktree 名非法（须为纯 basename，不含 /，非 . 或 ..）: '$wt'——拒绝以防 rm -rf 路径遍历（case-382）" >&2
+    exit 1
+  fi
+}
+
 cmd_commit() {
   local direction="${3:?need direction}"
   local msg="${4:?need commit message}"
@@ -512,6 +526,7 @@ cmd_list() {
 
 cmd_show() {
   local wt="${3:-optimization}"
+  _validate_wt_name "$wt"
   local dir="$WT_BASE/$wt"
   [[ -d "$dir" ]] || { echo "❌ worktree 不存在: $wt"; exit 1; }
   echo "=== $wt 的优化 diff（待人工审）==="
@@ -537,6 +552,7 @@ cmd_show() {
 
 cmd_merge() {
   local wt="${3:?need worktree}"
+  _validate_wt_name "$wt"
   local dir="$WT_BASE/$wt"
   [[ -d "$dir" ]] || { echo "❌ worktree 不存在: $wt"; exit 1; }
   cd "$PROJECT"
@@ -583,6 +599,7 @@ $(git log --oneline "$MAIN_BRANCH"..auto/$(basename "$dir") 2>/dev/null | head -
 
 cmd_reject() {
   local wt="${3:?need worktree}"
+  _validate_wt_name "$wt"
   local dir="$WT_BASE/$wt"
   [[ -d "$dir" ]] || { echo "❌ worktree 不存在: $wt"; exit 1; }
   git -C "$PROJECT" worktree remove "$dir" --force 2>/dev/null || rm -rf "$dir"
