@@ -474,8 +474,14 @@ class BFFClient(PaginationMixin, OutputMixin):
 
         return current
 
-    def _do_request(self, api_name, api_meta, write_confirmed=None, **kwargs):
-        """执行 HTTP 请求并返回原始响应 dict（内部方法）"""
+    def _do_request(self, api_name, api_meta, write_confirmed=None,
+                    correlation_id=None, attempt=0, **kwargs):
+        """执行 HTTP 请求并返回原始响应 dict（内部方法）
+
+        correlation_id/attempt 透传到审计埋点：_call 的限频重试循环共享同一
+        correlation_id、递增 attempt，使一次逻辑写重试 N 次产 N 条可关联的审计记录
+        而非 N 条孤条（case-348 F2）。call_raw 单次直调也由调用方传入独有 correlation_id。
+        """
         path = api_meta["path"]
         method = api_meta.get("method", "GET")
         params_type = api_meta.get("params_type")
@@ -542,6 +548,8 @@ class BFFClient(PaginationMixin, OutputMixin):
                 result_code=result.get("code") if isinstance(result, dict) else None,
                 user_id=getattr(self, "_cached_base_id", None) or os.getenv("DW_USER_BASE_ID") or "unknown",
                 bypass=write_confirmed is None,
+                correlation_id=correlation_id,
+                attempt=attempt,
             )
 
         return result
@@ -682,9 +690,16 @@ class BFFClient(PaginationMixin, OutputMixin):
 
         # 非列表 API：单次调用（限频自动重试）
         import time as _time
+        import uuid
         max_retries = 3
+        # 一次逻辑写操作共享同一 correlation_id：限频重试产生的多条审计记录据此关联，
+        # 审计者可区分「1 次逻辑写重试 N 次」与「N 次独立逻辑写」（case-348 F2）。
+        correlation_id = str(uuid.uuid4())
         for attempt in range(max_retries + 1):
-            result = self._do_request(api_name, api_meta, write_confirmed=write_confirmed, **kwargs)
+            result = self._do_request(
+                api_name, api_meta, write_confirmed=write_confirmed,
+                correlation_id=correlation_id, attempt=attempt, **kwargs,
+            )
             if self.is_success(result):
                 break
             err_msg = f"code={result.get('code')}, message={result.get('message')}"
@@ -726,7 +741,13 @@ class BFFClient(PaginationMixin, OutputMixin):
         api_meta = self.api_index.get(api_name)
         if not api_meta:
             raise ValueError(f"未找到 API: {api_name}。可用 API: {list(self.api_index.keys())}")
-        return self._do_request(api_name, api_meta, **kwargs)
+        import uuid
+        # call_raw 单次直调无重试，生成独有 correlation_id、attempt=0，
+        # 使其审计记录与 _call 重试路径同构可关联（case-348 F2）。
+        return self._do_request(
+            api_name, api_meta,
+            correlation_id=str(uuid.uuid4()), attempt=0, **kwargs,
+        )
 
     # ── Convenience methods ──
 

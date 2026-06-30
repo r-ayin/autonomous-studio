@@ -48,7 +48,8 @@ def _action_for(api_name):
 
 
 def record(work_dir, api_name, params_summary, result_code, *, user_id="unknown",
-           user_role="engine", ip="local", bypass=False):
+           user_role="engine", ip="local", bypass=False,
+           correlation_id=None, attempt=None):
     """append 一条审计记录到 <work_dir>/.dataworks/.audit/audit-YYYY-MM-DD.jsonl。
 
     Args:
@@ -60,6 +61,11 @@ def record(work_dir, api_name, params_summary, result_code, *, user_id="unknown"
         user_role: 固定 'engine'（skill 由 AI 引擎驱动）。
         ip: 本地引擎上下文写 'local'（skill 无法可靠推断操作者源 IP）。
         bypass: True 表示经由 call_raw 绕过两阶段确认（审计重点关注）。
+        correlation_id: 一次逻辑写操作的关联 ID。bff_client._call 在限频重试循环前
+            生成一次，重试的每次 _do_request 共享同一值，使审计者能区分「1 次逻辑写
+            命中限频重试 N 次」与「N 次独立逻辑写」（case-348 F2 修复）。call_raw 单次
+            直调也生成独有值。None 则不写该字段（向后兼容旧调用点）。
+        attempt: 重试序号（0=首次，1..N=限频重试）。None 则不写。
     """
     try:
         log_dir = os.path.join(work_dir, ".dataworks", ".audit")
@@ -85,6 +91,12 @@ def record(work_dir, api_name, params_summary, result_code, *, user_id="unknown"
                 "bypassed_two_phase_confirm": bypass,
             },
         }
+        # 关联 ID/重试序号仅在调用方提供时写入，避免污染旧调用点的记录
+        # （correlation_id 把同一次逻辑写的限频重试多条记录串起来，case-348 F2）。
+        if correlation_id is not None:
+            entry["details"]["correlationId"] = str(correlation_id)
+        if attempt is not None:
+            entry["details"]["attempt"] = attempt
         path = os.path.join(log_dir, "audit-" + now.strftime("%Y-%m-%d") + ".jsonl")
         with open(path, "a", encoding="utf-8") as f:
             f.write(json.dumps(entry, ensure_ascii=False, default=str) + "\n")
