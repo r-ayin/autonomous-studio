@@ -71,10 +71,15 @@ def _git_parse(cmd):
 
 def repo_dir_from_cmd(cmd):
     """从 `git -C <path> ...` 解析真实目标 repo 工作目录(多个 -C 依次累积进入)。
-    无 -C 时回退 PROJECT_DIR——若后者非 git repo,branch 探测返回空串(等价于"非
+    也识别 --git-dir/--work-tree(--git-dir=<path> 与空格形式):--work-tree 直接作为
+    工作目录;--git-dir=<...>/.git 取其父目录,裸仓(无 .git 后缀)无工作树→回退
+    PROJECT_DIR。优先级 work-tree > git-dir > -C(显式指向 strongest 信号)。无上述
+    任一时回退 PROJECT_DIR——若后者非 git repo,branch 探测返回空串(等价于"非
     main",放行)。引擎约定用 `git -C <project>` 而非 cd(见 autonomous-loop 纪律)。"""
     toks = cmd.split()
     paths = []
+    git_dir = None
+    work_tree = None
     i = 0
     while i < len(toks):
         t = toks[i]
@@ -86,12 +91,37 @@ def repo_dir_from_cmd(cmd):
             paths.append(t[2:])
             i += 1
             continue
+        if t == "--work-tree" and i + 1 < len(toks):
+            work_tree = toks[i + 1]
+            i += 2
+            continue
+        if t.startswith("--work-tree="):
+            work_tree = t[len("--work-tree="):]
+            i += 1
+            continue
+        if t == "--git-dir" and i + 1 < len(toks):
+            git_dir = toks[i + 1]
+            i += 2
+            continue
+        if t.startswith("--git-dir="):
+            git_dir = t[len("--git-dir="):]
+            i += 1
+            continue
         i += 1
-    if not paths:
+    if work_tree:
+        p = work_tree
+    elif git_dir:
+        # /x/.git → /x;相对 ".git" → ".";裸仓(无 .git 后缀)无工作树→回退 PROJECT_DIR
+        if git_dir.endswith(os.sep + ".git") or os.path.basename(git_dir) == ".git":
+            p = os.path.dirname(git_dir) or "."
+        else:
+            return PROJECT_DIR
+    elif not paths:
         return PROJECT_DIR
-    p = paths[0]
-    for extra in paths[1:]:  # git 多个 -C 按出现顺序依次进入
-        p = os.path.join(p, extra)
+    else:
+        p = paths[0]
+        for extra in paths[1:]:  # git 多个 -C 按出现顺序依次进入
+            p = os.path.join(p, extra)
     if not os.path.isabs(p):
         p = os.path.join(PROJECT_DIR, p)
     return p
