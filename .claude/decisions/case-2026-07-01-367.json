@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-01-367",
+  "agent_id": "ralph-wiggum-engine",
+  "timestamp": "2026-07-01T00:20:00Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "sanctioned-merge:optimization-19f41ab",
+  "situation": "case-366 NEXT_SUGGESTION[1] 标记的待合并工作单位：optimization worktree @19f41ab（audit_log 三路径 instrumentation：参数化 audit_log() + cmd_reject/cmd_cleanup delete 埋点）pending sanctioned-merge→main。本轮 367%4=3≠0 非审计轮次（普通路径）。step1 scout-scan 文本报告 #1=AS score=0.0 推荐「review 1 个待合并 worktree（人工审 diff + merge/reject）」与 NEXT_SUGGESTION[1] 一致→取此 sanctioned-merge 为小工作单位。main HEAD=fcc0a08（case-366 archival），optimization=19f41ab，merge-base(main,19f41ab)=a1ae39b。",
+  "action": "step1 差异预审：merge-base(main,optimization)=a1ae39b；main 自 merge-base 起仅改 .claude/decisions/case-2026-07-01-366.json + .claude/memory/autonomous-state.md（archival 提交，2 文件 +41/-7），git log a1ae39b..main -- scripts/opt-worktree.sh 空→main 侧未碰 opt-worktree.sh，optimization 侧 diff a1ae39b..19f41ab 仅 scripts/opt-worktree.sh +19/-2，无重叠回退，无冲突风险。step2 执行 bash scripts/opt-worktree.sh . merge optimization→✓ squash 合并 optimization→main @6b0cc6e，worktree dir 清理。audit_log(success) 真实触发：写 .audit/audit-2026-06-30.jsonl 新条目 audit-20260630-161931-9358b1 action=deploy resource.type=deployment identifier=optimization newValue=6b0cc6e result=success（main 已有 audit_log 非自举首跑，正常触发如预期）。step3 删 cmd_merge 残留的 auto/optimization 分支（cmd_merge 只删 worktree dir 不删 branch，与 case-365 step5 同模式）git branch -D auto/optimization（was 19f41ab，内容已 squash 入 main）。step4 验证 instrumentation 入 main：grep audit_log 显 8 调用点—cmd_merge success@537/failure@547 + cmd_reject success@564(failure@566 如实：dir 消失=success/仍在=failure) + cmd_cleanup@600(空 wt)+@623(孤儿分支)，三敏感路径 merge/reject/cleanup 全 LIVE；bash -n OK；jq 验证新 audit 条目有效；git status 空。",
+  "files_changed": ["scripts/opt-worktree.sh"],
+  "worktree": "optimization @19f41ab（已 sanctioned-merge→main @6b0cc6e；worktree+branch auto/optimization 已清理）",
+  "direction": "engine:sanctioned-merge",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "main HEAD=6b0cc6e merge: 人工批准合并 optimization worktree 'optimization'（git log --oneline -2 实证）",
+    "git diff --stat a1ae39b..19f41ab 仅 scripts/opt-worktree.sh +19/-2；git log a1ae39b..main -- scripts/opt-worktree.sh 空（无 main 侧冲突）",
+    "audit_log 新条目 jq -c 有效：{id:audit-20260630-161931-9358b1, action:deploy, resource.type:deployment, identifier:optimization, newValue:6b0cc6e..., result:success}（.audit/audit-2026-06-30.jsonl tail-1）",
+    "grep -n audit_log scripts/opt-worktree.sh（main @6b0cc6e）显 8 调用点：@537 merge success / @547 merge failure / @564 reject success / @566 reject failure / @600 cleanup empty-wt / @623 cleanup orphan-branch（三路径全埋点 LIVE）",
+    "bash -n scripts/opt-worktree.sh → OK（语法）",
+    "git branch -D auto/optimization → Deleted branch auto/optimization (was 19f41ab)；git worktree list 仅 main wt；git status --short 空（main 干净）"
+  ],
+  "next_suggestion": [
+    "[1]【DO A 强制审计·case-368】368%4=0=审计轮次。换审 audit_log instrumentation 本身（case-364..367 累积三路径已 LIVE 入 main）。重点：audit_log() line 37-51 printf %s 拼 reason 字段进 JSONL 未做 JSON 转义——reason 含 worktree 名/分支名（git refname 禁 \" \\ 控制符故实践不可注入，但 defense-in-depth 应 sed 转义或改 python json.dumps）。case-366 audit_findings 已记此 low 项，case-368 审计轮处理。用 code-review skill 审 scripts/opt-worktree.sh 当前 diff（main @6b0cc6e）",
+    "[2]【剩余不对称·低危延后】cmd_commit line ~384-385 copied=0 回滚路径删新建分歧 wt+branch -D 仍无 audit_log（内部回滚非用户发起 delete，未在 case-366 scope）——后续补 audit_log success ... rollback-divergent-wt 保持全路径对称",
+    "[3]【scout 驱动·若 case-368 审计无发现】scout-scan 排 #1 后顺延选有源码项目做小工作单位；当前 AS score=0.0 健康良好，无紧迫单位"
+  ],
+  "audit_type": "none",
+  "audit_findings": []
+}
