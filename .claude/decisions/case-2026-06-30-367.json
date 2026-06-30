@@ -1,0 +1,17 @@
+{
+  "case_id": "case-2026-06-30-367",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-30T15:50:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "扩展 HEAD 放行分支回归锁(㉔)覆盖静态非根文件:锁 HEAD /style.css 返 200 + text/css; charset=utf-8 + 空 body",
+  "situation": "1BfrYW9R 项目近饱和(scout-scan score=0.0,#1 推荐文档润色/可跳过)。state NEXT_SUGGESTION #1 指出真边际缺口:HEAD 放行分支测(㉔,test/smoke.test.js:1527)仅锁 HEAD /(.html 根)+ HEAD /healthz,静态非根文件(.css/.js)的 HEAD 路径零覆盖——HEAD × 静态 MIME charset 维度无人咬。state 标注此为'与 GET 同代码路径锁值边际'但确为未覆盖分支。grep dev-server.js 确认:line 39 守卫 GET/HEAD 均放行,line 79 writeHead 按 extname 取 MIME 表(含 charset=utf-8),HEAD 与 GET 同走静态分发。实测 Node http 对 HEAD 自动抑制 body 但仍发头(独立 node -e 探针 GET bodyLen=23 vs HEAD bodyLen=0,CT 均设)——证 line 37 注释'HEAD 交由 Node 协议层自动抑制 body'属实。故 HEAD /style.css 应返 text/css; charset=utf-8 + 空 body,但㉔ 不锁此。㉘ charset 测(line 1829)只锁 GET /style.css charset,HEAD × .css charset 此前无人覆盖。",
+  "action": "扩展㉔ 测(不新增 test()故 GATES test-count-drift 测不受影响,无端口新增):(1)在㉔ servedDir(mkdtemp oneday-head-)补写 style.css(line 1545 后);(2)在 HEAD /healthz 断言后补 HEAD /style.css 三断言:status==200(守卫若误删 !== 'HEAD' 子句转 405 则红)、Content-Type match /text\\/css;\\s*charset=utf-8/i(HEAD × 静态 .css MIME charset 维度,与㉘ GET×charset 互补)、body===''(Node 抑制 HEAD body)。突变复测:cp 备份 dev-server.js→sed 删 MIME['.css'] 的 '; charset=utf-8'→跑 node --test:HEAD 测 not ok 30(error 'HEAD /style.css Content-Type...实际:text/css')+charset 测 not ok 35,证新断言真咬(与既有 GET 断言同红);cp 还原→npm test 35 pass 0 fail。",
+  "files_changed": [
+    "1BfrYW9R/test/smoke.test.js"
+  ],
+  "worktree": "待 opt-worktree commit 创建(1BfrYW9R,area=tests:head-charset)",
+  "direction": "tests:head-charset",
+  "outcome": "succeeded",
+  "outcome_evidence": "npm test 输出 '# tests 35 / # pass 35 / # fail 0'(HEAD 测含新增 HEAD /style.css 三断言全绿)。突变复测(删 MIME['.css'] charset)输出 'not ok 30 - dev-server.js HEAD 方法被服务... error: HEAD /style.css Content-Type 须 text/css; charset=utf-8...实际:text/css' + 'not ok 35 - ...charset 头部回归锁',证新断言非死代码真咬 GET×charset 与 HEAD×charset 双锁。还原后 35/0 绿。dev-server.js 全程未改(仅 cp 备份+还原,git status 干净)。",
+  "next_suggestion": "1BfrYW9R HEAD×charset 维度已闭合(HEAD / + HEAD /healthz + HEAD /style.css 三路,与㉘ GET×charset 互补合围)。项目真近饱和,下轮:(a)若仍排 #1 可锁 /readyz 503 reason 字段文案(state NEXT_SUGGESTION 备选,但锁精确文案易脆,宜锁 status=='not ready' 子串非全等);(b)顺延 #2 autonomous-studio review 待合并 worktree(opt-housekeeping-1782833144 含 case-366 等归档),审前 git worktree list + 三点 name-only/两点 exit-code 内容等价判非 stale(case-327 教训,cherry 对 squash 不可靠);(c)personal-assistant ECS 部署已知问题 grounding[[ecs-deploy-target]];(d)moni 后端/量化/数据任务允许(禁前端重构[[autonomous-constraints]])。纪律:case 写 AS main+json.dump/parse 校验,merge/opt-worktree 从根跑 arg order=project command worktree,审单提交用 git show --stat 勿两点 diff[[diverged-base-two-dot-diff-misread]]。"
+}

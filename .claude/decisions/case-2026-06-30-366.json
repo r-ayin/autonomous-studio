@@ -1,0 +1,36 @@
+{
+  "case_id": "case-2026-06-30-366",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-30T15:30:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "review + merge 待合并 worktree opt-tests-1782833066（charset=utf-8 回归锁，commit dca993c）",
+  "situation": "scout-scan #1=1BfrYW9R 推荐工作单位=review 1 个待合并 worktree（人工审 diff + merge/reject）。state NEXT_SUGGESTION #1 同指 opt-tests-1782833066 commit dca993c 待人工 merge，merge 后跑 npm test 验 35 pass 0 fail。该 worktree 是上轮（case-365）所建：加第 35 个回归锁——每条响应路径 Content-Type 须含 charset=utf-8，堵 ; charset=utf-8 被当冗余删而主类型子串断言全绿的缺口。dev-server.js 未改，仅 test/smoke.test.js +91 行 + GATES.md 34→35。",
+  "action": [
+    "git show --stat dca993c 复审：2 文件改动（GATES.md 2±1 / smoke.test.js +91），作者 autonomous-studio <syp02536326@taobao.com>，提交信息含突变复测自证（删 MIME['.html'] charset→本测红 34/35→还原绿）",
+    "git cherry onedaybot-dev dca993c → '+ dca993c'（patch-id 确认未入 main，非 case-327 误报式 stale）",
+    "git log dca993c^ → 父 4042002 = onedaybot-dev HEAD，干净单提交可 fast-forward",
+    "git show dca993c -- test/smoke.test.js 逐行审：控制组（GET / 200）+ assertCharset 正则 /charset\\s*=\\s*utf-8/i + 覆盖 7 路径（.html/.css/.js/healthz/readyz/404/405）+ image/* 明确排除（无 charset 设计一致）+ finally kill+rmSync 清理 + 偏端口 3079 全局唯一（注释枚举已占端口防撞）",
+    "worktree porcelain 空（无 WIP）→ 在 .opt-worktrees/1BfrYW9R/opt-tests-1782833066 跑 npm test：# tests 35 # pass 35 # fail 0（含本测 ok 35）",
+    "bash scripts/opt-worktree.sh 1BfrYW9R merge opt-tests-1782833066（首次误传 merge 在前被当 project，改 project-first arg order 后成功）→ squash fast-forward 4042002..dca993c，'Deleted branch auto/opt-tests-1782833066 (was dca993c)' + worktree 目录清理（case-322 修复的 branch -D 自愈生效）",
+    "main 跑 npm test 复验：# tests 35 # pass 35 # fail 0，git log -1 → 73bd9cc merge 提交"
+  ],
+  "files_changed": [
+    "1BfrYW9R/GATES.md",
+    "1BfrYW9R/test/smoke.test.js"
+  ],
+  "worktree": "opt-tests-1782833066（已 merge 入 1BfrYW9R onedaybot-dev，squash 为 73bd9cc，auto/ 分支+worktree 目录已清理）",
+  "direction": "tests:charset-utf8-lock",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "git log --oneline -1 onedaybot-dev → '73bd9cc merge: 人工批准合并 optimization worktree opt-tests-1782833066'",
+    "git cherry onedaybot-dev dca993c 输出 '+ dca993c'（合并前 patch-id 不在 main）",
+    "main post-merge npm test: '# tests 35 / # pass 35 / # fail 0'（merge 前 worktree 同 35/0）",
+    "opt-worktree.sh merge 输出 '✓ 已 squash 合并 opt-tests-1782833066 → onedaybot-dev' + 'Deleted branch auto/opt-tests-1782833066 (was dca993c)' + '✓ worktree 清理'",
+    "git worktree list 不再含 opt-tests-1782833066"
+  ],
+  "next_suggestion": [
+    "1BfrYW9R charset 维度已闭合（35 锁，merge 后 main 绿），项目近饱和；下轮若仍排 #1 可锁边际真缺口：HEAD /style.css Content-Type（㉔ 仅锁 HEAD / + HEAD /healthz，HEAD 静态非根文件未覆盖但与 GET 同代码路径锁值边际）或 /readyz 503 reason 字段文案锁",
+    "否则顺延 #2 autonomous-studio（review 1 待合并 worktree）——先 git worktree list + git cherry 验非 stale-误报（case-327 教训：待合并计数只比 tip!=main 不做 patch-id，须 cherry 全 + 才 superseded 走 reject）",
+    "scout-scan 全 score=0.0 已常态，下轮取 state NEXT_SUGGESTION 真缺口；候选转 personal-assistant ECS grounding[[ecs-deploy-target]] 或 moni 后端/量化任务（禁前端重构[[autonomous-constraints]]）"
+  ]
+}
