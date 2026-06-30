@@ -386,8 +386,11 @@ class BFFClient(PaginationMixin, OutputMixin):
         return " ".join(parts)
 
     def _log(self, path, method, params, data, json_body, response, cost_ms):
-        """记录 API 调用日志"""
-        os.makedirs(self.log_dir, exist_ok=True)
+        """记录 API 调用日志
+
+        文件写入包 try/except（与 _log_warn 一致）：_do_request 是 HTTP chokepoint，
+        调试日志的磁盘/权限异常不应阻断真实 API 调用（case-420 审计修复 F3）。
+        """
         log_entry = {
             "timestamp": datetime.now().isoformat(),
             "cost_ms": round(cost_ms, 2),
@@ -405,8 +408,12 @@ class BFFClient(PaginationMixin, OutputMixin):
                 "requestId": response.get("requestId")
             }
         }
-        with open(self.log_file, "a", encoding="utf-8") as f:
-            f.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
+        try:
+            os.makedirs(self.log_dir, exist_ok=True)
+            with open(self.log_file, "a", encoding="utf-8") as f:
+                f.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
+        except Exception:
+            pass
 
     def _log_warn(self, message):
         """Write a warning to the log file (not stdout/stderr)."""
