@@ -19,7 +19,7 @@ from datetime import datetime
 
 def _audit_id():
     """audit-YYYYMMDD-HHmmss-rand6 —— 对齐 schema id pattern。"""
-    return "audit-" + datetime.now().strftime("%Y%m%d-%H%m%S") + "-" + secrets.token_hex(3)
+    return "audit-" + datetime.now().strftime("%Y%m%d-%H%M%S") + "-" + secrets.token_hex(3)
 
 
 def _action_for(api_name):
