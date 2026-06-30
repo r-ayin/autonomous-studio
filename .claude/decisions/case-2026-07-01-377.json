@@ -1,0 +1,46 @@
+{
+  "case_id": "case-2026-07-01-377",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-01T17:43Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "gate: broaden is_case_metadata_only 豁免集纳入 autonomous-state.md + exempt 路径审计埋点 + 同步 LIVE gate",
+  "situation": "case-376 DO A security-review 在部署态额外发现 [f4 medium]:LIVE gate /home/admin/.claude/hooks/autonomous-commit-gate.py 为旧版(cmd.split() 无 shlex/_tokenize/_unwrap/_git_segments/--git-dir repo_dir),case-372/373/375/376 全部硬化未上线。当前 marker .autonomous_active 从不被脚本创建→gate 休眠故暂不致害,但同步前须先 broaden is_case_metadata_only 兼容 .claude/memory/autonomous-state.md 豁免——否则一旦 marker 被创建激活 gate,state.md 直提 main 的归档环 commit 会被拦→归档环断裂(case+state.md 每轮回写,见 [[archival-commit-mechanism]])。本轮 377%4=1≠0 非审计普通轮,承接 case-376 NEXT_SUGGESTION[1] 闭合此部署态隐患。",
+  "action": "1 file(.claude/hooks/autonomous-commit-gate.py)+46/-4,经 opt-worktree 隔离提交→sanctioned-merge 入 main→cp 同步 LIVE。(1) +STATE_FILE_RE=re.compile(r'(^|/)\\.claude/memory/autonomous-state\\.md$') 紧随 CASE_FILE_RE;(2) is_case_metadata_only 由 all(CASE_FILE_RE.search(f)) 改为 all(CASE_FILE_RE.search(f) or STATE_FILE_RE.search(f) for f in files),docstring 更新为'归档环元数据(case-*.json + autonomous-state.md)';(3) +_audit_log_exempt(cmd,files) 函数,对称于既有 _audit_log_block——action=compliance_check/result=success/resource.type=permission/identifier=git-main-write-exempt,append-only 写 <PROJECT_DIR>/.audit/audit-YYYY-MM-DD.jsonl,fail-safe(try/except pass 不影响放行);(4) _eval_segment 豁免分支 staged=staged_files(repo) 复用一次,命中 is_case_metadata_only(staged) 即 _audit_log_exempt(seg, staged) 后 return None。同步 LIVE:cp main 版→/home/admin/.claude/hooks/(仓外动作)+ append deploy 审计条目(action=deploy/identifier=live-commit-gate/newValue=ac78f92)到 .audit/audit-2026-06-30.jsonl(UTC)。",
+  "files_changed": [".claude/hooks/autonomous-commit-gate.py"],
+  "worktree": "optimization @e4fdfd0(已 sanctioned-merge squash→main @ac78f92,worktree 清理,auto/optimization 残留分支删除)",
+  "direction": "engine:gate-state-exempt",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "main HEAD=ac78f92 干净(git status 空),仅 main 分支,worktree list 仅 main",
+    "main gate grep 命中:line44 STATE_FILE_RE / line176 all(CASE_FILE_RE.search(f) or STATE_FILE_RE.search(f)...) / line268 _audit_log_exempt(seg, staged) / line325 def _audit_log_exempt(cmd, files)",
+    "python3 -m py_compile .claude/hooks/autonomous-commit-gate.py OK",
+    "importlib 行为回归 14 例 ALL PASS:plain commit/push/merge/reset--hard 到 main 拦;case-376 f1 A&&git commit / A&&eval \"git commit\" / echo x&&sh -c \"git reset --hard\" 拦;case-376 f2 eval \"git commit\" -m wip 拦;checkout/switch/status/log/ls/python3 非拦截",
+    "importlib is_case_metadata_only 6 例:case-*.json=True / state.md=True(NEW) / case+state 混合=True / 源码=False / state+源码混合=False / 空=False",
+    "端到端(临时 git repo born main + marker 存在):stage state.md→git commit→main() stdout '{}' exit 0(allow)+.audit 条目 result=success newValue 含 autonomous-state.md;stage scripts/x.py→git commit→exit 2(block)+.audit 条目 result=denied;stage case-*.json→allow+success audit(broaden 不破 case.json 路径)",
+    "LIVE gate diff main==LIVE IDENTICAL(empty diff);LIVE py_compile OK;LIVE 14 例行为回归 ALL PASS;LIVE state.md exempt logic PASS",
+    "marker .autonomous_active 不存在→gate 休眠态,归档环 case+state.md 直提 main 仍自由(且激活后亦豁免)",
+    "scout-scan:AS score=0.0 健康,无紧迫工作单位(本任务为 state NEXT_SUGGESTION 排队优先级)",
+    "audit deploy 条目 audit-20260630-174216-x1i8kv action=deploy identifier=live-commit-gate newValue=ac78f92 result=success 落 .audit/audit-2026-06-30.jsonl"
+  ],
+  "next_suggestion": [
+    "[1]【普通轮·case-378】378%4=2≠0 非审计。pending=0。LIVE gate 已同步,case-372/373/375/376/377 全部硬化上线。可挑:(a) scout-scan #1 AS score=0.0 无紧迫单位——可跳过或做文档润色(但纪律:不做无意义自我润色);(b) 闭合 case-376 NEXT_SUGGESTION[3] gate 残留低危项之一(如 source/. 脚本内容不展开、--norc 长 -c 形态)——需真 shell parser,评估是否值得引入;(c) 换审非 gate 目标预备 case-380 审计轮(scout-scan.py subprocess 面 / opt-worktree.sh 路径 logic / codegraph-sync.py 外部文件读写)。",
+    "[2]【下次审计轮 case-380=380%4=0=DO A 强制审计轮】须换审非 gate 目标(已连续 case-372/376 两轮审 gate,case-377 又改 gate)。候选:(a) scripts/scout-scan.py code-review(.codebase-index 大 JSON 只读面/subprocess/标记正则虚高历史);(b) scripts/opt-worktree.sh detect_main_branch/ensure_main_wt/cp-guard/_assert_no_collateral_revert 路径 logic;(c) codegraph-sync.py/route-health-scorer.py 外部文件读写。优先挑有源代码项目。"
+  ],
+  "audit_type": "audit-log-instrumentation",
+  "audit_findings": [
+    {
+      "file": ".claude/hooks/autonomous-commit-gate.py",
+      "line": 166,
+      "severity": "medium",
+      "finding": "is_case_metadata_only 豁免集仅含 .claude/decisions/case-*.json,未含 .claude/memory/autonomous-state.md。归档环每轮回写 state.md 直提 main(见 [[archival-commit-mechanism]]),gate 激活后(state.md 豁免缺口 + marker 创建)会拦 state.md commit→归档环断裂。当前 marker 从不被脚本创建故 gate 休眠未致害,但属部署态一致性隐患(case-376 audit_findings[3] 排队)。",
+      "remediation": "本轮已修:+STATE_FILE_RE 正则,is_case_metadata_only 用 CASE_FILE_RE or STATE_FILE_RE;并 +_audit_log_exempt 埋点使豁免行为可观测(对称 _audit_log_block denied 端)。LIVE gate 同步上线。闭合。"
+    },
+    {
+      "file": ".claude/hooks/autonomous-commit-gate.py",
+      "line": 268,
+      "severity": "low",
+      "finding": "豁免路径(allow)原本静默——仅 _audit_log_block 在 denied 端写审计,豁免放行无审计记录,安全敏感的 permission 豁免不可观测。",
+      "remediation": "本轮已修:+_audit_log_exempt 在豁免分支调用,action=compliance_check/result=success 落 .audit JSONL,拦/放两端对称可观测。"
+    }
+  ]
+}
