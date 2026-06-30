@@ -139,6 +139,12 @@ def count_markers(path):
             if not f.endswith((".py", ".js", ".ts", ".tsx", ".jsx", ".md", ".sh", ".go", ".rs")):
                 continue
             rel = os.path.relpath(fp, path)
+            # 剥离 .claude/decisions/ 案例归档 markdown：case 标题常含 "TODO:"（如
+            # "Case 37: triage ...真实 # TODO: 标记"）属引擎元日志非可执行债务，否则
+            # AS 永显伪 TODO=3（实测 2026-06-30：3 个 active TODO 全来自 decision-archive.md
+            # 案例标题，非代码债）。与 <!-- TODO --> /【TODO】 占位符剥离同理念。
+            if rel.startswith(".claude/decisions/"):
+                continue
             hit = False
             try:
                 with open(fp, encoding="utf-8", errors="ignore") as fh:
