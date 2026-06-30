@@ -416,10 +416,16 @@ class BFFClient(PaginationMixin, OutputMixin):
             pass
 
     def _log_warn(self, message):
-        """Write a warning to the log file (not stdout/stderr)."""
-        os.makedirs(self.log_dir, exist_ok=True)
+        """Write a warning to the log file (not stdout/stderr).
+
+        文件写入（含 makedirs）包 try/except，与 _log 一致（case-420 F3 同类修复）：
+        _log_warn 被 pagination 翻页路径调用，若 log_dir 不可写，未包裹的 makedirs
+        抛 PermissionError/OSError 会中断读 API 翻页——调试日志的磁盘异常不应阻断
+        真实数据读取。case-436 审计发现 case-420 漏修此孪生方法。
+        """
         entry = {"timestamp": datetime.now().isoformat(), "level": "WARN", "message": message}
         try:
+            os.makedirs(self.log_dir, exist_ok=True)
             with open(self.log_file, "a", encoding="utf-8") as f:
                 f.write(json.dumps(entry, ensure_ascii=False) + "\n")
         except Exception:
