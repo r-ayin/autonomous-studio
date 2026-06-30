@@ -1,4 +1,4 @@
-# autonomous-studio — 自主开发引擎 v6.0
+# autonomous-studio — 自主开发引擎 v6.1
 
 > **持续自治管线**：空闲即触发，一直跑到人说停（不再 cron 定时）
 > **确定性 > LLM 自评**：hook 强制 + 确定性脚本兜底，提示词不是护栏
@@ -8,11 +8,23 @@
 
 autonomous-studio 是运行在 Claude Code 之上的自主开发引擎。引擎让 AI 在你不在时持续做：探究项目、开发、修复、优化、补缺文件、建索引——所有产出进 opt-worktree（不碰 main），等你审 diff 后合并。
 
-- **版本**：v6.0（持续自治 + 蒸馏闭环 + opt-worktree + 确定性扫描索引 + hook 强制）
-- **模型**：GLM-5.2（智谱，通过 Anthropic 兼容端点）；预算制，确定性优先
+- **版本**：v6.1（持续自治 + 蒸馏闭环 + opt-worktree + 确定性扫描索引 + hook 强制 + 模型配额容错）
+- **模型**：`qwen3.7-max`（主用，代理层独立额度）；GLM-5.2 作备用——连续自治下 GLM-5.2 配额易 402 耗尽（实测 17h/6264 轮后 fast-fail 空转），故 loop 显式 `--model qwen3.7-max`。`claude -p` 的模型由 `--model` 决定，`settings.json` 的 model 字段对 `claude -p` **无效**。
 - **语言**：Markdown（Skill/Prompt）+ Python（Hooks/脚本）+ Bash + JS + JSON
 
-## 核心机制（v6.0 四大支柱）
+## 功能总览
+
+引擎开起来后，能自动完成这些事，无需人盯：
+
+- **项目发现与健康扫描**：自动列出 workspace 下所有项目，逐个体检（git 状态/进度文档/质量门禁/技术债标记），输出按健康度排序的「推荐工作单位」——引擎每轮取 #1 去做。
+- **持续开发/修复/优化**：探究代码、补缺文件、修 bug、补测试、对齐文档，每轮聚焦 1-3 个文件的小工作单位，做完提交、退出、重开新 context 继续。
+- **worktree 隔离**：所有自动改动进独立分支（不碰主干），人审 diff 后才合并——主干永远安全，引擎可大胆跑。
+- **决策蒸馏闭环**：每轮写成结构化 case（含可观察证据的 outcome），定期用确定性脚本重算决策模式准确率，沉淀为可检索的决策习惯，防 LLM 自评虚高。
+- **确定性 hook 兜底**：提示词不是护栏——主干提交门禁、模式写入门禁、管线强制门禁、编辑后自动 lint/测试、停止前完成度检查，均由脚本 exit 2 强制，LLM 绕不过。
+- **六阶段 Studio 流水线**：需求 → PRD → 技术方案 → 开发 → 验证 → 评审 → 部署，按需加载，支持依赖 DAG + 文件所有权的并发构建。
+- **状态持久化**：跨 context 的目标/上轮产出/下轮建议写入状态文件；SessionStart 检查点恢复 + 固件注入。
+
+## 核心机制（v6.1 四大支柱）
 
 ### 1. 持续自治管线（替代 cron）
 不再 2h/4h 定时心跳。`scripts/autonomous-loop.sh` 是 Ralph Wiggum 死循环：每轮 `claude -p` 新 context 做一个工作单位→提交 opt-worktree→退出→重开。**察觉空闲就持续触发，直到人说停**（`touch .claude/.stop_autonomous` 或 kill）。
@@ -22,7 +34,23 @@ autonomous-loop.sh <workspace> [--bg]    # 启动（前台/后台）
 touch <workspace>/.claude/.stop_autonomous   # 停
 ```
 
+> **模型**：loop 内 `claude -p "$PROMPT" --model qwen3.7-max --permission-mode bypassPermissions`。曾用默认（env `ANTHROPIC_MODEL` 经代理重映射为 GLM-5.2），但 GLM-5.2 连续自治配额易 402 耗尽致每轮 fast-fail 不产 case（2026-06-29 实测 6264 轮、末段数百轮全 402 空转）。`--model qwen3.7-max` 走代理层独立额度，规避此问题。换模型改脚本 `--model`，**不是**改 `settings.json`。
+
 每轮纪律：跑 `scout-scan`（末尾出「推荐工作单位」按健康度排序）→ 取 #1 项目的工作单位 → 探究/开发/修复/优化/缺文件就补 → `opt-worktree.sh commit` → 一行汇报 + 写 case JSON 喂蒸馏闭环（预算已解禁，2026-06-27）。**无限制**（无冷却/连续次数/降频/预算上限），worktree 隔离使 main 安全。仅卡死保护（同错误 3 次无进展→blocked 跳走）。
+
+一轮循环端到端：
+```
+┌─ claude -p 新 context（每轮独立，qwen3.7-max）
+│   1. scout-scan → 项目健康快照 + 推荐工作单位
+│   2. 取 #1 → 最小改动（1-3 文件，不深读大块代码）
+│   3. opt-worktree.sh commit → 进 auto/opt-<area> worktree（不碰 main）
+│   4. 写 case JSON（outcome + 可观察证据）→ 喂蒸馏闭环
+│   5. 回写 autonomous-state.md（跨 context 传递目标）
+└─ 退出 → while 重开新 context 继续（直到 .stop_autonomous 或 kill）
+       │
+       人审：opt-worktree.sh show <wt> → merge/reject → 进 main
+```
+
 
 ### 2. opt-worktree 隔离（main 永远安全）
 自动优化**从不直接提交 main**。`scripts/opt-worktree.sh` 把改动提交到 `auto/optimization`（或 `auto/opt-<area>-<ts>`）worktree，人审 diff 后 `merge`/`reject`。
@@ -39,7 +67,7 @@ opt-worktree.sh <project> reject <wt>                # 拒绝
 方向分歧判定：`direction = area:subdirection`。同 area 累积同 worktree，不同 area 开新 worktree（隔离）。
 
 ### 3. 蒸馏闭环（决策习惯积累）
-> 现状（2026-06-27）：预算解禁后，引擎每轮重新写 case JSON 喂闭环，已累积归档至 case-047。基础设施齐备：`distill-patterns.py` / `index-cases.py` / `verify-pattern.sh` / `decision-observer.py` hook 均在；`scheduled_tasks.json` 定义了 L3 每 4h + distill 定时任务（依赖 REPL 空闲触发）。calibration.json `last_decision` 此前停在 06-17（预算暂停期），待 distill 重算刷新。
+> 现状（2026-06-29）：预算解禁后，引擎每轮重新写 case JSON 喂闭环，已累积归档至 case-129。基础设施齐备：`distill-patterns.py` / `index-cases.py` / `verify-pattern.sh` / `decision-observer.py` hook 均在；`scheduled_tasks.json` 定义了 L3 每 4h + distill 定时任务（依赖 REPL 空闲触发）。calibration.json `last_decision` 此前停在 06-17（预算暂停期），待 distill 重算刷新。
 
 修复了"提示词描述闭环、代码实现开环"的 7 个断裂。`scripts/distill-patterns.py` 从 case outcome 确定性重算 pattern accuracy（不再 LLM 自评 82% 虚高），`scripts/verify-pattern.sh` 4 门禁（最小样本/accuracy 底线/容量帽/同步检查）防退化。
 
@@ -63,7 +91,7 @@ scout-scan.py --workspace . --json    # JSON 供 agent 解析
 
 | Hook | 触发 | 作用 |
 |---|---|---|
-| `autonomous-commit-gate.py` | PreToolUse/Bash | 自治标记在时拦死对 main 的 `commit`/`push`/`merge`；tokenizer 跨过 `git -C/-c` 全局选项取真实子命令（修 `git -C <repo> commit` 被旧正则漏放），从 `-C` 解析目标 repo 识别分支；`.claude/decisions/case-*.json` 元数据归档豁免放行。**已知缺口（case-047，进行中）**：`reset --hard`/`branch -D`/`update-ref` 等 ref 直写未拦，WIP 在 optimization worktree |
+| `autonomous-commit-gate.py` | PreToolUse/Bash | 自治标记在时拦死对 main 的 `commit`/`push`/`merge`/`reset`/`branch -D`/`update-ref`；tokenizer 跨过 `git -C/-c` 全局选项取真实子命令（修 `git -C <repo> commit` 被旧正则漏放），从 `-C` 解析目标 repo 识别分支；`.claude/decisions/case-*.json` 元数据归档豁免放行。case-047/048 已闭合：`reset --hard`/`branch -D main`/`update-ref refs/heads/main` 等 ref 直写路径现已拦（17/17 测试绿） |
 | `stop-completion-gate.py` | Stop | 测试/任务/语法二元门控，未完成 exit 2 强制继续（3 连击防死循环） |
 | `post-edit-lint.py` | PostToolUse/Edit\|Write | 编辑后自动 py_compile/tsc/关联测试 |
 | `patterns-write-gate.py` | PreToolUse/Edit\|Write | 阻断直接改 patterns.md（强制走 distill） |
@@ -82,6 +110,29 @@ scout-scan.py --workspace . --json    # JSON 供 agent 解析
 
 **phase-dev ④ 并发构建**：PRD 产出依赖 DAG（`blockedBy`）+ 文件所有权（`files`）→ `parallel-dispatch.sh` 每 task 一个 worktree（并发上限 4）→ `parallel-merge.sh` 按依赖序增量合并 + 集成测试 + blocked 隔离。修正了"分支→worktree、全末尾合并→增量、全开→限流、主 agent 产契约非完整架构"四个字面方案硬伤。
 
+## 目录结构与脚本一览
+
+```
+autonomous-studio/
+├── scripts/
+│   ├── autonomous-loop.sh     # 持续自治死循环（每轮 claude -p，--model qwen3.7-max）
+│   ├── scout-scan.py          # 项目发现+健康扫描+索引（零 LLM token）
+│   ├── opt-worktree.sh        # worktree 隔离提交/人审合并
+│   ├── distill-patterns.py    # 从 case outcome 确定性重算决策模式 accuracy
+│   ├── index-cases.py         # case TF-IDF+双字组检索（零依赖）
+│   ├── verify-pattern.sh      # 模式 4 门禁（防退化）
+│   ├── triage.py              # 改动分类（small/complex）供 pipeline-gate
+│   ├── parallel-dispatch.sh   # 并发构建：每 task 一 worktree（上限 4）
+│   └── parallel-merge.sh      # 按依赖序增量合并 + 集成测试
+├── .claude/hooks/             # 确定性 hook 栈（见上表）
+├── phases/                    # 六阶段流水线定义（按需加载）
+├── skills/                    # 可装到目标项目的技能
+├── config/                    # 种子配置
+├── planning/                  # 路线图（非承诺性）
+├── README.md / SETUP.md / ARCHITECTURE.md / GATES.md / PROGRESS.md / OPTIMIZATION-WORKFLOW.md / PIPELINE-GATE.md
+└── decision-agent-prompt.md   # 决策 agent 七阶段框架
+```
+
 ## 快速开始
 
 ```bash
@@ -95,7 +146,7 @@ bash scripts/autonomous-loop.sh <workspace> --bg # 后台持续跑
 touch <workspace>/.claude/.stop_autonomous
 ```
 
-GLM-5.2 配置（`~/.claude/settings.json`）：
+GLM-5.2 配置（`~/.claude/settings.json`）——供交互式会话用；**注意：`claude -p`（loop 内）不读 settings.json 的 model 字段，须在 `autonomous-loop.sh` 显式 `--model`**：
 ```json
 { "env": {
   "ANTHROPIC_BASE_URL": "https://open.bigmodel.cn/api/anthropic",
@@ -104,6 +155,8 @@ GLM-5.2 配置（`~/.claude/settings.json`）：
   "ANTHROPIC_DEFAULT_HAIKU_MODEL": "GLM-4.7-air"
 }}
 ```
+
+> **配额教训**：GLM-5.2 在持续自治 loop 下配额会耗尽（402 quota exceeded），连续自治改用 `--model qwen3.7-max`（代理层独立额度）。详见上文「持续自治管线」节。
 
 ## 设计原则（从研究+实测提炼）
 

@@ -1,0 +1,27 @@
+{
+  "case_id": "case-2026-06-30-280",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-30T21:30:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "cases:archival-merge——(A) review+merge 待合并 worktree opt-cases-1782767169（case-277 归档记录入 main）；(B) 归档滞留 AS main dirty 的孤儿 case-278/279（1BfrYW9R 跨项目工作元数据）入新 cases worktree，清 main dirty=0",
+  "situation": "scout-scan @本轮 #1=1BfrYW9R(score=0.0,「无明确小工作单位可跳过或做文档润色」)，#2=autonomous-studio(score=0.0) 推荐「review 1 个待合并 worktree」。1BfrYW9R 已饱和（23 测回归锁+⑧/㉑ 防漂移锁，每 dev-server 路由均锁），仅余真实后端 API 接入（产品功能非 1-3 文件小单位，依赖外部 API），doc 已 ⑧ 自守一致——再润色即自我润色霸榜 churn，故顺延 #2。AS 侧：opt-cases-1782767169（单 commit a66b0ac，+case-277.json 纯元数据，git cherry 标 + 证未入 main 非 dup）pending 待合；另 main dirty=2 含未追踪 case-278/279（上轮 1BfrYW9R 跨项目工作产物，case 写 AS main 但提交进 1BfrYW9R worktree 致滞留——[[case-file-orphan-on-cross-project-work]] 已知缺陷）。约束：autonomous-constraints.md 仅排除 moni 前端重构，AS 不受限。standing optimization worktree(766d7e5)显「120 文件/2174 deletions」乃其 HEAD 落后 main(b65d309→1a8aeb2)的两点 diff 误读（[[diverged-base-two-dot-diff-misread]]），非回归，依 case-206 不动。",
+  "action": "(1) bash scripts/opt-worktree.sh autonomous-studio show opt-cases-1782767169（省略，diff 已 git diff main..分支 核：1 文件 +25/-0 纯 case-277.json，与 commit msg 逐字一致）。(2) bash scripts/opt-worktree.sh autonomous-studio merge opt-cases-1782767169 → Fast-forward squash 合入 main（b65d309→1a8aeb2），worktree 自动清理。坑：cmd 需自 workspace 根运行（cwd 滞留 autonomous-studio 内时报「'autonomous-studio' 不是目录」——list/merge 解析 project 相对 cwd）。(3) 归档孤儿：bash scripts/opt-worktree.sh autonomous-studio commit cases:archival-merge <msg> .claude/decisions/case-2026-06-30-{278,279}.json → 开新 worktree opt-cases-1782767915（方向自 standing engine:general 分歧），cmd_commit cp 两文件入 worktree 提交 8d591e0 后 rm-f 清 live（[[opt-worktree-stash-silent-failure]] 的显式 cp+rm 路径，untracked 新文件走 line 163 rm-f 分支自动清）。(4) case-id 取号：bash opt-worktree.sh autonomous-studio next-case → 280（已修 case-038 on-disk ls 含未追踪+worktree 计数，避撞 278/279——278/279 已 rm 出 live 仅存 worktree，旧版盲 untracked 必撞，现版正确返 280）。(5) 本 case-280 同样写入 live 后立即 commit 入 cases worktree（同 cases:archival-merge 方向）避自造新孤儿。全程未 Read 任何源文件（纯 case 元数据 + opt-worktree 调度，符合纪律）。",
+  "files_changed": [
+    "autonomous-studio/.claude/decisions/case-2026-06-30-277.json (merge 入 main，来自 worktree opt-cases-1782767169)",
+    "autonomous-studio/.claude/decisions/case-2026-06-30-278.json (孤儿归档入 worktree opt-cases-1782767915)",
+    "autonomous-studio/.claude/decisions/case-2026-06-30-279.json (孤儿归档入 worktree opt-cases-1782767915)",
+    "autonomous-studio/.claude/decisions/case-2026-06-30-280.json (本 case，待同轮归档)"
+  ],
+  "worktree": "opt-cases-1782767169(已 merge+清理) + opt-cases-1782767915(pending，含 278/279/280 待下轮 merge)",
+  "direction": "cases:archival-merge",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "git -C autonomous-studio log --oneline -1 → 1a8aeb2 'merge: 人工批准合并 optimization worktree opt-cases-1782767169'（case-277 已入 main）",
+    "git -C autonomous-studio status --short → 空（main dirty=0，孤儿 278/279 已迁走）",
+    "git -C .opt-worktrees/autonomous-studio/opt-cases-1782767915 show --stat HEAD → 8d591e0 'opt(cases:archival-merge): 归档 case-278/279...'，2 files changed 36 insertions（case-278.json +21 / case-279.json +15）",
+    "ls autonomous-studio/.claude/decisions/case-2026-06-30-27[89].json → 'no matches found'（孤儿已从 live 删除，仅存 worktree）",
+    "ls autonomous-studio/.claude/decisions/ | tail -1 → case-2026-06-30-277（main 盘上 max=277，278/279/280 在 worktree）",
+    "bash opt-worktree.sh autonomous-studio next-case → case-2026-06-30-280.json（取号正确，未撞 278/279）"
+  ],
+  "next_suggestion": "(1) 下轮 AS 若仍排 #1/#2：merge opt-cases-1782767915（含 278/279/280）入 main——同本轮 case-277 模式，单 worktree 纯元数据，git cherry 核非 dup 后 squash 合入。(2) 结构根因（高 ROI 适合专轮，均 AS engine 自改）：case-id 根因——agent 自挑号绕 next-case〔case-263 再撞〕，根治待统一 case-id 必走 cmd_next_case〔[case-id-collision-agent-self-pick]〕；跨项目 case 孤儿——opt-worktree.sh step5 让 case 跟随目标项目 worktree 而非滞留 AS main〔[case-file-orphan-on-cross-project-work]]，本轮仅补救未根治；两副本同改纪律〔[opt-worktree-root-as-copy-drift]]——本轮改的是调度非 scout-scan.py 副本，不涉，但下次改 scout-scan.py 须 root live + AS git 两副本同改。(3) 真功能单位候选（全员 score=0.0 下挑非 doc 润色）：1BfrYW9R Phase 2 表单校验/空状态骨架屏 或 Phase 3 错误上报（⑧/㉑ 自守）；sunset-prediction 核销 GATES 剩余门禁；wechat-main pipeline audit（/wechat-pipeline-audit skill 可用）；personal-assistant android Robolectric 扩测。(4) moni 前端重构仍 constraints 排除；moni 后端/量化允许但 score=0.0 无明确单位。(5) standing optimization worktree（766d7e5）落后 main 多 commit，两点 diff 显虚高 deletions 勿误读为回归——若需收口按 [[as-merge-reconciliation-2026-06-27]] 文件级 cherry-pick 勿整枝合。"
+}

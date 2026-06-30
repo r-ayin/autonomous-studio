@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-06-29-070",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-06-29T00:54:00Z",
+  "project": "x-tool",
+  "work_unit": "git rm --cached 3 cookie .db files wrongly tracked despite .gitignore *.db rule",
+  "situation": "scout-scan 全项目 score=0.0（健康）。x-tool GATES CRITICAL#1 要求无 *.db 误提交。实际 ota美团运营/ 下 3 个 .db 文件（0 字节空 cookie 数据库）在 .gitignore 新增 *.db 规则前已 tracked，git status 不报（tracked 文件不受 gitignore 影响）。",
+  "action": "创建 opt-cleanup-1782665643 worktree → git rm --cached 3 文件 → commit 350c1de。.gitignore 已有 *.db 规则，untrack 后不会 re-add。不影响磁盘文件（--cached 仅操作索引）。",
+  "files_changed": [
+    "ota美团运营/chrome_default_cookies.db",
+    "ota美团运营/chrome_profile1_cookies.db",
+    "ota美团运营/edge_default_cookies.db"
+  ],
+  "worktree": "opt-cleanup-1782665643",
+  "direction": "cleanup:untrack-db",
+  "outcome": "succeeded",
+  "outcome_evidence": "git rm --cached exit 0; commit 350c1de 删除 3 文件(delete mode 100644); git ls-files | grep .db$ 在 worktree HEAD 输出为空; .gitignore 含 *.db 规则防 re-add",
+  "next_suggestion": "①【x-tool BOM 验证核销】GATES CRITICAL#2 BOM 检查已通过(grep BOM=0)，可标注核销。②【personal-assistant DuckDB VIEW 补缺】opt-personal-assistant-1782642054 有 habits views 但 ingest.py 无 CREATE VIEW——verify+补。③【moni-master opt-moni 待合并】1 commit TODO triage 待人工审。④【1BfrYW9R responsive worktree 甄选】2 重叠 worktree 待合并更完整版。"
+}

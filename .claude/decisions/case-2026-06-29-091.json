@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-06-29-091",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-06-29T03:30:00+08:00",
+  "project": "moni-master",
+  "work_unit": "merge pending opt-moni-1782639719 worktree (TODO triage) + cleanup stale optimization worktree",
+  "situation": "scout-scan showed moni-master with 5 TODOs and pending worktree opt-moni-1782639719. git cherry confirmed 1 unique commit (37c939b) triaging 5 redundant TODOs in broker_qmt.py and run_trader.py. The optimization worktree had 0 unique commits (stale).",
+  "action": "cherry-picked 37c939b into master (now 3fe1ff8). Removed opt-moni-1782639719 worktree+branch. Force-removed stale optimization worktree. Post-merge grep confirms 0 non-deferred TODOs in moni-master source.",
+  "files_changed": [
+    "factors/scripts/qlib_repo/trader/broker_qmt.py",
+    "factors/scripts/qlib_repo/trader/run_trader.py",
+    ".opt-direction"
+  ],
+  "worktree": "none (direct cherry-pick into master from pending worktree)",
+  "direction": "moni:worktree-merge",
+  "outcome": "succeeded",
+  "outcome_evidence": "git log master shows 3fe1ff8; git worktree list shows only master+rust-rewrite; grep TODO across all moni-master non-test py files returns 0 hits",
+  "next_suggestion": "Re-run scout-scan; with moni-master TODO=0, next priority likely shifts to another project. Check if autonomous-studio dirty=3 case files should be committed, or look at 1BfrYW9R/personal-assistant for structural gaps."
+}

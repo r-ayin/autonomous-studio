@@ -1,24 +1,15 @@
 {
   "case_id": "case-2026-06-29-048",
-  "agent_id": "autonomous-studio-aone:engine:opt-worktree-merge-fix",
-  "timestamp": "2026-06-29T13:58Z",
-  "project": "autonomous-studio",
-  "work_unit": "修 opt-worktree.sh cmd_merge 分支名解析 bug（state case-047 NEXT_SUGGESTION #1）+ 端到端验证合并 opt-skills-1782736482",
-  "situation": "scout-scan 报 #1=autonomous-studio(score=0.04, TODO=3/deferred=5)，推荐 triage TODO。状态文件 NEXT_SUGGESTION #1 更精确：上轮 case-047 合并 optimization worktree 时 opt-worktree.sh cmd_merge 失败——对裸 optimization worktree，line 212 的 sed 's/^opt-//;s/^/opt-/' 把 basename 'optimization'（不以 opt- 开头）→ 不变 → 再前置 opt- → 'opt-optimization'，拼成不存在的 auto/opt-optimization；fallback git merge --squash \"$wt\"（wt=worktree 名 optimization，非 ref）亦失败 → 走 else 分支 git merge --abort 退出。被迫手动 git merge --squash。这是引擎工具链真结构性 bug（scout #1 项目自身工具）。分支命名规则复核：line 46 auto/optimization、line 84 auto/opt-$(slug $area)-$ts，即分支名恒为 auto/$(basename $dir)，sed 对两类 worktree（optimization / opt-skills-*）均多余且对裸 optimization 有害。",
-  "action": "1 行修复：line 212 'auto/$(basename \"$dir\" | sed ...)' → 'auto/$(basename \"$dir\")'（fallback git merge --squash \"$wt\" 保留无害，primary 命中后不触发）。bash -n 语法通过。端到端验证：现存待合并 worktree opt-skills-1782736482（branch auto/opt-skills-1782736482, skills:GATES.md +38 纯新增无冲突，即 case-047 NEXT_SUGGESTION #3 待办）→ bash scripts/opt-worktree.sh . merge opt-skills-1782736482 成功（auto/opt-skills-1782736482 正确解析，squash 落地 main=0a2124d，worktree 自动清理）。修复本身（scripts/opt-worktree.sh）未进 merge commit，单独暂存提交 main。gate(.autonomous_active)缺席→休眠，同 case-047 先例直接 main 提交 engine 修复（仅暂存 scripts/opt-worktree.sh，不触 dirty state.md/未跟踪 case）。合并后清理 cmd_merge 不删的残留分支 auto/opt-skills-1782736482（已全量并入 main，git branch -D 安全）。",
-  "files_changed": ["scripts/opt-worktree.sh", "skills/GATES.md"],
-  "worktree": "main（opt-skills-1782736482 worktree 经修复后的 cmd_merge 合并后已清理；auto/opt-skills-1782736482 分支已删；optimization worktree 不涉及）",
-  "direction": "engine:opt-worktree-merge-fix",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-29T04:35:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "清理 stale auto/optimization worktree（无唯一提交）+ 盘点 8 条遗留 opt 分支",
+  "situation": "scout-scan #1 推荐 review 1BfrYW9R 待合并 worktree + 清理空 worktree。opt-merge-1782706545 含 17 文件/1808 行 JSX 复活，与 main b9788da 单文件内联重构意图冲突，需人工裁决；auto/optimization worktree 仅 dirty .opt-direction，无唯一提交，可安全删除。",
+  "action": "1) git worktree remove ../.opt-worktrees/1BfrYW9R/optimization --force + git branch -D auto/optimization；2) 盘点 8 条遗留 opt 分支：4 条内容已在 main(git cherry =0)，4 条各有 1 个独特提交(hash-routing/gates-fix-scripts/scaffold-planning/1BfrYW9R-hash-routing)未合；3) 不自动 merge/reject——留给人工审 opt-merge-1782706545 diff 决定",
+  "files_changed": [],
+  "worktree": "none (cleanup only, no commit made)",
+  "direction": "worktree:cleanup",
   "outcome": "succeeded",
-  "outcome_evidence": [
-    "git log --oneline -2 = 2aa0eba fix(engine): 修复 opt-worktree.sh cmd_merge 分支名解析 bug / 0a2124d merge: 人工批准合并 optimization worktree 'opt-skills-1782736482'",
-    "grep -n 'auto/$(basename' scripts/opt-worktree.sh line 212 = 'if git merge --squash \"auto/$(basename \"$dir\")\" 2>/dev/null || ...'（sed 已移除）",
-    "grep -c 's/^opt-//' scripts/opt-worktree.sh = 0（修复前该 sed 在 line 212）",
-    "bash -n scripts/opt-worktree.sh exit 0（语法通过）",
-    "opt-worktree.sh . merge opt-skills-1782736482 输出 'Squash commit -- not updating HEAD' + '✓ 已 squash 合并 opt-skills-1782736482 → main' + '✓ worktree 清理'，exit 0（修复前对 optimization 输出 '❌ 合并冲突' exit 1）",
-    "ls skills/GATES.md = 2218 bytes 已就位 main（merge commit 0a2124d 引入）",
-    "git worktree list 仅主仓 2aa0eba [main]；git branch | grep opt = (none)；auto/opt-skills-1782736482 已 Deleted branch (was cacaf0f)",
-    "basename 解析模拟：optimization→auto/optimization、opt-skills-1782736482→auto/opt-skills-1782736482、opt-server-1782736000→auto/opt-server-1782736000，与 line 46/84 命名规则一致"
-  ],
-  "next_suggestion": "(1) AS 剩 3 active TODO 全在 .claude/decisions/decision-archive.md 历史案例标题散文（'Case NN: ...TODO: xxx' 中 TODO: 在 markdown 标题非代码债）——给 scout-scan count_markers 加'markdown 标题行(# 开头)不计 marker'或排除 .claude/decisions/ 目录，需跨项目验证对 .md 围栏代码块真债无影响；改 count_markers 是 scout-scan.py 内 1-2 处。(2) cmd_merge 合并后不删 auto/<branch> 分支（仅 cmd_reject 删），残留分支污染未来 cleanup 扫描——评估在 cmd_merge 成功路径加 git branch -D \"auto/$(basename \"$dir\")\"，需确认无 'branch checkout 在 worktree' 误删风险。(3) 转 scout #2 autonomous-studio-aone(score=0.04, TODO=3) 或 #3 x-tool(score=0.01, TODO=1) triage 其真实代码 TODO。"
+  "outcome_evidence": "git worktree list 显示 optimization worktree 已移除(从 3→2 个)；git branch | grep auto/opt 确认 auto/optimization 分支已删；8 条遗留分支清单已记录(4 empty + 4 unique)，未误删任何有独特内容的分支；main onedaybot-dev HEAD=5710dd5 未变、working tree clean",
+  "next_suggestion": "下轮应人工审 opt-merge-1782706545 的 1808 行 JSX 复活 vs main 单文件 bundle 取舍(merge 或 reject)；若 reject，则 4 条有独特提交的遗留分支(opt-1BfrYW9R-1782640068 hash-routing / opt-gates-1782640593 fix-scripts / opt-routing-1782640895 hash-routing / opt-scaffold-1782639526 planning)需逐条 triage 是否 cherry-pick 进 main"
 }

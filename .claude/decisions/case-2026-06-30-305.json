@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-06-30-305",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-30T00:00:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "归档 6 个滞留 untracked case 文件(299-304)入 AS git，消除 dirty=6 结构信号",
+  "situation": "scout-scan @2026-06-29T23:31Z 报 AS dirty=6（全项目最差，其余皆 0）。git status --short 确认 6 个 untracked case：case-2026-06-30-299/300（AS 自存，上两轮 self-work 漏 cp 入 worktree 滞留）+ 301/302/303/304（1BfrYW9R 跨项目 case，写盘落 AS main 但 commit 进 1BfrYW9R worktree 致滞留，[[case-file-orphan-on-cross-project-work]] 典型）。6 文件经 python3 json.load 全合法（outcome 均 succeeded，project 字段对得上）。上轮 NEXT_SUGGESTION 明列此项为高优跨轮遗留。",
+  "action": "用 scripts/opt-worktree.sh commit 走 cases:archive 方向归档（area=cases 与 standing optimization 的 engine 区分歧 → 脚本新开 opt-cases-1782776050 worktree 从 main f79321f 分叉，非复用落后 standing 枝，避 [[scout-scan-standing-worktree-not-stale]] 的落后枝叠加风险）。显式列 6 文件路径（project-relative）触发显式 cp 分支（避 [[opt-worktree-stash-silent-failure]] stash 误报 + [[opt-worktree-empty-files-silent-bogus-commit]] 空 commit）。commit 37a681f 含 6 文件 115 行新增；main 侧 untracked→rm 还原（脚本 ③ 步），④ 步 leak 断言过。随后 opt-worktree.sh merge opt-cases-1782776050 squash 合并入 main 成 ecbc41e，worktree 自动清理。case-id 经 cmd_next_case 取 305（避 [[case-id-collision-agent-self-pick]] 手挑撞号）。",
+  "files_changed": [
+    ".claude/decisions/case-2026-06-30-299.json",
+    ".claude/decisions/case-2026-06-30-300.json",
+    ".claude/decisions/case-2026-06-30-301.json",
+    ".claude/decisions/case-2026-06-30-302.json",
+    ".claude/decisions/case-2026-06-30-303.json",
+    ".claude/decisions/case-2026-06-30-304.json"
+  ],
+  "worktree": "opt-cases-1782776050（已 squash 合并入 AS main @ecbc41e，worktree+branch 已清理）",
+  "direction": "cases:archive",
+  "outcome": "succeeded",
+  "outcome_evidence": "git status --short 计数 6→0；git ls-files --error-unmatch 6 文件全 tracked ✓；main HEAD=ecbc41e 含 merge 提交；git show --stat 37a681f 列 6 文件 create mode 100644 共 +115；git worktree list 仅余 main + standing optimization（auto/optimization@6ea4faa，非 stale 保留）",
+  "next_suggestion": "AS dirty 已归零，scout-scan 下轮应重排 #1（1BfrYW9R/moni-master 等可轮换）。standing optimization worktree(@6ea4faa) 仍落后 main(ecbc41e) 2 commit——下轮若动 engine 区方向，复用前须 reset/rebase 至 main 勿叠落后枝。撞号根治仍待办：case-id 统一走 next-case 已本轮示范，但根除须禁 agent 手挑（[[case-id-collision-agent-self-pick]]）。"
+}

@@ -20,9 +20,9 @@ from datetime import datetime, timezone
 
 # 忽略的目录
 IGNORE_DIRS = {".git", "node_modules", ".venv", "__pycache__", ".pytest_cache",
-               "dist", "build", ".next", ".cache", "venv", "env", ".mypy_cache",
-               ".tox", "coverage", ".nyc_output", ".opt-worktrees", ".parallel-worktrees",
-               "site-packages", ".venv-sidecar"}
+               "dist", "build", "out", "target", ".next", ".cache", "venv", "env",
+               ".mypy_cache", ".tox", "coverage", ".nyc_output", ".opt-worktrees",
+               ".parallel-worktrees", "site-packages", ".venv-sidecar", "worktrees"}
 # 虚拟环境目录名变体繁多（.venv / .venv-foo / .venv-sidecar / venv-xxx），
 # 单靠精确集合匹配会漏（曾致 x-tool 的 聚合ai客服开发/.venv-sidecar/site-packages
 # 里 pydantic/h11/PyInstaller 的第三方 FIXME/HACK 被计入项目真债，虚高至 #1）。
@@ -43,10 +43,6 @@ MD_HEAD = re.compile(r"^#{1,3}\s+(.+)$", re.M)
 #   2) 只认 MARKER: / MARKER - 形式（通用债务注释约定）；散文提及 "FIXME/HACK 比 TODO..."
 #      或 "TODO/FIXME/HACK 标记的代码" 不算债务标记
 _STRIP_STRINGS = re.compile(r'"[^"\\]*(?:\\.[^"\\]*)*"|\'[^\'\\]*(?:\\.[^\'\\]*)*\'')
-# 剥离 JS/TS 模板字符串字面量（反引号）：scaffold 生成器 new.ts 将 TODO 占位符嵌入模板字符串，
-# 如 `// TODO: implement test logic`，跨行不被单行字符串剥离，导致 stagehand-analysis 等项目
-# 误计 TODO=3（模板占位）+ 上游 TODO（不可动）。反引号字符串以全文内容模式剥离（re.DOTALL）。
-_STRIP_TEMPLATE_LITERALS = re.compile(r'`(?:[^`\\]|\\.)*`', re.DOTALL)
 # 剥离全角括号占位符 【TODO...】 等：scaffold 生成器（如 luban/tools/
 # scaffold-skill.sh）用 【TODO 做什么】 作为待用户填写的模板提示，不是真债务注释。
 # 此前 14/17 个 TODO 全来自 scaffold-skill.sh 的占位提示，致 autonomous-studio 健康分虚高霸榜。
@@ -59,13 +55,6 @@ _STRIP_PLACEHOLDERS = re.compile(r"【[^】]*】")
 # 此前 x-tool 的 TODO=44 中 38 个全来自这类桩，致其标记密度虚高霸榜 #1。
 # 真债务行内注释（井号或双斜杠后跟标记加冒号）不在 HTML 注释里，不受影响。
 _STRIP_HTML_COMMENTS = re.compile(r"<!--.*?-->")
-# 剥离 markdown 行内代码反引号 `...`：与字符串字面量/HTML 注释同类，行内代码是
-# 引述/示意片段而非可执行债务——如本文件注释里 `// TODO implement test logic` 是
-# 在解释剥离逻辑的引例，非真债。此前 .py/.md/.sh 注释中反引号引例的 TODO 标记被误计，
-# 致 scout-scan.py 自指 2 命中（JS/TS 已由 _STRIP_TEMPLATE_LITERALS 整文剥离，此处
-# 补 .py/.md/.sh 行内反引号缺口）。三反引号围栏代码块（```）是另一形式，行内正则
-# 不匹配，围栏内真债仍被计数，不受影响。
-_STRIP_BACKTICKS = re.compile(r"`[^`\n]*`")
 _MARKER_RE = {m: re.compile(rf"\b{m}\b\s*[:-]") for m in ("TODO", "FIXME", "HACK")}
 # 延期债约定：债务标记单词后接 (deferred) 后缀（标记与括号间可有空白），表示已 triage 标注
 # 但确认延期（非清掉、非盲实现）的债——与 moni broker_qmt.py 既有约定一致。主 _MARKER_RE
@@ -82,36 +71,18 @@ def now_iso():
 
 
 def discover_projects(workspace):
-    """发现 workspace 下所有项目（有 .git 或 planning/status.json 的目录）。
-
-    符号链接去重：os.scandir 的 is_dir() 跟随 symlink，workspace 下若存在指向同库的
-    符号链接（如 autonomous-studio → autonomous-studio-aone），同一仓库会被计两次，
-    在健康榜上以同分霸占 #1/#2（score 翻倍、TODO 双计）。按 realpath 去重；同库既出现
-    符号链接又出现真目录时，保留真目录（路径稳定、不随链接移除而消失）。
-    """
+    """发现 workspace 下所有项目（有 .git 或 planning/status.json 的目录）"""
     projects = []
-    seen = {}  # realpath -> projects 下标（便于用真目录覆盖符号链接）
     if not os.path.isdir(workspace):
         return projects
     for entry in sorted(os.scandir(workspace), key=lambda e: e.name):
         if not entry.is_dir() or entry.name.startswith(".") or entry.name in IGNORE_DIRS:
             continue
-        real = os.path.realpath(entry.path)
         has_git = os.path.isdir(os.path.join(entry.path, ".git"))
         has_status = os.path.isfile(os.path.join(entry.path, "planning", "status.json"))
-        if not (has_git or has_status):
-            continue
-        if real in seen:
-            idx = seen[real]
-            # 已记录真目录 → 跳过符号链接；反之用真目录覆盖已记录的符号链接
-            if os.path.islink(entry.path) and not os.path.islink(projects[idx]["path"]):
-                continue
-            projects[idx] = {"name": entry.name, "path": entry.path,
-                              "has_git": has_git, "has_studio": has_status}
-            continue
-        seen[real] = len(projects)
-        projects.append({"name": entry.name, "path": entry.path,
-                          "has_git": has_git, "has_studio": has_status})
+        if has_git or has_status:
+            projects.append({"name": entry.name, "path": entry.path,
+                              "has_git": has_git, "has_studio": has_status})
     return projects
 
 
@@ -165,40 +136,27 @@ def count_markers(path):
                     continue
             except OSError:
                 continue
-            # 债务标记是代码注释约定，markdown 是文档/散文：.md 中 `# TODO:` 在标题、
-            # `TODO:` 在描述性正文都匹配 MARKER 形式但非真债。此前 autonomous-studio 的 4 个
-            # active TODO 全来自 decision-archive.md 标题/state.md 正文散文（真代码 TODO 均为
-            # `TODO(deferred)` 形式，只计 deferred），致其虚假霸榜 #1。剥离规则逐个补丁（【TODO】/
-            # `<!-- TODO -->` / 反引号引例）是打地鼠，排除 .md 一劳永逸。file_tree_and_symbols
-            # 仍独立索引 .md 标题，此处仅影响 marker 计数。
-            if not f.endswith((".py", ".js", ".ts", ".tsx", ".jsx", ".sh", ".go", ".rs")):
+            if not f.endswith((".py", ".js", ".ts", ".tsx", ".jsx", ".md", ".sh", ".go", ".rs")):
                 continue
             rel = os.path.relpath(fp, path)
             hit = False
-            is_js_ts = f.endswith((".js", ".ts", ".tsx", ".jsx"))
             try:
                 with open(fp, encoding="utf-8", errors="ignore") as fh:
-                    content = fh.read()
-                # 对 JS/TS 文件先剥离多行模板字符串（反引号），避免模板占位符 TODO 被误计
-                if is_js_ts:
-                    content = _STRIP_TEMPLATE_LITERALS.sub("''", content)
-                for line in content.splitlines():
-                    # 剥离字符串字面量 counts={"FIXME":0} / f"...FIXME..." 不再自指误算
-                    stripped = _STRIP_STRINGS.sub("", line)
-                    # 剥离全角括号占位符 【TODO...】 scaffold 模板提示不算真债务
-                    stripped = _STRIP_PLACEHOLDERS.sub("", stripped)
-                    # 剥离 HTML 注释占位符 <!-- TODO... --> project-protocol 模板桩不算真债务
-                    stripped = _STRIP_HTML_COMMENTS.sub("", stripped)
-                    # 剥离 markdown 行内代码反引号引例（示意片段非真债，见 _STRIP_BACKTICKS 注释）
-                    stripped = _STRIP_BACKTICKS.sub("", stripped)
-                    for m, rx in _DEFERRED_RE.items():
-                        if rx.search(stripped):
-                            deferred[m] += 1
-                            hit = True
-                    for m, rx in _MARKER_RE.items():
-                        if rx.search(stripped):
-                            counts[m] += 1
-                            hit = True
+                    for line in fh:
+                        # 剥离字符串字面量 counts={"FIXME":0} / f"...FIXME..." 不再自指误算
+                        stripped = _STRIP_STRINGS.sub("", line)
+                        # 剥离全角括号占位符 【TODO...】 scaffold 模板提示不算真债务
+                        stripped = _STRIP_PLACEHOLDERS.sub("", stripped)
+                        # 剥离 HTML 注释占位符 <!-- TODO... --> project-protocol 模板桩不算真债务
+                        stripped = _STRIP_HTML_COMMENTS.sub("", stripped)
+                        for m, rx in _DEFERRED_RE.items():
+                            if rx.search(stripped):
+                                deferred[m] += 1
+                                hit = True
+                        for m, rx in _MARKER_RE.items():
+                            if rx.search(stripped):
+                                counts[m] += 1
+                                hit = True
             except Exception:
                 continue
             if hit:
@@ -305,32 +263,6 @@ def pending_in_opt_worktrees(path, filename):
     return hits
 
 
-def worktree_ahead(project_path, wt_name):
-    """待合并 opt-worktree 领先 main 的 commit 数（死锁提示 + --json 调度用：少的先合）。
-
-    与 pending_in_opt_worktrees 同构的 base..HEAD 计算，但返回 commit 计数而非文件命中。
-    死锁态下人工/调度器面对一串裸 worktree 名不知哪个该先合、哪个改动小——附 ahead 计数
-    让人一眼挑出 +1 commit 的小改先合（如 opt-skills-* 单文件 frontmatter），避免对 +N
-    大改 worktree 的犹豫拖累整个解锁节奏。读失败返回 None（显示/消费时不附计数）。
-    """
-    wt_dir = os.path.join(os.path.dirname(project_path), ".opt-worktrees",
-                          os.path.basename(project_path), wt_name)
-    if not os.path.isdir(wt_dir):
-        return None
-    try:
-        base = subprocess.run(["git", "rev-parse", "HEAD"], cwd=project_path,
-                              capture_output=True, text=True, timeout=5).stdout.strip()
-        if not base:
-            return None
-        r = subprocess.run(["git", "rev-list", "--count", f"{base}..HEAD"],
-                           cwd=wt_dir, capture_output=True, text=True, timeout=5)
-        if r.returncode == 0 and r.stdout.strip().isdigit():
-            return int(r.stdout.strip())
-    except Exception:
-        pass
-    return None
-
-
 def pending_triage_in_worktrees(path, marker_files):
     """含真标记的文件是否在某待合并 opt-worktree 的 diff 里——是则该 worktree 可能已 triage 这些 TODO/FIXME/HACK。
 
@@ -363,6 +295,61 @@ def pending_triage_in_worktrees(path, marker_files):
         except Exception:
             continue
     return hits
+
+
+def count_pending_worktrees(path):
+    """统计项目的 pending opt-worktrees：total 数量 + stale(0-ahead) 数量 + 各 worktree 的 ahead count。
+
+    当所有健康信号为绿时，pending worktree 积压是唯一可操作的结构性信号——
+    提示人工 review/merge。stale (0 ahead) per-area worktree 则是可安全清理的废弃物；
+    但常设 "optimization" worktree 空闲时是 infra（下次 commit 重建），不计 stale、
+    不计入 total，否则每轮误推"清理空 worktree"。非 git 伪目录（嵌套 .opt-worktrees）一并跳过。
+    """
+    wt_root = os.path.join(os.path.dirname(path), ".opt-worktrees", os.path.basename(path))
+    if not os.path.isdir(wt_root):
+        return {"total": 0, "stale": 0, "with_content": 0, "details": []}
+    main_branch = "main"
+    try:
+        r = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], cwd=path,
+                           capture_output=True, text=True, timeout=3)
+        if r.returncode == 0 and r.stdout.strip():
+            main_branch = r.stdout.strip()
+    except Exception:
+        pass
+    total = 0
+    stale = 0
+    with_content = 0
+    details = []
+    for entry in sorted(os.scandir(wt_root), key=lambda e: e.name):
+        if not entry.is_dir() or entry.name.startswith("."):
+            continue  # 跳过 .opt-worktrees 等嵌套垃圾目录（引擎偶从 worktree 内调
+                     # opt-worktree 会在 worktree 里建嵌套 .opt-worktrees/<name>，非 git 仓）
+        # 只认真正的 git worktree——过滤嵌套伪目录，否则它们被当 pending 计入、虚高 total
+        try:
+            g = subprocess.run(["git", "rev-parse", "--is-inside-work-tree"],
+                               cwd=entry.path, capture_output=True, text=True, timeout=3)
+            if g.returncode != 0 or g.stdout.strip() != "true":
+                continue
+        except Exception:
+            continue
+        try:
+            r = subprocess.run(["git", "rev-list", "--count", f"{main_branch}..HEAD"],
+                               cwd=entry.path, capture_output=True, text=True, timeout=5)
+            ahead = int(r.stdout.strip()) if r.returncode == 0 else -1
+        except Exception:
+            ahead = -1
+        # ensure_main_wt 维护的常设 "optimization" worktree：空闲(0-ahead)时是 infra，
+        # 下次 commit 即重建——非 pending、非废弃物。整体跳过，否则每轮都推"清理空
+        # worktree"噪音、霸占 #1。仅当它真带未合并内容(ahead>0)时才计入（视同 pending 待合并）。
+        if entry.name == "optimization" and ahead == 0:
+            continue
+        total += 1
+        if ahead == 0:
+            stale += 1
+        elif ahead > 0:
+            with_content += 1
+        details.append({"name": entry.name, "ahead": ahead})
+    return {"total": total, "stale": stale, "with_content": with_content, "details": details}
 
 
 def pending_planning_in_worktrees(path):
@@ -457,49 +444,47 @@ def health_priority(r):
         reasons.append(f"延期(已triage) TODO/FIXME/HACK={d.get('TODO', 0)}/{d.get('FIXME', 0)}/{d.get('HACK', 0)}（不计入triage推荐）")
     # FIXME/HACK 比 TODO 更可操作，额外加权（封顶）
     score += min((m["FIXME"] + m["HACK"]) * 0.2, 4)
-    # marker 文件已在待合并 worktree 动过——main 上的标记是"已 triage 待合并"而非"真未处理"，
-    # 降权使其不再因待合并债务霸榜 #1 让引擎重做（应推合并，不是重 triage）
+    # marker 文件已在待合并 worktree 动过——精确抵消 marker 贡献（密度+FIXME/HACK 加权），
+    # 而非 flat -1：flat -1 远大于小密度贡献（如 0.06），导致得分变负，
+    # 把有真实 TODO 的项目藏到完全健康项目之后（case-049 修复）
     if pend_triage:
-        score -= 1
+        score -= min(density * 10, 5) + min((m["FIXME"] + m["HACK"]) * 0.2, 4)
         reasons.append(f"marker 文件待合并({','.join(pend_triage)})，可能已 triage")
 
-    # 推荐一个**具体的小工作单位**——优先选可操作项，"等合并"降为备选
-    # 修复：此前用 first-match 优先级链，"缺 PROGRESS + pending"先于"缺 GATES（可补）"
-    # 命中，导致推荐列表全是不可操作的"等合并"，真正可做的工作被掩盖。
-    actionable = []
-    blocked = []
+    # 推荐一个**具体的小工作单位**（tractable，不需深读大块代码）——给引擎现成抓手
     if ps is None and pend_prog:
-        blocked.append(f"等合并 PROGRESS.md（已在 {','.join(pend_prog)} worktree，别重做）")
-    if ps is None and not pend_prog:
-        actionable.append("补 PROGRESS.md（1 文件，无需深读代码）")
-    if not r["gates_exists"] and pend_gates:
-        blocked.append(f"等合并 GATES.md（已在 {','.join(pend_gates)} worktree）")
-    if not r["gates_exists"] and not pend_gates:
-        actionable.append("补 GATES.md（1 文件，无需深读代码）")
-    if ps is not None and ps > STALE_DAYS:
-        actionable.append(f"刷新 PROGRESS.md（已 stale {ps}天）")
-    if m["FIXME"] + m["HACK"] > 0 and pend_triage:
-        blocked.append(f"等合并 {','.join(pend_triage)} worktree（marker 文件已动，可能已 triage FIXME/HACK，别重做）")
-    if m["FIXME"] + m["HACK"] > 0 and not pend_triage:
-        actionable.append(f"triage {m['FIXME'] + m['HACK']} 个 FIXME/HACK（取前 1-2 个修）")
-    if m["TODO"] > 0 and pend_triage and not (m["FIXME"] + m["HACK"] > 0):
-        blocked.append(f"等合并 {','.join(pend_triage)} worktree（marker 文件已动，可能已 triage TODO，别重做）")
-    if m["TODO"] > 0 and not pend_triage:
-        actionable.append(f"triage 前 1-2 个 TODO（标注或清掉）")
-    if not r["has_planning"] and pend_planning:
-        blocked.append(f"等合并 planning/（已在 {','.join(pend_planning)} worktree，别重做）")
-    if not r["has_planning"] and not pend_planning:
-        actionable.append("补 planning/ 目录（路线图文档，无需深读代码）")
-
-    if actionable:
-        unit = actionable[0]
-    elif blocked:
-        unit = blocked[0]
+        unit = f"等合并 PROGRESS.md（已在 {','.join(pend_prog)} worktree，别重做）"
+    elif ps is None:
+        unit = "补 PROGRESS.md（1 文件，无需深读代码）"
+    elif not r["gates_exists"] and pend_gates:
+        unit = f"等合并 GATES.md（已在 {','.join(pend_gates)} worktree）"
+    elif not r["gates_exists"]:
+        unit = "补 GATES.md（1 文件，无需深读代码）"
+    elif ps is not None and ps > STALE_DAYS:
+        unit = f"刷新 PROGRESS.md（已 stale {ps}天）"
+    elif m["FIXME"] + m["HACK"] > 0 and pend_triage:
+        unit = f"等合并 {','.join(pend_triage)} worktree（marker 文件已动，可能已 triage FIXME/HACK，别重做——先查 worktree log）"
+    elif m["FIXME"] + m["HACK"] > 0:
+        unit = f"triage {m['FIXME'] + m['HACK']} 个 FIXME/HACK（取前 1-2 个修）"
+    elif m["TODO"] > 0 and pend_triage:
+        unit = f"等合并 {','.join(pend_triage)} worktree（marker 文件已动，可能已 triage TODO，别重做——先查 worktree log）"
+    elif m["TODO"] > 0:
+        unit = f"triage 前 1-2 个 TODO（标注或清掉）"
+    elif not r["has_planning"] and pend_planning:
+        unit = f"等合并 planning/（已在 {','.join(pend_planning)} worktree，别重做——先查 worktree log）"
+    elif not r["has_planning"]:
+        unit = "补 planning/ 目录（路线图文档，无需深读代码）"
     else:
-        unit = "无明确小工作单位——可跳过或做文档润色"
-    is_actionable = bool(actionable)
-    return {"score": round(score, 2), "reasons": reasons, "work_unit": unit,
-            "actionable": is_actionable}
+        pw = r.get("pending_worktrees", {})
+        if pw.get("with_content", 0) > 0:
+            unit = f"review {pw['with_content']} 个待合并 worktree（人工审 diff + merge/reject）"
+            if pw.get("stale", 0) > 0:
+                unit += f"；另有 {pw['stale']} 个空 worktree 可清理"
+        elif pw.get("stale", 0) > 0:
+            unit = f"清理 {pw['stale']} 个空 worktree（0 ahead, 内容已在 main）"
+        else:
+            unit = "无明确小工作单位——可跳过或做文档润色"
+    return {"score": round(score, 2), "reasons": reasons, "work_unit": unit}
 
 
 def scan_project(p):
@@ -520,24 +505,8 @@ def scan_project(p):
         "markers_deferred": m_deferred,
         "marker_files": sorted(m_files),
         "triage_pending_wts": pending_triage_in_worktrees(path, m_files),
+        "pending_worktrees": count_pending_worktrees(path),
     }
-    # 结构化待合并 worktree 摘要：跨四类 pending 去重，附 ahead 计数与命中类别——
-    # 供 --json 调度器程序化挑 ahead 最小的 worktree 先合（解锁死锁），而非只靠死锁文本。
-    # 历史问题：死锁文本仅人读，loop 调度器消费 --json 时拿不到"哪个 worktree 改动最小"，
-    # 无法程序化提示人工先合 +1 小改；此字段补齐该缺口（worktree_ahead 同源 base..HEAD）。
-    _wt_cats = {}
-    for _w in rep["progress_pending_wts"]:
-        _wt_cats.setdefault(_w, set()).add("progress")
-    for _w in rep["gates_pending_wts"]:
-        _wt_cats.setdefault(_w, set()).add("gates")
-    for _w in rep["planning_pending_wts"]:
-        _wt_cats.setdefault(_w, set()).add("planning")
-    for _w in rep["triage_pending_wts"]:
-        _wt_cats.setdefault(_w, set()).add("triage")
-    rep["pending_wts"] = [
-        {"wt": _w, "categories": sorted(_wt_cats[_w]), "ahead": worktree_ahead(path, _w)}
-        for _w in sorted(_wt_cats)
-    ]
     # 文件索引（限制规模，避免大库超时）
     tree, symbols, n = file_tree_and_symbols(path)
     rep["file_count_indexed"] = n
@@ -578,19 +547,6 @@ def main():
 
     ws = os.path.abspath(args.workspace)
     projects = discover_projects(ws)
-
-    # Fallback: workspace 本身是一个 git 项目（而非项目容器）时自动上移到父目录。
-    # 场景：loop prompt 写死 --workspace /…/autonomous-studio，但实际容器是其父目录。
-    if not projects and not args.project:
-        ws_is_project = os.path.isdir(os.path.join(ws, ".git")) or \
-                        os.path.isfile(os.path.join(ws, "planning", "status.json"))
-        if ws_is_project:
-            parent_ws = os.path.dirname(ws)
-            parent_projects = discover_projects(parent_ws)
-            if parent_projects:
-                ws = parent_ws
-                projects = parent_projects
-
     if args.project:
         projects = [p for p in projects if p["name"] == args.project]
 
@@ -609,9 +565,8 @@ def main():
     for r in report["projects"]:
         hp = health_priority(r)
         recs.append({"name": r["name"], "score": hp["score"],
-                     "reasons": hp["reasons"], "work_unit": hp["work_unit"],
-                     "actionable": hp.get("actionable", True)})
-    recs.sort(key=lambda x: (x.get("actionable", True), x["score"]), reverse=True)
+                     "reasons": hp["reasons"], "work_unit": hp["work_unit"]})
+    recs.sort(key=lambda x: x["score"], reverse=True)
     report["recommendations"] = recs
 
     if args.json:
@@ -640,32 +595,24 @@ def main():
                 print(f"  延期(已triage): TODO={d.get('TODO', 0)} FIXME={d.get('FIXME', 0)} HACK={d.get('HACK', 0)}")
             print(f"  索引: {r['file_count_indexed']} 文件, "
                   f"fn={r['symbols']['functions']} class={r['symbols']['classes']} h={r['symbols']['headings']}")
+            pw = r.get("pending_worktrees", {})
+            if pw.get("total", 0) > 0:
+                parts = [f"共{pw['total']}"]
+                if pw.get("with_content", 0):
+                    parts.append(f"待合并={pw['with_content']}")
+                if pw.get("stale", 0):
+                    parts.append(f"空(可清理)={pw['stale']}")
+                print(f"  待处理 worktree: {', '.join(parts)}")
 
         # 推荐工作单位（按健康度排序）——给引擎确定性选材，避免自由心证总挑自己
         print("\n=== 推荐工作单位（按健康度排序，越高越该被照顾）===")
         print("说明：分数基于结构性健康信号（缺文档/stale/标记密度），不依赖提交新旧；")
         print("      autonomous-studio 不被排除，按健康度公平排名（引擎真有 bug 仍可被选中）。")
         for i, rc in enumerate(recs[:3], 1):
-            tag = "" if rc.get("actionable", True) else " ⏳blocked"
-            print(f"  #{i} {rc['name']} (score={rc['score']}{tag}) — {rc['work_unit']}")
+            print(f"  #{i} {rc['name']} (score={rc['score']}) — {rc['work_unit']}")
             print(f"      理由: {'; '.join(rc['reasons']) or '健康度良好'}")
         if recs and recs[0]["score"] == 0:
             print("  （所有项目健康度良好，无紧迫小工作单位——可做文档润色或跳过）")
-        # 死锁信号：所有项目均 blocked（top 仍 > 0 但无可操作项）——明确告知需合并哪些
-        # worktree 到 main 才能解锁。此前此态被静默吞掉，引擎只看到 blocked #1 不断撞墙
-        # （曾导致 ≥5 次 skills gitignore 重复提交：循环反复重做已在 worktree 的工作）。
-        actionable_recs = [rc for rc in recs if rc.get("actionable", True)]
-        if recs and not actionable_recs and recs[0]["score"] != 0:
-            pend = set()
-            for r in report["projects"]:
-                for k in ("progress_pending_wts", "gates_pending_wts",
-                          "triage_pending_wts", "planning_pending_wts"):
-                    for w in (r.get(k) or []):
-                        pend.add(w)
-            print("  ⚠️ 无可操作工作单位——全部项目 blocked，需人工合并以下 worktree 到 main 解锁：")
-            for w in sorted(pend):
-                print(f"     • {w}")
-            print("  （合并任一即可解锁对应项目；引擎不自动 push，故必须人工合并。）")
 
 
 if __name__ == "__main__":

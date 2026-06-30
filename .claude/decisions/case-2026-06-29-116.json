@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-116",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-06-29T05:57:00Z",
+  "project": "sunset-prediction",
+  "work_unit": "server.js .env 缺失崩溃修复 + 4 CRITICAL 门禁核销",
+  "situation": "scout-scan 所有项目 score=0.0 无紧迫项；扫 GATES.md 发现 sunset-prediction 有 16 未核销门禁，其中前 4 为 CRITICAL（npm install / server startup / initDatabase / restoreWeights）。server.js 启动时 readFileSync('.env') 无守护，.env 被 gitignore 且不存在，导致 ENOENT 即崩。",
+  "action": "1) server.js line 5: readFileSync('.env') 改为 existsSync 守护——文件存在才读，不存在静默跳过（与 WEIBO_COOKIE 优雅跳过模式一致）。2) 验证：npm install 0 error、node server.js 启动输出 '🌅 全国晚霞预测系统已启动'、restoreWeights 日志 '[calibration] Restored weights from database'、28/28 测试全绿。3) GATES.md 核销 4 条 CRITICAL 门禁。",
+  "files_changed": ["server.js", "GATES.md"],
+  "worktree": "opt-startup-1782684015",
+  "direction": "startup:env-guard",
+  "outcome": "succeeded",
+  "outcome_evidence": "timeout 6 node server.js → '[calibration] Restored weights from database\\n🌅 全国晚霞预测系统已启动: http://localhost:8080' (exit 124=timeout, not crash); npm test 28/28 pass; diff: +existsSync guard, -bare readFileSync",
+  "next_suggestion": "sunset-prediction 仍有 12 未核销门禁（GET / 静态页、GET /api 不 500、cron 注册、xhs generate/latest 等），可逐条验证核销"
+}

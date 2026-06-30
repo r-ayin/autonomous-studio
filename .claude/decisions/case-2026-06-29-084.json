@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-084",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-06-29T02:55Z",
+  "project": "wechat-main",
+  "work_unit": "competitor_analyzer.py 单元测试",
+  "situation": "scout-scan 全项目 score=0.0（健康），无紧迫工作单位。延续 case-082/083 的管线脚本测试覆盖策略。competitor_analyzer.py（234行）是 P0-OPT-02 竞品结构 NLP 分析器，含4个纯函数维度（结构分析/句长分布/证据密度/URL密度）+主编排，依赖 claim_extractor 做证据提取。",
+  "action": "创建 tests/test_competitor_analyzer.py，29 用例分 6 套件：TestAnalyzeStructure(6) + TestSplitSentences(6) + TestAnalyzeSentenceLength(6) + TestAnalyzeUrlDensity(5) + TestAnalyzeEvidenceDensity(3) + TestAnalyze(3)。初版 2 个用例失败：(1) test_single_paragraph 字符数误算（13非12，漏数逗号），(2) test_heading_numbered 标题正则要求标点后跟空格（3、/4）无空格不匹配）——修正后 29/29 pass。",
+  "files_changed": ["tests/test_competitor_analyzer.py"],
+  "worktree": "opt-wechat-1782668384",
+  "direction": "wechat:competitor-analyzer-tests",
+  "outcome": "succeeded",
+  "outcome_evidence": "pytest 29/29 passed in 0.17s；opt-worktree.sh 输出 '✓ 提交到 opt-wechat-1782668384 方向=wechat:competitor-analyzer-tests'；git log 确认 fe3352f commit",
+  "next_suggestion": "wechat-main persona_drift.py(280行) 或 feedback_collector.py(258行) 单测——继续管线脚本测试覆盖"
+}

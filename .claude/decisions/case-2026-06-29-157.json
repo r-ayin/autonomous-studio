@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-157",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-29T04:38:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "清理 1 个空 worktree (opt-build-1782707571)",
+  "situation": "scout-scan #1 推荐：1BfrYW9R 有 1 个待处理 worktree，内容已 merge 入 onedaybot-dev（bd91dbb），worktree 分支 auto/opt-build-1782707571 落后 main 且无 ahead 提交，属可安全清理的空壳。",
+  "action": "git worktree remove .opt-worktrees/1BfrYW9R/opt-build-1782707571 + git branch -d auto/opt-build-1782707571；无需 opt-worktree commit（纯清理、无源码改动）。",
+  "files_changed": [],
+  "worktree": "none (cleanup of opt-build-1782707571)",
+  "direction": "infrastructure:worktree-hygiene",
+  "outcome": "succeeded",
+  "outcome_evidence": "git worktree list 现仅返回主工作目录 /home/admin/workspace/1BfrYW9R；auto/opt-build-1782707571 分支已删除（was 007027f）；git diff --stat onedaybot-dev...auto/opt-build-1782707571 为空，确认内容完全在 main。",
+  "next_suggestion": "autonomous-studio dirty=7（PROGRESS.md 0.0天），下轮可考虑归档/stash 或推进其中一个未完成工作单位；或继续扫其他项目的 stale worktree（wechat-main 也有 1 个待合并+1 个空）。"
+}

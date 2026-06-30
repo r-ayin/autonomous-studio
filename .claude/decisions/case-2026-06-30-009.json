@@ -1,0 +1,20 @@
+{
+  "case_id": "case-2026-06-30-009",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-30T00:50:00Z+08:00",
+  "project": "1BfrYW9R",
+  "work_unit": "docs:progress-sync — PROGRESS.md/GATES.md 测试计数与里程碑对齐实测 npm test 13 pass",
+  "situation": "scout-scan 报 1BfrYW9R 为 #1 健康快照，PROGRESS.md=0.0天（stale 信号最强）。核查发现 doc-drift：最近两次 merge（ffa4382 加 /readyz ⑩⑪、4890040 加 PORT env ⑫，实测 npm test=13 pass）已合 main，但 PROGRESS.md 仍停在「8 项冒烟/10 pass/①-⑨」，GATES.md IMPORTANT 行仍写「12 pass 0 fail」且枚举缺 ⑫，Phase 3 待办仍把已完成的「环境变量配置」列为 TODO。即合并未回写文档，scout 的 stale 信号即此缺口的外显。",
+  "action": "最小改动 2 文件，不碰源码：(1) GATES.md IMPORTANT `npm test` 枚举尾追加 ⑫ 条目并 12 pass→13 pass、补 2026-06-30 追加 ⑫ merge 4890040 注记；(2) PROGRESS.md 最近里程碑改 2026-06-30 部署前置三件套（/healthz+/readyz+PORT env）+13 项；门禁自动化条目补 ⑩⑪⑫ 并 10 pass→13 pass；Phase 3 待办剔除已完成的「环境变量配置」改述剩余项。提交走 opt-worktree docs:progress-sync 方向。",
+  "files_changed": ["1BfrYW9R/GATES.md", "1BfrYW9R/PROGRESS.md"],
+  "worktree": "opt-docs-1782751631（pending merge，方向 docs:progress-sync，与既有 engine 方向分歧故开新 worktree）",
+  "direction": "docs:progress-sync",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "npm test 实测 `# pass 13` `# fail 0`（编辑前同值，文档改动未触发 ⑧ 文档计数漂移守卫误报——因未新增「N 个 JSX/React 组件」严格声明）",
+    "opt-worktree show opt-docs-1782751631 diff 确认 GATES ⑫ 条目入枚举+13 pass、PROGRESS 里程碑改 2026-06-30+⑩⑪⑫+Phase3 待办改述三处均落地",
+    "main 工作树被脚本恢复至 HEAD clean（cp 入 worktree 后不残留 WIP），worktree 单提交持有全部改动",
+    "scout-scan PROGRESS.md=0.0天 stale 信号的根因（合并未回写）由此收口"
+  ],
+  "next_suggestion": "下轮可 merge opt-docs-1782751631 入 1BfrYW9R main（人工批准门禁）；或顺延 scout #2 autonomous-studio（score=0.0，6 延期已 triage TODO 不计推荐）做其积压 case 孤儿归档（main 现 007/008 untracked，可 rehome）。1BfrYW9R 自身下一结构性缺口：NICE「接入真实后端 API（替换 MockData）」仍 [ ]，Phase 1 起点——但属较大工作单位，非小润色范围。"
+}

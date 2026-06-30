@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-30-003",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-30T16:25:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "归档上轮遗留 untracked case-001/002 + 写本轮 case-003（decisions 跟踪小单位）",
+  "situation": "scout-scan @2026-06-29T16:14Z：#1=1BfrYW9R score=0.0 推荐 review 1 个待合并 worktree(opt-tests-1782749552, commit 4907402)——但该 worktree 即上轮 case-002 产出，依 memory 'scout-scan-recommend-blind-to-pending-worktrees' 不应重复选；顺延 #2=autonomous-studio score=0.0，git status 显示 2 个 untracked case 文件(case-2026-06-30-001/002.json)，是上两轮写入但未提交的孤儿。AS PROGRESS.md 0.4天、GATES.md 有、planning 有，无 FIXME/HACK，仅 6 triage TODO 不计入推荐。最小可执行单位：把这两个 case 提交进 opt-worktree，恢复 decisions 目录 tracked 完整性。",
+  "action": "用 bash scripts/opt-worktree.sh autonomous-studio commit cases:track-0630 指定两文件提交（禁直接 git commit main）。脚本判方向分歧(engine→cases)自动开新 worktree opt-cases-1782749748，commit da0d3ce 含 .claude/decisions/case-2026-06-30-001.json + case-2026-06-30-002.json。再写本 case-003 到同 worktree（同 area=cases），保持 decisions 全 tracked。",
+  "files_changed": [".claude/decisions/case-2026-06-30-001.json", ".claude/decisions/case-2026-06-30-002.json", ".claude/decisions/case-2026-06-30-003.json"],
+  "worktree": "/home/admin/workspace/.opt-worktrees/autonomous-studio/opt-cases-1782749748 (commit da0d3ce 含 001+002; case-003 待追加提交; main bc899db clean)",
+  "direction": "cases:track-0630",
+  "outcome": "succeeded",
+  "outcome_evidence": "git -C /home/admin/workspace/.opt-worktrees/autonomous-studio/opt-cases-1782749748 log --oneline -1 → da0d3ce opt(cases:track-0630); cd autonomous-studio && git status --short 空(main clean, 未直动 main); git worktree list 含 opt-cases-1782749748 @da0d3ce; case-001/002 现位于 worktree 而非 main untracked; case-003 写入 worktree 同路径(尚未 commit)",
+  "next_suggestion": "下轮追加提交 case-003 到同一 opt-cases-1782749748(area=cases 一致复用)。然后回看 1BfrYW9R opt-tests-1782749552(4907402)人工审 merge/reject；若已合则 #1 移位。AS 结构性债仍待：① pending auto/optimization @766d7e5 diverged-base two-dot-diff misread 复查(git show --stat 逐提交审)；② case-047 reset-bypass WIP 续完 cherry-pick 入 main；③ 6 triage TODO 核销。budget 解禁，可大胆做 AS 自身结构性修复(引擎真有 bug 就该修)。"
+}

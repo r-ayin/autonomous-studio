@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-30-023",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-30T18:10:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "cases:archival — 归档 2 个跨项目孤儿 case(021/022)入 AS main VCS，消除 main dirty=2 漂移源",
+  "situation": "scout-scan 全 8 项目健康度 0.0（无紧迫工作单位），#1=1BfrYW9R/#2=autonomous-studio 均推荐'文档润色或跳过'。深查 AS main `git status --porcelain` 见 dirty=2，实为 2 个 untracked case 文件(021/022)滞留 main——此乃 case-005/case-020 已确立的跨项目孤儿 case 反复模式：上轮 1BfrYW9R 死守卫移除文档同步工作(opt-docs-1782756015，已 merge 2a39624)的 case 写入 AS main decisions/，但提交进 1BfrYW9R 项目 worktree，跨项目致 case 必滞留 AS main(dirty)。两 case 内容均合法(13 keys，outcome=succeeded，记录已 merge 的真实工作)，仅未入 VCS，有丢失风险且使 AS main 持续 dirty 干扰下轮 scout-scan/并发循环。",
+  "action": "纯 case 元数据归档，无代码改动，gate 豁免直提 main(case-020 先例 6a1e819 同型)：(1) 逐文件 python json.load 校验 021/022 均 13 keys 完整、req 字段在位、outcome=succeeded；(2) `git status --porcelain` 确认 main 仅这 2 case 文件 dirty(无其他 WIP 混入)；(3) git add 2 文件 + commit a6e8aa5「cases: 归档 2 个孤儿 case(021~022)——1BfrYW9R 死守卫移除文档同步轮次跨项目 case 滞留 main(case-020 同型补救)」入 AS main。未用 opt-worktree（无代码改动，case 元数据 gate 豁免）。",
+  "files_changed": ["autonomous-studio/.claude/decisions/case-2026-06-30-021.json", "autonomous-studio/.claude/decisions/case-2026-06-30-022.json"],
+  "worktree": "AS main(直提，gate 豁免 case 元数据；非 opt-worktree——无代码改动)",
+  "direction": "cases:archival",
+  "outcome": "succeeded",
+  "outcome_evidence": "git commit a6e8aa5 落 AS main: `2 files changed, 30 insertions(+)` + `create mode .claude/decisions/case-2026-06-30-021.json`/`-022.json`；gate 未拦(case-only 提交豁免，case-020 先例 6a1e819 同型)；提交后 `git status --porcelain` 空输出→AS main dirty=0（消除漂移源）；021/022 json.load 校验 13 keys/req 字段在位/outcome=succeeded。",
+  "next_suggestion": "AS main 现 dirty=0，全项目健康度 0.0 无紧迫单位。下轮可选：(a) 1BfrYW9R NICE 门禁若有'API endpoint Phase 1 真实后端接入'未做则做(非文档真实单位，case-022 next_suggestion 遗留)；(b) autonomous-studio 6 延期 triaged TODO 需查 pending worktree 防重复(case-021 next_suggestion 遗留)；(c) 根治跨项目孤儿 case 反复模式：考虑在 opt-worktree.sh step5 加'case 写目标项目 decisions/ 而非 AS main'的逻辑(case-005/020/023 三次同型补救，值得结构性修复而非每次手工归档)。"
+}

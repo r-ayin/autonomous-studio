@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-204",
+  "agent_id": "ralph-loop-glm52",
+  "timestamp": "2026-06-29T11:22:00Z",
+  "project": "1BfrYW9R (oneday-design)",
+  "work_unit": "build.js single-file 模式追加 JSX 引用解析检查（gates:ref-resolution）",
+  "situation": "scout-scan 报 8 项目全健康(score=0.0)。#1=1BfrYW9R 推荐为「可跳过/文档润色」，#2=autonomous-studio 推荐「审 1 待合并 worktree」。查 AS main 发现 scripts/autonomous-loop.sh 有未提交改动且两次 git diff 间由 31 行→0 行（并发循环竞争，两 bash autonomous-loop.sh PID 4002006/4023882 同时在跑，本会话=4023882 派生的 GLM-5.2 子进程），untracked case 集合也在翻动——AS main 处于 as-concurrent-loop-race 活跃期，动它不安全。遂退守 #1 稳定项目。读 build.js（1 个小源文件，1.8KB）发现真缺口：single-file 分支(L36)只用正则数组件定义数，从不校验 <Component/> 引用是否命中定义——<DashbordPage> 这类拼写错误能过 build gate exit 0 但浏览器渲染白屏，正是 GATES.md L19/L20 自承「浏览器端渲染待 Phase 2 实测」的服务端可证伪盲区。",
+  "action": "在 build.js single-file 分支保留原计数口径(保 29 与 README 一致)后，追加引用解析检查：defRe 抓 function|const|let|var|class + PascalCase 名成 defined 集；refRe=<([A-Z][A-Za-z0-9]*)(?![\\w.]) 抓开标签引用(负向先行排除成员式 <A.B 与闭合 </A 自然不匹配)；referenced−defined 非空则 console.error 列名并 exit 1。GATES.md L12 CRITICAL 同步说明。两处实证：正测 node build.js → 'Build OK — 29 JSX components' exit=0(0 unresolved)；负测临时 index.html 注入 <DashbordPage/> → exit=1 并点名 'DashbordPage'。两测均跑。",
+  "files_changed": ["1BfrYW9R/build.js", "1BfrYW9R/GATES.md"],
+  "worktree": "opt-gates-1782732267 (auto-optimization 分支, /home/admin/workspace/.opt-worktrees/1BfrYW9R/opt-gates-1782732267)",
+  "direction": "gates:ref-resolution",
+  "outcome": "succeeded",
+  "outcome_evidence": "提交 fd4dad3 在 worktree opt-gates-1782732267：git show --stat HEAD 显示 build.js +18 / GATES.md ±1 / .opt-direction ±1，grep '引用解析检查' 在 worktree build.js 与 GATES.md 各命中 1。worktree 内 node build.js exit=0 输出 'Build OK — 29 JSX components (single-file bundle)'。负测 /tmp/od-negtest 注入 <DashbordPage/> → exit=1 输出 'ERROR: JSX 组件引用未解析...: DashbordPage'。1BfrYW9R main 工作树 git status -s 空输出(干净)。",
+  "next_suggestion": "(1) opt-gates-1782732267 待人工审合并入 1BfrYW9R main(show diff → merge)。(2) 真正闭合 GATES.md「浏览器渲染白屏」盲区还需 Phase 2 无头浏览器端到端渲染冒烟(当前仅服务端引用解析,不证 DOM 实际挂载)。(3) AS main 并发循环竞争未解：scripts/autonomous-loop.sh 被双 loop 写翻动、untracked case 集合漂移——下轮若 AS 仍 race,勿动其 main;可考虑给 autonomous-loop.sh 加 flock 串行化(但须在无并发时改)。"
+}

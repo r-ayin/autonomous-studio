@@ -358,7 +358,7 @@ cmd_commit() {
   git rm -r --cached -q --ignore-unmatch -- .opt-direction 2>/dev/null || true
   # ⑤ 连带 revert 可见性守卫（case-063/064 根因防线，case-065 抽成共用函数）
   _assert_no_collateral_revert
-  git -c user.name="autonomous-studio" -c user.email="opt@auto" commit -q -m "opt($direction): $msg
+  git -c user.name="autonomous-studio" -c user.email="syp02536326@taobao.com" commit -q -m "opt($direction): $msg
 
 [auto-optimization on worktree $(basename "$target") — 待人工审合并]"
 
@@ -482,7 +482,7 @@ cmd_merge() {
       git rm --cached --quiet .opt-direction 2>/dev/null || git restore --staged .opt-direction 2>/dev/null || true
     fi
     rm -f "$PROJECT/.opt-direction"
-    git -c user.name="autonomous-studio" -c user.email="opt@auto" commit -q -m "merge: 人工批准合并 optimization worktree '$wt'
+    git -c user.name="autonomous-studio" -c user.email="syp02536326@taobao.com" commit -q -m "merge: 人工批准合并 optimization worktree '$wt'
 
 $(git log --oneline "$MAIN_BRANCH"..auto/$(basename "$dir") 2>/dev/null | head -5)"
     # ↑ 只列 worktree 相对 main 的 ahead 提交（本 worktree 真实贡献）。旧 `git log --oneline auto/...`

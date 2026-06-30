@@ -1,0 +1,27 @@
+{
+  "case_id": "case-2026-06-29-208",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-29T12:15:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "review + merge/reject 待合并 optimization worktree opt-gates-1782734568（scout-scan #1 推荐）",
+  "situation": "scout-scan 报告 1BfrYW9R 健康度排名 #1，推荐工作单位为「review 1 个待合并 worktree（人工审 diff + merge/reject）」。该 worktree 在分支 auto/opt-gates-1782734568 @ 2a998e0，含 2 个提交（ce74168 仅改 .opt-direction 元数据；2a998e0 是真实代码：新增 test/smoke.test.js + package.json test 脚本 + GATES.md CRITICAL 门禁项）。scout-scan 健康分 0.0，但存在 1 个待合并 worktree 这个结构性信号使其排 #1。",
+  "action": "作为人工审阅者执行 merge/reject 决策：① 审 diff —— 4 文件 / 54 增 / 2 删，纯增量（test 文件 + npm test 脚本 + GATES.md 文档行 + .opt-direction 元数据），无对既有源码的破坏性改动；② 验证可证伪契约 —— 在 worktree 内跑 npm test 实测 2 pass 0 fail；③ 验证合并安全性 —— git merge-base --is-ancestor onedaybot-dev auto/opt-gates-1782734568 返回 YES（merge-base = eeb68c9 = onedaybot-dev HEAD），即 onedaybot-dev 是 opt 分支祖先，属 fast-forward 场景，squash 无丢内容/无冲突风险，规避 [[as-merge-reconciliation-2026-06-27]] 警告的 divergent 整枝合回退问题；④ 验证 main working tree 干净（git diff --quiet 双向通过）；⑤ 执行 bash scripts/opt-worktree.sh 1BfrYW9R merge opt-gates-1782734568 → squash merge + worktree 清理。",
+  "files_changed": [
+    "1BfrYW9R/test/smoke.test.js (新增, +50)",
+    "1BfrYW9R/package.json (+test 脚本)",
+    "1BfrYW9R/GATES.md (+1 CRITICAL 门禁项)",
+    "1BfrYW9R/.opt-direction (元数据, +1/-1)"
+  ],
+  "worktree": "opt-gates-1782734568（合并后已清理；仅常设 optimization worktree 保留）",
+  "direction": "gates:smoke-test",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "opt-worktree.sh merge 输出「✓ 已 squash 合并 opt-gates-1782734568 → onedaybot-dev」+「✓ worktree 清理」",
+    "git log 显示新 HEAD 6cb7fe4 = merge: 人工批准合并 optimization worktree 'opt-gates-1782734568'",
+    "Fast-forward: Updating eeb68c9..2a998e0，无冲突",
+    "合并后在 main 工作树实测 npm test → # pass 2 / # fail 0（duration 109ms）",
+    "git worktree list 仅余主工作树 + 常设 optimization(478017c)，待合并 worktree 已消失",
+    "git status --short 空（main 干净）"
+  ],
+  "next_suggestion": "1BfrYW9R 现仅余常设 optimization worktree，无待合并项；下轮 scout-scan 大概率不再排 #1（结构性信号已消除）。可转向 autonomous-studio 自身（scout #2，6 个延期已 triage TODO 不计推荐但可清理孤儿 case 文件 002-005/185+）或 sunset-prediction/shizi 文档润色。注意 1BfrYW9R 本地 ahead origin/onedaybot-dev 15 commits 未 push，push 需 GitHub PAT（见 [[x-tool-push-ghproxy-no-creds]] 同类约束），非本引擎职责。"
+}

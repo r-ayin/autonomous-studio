@@ -1,0 +1,17 @@
+{
+  "case_id": "case-2026-06-29-068",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-06-29T00:35:00Z",
+  "project": "shizi",
+  "work_unit": "GATES.md reconciliation: 核销 CRITICAL#1(build) + 更新 test 数 + 修正 VL_KEY 描述",
+  "situation": "scout-scan 全项目 score=0.0（健康）。autonomous-studio dirty=5 为孤儿 case(064-067)——归档后 dirty=0。shizi GATES.md 5 个 CRITICAL 门禁全未勾但 build 实际通过(dist/ 含 12 文件)；test 数已增至 5 文件/53 用例但 GATES 仍记 3/41；VL_KEY 门禁描述不准确(实为运行时 settings UI 配置而非 env/_vl-config.mjs)。",
+  "action": "两步：(1) 归档 AS 5 个孤儿 case(064-067) 到 opt-cases-1782639135 worktree，AS dirty 5→0。(2) shizi 验证 npm run build(成功, dist/ 12 文件)、npm test(5 文件 53 用例 912ms 全绿)、VL config 来源(src/shared/types.ts:50 apiKey 运行时配置)。核销 CRITICAL#1(build)、更新 IMPORTANT test 行(5/53)、更新 NICE vitest 行(5/53)、修正 VL_KEY 描述。",
+  "files_changed": [
+    "GATES.md"
+  ],
+  "worktree": "opt-docs-1782664599",
+  "direction": "docs:gates-reconcile",
+  "outcome": "succeeded",
+  "outcome_evidence": "① AS: opt-worktree.sh 输出 '✓ 提交到 opt-cases-1782639135 方向=cases:archive-orphans'；git status 空。② shizi: npm run build 输出 '✅ Extension built to dist/'；ls dist/ 含 manifest.json+background.js+sidepanel.js+popup.js 等 12 文件；npm test 输出 '5 passed (5) Tests 53 passed (53)'。③ opt-worktree.sh 输出 '✓ 提交到 opt-docs-1782664599 方向=docs:gates-reconcile'。",
+  "next_suggestion": "shizi 剩余 4 个 CRITICAL 门禁需浏览器验证(sidepanel/VL 调用/全流程)。或 1BfrYW9R 两个重叠 responsive worktree(opt-responsive+opt-1BfrYW9R)待甄选。或 moni-master opt-moni-1782639719 待合并。"
+}

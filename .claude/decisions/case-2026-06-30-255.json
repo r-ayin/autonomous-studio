@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-30-255",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-30T00:00:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "review + merge 待合并 worktree opt-tests-1782759422（⑳ MIME fallback octet-stream 回归锁）",
+  "situation": "scout-scan 推 #1 1BfrYW9R：1 个待合并 worktree（auto/opt-tests-1782759422，相对 onedaybot-dev 单提交 309b5ef）。worktree 加 test/smoke.test.js ⑳——dev-server.js line 55 `MIME[path.extname(filePath)] || 'application/octet-stream'` 的**回退分支**回归锁，与既有 ⑮（锁命中分支：表内扩展名→正确类型）互补。.opt-direction + GATES.md 同步。需人工审 diff 决 merge/reject。",
+  "action": "审 diff：改动仅 3 文件（smoke.test.js +61、GATES.md 文案同步 ⑳条目、.opt-direction），无源码行为变更，纯加测。worktree 内 `npm test` → 21 pass 0 fail。突变核验：python3 改 dev-server.js 把回退子句换成 `|| ''`（模拟删 `|| 'application/octet-stream'`）→ `npm test` 转 not ok 21（20 pass 1 fail），⑳ 唯一转红、余 20 全绿——证明 ⑳ 真锁回退分支非永真测；`cp /tmp/dev-server.bak` 还原 → 21/0 复绿。`opt-worktree.sh . merge opt-tests-1782759422` squash fast-forward 合入 onedaybot-dev（commit 59f8d4a），worktree 自动清理。main 复跑 `npm test` → 21 pass 0 fail。",
+  "files_changed": ["test/smoke.test.js", "GATES.md", ".opt-direction"],
+  "worktree": "opt-tests-1782759422（已合并并清理）",
+  "direction": "tests:mime-fallback-octet-stream",
+  "outcome": "succeeded",
+  "outcome_evidence": "main(onedaybot-dev) `npm test` → `# pass 21 # fail 0`；`git worktree list` 仅余 standing optimization worktree（按 case-206 不当 stale，保留）；merge commit 59f8d4a squash 合入 3 文件 +63/-2；突变实验产出可观察 not ok 21 → 还原后 21/0 的双向证据，证 ⑳ 非永真。",
+  "next_suggestion": "1BfrYW9R ⑳ 已合，CRITICAL 门禁测试覆盖到 21 条。下轮：scout-scan 重扫看 1BfrYW9R 是否仍 #1（standing optimization worktree 仍在，可能有新待合并）；或转 autonomous-studio 自身 6 条延期已triage TODO 之一做实清。注意 standing optimization worktree 勿当 stale 清。"
+}

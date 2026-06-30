@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-245",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-29T15:45Z",
+  "project": "1BfrYW9R",
+  "work_unit": "dev-server 增 /readyz 就绪探针（readiness，读盘校验 index.html bundle），对称补全既有 /healthz 存活探针（liveness，不读盘）",
+  "situation": "scout-scan 2026-06-29T15:42Z 全项目健康度并列 0.0，#1=1BfrYW9R 推荐仅「文档润色/跳过」（无 pending worktree 待合并，上一轮 opt-gates-1782747365 已 squash 入 onedaybot-dev c8a47c9）。但 1BfrYW9R 存在真实结构性缺口：dev-server.js 已有 /healthz liveness 探针（case-244 引入，不读盘、bundle 退化时仍 200），却缺对称的 /readyz readiness 探针——负载均衡无法在 bundle 缺失/未构建时摘流（liveness≠readiness 的 readiness 半边空缺）。GATES.md L28 已自述「liveness ≠ readiness」但只实现了 liveness 侧。",
+  "action": "最小对称补全，2 文件：(1) dev-server.js — `const dir = process.env.ONEDAY_DIR || __dirname`（测试可注入临时目录，与 build.js 的 ONEDAY_INDEX 同模式）；在 /healthz 块后、静态分发前增 /readyz 路由：fs.access(index.html, R_OK) 成功→200+{status:'ready'}，失败→503+{status:'not ready',reason:'index.html missing or unreadable'}（早于静态分发 return，读盘校验 bundle 可达）。(2) test/smoke.test.js — 增⑩正测（偏端口 3096 轮询 GET /readyz→200+application/json+{status:'ready'}）+⑪负测（ONEDAY_DIR 注入无 index.html 的 mkdtemp 临时目录，偏端口 3095，GET /readyz→503+{status:'not ready'}，且同进程 GET /healthz→200 证 liveness≠readiness 活证据）。",
+  "files_changed": ["1BfrYW9R/dev-server.js", "1BfrYW9R/test/smoke.test.js"],
+  "worktree": "opt-gates-1782747872（1BfrYW9R, auto 分支, 方向 gates:readyz-probe；复用同 area worktree；待 merge/reject）",
+  "direction": "gates:readyz-probe",
+  "outcome": "succeeded",
+  "outcome_evidence": "提交前在 1BfrYW9R main 工作树跑 `npm test` → `# tests 12 / # pass 12 / # fail 0`（较 case-244 的 10 pass 增 2 项新测⑩⑪）；opt-worktree commit 成功输出「✓ 提交到 opt-gates-1782747872 方向=gates:readyz-probe」；`opt-worktree show opt-gates-1782747872` diff 含 /readyz 路由块与两新测全文；main onedaybot-dev 工作树提交后 dirty=0（改动 cp 入 worktree，main 干净）；负测⑪真实拉起 ONEDAY_DIR 注入的半死实例断言 /readyz 503 + /healthz 200 同时成立——readiness 读盘校验非恒 200 死代码，liveness≠readiness 有活证据。",
+  "next_suggestion": "下轮首要：审 opt-gates-1782747872 diff（dev-server.js /readyz 读盘逻辑 + smoke ⑩⑪），`opt-worktree.sh 1BfrYW9R merge opt-gates-1782747872` squash 入 onedaybot-dev，merge 后 main 复跑 npm test 验 12 pass；GATES.md L28/L30 可在 merge 时同步补 /readyz 条目（当前只述 /healthz）。1BfrYW9R 后续真小单位仍为 Phase 2 骨架屏/empty-state 或消除 smoke ② 硬编码 29 改从 build.js stdout 解析。AS 常设 optimization worktree @2323837 多轮积压修复仍待按文件 cherry-pick 入 main（[[as-merge-reconciliation]]）；case-236..245 现为 AS main untracked，待积压批量归档。"
+}

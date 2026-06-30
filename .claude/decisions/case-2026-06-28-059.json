@@ -1,15 +1,15 @@
 {
   "case_id": "case-2026-06-28-059",
-  "agent_id": "ralph-loop",
-  "timestamp": "2026-06-28T09:37:00Z",
-  "project": "linshi",
-  "work_unit": "补 PROGRESS.md",
-  "situation": "scout-scan 报告 linshi score=10.0，缺 PROGRESS.md/GATES.md/planning。linshi 是临时存储仓库（钉钉文档归档），只有 1 个 commit。",
-  "action": "查看项目结构和 git log，撰写 PROGRESS.md（项目概览/归档状态/已完成清单），通过 opt-worktree commit 提交到 opt-docs-1782639428。",
-  "files_changed": ["PROGRESS.md"],
-  "worktree": "opt-docs-1782639428",
-  "direction": "docs:progress",
-  "outcome": "succeeded",
-  "outcome_evidence": "opt-worktree show 确认 diff 包含 15 行 PROGRESS.md，commit 3aee092 已在 worktree 分支。",
-  "next_suggestion": "pc_agent 补 PROGRESS.md（score=10.0）；或合并 dingtalk-auto/linshi 的待审 worktree"
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-06-28T10:00:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "hash-based routing (DUPLICATE of case-057)",
+  "situation": "All projects scored 0.0 on scout-scan. Took #1 (1BfrYW9R) and saw PROGRESS.md listed routing as open todo. Did not check pending worktrees first — previous loop (case-057) already committed identical hash-routing change to opt-1BfrYW9R-1782640068.",
+  "action": "Added hash-based routing in index.html (readHash, navigate, hashchange). Committed to new worktree opt-routing-1782640895. Post-commit check revealed case-057 already did this — duplicate worktree created.",
+  "files_changed": ["index.html", "PROGRESS.md"],
+  "worktree": "opt-routing-1782640895",
+  "direction": "routing:hash-routing",
+  "outcome": "superseded",
+  "outcome_evidence": "opt-1BfrYW9R-1782640068 (case-057) has commit 731c606 with identical hash-routing changes. opt-routing-1782640895 is redundant. Root cause: scout-scan PROGRESS.md shows routing as undone because pending worktree changes haven't merged to main.",
+  "next_suggestion": "① ALWAYS check autonomous-state.md NEXT_SUGGESTION and recent cases before picking work unit — scout-scan is blind to pending worktrees. ② Pick a genuinely new work unit: personal-assistant GATES checkoff, moni-master broker_qmt stub, or pending worktree merges."
 }

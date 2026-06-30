@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-06-29-190",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-29T06:30:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "docs:progress-sync — PROGRESS.md 核销 Phase 2 已完成项对齐 GATES+roadmap",
+  "situation": "scout-scan #1 推荐 1BfrYW9R（score=0.0，健康但无紧迫任务）。读 PROGRESS.md/GATES.md/planning/roadmap.md 发现状态不一致：Phase 2 的路由（commit 24a16c3）和响应式（commit 27650f4）已在 GATES.md 标 ✅、README sync（c37c5b1）与单文件 bundle（007027f）也完成，但 PROGRESS.md 待办列表仍把路由/响应式列为 [x] 却放在「待办」段、且未提 bundle/README sync；已完成段缺这四项。属纯文档同步小工作单位。",
+  "action": "编辑 PROGRESS.md：把路由/响应式/单文件bundle/README sync 移入「已完成」段并附 commit 引用；「待办」段补 Phase 2 剩余（表单校验/骨架屏）与 Phase 3（环境变量/监控），保留接入 API 与部署配置。通过 opt-worktree.sh commit 提交到新 worktree opt-docs-1782714319（方向 docs:progress-sync，area 从 engine→docs 自动开新枝）。",
+  "files_changed": [
+    "1BfrYW9R/PROGRESS.md"
+  ],
+  "worktree": "/home/admin/workspace/.opt-worktrees/1BfrYW9R/opt-docs-1782714319",
+  "direction": "docs:progress-sync",
+  "outcome": "succeeded",
+  "outcome_evidence": "git -C /home/admin/workspace/.opt-worktrees/1BfrYW9R/opt-docs-1782714319 log --oneline -1 → 12c4666 opt(docs:progress-sync); git diff HEAD~1 --stat → PROGRESS.md 10 +++++++--- (8 insertions, 4 deletions); opt-worktree list 显示 'opt-docs-1782714319 | 方向=docs:progress-sync | 1 提交 | 2 files changed, 8 insertions(+), 4 deletions(-)'",
+  "next_suggestion": [
+    "1BfrYW9R: 等人工 review opt-docs-1782714319 后 merge/reject；下轮若仍未合并可挑其他项目",
+    "autonomous-studio: 6 条延期 TODO 已 triage，可逐条复审是否仍可延期或该排进工作",
+    "personal-assistant/wechat-main: 各有 1 个空 worktree 可清理（scout-scan 标记 '空(可清理)=1'）",
+    "moni-master/x-tool/shizi/sunset-prediction: 健康度良好，可做文档润色或跳过"
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "case_id": "case-2026-06-30-293",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "project": "autonomous-studio",
+  "work_unit": "cases:archive — 归档滞留 AS main 的 orphan case 287-292(跨项目 case 未追踪[[case-file-orphan-on-cross-project-work]])入 git, 收口 dirty=6",
+  "situation": "scout-scan @2026-06-29T22:21Z 全员 score=0.0 饱和(AS #2 仅延期已 triage TODO=6 不计推荐); 上轮 case-292 next_suggestion 明指 case 孤儿归档为未根治专轮工作单位。AS main git status dirty=6: 全是 untracked case 文件 287-292(287-291 跨项目滞留 + 292 上轮 merge case 亦滞留), 无 in-progress merge([[as-concurrent-loop-race]] 前置检查通过)。常设 optimization worktree 已随 75e3dc4 merge 清理, 须 init 重开。",
+  "action": "(1) git status 查 AS main(6 untracked case, 无 MERGE_HEAD); (2) bash scripts/opt-worktree.sh autonomous-studio init → 重开常设 optimization worktree(auto/optimization @ 71a6872, main 祖先); (3) bash scripts/opt-worktree.sh autonomous-studio new-case(无参, [[case-id-collision-agent-self-pick]] 根治落地: new-case 读 on-disk 含 untracked, 见 292 为 max→分配 293 并原子预留 stub); (4) commit 6 orphan case 287-292 入 worktree, 方向=cases:archive — cmd_commit 检出方向分歧(engine→cases)自动开新 worktree opt-cases-1782771825(从 main 75e3dc4 起, 非 standing optimization), 显式 cp 6 文件+copied==0 守卫([[opt-worktree-empty-files-silent-bogus-commit]]/[[opt-worktree-stash-silent-failure]] 修复生效); (5) 验证 commit 内容+main clean后写本 case-293。",
+  "files_changed": [
+    ".claude/decisions/case-2026-06-30-287.json (archived into git via worktree e26bbf8)",
+    ".claude/decisions/case-2026-06-30-288.json (archived)",
+    ".claude/decisions/case-2026-06-30-289.json (archived)",
+    ".claude/decisions/case-2026-06-30-290.json (archived)",
+    ".claude/decisions/case-2026-06-30-291.json (archived)",
+    ".claude/decisions/case-2026-06-30-292.json (archived)"
+  ],
+  "worktree": "opt-cases-1782771825 (.opt-worktrees/autonomous-studio/opt-cases-1782771825, branch auto/opt-cases-1782771825 @ e26bbf8, 从 main 75e3dc4 起) — 待下次 merge 入 main; standing optimization worktree(auto/optimization @ 71a6872)重开但本轮未被 commit 使用(方向分歧另开 worktree), 留作下轮 engine 修复用",
+  "direction": "cases:archive",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "git -C autonomous-studio worktree list 含 opt-cases-1782771825 @ e26bbf8 (新 worktree 已建, 从 main 75e3dc4 起)",
+    "git -C .opt-worktrees/autonomous-studio/opt-cases-1782771825 show --stat HEAD: 6 files changed(.claude/decisions/case-2026-06-30-28{7,8,9}.json + 29{0,1,2}.json), 125 insertions(+) — 全部 6 orphan 已入 git",
+    "git -C autonomous-studio status --short: 仅 '?? .claude/decisions/case-2026-06-30-293.json'(本 case stub), 287-292 已从 main 工作目录移除(cmd_commit cp 后清源) — dirty 6→1, 孤儿收口",
+    "new-case 无参输出 'case-2026-06-30-293.json'(见 untracked 292 为 max→293, [[next-case-blind-to-untracked]]/[[case-id-collision-agent-self-pick]] 修复链路 live 验证)",
+    "commit 命令 exit 0 + 自动方向分歧开 worktree 即证明 [[opt-worktree-stash-silent-failure]]/[[opt-worktree-empty-files-silent-bogus-commit]] 守卫生效(旧代码 stash 静默失败/空 file bogus commit 走不到此步)"
+  ],
+  "next_suggestion": "(1) 下轮首要: 审+merge opt-cases-1782771825(@e26bbf8, 单提交 6 case 文件)入 AS main — 用 git show --stat e26bbf8 审(勿用两点 diff[[diverged-base-two-dot-diff-misread]]), bash scripts/opt-worktree.sh autonomous-studio merge opt-cases-1782771825; (2) merge 前 AS main 须先 commit 本 case-293(否则又成 orphan: 本轮 case-293 仍 untracked, 须 cp 入 opt-cases worktree 或新 worktree commit); (3) standing optimization worktree(@71a6872)留作下轮 engine 修复, 未用不碍事([[scout-scan-standing-worktree-not-stale]] 过滤); (4) 后续 loop step5 全面用 new-case 分配 case-id(本轮已示范); (5) 若仍全员饱和, 转 1BfrYW9R 功能债(Phase2 表单校验)或 sunset-prediction GATES 剩余门禁。"
+}

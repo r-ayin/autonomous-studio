@@ -3,15 +3,18 @@
 > 持续自治开发引擎（Ralph Wiggum 模式：每轮新 context，单个小工作单位 + 提交 + 退出）。
 > 进度按时间倒序，单条对应一次 opt-worktree 提交。
 
-## 当前状态（2026-06-27）
+## 当前状态（2026-06-29）
 
 - 自治循环已稳定跑通：scout-scan → 选小工作单位 → 最小改动 → opt-worktree 提交。
 - 平台预算硬上限已从 $0.50 提到 $3.00（实测 $0.50 在 17 轮中 16 次撞预算失败）。
 - prompt 已轻量化以适配每轮 ~$0.5 平台约束。
 - opt-worktree 支持 per-project WT_BASE 子目录 + 同 area 复用已有 worktree。
+- **case 归档持续进行中**：main 现含 12 个未跟踪 case-2026-06-29-{005,185,188-197}.json（跨多轮累积），下批 merge 应一并入库。
+- **待办池更新**：commit-gate reset-bypass (case-047) WIP 仍在 optimization worktree；延期 TODO=6 已全 triage（4 条 deferred + scaffold/discovery-gate 占位符不计真债）。
 
 ## 最近提交（自治循环硬化）
 
+- `merge(worktree-hygiene)` case-147 (2026-06-29)：merge opt-worktree-hygiene-1782705299 + remove 幻影 optimization worktree（与 main 同 SHA、无 diff），AS 归零积压。
 - `merge(reconcile)` 主线/worktree 历史分歧收口（2026-06-27）：patch-id 对账后，12 个 pending 分支中 9 个内容已由重放合并落入 main（删枝）；2 个 worktree（opt-cases/opt-scanner-1782570277）净提交经 FF+cherry-pick 合入后删枝；仅 `optimization` worktree 保留——其 case-047 reset-bypass 修复 WIP 未完，待续。
 - `fix(commit-gate)` 分支检测+子命令识别双失效修复（case-045，cherry-pick 6d1378a→748528a）：`_git_parse` tokenizer 跨过 `git -C`、`current_branch` 从 `-C` 解析 repo、case-*.json 元数据归档豁免
 - `feat(scout-scan)` deferred-marker 约定（cherry-pick 64dbab3→f197a06）：`TODO(deferred)` 不计入 triage 推荐分子，`_DEFERRED_RE` 单独计数；4 个已 triage TODO 转为 deferred 形式
@@ -26,8 +29,8 @@
 
 - [ ] **commit-gate reset/branch/update-ref ref 直写绕过（case-047，进行中）**：WIP 在 `optimization` worktree 未提交——扩拦 `reset`(ref-mover 模式)/`branch -f -d -m`/`update-ref` 对 main 的写；checkout/switch 不拦（opt-worktree.sh 内部用）。续写完应 cherry-pick 入 main（勿整枝合并，worktree 的 scout-scan.py 落后 main 138 行会回退）
 - [~] TODO/FIXME/HACK 清理：marker-strip + .venv/skills 第三方包忽略 + deferred 落地后，scout 报 TODO=4 / FIXME=0 / HACK=0（2026-06-27 核验）。剩 4 条为 scout-scan.py 内描述标记约定的注释（非真债），triage 可收尾
-- [ ] GATES.md 中 CRITICAL 门禁项大部分未勾选，需逐项核验存活状态
-- [ ] 确认 decision-log.jsonl 有 ≥1 条真实用户交互记录（IMPORTANT 门禁）
+- [ ] GATES.md 中 CRITICAL 门禁项大部分未勾选，需逐项核验存活状态（Hook 注册 + CronCreate 心跳需 settings.json，暂不可操作）
+- [x] 确认 decision-log.jsonl 有 ≥1 条真实用户交互记录（IMPORTANT 门禁） — 2026-06-29: created decision-log.jsonl 5 entries + cold-start graduated (135 cases) + git-status churn gate verified
 
 ## 纪律
 

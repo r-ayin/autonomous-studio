@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-30-314",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-30T00:38:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "审+合并 AS pending optimization worktree(c70275e，纯 case-313 归档 JSON)入 main；顺延自 #1 1BfrYW9R『可跳过』弱工作单位",
+  "situation": "scout-scan @2026-06-30T00:35Z 全 8 项目并列 score=0.0（健康饱和）。#1=1BfrYW9R『无明确小工作单位——可跳过或做文档润色』——该项目极度健康(28 测试全绿、PROGRESS 0.0天、零标记)，弱工作单位(文档润色)在该 obsessively-maintained 项目上做反而引入 GATES 漂移风险、非最小改动友好。按『可跳过』语义顺延 #2=autonomous-studio『review 1 个待合并 worktree』——此为 scout 推荐路径中唯一具实体动作的工作单位，且 AS 不被约束排除。查 AS worktree list 发现 1 个待合并：auto/optimization @c70275e。",
+  "action": "1) 两点 diff 陷阱规避：`git diff --stat main..optimization` 初看似删除 case 295-312(359 deletions)——忆及 [[diverged-base-two-dot-diff-misread]] 教训，main 独立前进(其它 merge 加了 295-312)致两点 diff 把 main 后增文件误显为 worktree 侧删除，形似回归实为发散。改用 `git show --stat c70275e` 审单提交真实改动。2) 真实改动仅 1 文件：新增 .claude/decisions/case-2026-06-30-313.json(+15)，纯 case 归档 JSON，零代码改动零回归风险。3) patch-id 对账：`git show c70275e|git patch-id`=47cc4cfa...，扫 main 近 20 提交 patch-id 无匹配→真缺(非已合)。4) 验 case-313 内容：python3 json.load 合法，13 字段齐全，outcome=succeeded，outcome_evidence 含 5 条可观察事实(x-tool master 725fa36 log / 5 passed in 0.16s / NameError 复现 / AS main 3f0f620 / worktree 清理)，非散文。5) 并发竞争保护：merge 前 `git status --porcelain` 空(AS main 干净，无 in-progress merge)。6) `bash scripts/opt-worktree.sh autonomous-studio merge optimization`→squash 合 c70275e→main 成 5da5de1，worktree 清理。",
+  "files_changed": ["autonomous-studio/.claude/decisions/case-2026-06-30-313.json"],
+  "worktree": "autonomous-studio optimization @ c70275e（auto/optimization，已 squash 合入 AS main 5da5de1 后清理，无残留）",
+  "direction": "engine:regression-merge",
+  "outcome": "succeeded",
+  "outcome_evidence": "可观察事实：(a) AS main `git log --oneline -1` = 5da5de1 `merge: 人工批准合并 optimization worktree 'optimization'`；(b) `ls autonomous-studio/.claude/decisions/case-2026-06-30-313.json` 存在(3841 bytes，previously 仅在 worktree 侧，现落 main)；(c) `git worktree list` 仅列 main 一行，optimization worktree 已清理无残留；(d) scout-scan 复扫 AS 段确认 `最近提交: 11 seconds ago — merge...optimization'` 且无『待处理 worktree』行(合并前为『待处理 worktree: 共1, 待合并=1』)；(e) patch-id 47cc4cfa 在合并前不在 main、合并后随 5da5de1 落地，证 squash 真带入非空合。",
+  "next_suggestion": "AS 待合并 worktree 已清零，scout 全项目 score=0.0 健康饱和。下轮可选实体工作单位：(1) case-313 NEXT_SUGGESTION 遗留——x-tool 为 decision-observer.py(370行)/protocol-check.py(117行) 加回归测试(七阶段决策循环 P0 剩余片，但 x-tool standing optimization worktree 已随 case-313 merge 清理，须先 `opt-worktree.sh x-tool init` 重建)；(2) 全项目轮换转 sunset-prediction/wechat-main GATES 复测核销；(3) moni 后端任务(DO NOT 前端)。注意三处 standing optimization worktree 仍在(1BfrYW9R/personal-assistant/wechat-main)，动手前先查其 log 防盲推。"
+}

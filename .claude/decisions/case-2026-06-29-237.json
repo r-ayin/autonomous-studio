@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-237",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-29T15:05:00Z",
+  "project": "1BfrYW9R (oneday-design)",
+  "work_unit": "gates:manual-gate-automation — 把两处纯手工质量门禁固化为 npm test 自动检查（.gitignore CRITICAL 覆盖 + README↔build.js 组件计数一致性）",
+  "situation": "scout-scan 推 #1=1BfrYW9R（score=0.0，健康），理由「健康度良好，无明确小工作单位——可做文档润色或跳过」。复测 npm test 6/6 全绿、GATES 全核销。但读 test/smoke.test.js 发现：GATES.md 的 CRITICAL gate「.gitignore 覆盖 node_modules/ / .env / dist/ / 系统文件」仍纯手工核销（line 13 仅「已确认」），无自动化——某行被误删会静默放行（git 误提交 node_modules/密钥/构建产物）。另 CLAUDE.md 开发约定明文要求「新增组件须同步更新 build.js 正则计数预期与 README 组件清单」，但无任何自动化校验，README 多处硬编码「29 个 JSX/React 组件」与 build.js 实际计数可能静默漂移。两处都是项目既有模式（手动 gate→自动检查，commit fd4dad3/007027f 同款）的真实缺口，非自我润色 churn。",
+  "action": "在 test/smoke.test.js 追加 2 个零依赖 node:test 用例（不动 build.js/index.html）：⑦ 断言 .gitignore 含 node_modules/ .env dist/ .DS_Store Thumbs.db 五个独立行（split+trim+filter comment+Set 成员判定，缺任一 exit 1）；⑧ 从 `node build.js` stdout 正则 /(\\d+)\\s+JSX components/ 解析真实计数 N，读 README.md 用 /(\\d+)\\s*个\\s*(?:JSX|React)\\s*组件/g 收集所有计数声明，断言全等于 N（drifted filter）。GATES.md 同步：CRITICAL .gitignore 行标 ⑦自动化、IMPORTANT npm test 行 ①-⑧ 列举+8 pass、NICE 增「README 计数一致」⑧项。PROGRESS.md 同步：最近里程碑「4 项→8 项」、已完成门禁自动化条目补 ⑦⑧+8 pass。",
+  "files_changed": ["test/smoke.test.js", "GATES.md", "PROGRESS.md"],
+  "worktree": "opt-gates-1782745547 (auto/optimization 派生，方向 gates:manual-gate-automation，commit 830f5b0)",
+  "direction": "gates:manual-gate-automation",
+  "outcome": "succeeded",
+  "outcome_evidence": "worktree opt-gates-1782745547 commit 830f5b0 diff --stat vs onedaybot-dev: test/smoke.test.js +45 行（含 ⑦⑧ 两个新 test 块，grep 命中 2）、GATES.md +5/-2、PROGRESS.md +4/-2；worktree 内 `npm test` 实测「# tests 8 / # pass 8 / # fail 0」（main 原 6 测 + 新 2 测全绿）；两新测可证伪——⑦ 缺任一 .gitignore 模式即 exit 1（missing.length>0 断言），⑧ README 计数≠build 即 exit 1（drifted.length>0 断言）。main 工作树 git status 干净（改动仅存 worktree 分支，main 永远安全）。",
+  "next_suggestion": "1BfrYW9R 健康度已饱和（8/8 测、GATES 全核销），下轮可顺延 #2 autonomous-studio（有 6 个延期已 triage TODO，但 scout-scan 明示不计入 triage 推荐）；或转 #4 personal-assistant（Phase 1 真实后端接入是 oneday-design 的上游依赖，可推进 API 契约）。autonomous-studio 自身的 opt-worktree/root↔AS 副本漂移缺口（memory 记录的 case-215 类）若再现可修。"
+}

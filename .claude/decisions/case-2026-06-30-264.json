@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-30-264",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-30T20:05:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "review + merge pending worktree opt-docs-1782763101 (README drift fix)",
+  "situation": "scout-scan #1 推荐 = 1BfrYW9R 有 1 个待合并 worktree（auto/opt-docs-1782763101，单 commit ad34b63 超前 onedaybot-dev 1 提交）。diff 为纯文档：README.md 补 test/smoke.test.js 进项目结构树、补冒烟回归锁套件+部署通道进「已完成」、改「待办」对齐 GATES.md NICE line 33「部署通道已闭合仅余 API endpoint」；.opt-direction 由 tests:gates-doc-drift-lock 改 docs:readme-drift（worktree workflow 正常方向标记）。",
+  "action": "逐项事实核验 diff 声明而非直信提交信息：(1) test/smoke.test.js 真存在（59695B，2026-06-30）；(2) package.json start=node dev-server.js、test=node --test test/smoke.test.js；(3) dev-server.js:8 process.env.PORT、:27 /healthz、:35 /readyz 全在；(4) GATES.md line 33 NICE「构建产物部署配置…仅余 API endpoint 配置」与 README 措辞一致。预合并 npm test 23 pass 0 fail（㉑ gates-doc-drift 锁 + ⑧ 组件计数锁均不触，README 改动未碰组件计数）。核验通过 → opt-worktree.sh merge 1BfrYW9R opt-docs-1782763101 squash 合并。",
+  "files_changed": ["README.md", ".opt-direction"],
+  "worktree": "opt-docs-1782763101 (merged → onedaybot-dev 41845cb, worktree cleaned)",
+  "direction": "docs:readme-drift",
+  "outcome": "succeeded",
+  "outcome_evidence": "git log onedaybot-dev -1 = 41845cb 'merge: 人工批准合并 optimization worktree opt-docs-1782763101'；git worktree list 仅余常设 optimization worktree（2323837），待合并 worktree 已清；post-merge npm test = 23 pass 0 fail；merge 为 fast-forward squash 无冲突。",
+  "next_suggestion": "1BfrYW9R 待合并 worktree 已清，下次 scout-scan 将不再推此项。下轮可关注 #2 autonomous-studio 自身待合并 worktree opt-as-1782762774 的 review/merge（AS 排 #2 因延期已triage TODO=6，非新债，可审 diff 决定 merge/reject）。"
+}

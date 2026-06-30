@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-086",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-06-29T02:59:00+08:00",
+  "project": "wechat-main",
+  "work_unit": "fix .gitignore gaps causing dirty=2",
+  "situation": "scout-scan reported wechat-main dirty=2. Two untracked files: output/hot-topics-2026-06-28.html (generated hot-topics report not covered by subdirectory-specific gitignore entries) and topic-pool/scan-results-2026-06-23.bak.json (extension .bak.json not covered by existing *.json.bak pattern).",
+  "action": "Added output/*.html and *.bak.json to .gitignore. The existing gitignore only covered output/research/, output/briefs/, output/state/ subdirectories but not root-level HTML files; and *.json.bak covered .json.bak extension but not the reversed .bak.json extension.",
+  "files_changed": [".gitignore"],
+  "worktree": "opt-wechat-1782668384",
+  "direction": "wechat:gitignore-gaps",
+  "outcome": "succeeded",
+  "outcome_evidence": "git log --oneline in worktree shows commit b6a5220; worktree .gitignore contains both new patterns; main .gitignore restored (by design)",
+  "next_suggestion": "sunset-prediction also has dirty=1 (untracked data/ dir with runtime SQLite+screenshots); similar gitignore fix needed"
+}

@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-30-252",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-30T18:45:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "review + merge 待合并 worktree opt-tests-1782758328（dev-server.js 静态文件 MIME Content-Type 派发回归锁 ⑮）",
+  "situation": "scout-scan 推荐 #1 = 1BfrYW9R「review 1 个待合并 worktree（人工审 diff + merge/reject）」，待合并 worktree = opt-tests-1782758328（branch auto/opt-tests-1782758328, tip 49e17c3），相对 onedaybot-dev(dae043a) 单提交、4 文件 +84/-3：test/smoke.test.js 新增 81 行回归测 ⑮ + GATES/PROGRESS/.opt-direction 同步 18→19。该 worktree 是测试增量（非源码改动），需审测试是否真咬、文档同步是否一致，再决定 merge/reject。",
+  "action": "三路验证后 squash merge 进 onedaybot-dev：(1) 跑 worktree 内 canonical runner `npx node --test test/smoke.test.js` → 19 pass 0 fail（⑮ 新测绿）；(2) 负向突变复测——sed 删 dev-server.js MIME 表 '.css' 项（`/\\.css.*text\\/css/d`）后重跑 → ⑮ 转红 pass18/fail1（报 content-type=application/octet-stream），删全行后 grep 确认无 css 残留，还原后 diff -q 与备份一致 → 证锁真咬（commit message 的突变声明复现属实）；(3) 审 GATES.md/PROGRESS.md/.opt-direction diff——⑮ 入 GATES 测试清单、计数 18→19、PROGRESS 最近里程碑改写为 ⑮ 并承接 ⑯⑰⑱ 链、.opt-direction 由 query-string-routing-lock 改 mime-content-type-lock，文档同步一致无漂移。main(onedaybot-dev) dirty=0 满足 merge 前置（fail-fast 守卫），`opt-worktree.sh 1BfrYW9R merge opt-tests-1782758328` fast-forward squash 合并成功 → commit 664ee32，worktree 自动清理。合并后 main 复跑 `npm test` → 19 pass 0 fail 证合并未坏。",
+  "files_changed": ["test/smoke.test.js", "GATES.md", "PROGRESS.md", ".opt-direction"],
+  "worktree": "opt-tests-1782758328 (merged into 1BfrYW9R onedaybot-dev as 664ee32, worktree cleaned)",
+  "direction": "tests:mime-content-type-lock",
+  "outcome": "succeeded",
+  "outcome_evidence": "merge commit 664ee32 入 onedaybot-dev（git log --oneline -1 确认）；合并后 npm test 19 pass 0 fail；突变删 MIME['.css'] 项后 ⑮ pass18/fail1 报 application/octet-stream（负向可证伪）；worktree 已清理（scout 复扫应显示 1BfrYW9R 待合并=0）",
+  "next_suggestion": "1BfrYW9R 待合并 worktree 已清零，下轮 scout-scan 应重排——若 1BfrYW9R 仍 #1 则意味新 worktree 产出或健康度真高，可考虑给 1BfrYW9R 补下一个小回归测方向（如 dev-server.js MIME 表对未知扩展名回退 octet-stream 的负向锁，与 ⑮ 互补但锁回退分支而非命中分支），或顺延 #2 autonomous-studio（其有 6 个延期已 triage TODO，可挑一个动手清掉而非润色）。注意 case-2026-06-30-249/250/251 三条 untracked 孤儿滞留 AS main（跨项目 case 写入致 dirty=3），下轮若动 AS 须先 git status 查 in-progress merge 避免与并发轮次竞争。"
+}

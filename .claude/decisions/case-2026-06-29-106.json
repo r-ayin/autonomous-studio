@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-106",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-06-29T05:10:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "review and merge 1 pending worktree (case-105), clean 1 empty worktree, delete 2 stale branches",
+  "situation": "scout-scan: all projects score=0.0. AS ranked #2 with 1 pending worktree (opt-cases-1782680970, containing case-105 distillation) and 1 empty worktree (optimization, 0 commits ahead of main).",
+  "action": "Reviewed diff of opt-cases-1782680970: single case-105.json file (valid distillation record for workspace-wide worktree sweep). Merged into main via --no-ff. Removed both worktrees (opt-cases-1782680970 + optimization). Deleted both branches (auto/opt-cases-1782680970 + auto/optimization). AS now at 0 pending worktrees.",
+  "files_changed": [".claude/decisions/case-2026-06-29-105.json (merged from worktree)"],
+  "worktree": "direct-main (merge + cleanup)",
+  "direction": "cases:worktree-review",
+  "outcome": "succeeded",
+  "outcome_evidence": "git worktree list shows only main. git branch shows no auto/* branches. case-105.json present in main.",
+  "next_suggestion": "Re-run scout-scan. With AS worktrees cleared, other projects may surface work. Consider 1BfrYW9R or personal-assistant for next actionable unit."
+}

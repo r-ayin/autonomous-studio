@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-162",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-29T04:55:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "清理 main 上孤儿 case-161（归档进 pending opt-cases worktree）",
+  "situation": "scout-scan 报 AS #2：1 个待合并 worktree(opt-cases-1782708487) + main dirty=1(case-2026-06-29-161.json untracked)。该孤儿由上轮循环在 main 写入，未走 opt-worktree commit 路径，符合 memory '跨项目工作致 case 文件孤儿' 模式。pending worktree 已有 151-160 归档，161 应并入同一枝以便人工一次审 merge。",
+  "action": "用 opt-worktree.sh commit cases:cleanup-orphans 把 case-161 提交到复用同 area 的 opt-cases-1782708487 worktree（脚本自动 cp+断言，不再 stash）。main 随后 git status 干净。",
+  "files_changed": [".claude/decisions/case-2026-06-29-161.json"],
+  "worktree": "opt-cases-1782708487",
+  "direction": "cases:cleanup-orphans",
+  "outcome": "succeeded",
+  "outcome_evidence": "worktree HEAD=c2ae8df 'opt(cases:cleanup-orphans): 清理 main 上孤儿 case-161 + 归档到 worktree'；ls .claude/decisions/case-2026-06-29-16*.json 显示 160+161 都在 worktree；cd autonomous-studio && git status --short 输出空（main 干净）",
+  "next_suggestion": "人工审 opt-cases-1782708487 diff（含 151-161 共 11 个 case 归档 + case-048 修正），merge 或 reject；另 optimization worktree 为空可清理"
+}

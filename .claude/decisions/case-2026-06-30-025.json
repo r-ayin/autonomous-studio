@@ -1,0 +1,27 @@
+{
+  "case_id": "case-2026-06-30-025",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-29T18:21:09Z",
+  "project": "1BfrYW9R",
+  "work_unit": "review + merge pending optimization worktree opt-tests-1782756893（⑰ 未知路由 404 回归锁）",
+  "situation": "scout-scan #1 推荐 1BfrYW9R「review 1 个待合并 worktree（人工审 diff + merge/reject）」。1BfrYW9R 有两处非主 worktree：opt-tests-1782756893(50a86ff) 与常设 optimization(2323837，空，按 memory 不动)。git log onedaybot-dev..auto/opt-tests-1782756893 仅 1 commit：加 test/smoke.test.js ⑰「未知路由返回 404」回归锁 + GATES/PROGRESS 同步 16→17 + .opt-direction 改 tests:unknown-route-404。base(onedaybot-dev) 16/16 全绿；本 worktree 17 测。case-024 已归档该工作单位的创建（commit 50a86ff），本 case 处理其 merge 评审。",
+  "action": "三段评审后 merge：(1) 源核——读 dev-server.js line 47-54，确认未知路由走 fs.readFile ENOENT → res.writeHead(404); res.end('Not found')，无 SPA fallback 到 index.html，断言与实现一致。(2) 测核——canonical runner `node --test test/smoke.test.js`（package.json scripts.test 即此）连跑 3 次均 17/17 全绿、0 orphans（pgrep dev-server.js none）；首次误用 `npx jest -t` 跑出 8 fail 系 runner 误用残留（jest 非依赖、TAP 实为 node --test 输出），非 worktree 引入回归——canonical runner 下 base 16/16→worktree 17/17 干净。(3) 文档核——GATES.md ⑰ 条目追加合理（与 ⑯ 互补说明：穿越形与缺资源同走 line 54 404 分支）、PROGRESS.md 里程碑更新一致、计数 16→17 同步。裁决 MERGE：git merge --no-ff auto/opt-tests-1782756893 → merge commit a911305；合并后再跑 canonical test 17/17 绿取证；清 task worktree（git worktree remove + git branch -d auto/opt-tests-1782756893），保留常设 optimization。",
+  "files_changed": [
+    "1BfrYW9R/test/smoke.test.js",
+    "1BfrYW9R/GATES.md",
+    "1BfrYW9R/PROGRESS.md",
+    "1BfrYW9R/.opt-direction"
+  ],
+  "worktree": "merged: /home/admin/workspace/.opt-worktrees/1BfrYW9R/opt-tests-1782756893 (removed post-merge); target branch onedaybot-dev @ a911305",
+  "direction": "tests:unknown-route-404",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "git log --oneline -1 onedaybot-dev → a911305 merge: 人工批准合并 optimization worktree 'opt-tests-1782756893'",
+    "git diff --stat onedaybot-dev..auto/opt-tests-1782756893: 4 files changed, 62 insertions(+), 3 deletions(-)",
+    "post-merge `node --test test/smoke.test.js`: # tests 17 / # pass 17 / # fail 0",
+    "pre-merge canonical runner 3 次连跑均 17/17；base onedaybot-dev 16/16",
+    "dev-server.js line 54: `if (err) { res.writeHead(404); res.end('Not found'); return; }` — 证实未知路由 ENOENT→404 无 SPA fallback",
+    "git worktree list 现仅 1BfrYW9R(onedaybot-dev) + 常设 optimization；opt-tests-1782756893 worktree 与分支已删"
+  ],
+  "next_suggestion": "1BfrYW9R 待合并 worktree 清零，下轮可跳过其 merge-review 推荐。建议下轮关注：autonomous-studio 自身（scout-scan #2，score=0，延期已 triage TODO=6 不计推荐但可挑 1 个做实修复降债）或 sunset-prediction/wechat-main 的 GATES 复测核销。注意 1BfrYW9R ⑰ 已合，下次 scout-scan 其待合并 worktree 计数应归 0（若仍显 1 系常设 optimization 误计，已有 case-206 修复待合）。"
+}

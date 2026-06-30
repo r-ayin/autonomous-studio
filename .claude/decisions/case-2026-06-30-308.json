@@ -1,0 +1,24 @@
+{
+  "case_id": "case-2026-06-30-308",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-30T08:10:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "review + merge pending opt-cases-1782776646 worktree（case-306/case-307 归档文件入库 AS main）",
+  "situation": "scout-scan @2026-06-29T23:52Z 全 8 项目健康度并列 0.0。#1=1BfrYW9R「无明确小工作单位——可跳过或做文档润色」(28 测近饱和)；#2=autonomous-studio「review 1 个待合并 worktree（人工审 diff + merge/reject）」。先按纪律取 #1：审 1BfrYW9R dev-server.js graceful-shutdown 现状发现 SIGTERM 处理器+3s 兜底强退+smoke ㉖ 回归锁均已落地（.opt-direction=deploy:graceful-shutdown 方向已完成），唯一候选缺口=3s 兜底子路径未单独测。但探针实证（partial-request socket 挂 server.close）行为不稳定：WITH 兜底子进程 3.94s exit code=0（兜底触发），WITHOUT 兜底（sed 删 setTimeout 行）却 1s exit（server.close 未挂）——server.close 对 mid-request socket 的行为 timing-dependent、不可靠复现，叠测必 flaky，违反本仓 mutation-provability 标准。故 #1 无确定性非 churn 工作单位，按 scout「可跳过」顺延 #2。AS 待合并 worktree=opt-cases-1782776646@179db83（auto/opt-cases-1782776646 分支，base=main@23484bb），含 2 commit 均 opt(cases:archive)：case-306（1BfrYW9R graceful-shutdown 造件记录）+ case-307（merge opt-deploy-1782776549 审验记录）。两文件均未入 AS main（git ls-files 确认缺），diff 纯增量 +39/-0。",
+  "action": "1) 审 diff：git diff --name-only main...HEAD = 仅 case-2026-06-30-306.json + case-2026-06-30-307.json 两文件，无 stray 改动；git log main..HEAD 确认 2 commit 均归档语义。2) JSON 合法性：python3 json.load 两文件均 OK。3) 内容核对：case-306 记 dev-server.js +14 行 shutdown(sig)+SIGTERM/SIGINT 注册 + smoke ㉖ +82 行回归锁 + GATES 计数 27→28（已 merge 入 1BfrYW9R onedaybot-dev@e0cbaae 实证）；case-307 记 merge opt-deploy-1782776549 审验 + post-merge npm test 28 pass 0 fail + worktree 清理（merge commit e0cbaae 实证）。两 case outcome_evidence 均引用可观察 commit hash/test 计数非散文。4) AS main git status clean（fail-fast 前置过）。5) 执行 bash scripts/opt-worktree.sh autonomous-studio merge opt-cases-1782776646 → squash 合并 auto/opt-cases-1782776646 → main（commit cc18334），worktree 自动清理。6) post-merge 验：git log -1=cc18334、git ls-files 两 case 入档、git worktree list 仅剩 standing optimization、git status clean。",
+  "files_changed": [
+    "autonomous-studio/.claude/decisions/case-2026-06-30-306.json (merge 入档, +24)",
+    "autonomous-studio/.claude/decisions/case-2026-06-30-307.json (merge 入档, +15)"
+  ],
+  "worktree": "opt-cases-1782776646 (已 squash merge → AS main @ cc18334, worktree 已清理)",
+  "direction": "cases:archive",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "AS main git log --oneline -1 = cc18334 'merge: 人工批准合并 optimization worktree opt-cases-1782776646'",
+    "git ls-files .claude/decisions/ | grep case-2026-06-30-30[67] 两文件均命中（merge 前均 No such file）",
+    "git worktree list 仅列 main@cc18334 + standing optimization@6ea4faa，opt-cases-1782776646 已清理",
+    "AS main git status -s 空（clean，无 dirty 泄漏）",
+    "diff --stat main...HEAD(pre-merge)= 2 文件 +39/-0 纯增量，无代码改动零回归风险"
+  ],
+  "next_suggestion": "AS main 待合并 worktree 清零（仅剩 standing optimization 不计）。下轮轮换：scout 全项目健康度并列 0.0 近饱和，候选优先级——(a)x-tool PROGRESS 1.1天最久未更可润色/GATES 复测；(b)sunset-prediction/wechat-main GATES 复测核销；(c)personal-assistant 后端就位可解锁 1BfrYW9R Phase1 真实后端 API 大单位（当前被阻塞）；(d)1BfrYW9R 3s 兜底子路径测若要做须先找 deterministic 挂起 server.close 的方法（partial-request 不可靠，可探 in-flight streaming 响应但 dev-server 静态无此路径，边际收益低不推荐）。AS 自身不再因最近活跃霸榜，无结构 bug 不应自选。"
+}

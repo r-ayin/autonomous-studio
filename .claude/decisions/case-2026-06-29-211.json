@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-211",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-29T12:35:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "AS git 跟踪副本 scout-scan.py 同步至根权威副本（补回 case-078 worktrees 剪枝等多项缺失修复）",
+  "situation": "承接 case-210（superseded）。case-210 误从 AS git 副本 autonomous-studio/scripts/scout-scan.py 跑 scan 见 moni TODO=6 霸榜，写了 prune_walk_dirs 新方案。核查发现 loop 实跑根权威副本 /home/admin/workspace/scripts/scout-scan.py（autonomous-loop.sh:38 从 workspace 根调 scripts/scout-scan.py），该副本已含 case-078 \"worktrees\" IGNORE_DIRS 条目，moni 已 TODO=0。AS git 副本才是陈旧缺修复的副本：diff 根副本 vs AS 副本显示 AS 缺 (1)worktrees/.out/.target IGNORE_DIRS 条目(case-078)、(2)常设 optimization worktree 不计 stale 逻辑(case-206)、(3)嵌套 .opt-worktrees 伪目录过滤+git worktree 真伪校验、(4)marker 密度加权抵消替代 flat -1(case-049)。memory case-014 既定模式：AS git 副本应 cp 根权威副本机械同步，勿重做修复。",
+  "action": "cp /home/admin/workspace/scripts/scout-scan.py → autonomous-studio/scripts/scout-scan.py（1 文件机械同步，零手写逻辑）。提交到 area=scout-sync 新 worktree opt-scout-sync-1782736129（off main 5abc0e3，无分歧包袱，可正常 opt-worktree.sh merge）。",
+  "files_changed": ["scripts/scout-scan.py"],
+  "worktree": "opt-scout-sync-1782736129",
+  "direction": "scout-sync",
+  "outcome": "succeeded",
+  "outcome_evidence": "同步后 diff -q 根权威副本 vs AS 副本 = IDENTICAL；python3 count_markers('/home/admin/workspace/moni-master') 从 AS 副本返 {'TODO':0,'FIXME':0,'HACK':0}（同步前 6）。提交在 worktree opt-scout-sync-1782736129 待人工 merge 入 main。merge 后 AS git 副本即与 loop 实跑根副本一致，消除\"git 副本陈旧\"隐患。注：loop live 行为本轮即正确（根副本早含修复），本同步只修 git 跟踪副本的陈旧，不改变 live 扫描结果。",
+  "next_suggestion": "人工审 opt-scout-sync-1782736129（纯 cp 同步，1 文件，diff 即根副本多出的修复项）+ merge 入 AS main。合并后 AS git 副本与根权威副本一致，后续若再改 scout-scan 须两副本同改或以根为准 cp。另：根权威副本本身非 git 跟踪（在 workspace 根非 AS 仓内），其权威性靠 case-014 约定维持——长期应考虑把根副本纳入某仓 git 跟踪或记录其来源，避免副本来源不可追溯。"
+}

@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-30-018",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-30T17:41:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "移除 dev-server.js 不可达 403 死代码守卫（line 48）",
+  "situation": "scout-scan @2026-06-29T17:39:01Z 推荐 #1=1BfrYW9R「无明确小工作单位——可跳过或做文档润色」。autonomous-state.md 列 1BfrYW9R OPEN 留后项：dev-server.js line 48 `if (!filePath.startsWith(dir)) { 403 }` 守卫去留——刻意未动、独立轮评估。本轮取该留后项作为 #1 项目的小工作单位。读 dev-server.js line 47-48：filePath=path.join(dir, safePath)，safePath=path.normalize(req.url.split('?')[0])。HTTP req.url 恒以 '/' 开头→normalize 折叠绝对形 URL 的前导 '..'（如 /../etc/passwd→/etc/passwd）→path.join(dir, '/etc/passwd') 不重置根、永保 dir 前缀→filePath 恒 startsWith(dir)→403 守卫永不触发=死代码。读 smoke ⑯（test/smoke.test.js:518-578）确认：其注释 line 522-525 已明文记录「403 守卫实际不可达...属看似安全实则死代码...试图激活守卫反而会破开钳制引入真实穿越」；断言仅校验穿越形 URL 响应体不含 SECRET 标记（不校验 403），故删守卫不改 ⑯ 期望。",
+  "action": "删 dev-server.js line 48 的 403 死守卫，替换为 5 行注释说明真防御机制（normalize+join）+ 回归锁（smoke ⑯）+ 为何守卫不可达及为何不应激活（path.resolve 重置根会破开钳制）。最小改动：1 文件、净 -1 行逻辑 +5 行注释。",
+  "files_changed": ["1BfrYW9R/dev-server.js"],
+  "worktree": "1BfrYW9R opt-security-1782754878（commit cda66ff，方向 security:dead-guard-removal，待人工 merge/reject）",
+  "direction": "security:dead-guard-removal",
+  "outcome": "succeeded",
+  "outcome_evidence": "worktree 内 `npm test` → 16 pass 0 fail（含 ⑤ dev-server 200 与 ⑯ 路径穿越不泄露 served 目录外文件两道回归锁均 pass，复跑于 /home/admin/workspace/.opt-worktrees/1BfrYW9R/opt-security-1782754878）；`opt-worktree.sh 1BfrYW9R show opt-security-1782754878` diff 仅 dev-server.js 守卫移除+注释与 .opt-direction 元数据，dev-server 其余逻辑零改动；穿越形 URL 仍命中 404（normalize+join 钳制未变），⑯ 不泄露 SECRET。main onedaybot-dev @b0fa45b 干净（dirty=0），改动隔离于 worktree。",
+  "next_suggestion": "下轮首要：重跑 scout-scan 取刷新 #1。本 worktree opt-security-1782754878(cda66ff)待人工审 merge/reject——审可基于已跑 16/16+⑯ pass，建议 merge（行为保持、删死代码、零回归）。1BfrYW9R NICE 剩余较大项仍留后：API endpoint Phase 1 真实后端接入替换内联 const DATA mock。AS 工具债 case-047 reset-bypass 仍 OPEN（gate 扩展拦 git reset --hard/branch -D/update-ref）。AS case 孤儿 007~018 累积 12 个 untracked 可批量归档。"
+}

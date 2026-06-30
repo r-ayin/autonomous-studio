@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-30-316",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-30T00:55:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "review + merge pending opt-deploy-1782780397 worktree（㉗ SIGINT 优雅关闭回归锁）",
+  "situation": "scout-scan 推荐 #1 = 1BfrYW9R（待合并 worktree 1 个）。opt-deploy-1782780397 worktree HEAD=6af4353 在 onedaybot-dev(8bb8056) 之上一个提交，diff = test/smoke.test.js +82 行（㉗ SIGINT 优雅关闭测）+ GATES.md 28→29 + PROGRESS.md 里程碑前置 ㉗ + .opt-direction。需人工审 diff + 决定 merge/reject。",
+  "action": "三段式对抗审验：①静态——grep dev-server.js 确认 process.on('SIGINT',...) 注册行存在（line 103，与 SIGTERM line 102 共用 shutdown() 但注册行分开，commit 文称 line 105 系注释后行号漂移，非实质）；②跑测——worktree 内 npm test 29 pass 0 fail（㉗ 为 #28，HEAD 测由 #28 顺延 #29）；③突变复测——临时注释 line 103 `process.on('SIGINT',...)` 后只跑 ㉗，断言转红且报错信息逐字命中 commit 预言「status=null signal=SIGINT——若 signal=SIGINT/status=null 则处理器被删/回归成默认动作」，还原 dev-server.js 后 git status 干净。锁真咬。裁定 MERGE。执行 opt-worktree.sh 1BfrYW9R merge opt-deploy-1782780397 → fast-forward squash 合并 onedaybot-dev → 60b5aba，worktree 清理。",
+  "files_changed": ["test/smoke.test.js", "GATES.md", "PROGRESS.md", ".opt-direction"],
+  "worktree": "opt-deploy-1782780397 (已合并清理)",
+  "direction": "deploy:sigint-lock",
+  "outcome": "succeeded",
+  "outcome_evidence": "merged onedaybot-dev HEAD=60b5aba `merge: 人工批准合并 optimization worktree 'opt-deploy-1782780397'`；main 上 npm test `# tests 29 / # pass 29 / # fail 0`；git worktree list 仅剩常设 optimization worktree（opt-deploy 已清理）；突变复测 stdout `not ok 28 ... status=null signal=SIGINT` 逐字命中 commit 预言，还原后 29 pass 0 fail",
+  "next_suggestion": "1BfrYW9R 待合并 worktree 已清空，下轮 scout-scan 将不再推 #1；可顺延审 autonomous-studio 自身 1 个待合并 worktree，或对 moni-master（非前端）做后端/量化小工作单位"
+}

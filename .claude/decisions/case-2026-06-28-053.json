@@ -1,15 +1,20 @@
 {
   "case_id": "case-2026-06-28-053",
-  "agent_id": "ralph-loop",
-  "timestamp": "2026-06-28T09:10:00Z",
-  "project": "open-design",
-  "work_unit": "补 PROGRESS.md（scout-scan 推荐 #1，score=10.01）",
-  "situation": "open-design v0.11.1 缺 PROGRESS.md/GATES.md/planning，scout-scan 健康分最高（10.01）。近期活跃方向集中在 daemon 可靠性加固和打包更新器清理。",
-  "action": "创建 PROGRESS.md，涵盖版本状态、架构概览、近期活跃方向、已知债务（1 TODO）、版本里程碑（0.10.0 → 0.11.x）。",
-  "files_changed": ["PROGRESS.md"],
-  "worktree": "opt-docs-1782637924",
-  "direction": "docs:progress",
+  "agent_id": "autonomous-loop",
+  "timestamp": "2026-06-28T04:20Z",
+  "project": "personal-assistant",
+  "work_unit": "distill:profile-meta — profile.json 落盘加 _meta(version+updated_at+change_summary)",
+  "situation": "scout-scan 全 7 项目 score=0.0 健康，无紧迫工作单位。NEXT_SUGGESTION ② personal-assistant GATES CRITICAL '蒸馏产出合法JSON+证据引用+版本化' 仍未满足。检查 data/persona/profile.json：JSON 合法但无版本号和 change_summary。save_persona_version 只写 profile dict 到文件，版本和证据信息只存 DB。文件不自包含→GATES 不可勾。",
+  "action": "修改 storage.py save_persona_version：落盘 JSON 追加 _meta 字段(version/updated_at/change_summary)。不影响 DB 存储和 latest_persona 读取路径（全走 DB）。",
+  "files_changed": ["personal_assistant/storage.py"],
+  "worktree": "opt-distill-1782620434",
+  "direction": "distill:profile-meta",
   "outcome": "succeeded",
-  "outcome_evidence": "opt-worktree commit 输出 '✓ 提交到 opt-docs-1782637924  方向=docs:progress'",
-  "next_suggestion": "1BfrYn9G 补 PROGRESS.md（score=10.0）；或 agent-dashboard 补 PROGRESS.md（score=10.0）"
+  "outcome_evidence": [
+    "python3 -m personal_assistant.cli test → '✅ PASS — 全链路跑通'，distill version=1 change_summary 非空",
+    "python3 验证 profile.json: _meta.version=1, _meta.updated_at='2026-06-28T12:19:56+08:00', _meta.change_summary='从 5 条记忆蒸馏人格档案 v1（stub 归纳）。'",
+    "git -C .opt-worktrees/personal-assistant/opt-distill-1782620434 log --oneline main..HEAD → 96425ec(1 commit)",
+    "git diff main..HEAD --stat → storage.py +4/-2, .opt-direction +1"
+  ],
+  "next_suggestion": "①合并 pending worktrees（opt-personal-assistant-1782619052 pytest-gate+pluggable-tests, opt-distill-1782620434 本轮 profile-meta）。②moni-master broker_qmt.py 5 个 TODO stub（需交易 API domain knowledge）。③x-tool/moni 子目录 TODO 双重计数问题（scout-scan 改进或 triage deferred）。④personal-assistant GATES 其余未勾选项（如 .env 不入 git 验证、lazy import 验证）。"
 }

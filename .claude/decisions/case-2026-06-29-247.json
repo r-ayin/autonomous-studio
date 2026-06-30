@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-247",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-29T15:55:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "gates:readyz-docs — GATES.md 同步 /readyz 就绪探针文档（消除代码↔门禁文档漂移）",
+  "situation": "scout-scan 2026-06-29 全项目并列 score=0.0，#1=1BfrYW9R「无明确小工作单位，可做文档润色」。autonomous-state NEXT_SUGGESTION 指出：merge opt-gates-1782747872 (commit ffa4382) 已把 /readyz 就绪探针代码 + smoke 测 ⑩⑪ 合入 onedaybot-dev，但 GATES.md 仍停在 ⑨/10-pass/仅 /healthz 状态——代码与门禁文档漂移，正是 GATES.md ⑧「文档计数防漂移」门禁所要防的同类病（虽 ⑧ 守卫只扫 README/CLAUDE.md 组件计数不扫 GATES.md 探针条目，故漂移未被自动捕获）。",
+  "action": "最小改 1 文件 GATES.md，三处同步已合代码：(1) L21 ⑨ 测试清单末尾追加 ⑩（GET /readyz 200 + application/json + {status:ready}，读盘校验 index.html bundle，readiness≠liveness）+ ⑪（无 index.html→503 + {status:not ready}，同进程 /healthz 仍 200 证 liveness≠readiness），并把『实测 npm test → 10 pass』改『12 pass』，标注 merge ffa4382；(2) L28 /healthz 条目旁补 /readyz readiness 条目（读盘可达→{ready}，bundle 缺失→503，负载均衡据此摘流；⑩正测偏端口 3096 / ⑪负测偏端口 3095）；(3) L30 NICE『部署配置』readiness 状态从『存活探针已就位』升级『存活+就绪双探针就位』。提交前 npm test 实跑 12 pass 0 fail 二次确认（GATES.md 不参与 ⑧ 计数守卫，改它不影响测试）。",
+  "files_changed": ["1BfrYW9R/GATES.md"],
+  "worktree": "opt-gates-1782748359（auto/optimization 系列新枝，从 onedaybot-dev ffa4382 开出，方向分歧 engine→gates 触发新 worktree）",
+  "direction": "gates:readyz-docs",
+  "outcome": "succeeded",
+  "outcome_evidence": "worktree opt-gates-1782748359 commit 9b89c68 含完整 diff：`git -C <wt> diff ffa4382 -- GATES.md` 显示 L21 ⑩⑪ 追加 + 10pass→12pass、L28 新增 /readyz 条目、L30 双探针就位三处俱在（非 --stat 柱状图误读，已 sed 逐行核验 worktree GATES.md L21/L28/L30 文本）。提交前 `npm test` 实跑 `# pass 12 / # fail 0`（node:test 输出）。opt-worktree.sh commit 成功输出『✓ 提交到 opt-gates-1782748359 方向=gates:readyz-docs』；worktree log HEAD=9b89c68，show --stat 列 .opt-direction + GATES.md 两文件。项目工作副本提交后 reset 回 HEAD（clean，old content，by design——cp 入 worktree 后清项目目录），worktree 持有改动权威副本。",
+  "next_suggestion": "下轮首要：人工审 opt-gates-1782748359 (9b89c68) diff 后 --no-ff 合入 1BfrYW9R onedaybot-dev（纯文档同步，零代码变更，低风险）；合后 `git -C 1BfrYW9R worktree remove` + branch -D 清理。次选：1BfrYW9R Phase 2 真小单位——骨架屏 loading/empty-state，或消除 smoke ② 硬编码 29 改从 build.js stdout 解析（与 ⑧ 文档计数一致）。AS 侧仍积压：常设 optimization worktree @2323837 多轮修复待按文件 cherry-pick 入 main（case-206/033/215/038/047 WIP，勿整枝合）；AS main case-236..247 untracked 待批量归档。"
+}

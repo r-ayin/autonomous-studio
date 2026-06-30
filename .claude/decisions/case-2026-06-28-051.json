@@ -1,15 +1,15 @@
 {
   "case_id": "case-2026-06-28-051",
-  "agent_id": "ralph-loop",
-  "timestamp": "2026-06-28T09:01:00Z",
-  "project": "skills",
-  "work_unit": "补 PROGRESS.md（scout-scan #1 推荐，健康度 10.08）",
-  "situation": "scout-scan 报 skills 项目（73 个技能包仓库）缺 PROGRESS.md、GATES.md、planning/ 三项结构文档，健康度得分 10.08 排 #1。TODO=5 marker 密度 0.008。",
-  "action": "创建 PROGRESS.md，含当前状态、最近 5 条提交摘要、3 条待办项。通过 opt-worktree.sh 提交到独立 worktree。",
-  "files_changed": ["PROGRESS.md"],
-  "worktree": "opt-docs-1782637363",
-  "direction": "docs:progress",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-06-28T04:05:00+08:00",
+  "project": "personal-assistant",
+  "work_unit": "可插拔接口单测(GATES CRITICAL)",
+  "situation": "所有项目 scout-scan score=0.0，无紧迫结构性缺口。personal-assistant GATES.md 有 CRITICAL 未勾: '可插拔接口单测：stub/real 后端互换不影响管线'。tests/ 仅有 test_e2e.py 1 文件，无针对 4 个可插拔轴(LLM/Embedder/ASR/Speaker)的工厂路由和合约测试。",
+  "action": "新增 tests/test_pluggable.py — 41 个 pytest 用例覆盖: extract_json 边界(5)、LLM 工厂路由+env覆盖+unknown报错(3)、StubLLM 全 TASK 合约(9: chat/memories/distill/events/reminders/chat_json/recommend有结果/recommend空/wiki)、Embedder 工厂(2)、HashingEmbedder 不变量(7: 维度/批/L2归一/确定性/差异/embed_one/空串)、ASR 工厂(2)、StubTranscriber(4: 返回段/字段/txt输入/to_tuple)、Speaker 工厂(1)、TextDiarizer(3: 无标签/有标签归属/返回类型)、ABC 继承链(5)。零网络零GPU，0.35s 全过。",
+  "files_changed": ["tests/test_pluggable.py"],
+  "worktree": "opt-personal-assistant-1782619052",
+  "direction": "personal-assistant:pluggable-tests",
   "outcome": "succeeded",
-  "outcome_evidence": "opt-worktree.sh 输出 '✓ 提交到 opt-docs-1782637363  方向=docs:progress'",
-  "next_suggestion": "stagehand-analysis 补 PROGRESS.md（scout-scan #2，同分 10.08）或 open-design 补 PROGRESS.md（#3，10.01）"
+  "outcome_evidence": "pytest 41/41 passed in 0.35s; 覆盖 GATES CRITICAL '可插拔接口单测' 的 4 轴工厂+stub合约+接口不变量",
+  "next_suggestion": "合并 opt-personal-assistant-1782619052 worktree(含 pytest-gate + pluggable-tests 两笔提交); 或继续 personal-assistant GATES: '蒸馏产出合法JSON+证据引用' 验证测试; 或检查 moni-master broker_qmt.py stubs"
 }

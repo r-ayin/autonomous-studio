@@ -1,0 +1,17 @@
+{
+  "case_id": "case-2026-06-29-077",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-06-29T09:50:00+08:00",
+  "project": "autonomous-studio",
+  "work_unit": "retire 8 zombie patterns from calibration.json",
+  "situation": "All 8 projects score 0.0 (healthy). calibration.json contains 8 zombie patterns (0 actions, 0 approved, from initial decision-patterns.md seeding) that have been flagged as structural debt in 8 consecutive L3 checks (L3 #1-#8, 2026-06-15 to 2026-06-16). Zombies add noise to pattern matching and bloat the calibration file.",
+  "action": "Programmatically identified and removed 8 zombie patterns from calibration.json using accuracy_basis='zombie' filter. Verified remaining 13 active patterns are intact. Committed to optimization worktree.",
+  "files_changed": [
+    ".claude/decisions/calibration.json"
+  ],
+  "worktree": "optimization",
+  "direction": "engine:calibration-cleanup",
+  "outcome": "succeeded",
+  "outcome_evidence": "python3 verification: 13 active patterns, 0 zombies, JSON structure intact; opt-worktree commit succeeded",
+  "next_suggestion": "Archive L3 findings history (82KB, 7 entries) to a separate file to reduce calibration.json bloat from 866 lines; alternatively, merge pending worktrees across projects (personal-assistant has 3, shizi has 2, x-tool has 2)"
+}

@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-189",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-29T06:23:07Z",
+  "project": "autonomous-studio",
+  "work_unit": "清理空 optimization worktree (0 ahead, 内容已在 main)",
+  "situation": "scout-scan #2 推荐：autonomous-studio 有 1 个空 worktree (.opt-worktrees/autonomous-studio/optimization, HEAD=b48991f) 0 ahead of main (27d3540)，仅落后若干 merge commit；无未提交改动，无待合并内容。占磁盘且污染 worktree list。",
+  "action": "git worktree remove ../.opt-worktrees/autonomous-studio/optimization（main 已包含全部历史，安全删除）",
+  "files_changed": [],
+  "worktree": "none (cleanup action on main repo worktree list)",
+  "direction": "maintenance/cleanup",
+  "outcome": "succeeded",
+  "outcome_evidence": "git worktree list 现仅返回 main 一行；../.opt-worktrees/autonomous-studio/ 目录为空；命令退出码 0，无 stderr",
+  "next_suggestion": "autonomous-studio 仍有 6 个延期(已triage) TODO——下轮可挑 1 个低风险的 triaged TODO 核销；或转至下一健康度并列项目(moni-master/personal-assistant)做文档润色"
+}

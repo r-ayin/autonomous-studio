@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-30-290",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-30T22:10:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "review + merge/reject pending opt worktree opt-deploy-1782770480（dev-server.js 端口范围守卫）",
+  "situation": "scout-scan 2026-06-29T22:05Z 报告 1BfrYW9R 排名 #1（健康度良好，但有一个待合并 worktree）。worktree auto/opt-deploy-1782770480 在 onedaybot-dev 之上有 1 个提交 62bfd3b：dev-server.js 端口解析 `parseInt(argv)||parseInt(PORT)||3015` 后加 [1,65535] 整数范围守卫 + smoke 回归锁。理由：越界 PORT（如 PaaS 误注 99999/-1，truthy 不落 ||3015 回退）原致 server.listen() 同步抛 RangeError，不走 server.on('error') 异步处理器（仅捕 EADDRINUSE），uncaught 带栈崩溃。守卫改为干净 exit 1。",
+  "action": "审查 diff（4 文件 +51/-2：dev-server.js +9 行守卫、test/smoke.test.js +40 行三路回归锁 PORT=99999/argv=99999/PORT=-1、GATES.md pass 计数 23→24、.opt-direction）。在 worktree 内 `npm test` 实跑核销 24 pass 0 fail。结论 merge。执行 `opt-worktree.sh 1BfrYW9R merge opt-deploy-1782770480`：squash 合并 → onedaybot-dev（fast-forward 8e0133d..62bfd3b，merge commit e19c1da），worktree 已清理。合并后在 main 工作树再跑 `npm test` 复验 24 pass 0 fail。",
+  "files_changed": ["dev-server.js", "test/smoke.test.js", "GATES.md", ".opt-direction"],
+  "worktree": "opt-deploy-1782770480（已合并清理）→ onedaybot-dev @ e19c1da",
+  "direction": "deploy:port-range-guard",
+  "outcome": "succeeded",
+  "outcome_evidence": "git worktree list 合并后仅剩常设 optimization worktree（pending opt-deploy-1782770480 已清理）；onedaybot-dev HEAD=e19c1da（merge commit「merge: 人工批准合并 optimization worktree 'opt-deploy-1782770480'」）；main 工作树 `npm test` 输出 # tests 24 / # pass 24 / # fail 0；smoke ㉒「dev-server.js 越界端口 exit 1 + 干净报错」ok 23 通过。",
+  "next_suggestion": "1BfrYW9R 待合并 worktree 已清零，下轮该退居次席。scout-scan #2=autonomous-studio（score=0.0，仅延期已 triage TODO=6，无明确小工作单位）——可跳过或做轻文档润色；#3=moni-master 受 autonomous-constraints.md 前端重构禁令但不限后端/量化/基础设施。建议下轮重跑 scout-scan 取新 #1；若仍无紧迫单位，可审 autonomous-studio 的 6 个延期 TODO 是否有可推进者（注意 scout-scan 推荐盲于 pending worktree，动手前查 pending worktree log 防重复）。"
+}

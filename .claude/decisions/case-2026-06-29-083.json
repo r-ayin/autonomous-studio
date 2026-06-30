@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-083",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-06-29T02:40Z",
+  "project": "wechat-main",
+  "work_unit": "structural_consistency_checker.py 单元测试",
+  "situation": "scout-scan 全项目 score=0.0（健康）。上轮(case-082)完成 ending_detector 25 测试，建议续做 structural_consistency_checker.py。该脚本(274行)是 QAH-03 逻辑一致性五问代码化，含5个纯函数：_count_words/classify_dimension/check_honest_ending/compute_theory_ratio/analyze。无现有测试。",
+  "action": "创建 tests/test_structural_consistency_checker.py，31 用例分 5 套件：TestCountWords(6) + TestClassifyDimension(7) + TestCheckHonestEnding(6) + TestComputeTheoryRatio(7) + TestAnalyze(5)。初版 2 用例失败：(1) test_mixed_balanced 词频计算错误(s=3,i=5→individual非mixed，加'系统'凑s=4→0.57 mixed)，(2) test_simple_beats_honest 逻辑理解错误(code 只在 honest==0 时返回 False，有 honest 词则默认 True)——修正后 31/31 pass。",
+  "files_changed": ["tests/test_structural_consistency_checker.py"],
+  "worktree": "opt-wechat-1782668384",
+  "direction": "wechat:consistency-checker-tests",
+  "outcome": "succeeded",
+  "outcome_evidence": "pytest 31/31 passed in 0.13s；opt-worktree.sh 输出 '✓ 提交到 opt-wechat-1782668384 方向=wechat:consistency-checker-tests'",
+  "next_suggestion": "wechat-main claim_extractor.py(588行) 或 hot_topic_scanner.py 单测——继续管线脚本测试覆盖"
+}

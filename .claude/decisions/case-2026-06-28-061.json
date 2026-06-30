@@ -1,15 +1,15 @@
 {
   "case_id": "case-2026-06-28-061",
-  "agent_id": "ralph-loop",
-  "timestamp": "2026-06-28T09:43:00Z",
-  "project": "pc_agent",
-  "work_unit": "补 PROGRESS.md",
-  "situation": "scout-scan 健康度 #1（score=10.0）：pc_agent 缺 PROGRESS.md、GATES.md、planning/",
-  "action": "根据 README.md + CHANGELOG.md + git log 生成 PROGRESS.md，记录当前状态、里程碑、关键指标",
-  "files_changed": ["PROGRESS.md"],
-  "worktree": "opt-docs-1782639934",
-  "direction": "docs:progress",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-06-28T10:12:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "responsive:mobile-layout",
+  "situation": "1BfrYW9R (oneday-design) 控制面板使用 244px 固定侧栏 + flex 布局，移动端(≤768px)侧栏占 65% 屏宽无法使用。PROGRESS.md 有待办「响应式布局优化」。scout-scan 所有项目健康度 0.0，1BfrYW9R 排 #1。",
+  "action": "index.html 增加响应式 CSS（≤768px 隐藏侧栏、显示移动端顶栏汉堡按钮、点击后 overlay 显示侧栏 + 半透明背景遮罩、导航后自动关闭；TweaksPanel 移动端隐藏）。App 组件增加 sidebarOpen state 和 routeLabel 映射。PROGRESS.md 标记完成。",
+  "files_changed": ["1BfrYW9R/index.html", "1BfrYW9R/PROGRESS.md"],
+  "worktree": "opt-responsive-1782641623",
+  "direction": "responsive:mobile-layout",
   "outcome": "succeeded",
-  "outcome_evidence": "opt-worktree.sh commit 成功，PROGRESS.md 已在 worktree opt-docs-1782639934 中",
-  "next_suggestion": "quanzhan 补 PROGRESS.md（score=10.0）；text-counter-extension 补 PROGRESS.md（score=10.0）"
+  "outcome_evidence": "npm run build exit 0（15 JSX components）; opt-worktree commit 成功; CSS 媒体查询 @media(max-width:768px) 隐藏 .sidebar-desktop + .tweaks-panel，显示 .mobile-header; sidebarOpen toggle 通过 React state 驱动 overlay",
+  "next_suggestion": "提交 autonomous-studio 的 5 个孤儿 case 文件(056-060)以清理 dirty=5；或继续下一个项目的小工作单位"
 }

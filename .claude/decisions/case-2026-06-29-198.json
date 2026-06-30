@@ -1,0 +1,17 @@
+{
+  "case_id": "case-2026-06-29-198",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-29T07:08:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "progress-state-sync-post-case-197",
+  "situation": "scout-scan 全项目健康度 0.0，无紧迫小工作单位。AS dirty=12（均为未跟踪 case 文件），PROGRESS.md '当前状态' 小节仍停留在 worktree-hygiene 连胜叙述（case-147 之后已发生 ≥50 次 merge/commit，描述与现实脱节）。上轮建议核查延期 TODO triage，复核发现 6 条已全 triage（4 deferred + scaffold/discovery-gate 占位符不计真债），无可快速核销项。",
+  "action": "编辑 PROGRESS.md '当前状态（2026-06-29）' 小节：移除过时的 worktree-hygiene 连胜条目，替换为两条现状要点——(1) 12 个未跟踪 case 文件待归档、(2) 延期 TODO=6 已全 triage。通过 opt-worktree.sh . commit progress:state-sync 提交到新建 opt-progress-1782716804 worktree，再 merge 回 main（squash FF）。",
+  "files_changed": [
+    "PROGRESS.md"
+  ],
+  "worktree": "opt-progress-1782716804 (merged & removed)",
+  "direction": "progress:state-sync",
+  "outcome": "succeeded",
+  "outcome_evidence": "git log --oneline -1 显示 merge commit 5abc0e3；git diff HEAD~1 --stat → PROGRESS.md | 3 ++-；git status --short 仍为 12（仅未跟踪 case 文件，PROGRESS.md 已 clean）；worktree list 仅剩 main + optimization（WIP case-047）。",
+  "next_suggestion": "wechat-main scout-scan 标记 2 pending worktree 其中 1 空可清理；延续 case-003/004 路径核查 wechat-main/.claude/decisions/ 是否有孤儿 case 文件需 rehome/归档。或转向 personal-assistant dirty=1 检查其 pending 状态。"
+}

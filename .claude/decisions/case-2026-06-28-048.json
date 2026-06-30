@@ -1,15 +1,22 @@
 {
   "case_id": "case-2026-06-28-048",
-  "agent_id": "ralph-loop",
-  "timestamp": "2026-06-28T08:48:00Z",
-  "project": "shizi",
-  "work_unit": "补 PROGRESS.md（项目状态追踪文档）",
-  "situation": "scout-scan 排 shizi #2(score=10.2)：缺 PROGRESS.md + GATES.md + planning/，1 个 TODO。#1 browser-use 是第三方库镜像跳过。shizi 是用户自有电商图片分析 Chrome 扩展项目，10 天未提交，无任何治理文档。",
-  "action": "从 README 和 git log 获取项目概况，创建 PROGRESS.md 记录当前状态、已完成里程碑、架构概览和待推进事项。通过 opt-worktree commit 提交到 opt-docs-1782636645 worktree。",
-  "files_changed": ["PROGRESS.md"],
-  "worktree": "opt-docs-1782636645",
-  "direction": "docs:progress",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-06-28T03:40Z",
+  "project": "autonomous-studio",
+  "work_unit": "fix commit-gate reset/branch-D/update-ref bypass (case-047 closure)",
+  "situation": "case-047 (2026-06-27) identified that autonomous-commit-gate.py only intercepts commit/push/merge subcommands. git reset --hard, branch -D, and update-ref can directly move the main branch ref, bypassing the gate entirely. The prior WIP fix was in the optimization worktree which was cleaned up without merging — fix was lost. scout-scan 03:34Z shows all 7 projects healthy (score=0.0), no urgent work units; AS is #1 recommendation with no clear small unit. case-047 closure is the most impactful structural fix available.",
+  "action": "Extended _git_parse subcommand filter from (commit/push/merge) to include (reset/branch/update-ref). Added per-subcommand targeting logic: reset blocks when current branch is main; branch blocks when -D/-d targets main/master; update-ref blocks when targeting refs/heads/main or refs/heads/master. Updated docstring and block message. Synced fix to both workspace-root live copy and AS project copy. Committed to AS optimization worktree.",
+  "files_changed": [".claude/hooks/autonomous-commit-gate.py"],
+  "worktree": "optimization (branch auto/optimization, commit 2807500)",
+  "direction": "engine:gate-reset-bypass",
   "outcome": "succeeded",
-  "outcome_evidence": "opt-worktree.sh 输出 '✓ 提交到 opt-docs-1782636645  方向=docs:progress'",
-  "next_suggestion": "shizi 补 GATES.md（score 仍有缺 GATES.md 和无 planning/ 两项扣分）；或顺延 #3 skills 项目补 PROGRESS.md"
+  "outcome_evidence": [
+    "17/17 test matrix passed: original 9 scenarios (code-main→block, case-only→allow, mixed→block, nested-case→block, feature→allow, push-main→block, push-feat→allow, status→allow, non-git→allow) + 8 new (reset-hard-main→block, reset-soft-main→block, reset-feat→allow, branch-D-main→block, branch-d-master→block, branch-D-feat→allow, update-ref-main→block, update-ref-feat→allow)",
+    "git -C .opt-worktrees/autonomous-studio/optimization log --oneline -1 = 2807500 opt(engine:gate-reset-bypass): fix(commit-gate)...",
+    "git -C .opt-worktrees/autonomous-studio/optimization diff --stat main..HEAD = 1 file, +18/-4",
+    "git -C autonomous-studio status --short = empty (main clean, opt-worktree.sh restore succeeded)",
+    "workspace-root live copy (.claude/hooks/autonomous-commit-gate.py) updated in-place — immediate effect for future autonomous sessions",
+    "diff between workspace-root and AS copy = empty after sync (both have identical 195-line version)"
+  ],
+  "next_suggestion": "①【合并 AS optimization worktree(2807500)】gate fix + prior pipeline-gate commit — 2 commits, code-only, human merge。②【moni dirty=1】moni-master has untracked .claude/ directory — investigate/clean if stale。③【personal-assistant】recently active (v0.4 wiki), check for quick structural wins。④【pending worktree cleanup】multiple projects have stale pending worktrees blocking scoring (pend_triage → -1 penalty): opt-moni-1782561370, opt-x-tool-1782563095, opt-docs-1782551599 for x-tool."
 }

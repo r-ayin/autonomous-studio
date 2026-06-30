@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-095",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-29T04:05Z",
+  "project": "autonomous-studio",
+  "work_unit": "merge optimization worktree content: GATES.md audit + calibration.json zombie cleanup",
+  "situation": "scout-scan 全项目 score=0.0 健康。autonomous-studio optimization worktree 积攒 4 提交（GATES.md 审计+calibration 清理+2 scout-scan.py 互抵）长期未合并。GATES.md 在 main 无审计标注（全 unchecked），calibration.json 含 8 个 zombie patterns（0 actions/0 approved，标记待退役）。",
+  "action": "从 optimization worktree 提取 GATES.md 审计版本（6/12 CRITICAL 通过、1/7 IMPORTANT 通过、1/5 NICE 通过，含缺口注释）和 calibration.json 清理版（21→13 patterns，删 8 zombie）。直接编辑 main 工作区后经 opt-worktree.sh commit 提交到 optimization worktree（方向 engine:gates-calibration-merge）。两个 scout-scan.py 提交互相抵消（add worktrees → remove worktrees），无需迁移。",
+  "files_changed": ["GATES.md", ".claude/decisions/calibration.json"],
+  "worktree": "optimization",
+  "direction": "engine:gates-calibration-merge",
+  "outcome": "succeeded",
+  "outcome_evidence": "git diff --stat main..auto/optimization 显示仅 2 文件变更（GATES.md 34 行改动 + calibration.json 64 行删除）。python3 json.load 验证 calibration.json valid。worktree commit 9265d49 成功。main 已还原干净（dirty=0）。",
+  "next_suggestion": "①清理 optimization worktree（5 commits 净效果仅 2 文件，可 squash merge 或等人工审）。②检查 opt-cases worktree 是否可合并（20+ case 提交已累积）。③x-tool GATES 验证（CRITICAL 门禁核验 BOM 回归+gitignore 覆盖）。④moni-master PROGRESS.md 更新（1.8 天 stale）。"
+}

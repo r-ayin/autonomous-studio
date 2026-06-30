@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-104",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-06-29T05:00:00Z",
+  "project": "autonomous-studio + personal-assistant",
+  "work_unit": "workspace-wide worktree review — merge valid pending worktrees, reject redundant, clean empties",
+  "situation": "scout-scan: all 8 projects score=0.0. #1 1BfrYW9R no actionable unit. #2 autonomous-studio had 1 pending (case-103) + 1 empty optimization worktree. After AS cleanup, moved to personal-assistant (3 pending + 1 empty): opt-personal-assistant-1782642054 (code: DuckDB habits views/CLI/temporal regex fix/221-line test), opt-gates-1782665158 (GATES.md with evidence annotations), opt-docs-1782642914 (GATES.md without evidence — redundant vs gates).",
+  "action": "AS: merged opt-cases-1782680058 (case-103 JSON) → main(1e9c03f), rejected empty optimization. PA: merged opt-personal-assistant (code: habits query/CLI/temporal fix/tests) → main(61b4701), merged opt-gates (GATES.md with evidence) → main(68d761d) resolving .opt-direction conflict, rejected redundant opt-docs, removed empty optimization. Cleaned leaked .opt-direction from PA main (68ae2fd). Total: 3 merges, 2 rejects, 2 empty cleanups across 2 projects.",
+  "files_changed": [".claude/decisions/case-2026-06-29-103.json", "personal_assistant/asr.py", "personal_assistant/cli.py", "personal_assistant/temporal.py", "tests/test_temporal.py", "GATES.md", ".opt-direction"],
+  "worktree": "direct-main (merge operations)",
+  "direction": "cases:worktree-review",
+  "outcome": "succeeded",
+  "outcome_evidence": "AS: git worktree list shows only main(1e9c03f), 0 pending. PA: git worktree list shows only main(68ae2fd), 0 pending. All 3 valid worktrees merged cleanly, 2 redundant/empty rejected.",
+  "next_suggestion": "moni-master has 2 pending worktrees (待合并=2) + 1 empty. sunset-prediction has 3 pending + 1 empty. shizi has 2 pending + 1 empty. Continue workspace-wide worktree review sweep."
+}

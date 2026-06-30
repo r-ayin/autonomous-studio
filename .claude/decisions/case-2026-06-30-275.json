@@ -1,0 +1,24 @@
+{
+  "case_id": "case-2026-06-30-275",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-30T20:55:00Z",
+  "project": "1BfrYW9R (oneday-design)",
+  "work_unit": "CONTRIBUTING.md 组件计数漂移修复 + ⑧ 防漂移守卫扩展覆盖 CONTRIBUTING.md",
+  "situation": "scout-scan 推 1BfrYW9R 为 #1（score=0.0，健康度良好，无明确小工作单位——可跳过或做文档润色）。未满足于散文润色，对全部 .md 文件 grep 组件计数声明，发现真实漂移：CONTRIBUTING.md:34「测试与验证」行称 build.js「报 29 组件」，但 `node build.js` stdout 实测为 'Build OK — 30 JSX components'。该漂移静默存活的根因有二：(1) CONTRIBUTING.md 此前不在 smoke ⑧（文档组件计数与 build.js 报告一致）的扫描列内——⑧ 仅扫 README/CLAUDE.md/PROGRESS.md/GATES.md；(2) 即便纳入，原文「29 组件」非严格形（⑧ 严格正则 `/(\\d+)\\s*个\\s*(?:JSX|React)\\s*组件/g` 须含「个」+JSX/React+组件，「29 组件」三项皆缺），不贡献断言故不误报亦不守卫。对照 2026-06-30 早前同类事件：第 30 组件加入后 GATES.md 全文仍「29」静默漂移，当时即以扩展 ⑧ 覆盖 GATES.md 收口——CONTRIBUTING.md 是同一缺口模式的第三份未覆盖文档。",
+  "action": "两文件最小改动，承 2026-06-30 扩展 ⑧ 覆盖 GATES.md 之先例：(1) CONTRIBUTING.md:34「报 29 组件」→「报 30 个 JSX 组件」——既修正数为 30，又改为严格形以落 ⑧ 守卫（0 严格声明=0 断言=无守卫，故须显式严格声明）；(2) test/smoke.test.js ⑧ docNames 由 ['README.md','CLAUDE.md','PROGRESS.md','GATES.md'] 扩展加 'CONTRIBUTING.md'，test 名与注释同步列 CONTRIBUTING.md 并记二次扩展缘由。关键纪律：未新增 test(...) 注册——仅扩展既有 ⑧ 的扫描列——故 smoke.test.js 实际 test 注册数仍 23，㉑ gates-doc-drift 锁（GATES.md 声称 pass 计数 === test 注册数）与 GATES.md pass 计数 23 双双不动，零附带 churn。",
+  "files_changed": [
+    "CONTRIBUTING.md",
+    "test/smoke.test.js"
+  ],
+  "worktree": "opt-doc-1782766476 (direction=docs:contributing-drift，因 1BfrYW9R 主 optimization worktree 方向为 engine，方向分歧自动开新 worktree)",
+  "direction": "docs:contributing-drift",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "`node build.js` stdout 含 '30 JSX components'（修正前 CONTRIBUTING.md 称 29）",
+    "`npm test` 全量 23 pass 0 fail（⑧ 现扫描含 CONTRIBUTING.md，其严格声明「30 个 JSX 组件」30===buildCount 30 通过）",
+    "突变复测证守卫真咬：临时把 CONTRIBUTING.md 改回「29 个 JSX 组件」后单跑 ⑧ 转 not ok（pass 22 / fail 1，failureType=testCodeFailure），restore 回 30 后复绿——证明 CONTRIBUTING.md 现真被 ⑧ 守卫而非纸面覆盖",
+    "test 注册数未变（仍 23）→ ㉑ gates-doc-drift 锁全程绿，GATES.md pass 计数无须 bump",
+    "opt-worktree.sh commit 成功落 opt-doc-1782766476，main 经 cp+checkout 还原为 dirty=0"
+  ],
+  "next_suggestion": "1BfrYW9R 已极健康（23 测全绿、文档计数漂移现全量守卫），scout-scan 仍会因 score=0.0 推其为 #1 但无明确小工作单位。下轮可：(a) 人工审 opt-doc-1782766476 diff 后 merge 入 main 收口本轮漂移修复（opt-worktree.sh 1BfrYW9R merge opt-doc-1782766476）；(b) 跳过 1BfrYW9R 顺延 #2 autonomous-studio（其有 1 待合并 worktree + 6 延期已 triage TODO 可复核）；(c) 若继续在 1BfrYW9R 找回归锁缺口，dev-server.js server.on('error') 的非 EADDRINUSE else 分支（line 64-65）仍无确定性负测覆盖，但难无副作用触发，性价比低。建议优先 (a) 合并本轮再评估。"
+}

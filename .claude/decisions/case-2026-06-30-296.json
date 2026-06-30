@@ -1,0 +1,23 @@
+{
+  "case_id": "case-2026-06-30-296",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-30T22:42:00Z+08:00",
+  "project": "autonomous-studio",
+  "work_unit": "review 2 个 AS pending worktree（人工审 diff + merge/reject）",
+  "situation": "scout-scan 推荐 #2=autonomous-studio：2 个待合并 worktree（opt-cases-1782771825 + optimization）。初看 `git diff --stat main..auto/optimization` 显示 27 个 case 文件被删 + autonomous-loop.sh 大幅缩减，形似严重回归——但按 [[diverged-base-two-dot-diff-misread]] 教训改用 `git show --stat <commit>` 审单提交，发现 optimization worktree 实际单提交 71a6872 只改 scripts/opt-worktree.sh(+42/-3)，两-dot 删案是 merge-base 766d7e5 之后 main 新增的 case-260..286 被误显为 worktree 侧删除。",
+  "action": "1) 比对三副本 opt-worktree.sh（main AS git / optimization worktree / root live）：三者逐字节 IDENTICAL，且 `git log -S cmd_new_case` 证 new-case 子命令已由 main 提交 75e3dc4 合入 → optimization worktree 内容已被 superseded，squash 合并会产空 commit。2) reject optimization worktree（删 auto/optimization 分支 was 71a6872，worktree 目录清理）。3) opt-cases-1782771825：merge-base=main HEAD 75e3dc4（可 ff），case-287..293 在 main 不存在（ls 无匹配），是真待合并归档轮 → squash merge 入 main。",
+  "files_changed": [
+    ".claude/decisions/case-2026-06-30-287.json",
+    ".claude/decisions/case-2026-06-30-288.json",
+    ".claude/decisions/case-2026-06-30-289.json",
+    ".claude/decisions/case-2026-06-30-290.json",
+    ".claude/decisions/case-2026-06-30-291.json",
+    ".claude/decisions/case-2026-06-30-292.json",
+    ".claude/decisions/case-2026-06-30-293.json"
+  ],
+  "worktree": "opt-cases-1782771825 (merged→main 6ea4faa); optimization (rejected, superseded)",
+  "direction": "engine:worktree-hygiene",
+  "outcome": "succeeded",
+  "outcome_evidence": "git log --oneline -1 main → 6ea4faa 'merge: 人工批准合并 optimization worktree opt-cases-1782771825'; git ls-files .claude/decisions/ | grep -E '28[789]|29[0-3]' → 287-293 全部 tracked; git worktree list → 仅剩 main（optimization 已清理，auto/optimization 分支 Deleted was 71a6872）; diff main vs worktree opt-worktree.sh = IDENTICAL（reject 无内容损失）",
+  "next_suggestion": "main 仍有 2 个 untracked orphan case-294/295（并发轮次产物，非本轮范围）；下轮可再开 opt-cases 归档轮收口 294/295+本轮 296。另：optimization 常设 worktree 已被 reject 删除——下轮若需引擎修复须重新 init optimization worktree（cmd_init）。scout-scan 仍盲于 untracked orphan（推荐不感知），归档前须手查 git status。"
+}

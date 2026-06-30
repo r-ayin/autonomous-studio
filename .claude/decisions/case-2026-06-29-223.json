@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-06-29-223",
+  "agent_id": "autonomous-studio-ralph",
+  "timestamp": "2026-06-29T13:50:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "review + merge 1 个待合并 optimization worktree（scout-scan #1 推荐工作单位）",
+  "situation": "scout-scan 8 项目全 score=0.0，#1=1BfrYW9R，推荐工作单位=「review 1 个待合并 worktree（人工审 diff + merge/reject）」。1BfrYW9R 有两 worktree：opt-gates-1782740803（commit 56f2250，上轮产出）与常设 optimization（在 main HEAD 2323837，无 diff）。待合并的是 opt-gates-1782740803——内容是把 GATES.md 一条 CRITICAL 手工门禁「npm run dev → GET / 200」固化为 test/smoke.test.js 第 4 项自动化测试（spawn dev-server.js 偏端口 3099 轮询，断言 200+text/html+inline babel）。state LAST_WORKTREE 即此项，标注「待人工审合并」。",
+  "action": "忠实人工审而非盲合：(1) git show --stat 56f2250 看单提交实际改量（按 case-219 教训，不用两点 A..B diff）→ +53/-3，3 文件（.opt-direction/GATES.md/test/smoke.test.js），无意外文件。(2) 验 dev-server.js 端口契约：grep 确认 `const port = parseInt(process.argv[2]) || 3015` + `.listen(port,...)`，测试传 3099 与契约一致。(3) 在 worktree 内实跑 npm test → 4 pass 0 fail（dev-server 项 178ms 通过，finally SIGKILL 无泄漏）。(4) 审 cmd_merge sed 名字逻辑：`sed 's/^opt-//;s/^/opt-/'` 对 'opt-gates-1782740803' 产出 'auto/opt-gates-1782740803' 与实际分支一致（state 警告的 sed bug 仅影响名为 'optimization' 的 worktree，本例不受影响）。(5) 确认 1BfrYW9R main（onedaybot-dev）干净通过 fail-fast。(6) bash scripts/opt-worktree.sh 1BfrYW9R merge opt-gates-1782740803 → squash 合并成功 + worktree 清理。",
+  "files_changed": [
+    "1BfrYW9R/.opt-direction",
+    "1BfrYW9R/GATES.md",
+    "1BfrYW9R/test/smoke.test.js"
+  ],
+  "worktree": "1BfrYW9R/.opt-worktrees/1BfrYW9R/opt-gates-1782740803 (合并后已清理)",
+  "direction": "gates:dev-server-200",
+  "outcome": "succeeded",
+  "outcome_evidence": "git log --oneline -1 on main = `9066324 merge: 人工批准合并 optimization worktree 'opt-gates-1782740803'`；git worktree list 仅剩 1BfrYW9R main + 常设 optimization，opt-gates-1782740803 已消失；main 上 `grep -c 'dev-server.js GET' test/smoke.test.js` = 1（测试已落 main）；main 上 `npm test` = `# pass 4 # fail 0`（332ms）。三文件改动 +53/-3 与 show --stat 一致。",
+  "next_suggestion": "1BfrYW9R 现仅剩常设 optimization worktree（在 main HEAD，空），无待合并项——下轮若 #1 仍轮回到 1BfrYW9R，应深查 GATES.md「手工实测/待 Phase 2」标注（如「无运行时 console.error」「JSX 可渲染」均标浏览器端待 Phase 2）作新小工作单位来源，而非再找待合并 worktree。AS 工具债仍 OPEN：cmd_merge 对常设 optimization worktree 的 sed 名字 bug（`sed 's/^opt-//;s/^/opt-/'` 对 'optimization' 产出不存在的 auto/opt-optimization）——若下轮要合常设 optimization worktree 必先修此 bug，否则误报冲突。"
+}

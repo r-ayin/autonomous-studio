@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-30-016",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-30T17:40:00Z",
+  "project": "1BfrYW9R (oneday-design)",
+  "work_unit": "tests:path-traversal-security — 给 dev-server.js 静态文件分发加路径穿越安全回归锁（npm test ⑯）",
+  "situation": "scout-scan 排 1BfrYW9R 为 #1（健康度良好，推荐=文档润色/跳过）。审 dev-server.js 发现 line 48 的 `!filePath.startsWith(dir)` → 403 路径穿越守卫与项目自有理念相悖：GATES ⑥ 明确给 listen-error 处理器加负测以『证明其非死代码』，而 403 守卫无任何负测。实证（node path.normalize+join 探测 + 拉起真服务 curl 四种穿越形 URL：/../sibling/secret.txt、/../../etc/passwd、/..%2fsibling%2fsecret.txt、/sibling/secret.txt）确认该守卫实际不可达——path.normalize 折叠 req.url 的 `..` + path.join 把任意 safePath 钳在 served 目录内，filePath 恒以 dir 为前缀，穿越形 URL 全部命中 404 而非 403。守卫是『看似安全实则死代码』，给人虚假安心；真正安全属性『穿越形请求永不泄露 served 目录外文件内容』仅由 normalize+join 巧合提供，无回归测试锁定。若日后有人把 join 误改成 path.resolve 试图『激活』守卫，反而会破开钳制引入真实穿越。",
+  "action": "不动 dev-server.js 服务逻辑（零回归风险）。新增 test/smoke.test.js ⑯ 路径穿越安全回归锁：仿 ⑪ /readyz 负测的 ONEDAY_DIR 注入模式，建临时 served 目录 + sibling 目录（目录外）放机密文件 TRAVERSAL_LEAKED_16，拉起 dev-server（偏端口 3092，避开 ⑤ 3099/⑥ 3097/⑦ 3096/⑧ 3098/⑨ 3095/⑫ 3094/⑭ 3093/默认 3015），发四种穿越形 URL，断言任一响应体均不含机密标记。同步更新 GATES.md（⑯ 入 npm test 枚举 + 独立『观察』段记录 403 守卫死代码结论与留后评估）与 PROGRESS.md（最近里程碑）。实测 npm test 16 pass 0 fail。",
+  "files_changed": ["1BfrYW9R/test/smoke.test.js", "1BfrYW9R/GATES.md", "1BfrYW9R/PROGRESS.md"],
+  "worktree": "opt-tests-1782754397 (branch auto/optimization, dir .opt-worktrees/1BfrYW9R/opt-tests-1782754397)",
+  "direction": "tests:path-traversal-security",
+  "outcome": "succeeded",
+  "outcome_evidence": "`npm test` 实测 16 pass 0 fail（⑯ 新增子测通过，原 15 测全绿未回归）；opt-worktree show opt-tests-1782754397 可见提交 b561fe1 含三文件 diff（test/GATES/PROGRESS），.opt-direction 改 tests:path-traversal-security；main（onedaybot-dev @5898324）git status 干净未受污染；curl 实测四穿越 URL 全返 404『Not found』、机密标记 TRAVERSAL_LEAKED_16 未出现在任一响应体（安全属性成立）。",
+  "next_suggestion": "① 评估 dev-server.js line 48 不可达 403 守卫的去留：要么删除（承认安全由 normalize+join 提供、⑯ 锁定），要么重构为可达（path.resolve + dir+path.sep 前缀检查），但后者会改变 /index.html 等绝对形 URL 的服务行为、需配套 ⑤/⑯ 回归——独立工作单位，本轮刻意不动。② 该 worktree opt-tests-1782754397 待人工审合并 main。③ 1BfrYW9R 已极健康，下轮可顺延 scout #2 autonomous-studio 或寻其他项目结构性缺口。"
+}

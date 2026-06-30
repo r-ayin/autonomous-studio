@@ -1,15 +1,15 @@
 {
   "case_id": "case-2026-06-28-052",
-  "agent_id": "ralph-autonomous",
-  "timestamp": "2026-06-28T09:04:00Z",
-  "project": "stagehand-analysis",
-  "work_unit": "补 PROGRESS.md",
-  "situation": "scout-scan 报告 stagehand-analysis 健康分 10.08（#1），缺 PROGRESS.md/GATES.md/planning。项目是 stagehand 上游 fork，单 commit，monorepo 结构。",
-  "action": "创建 PROGRESS.md，记录项目用途（上游源码分析）、同步状态、monorepo 包结构、9 个上游 TODO 说明。通过 opt-worktree.sh 提交到 opt-docs-1782637586 worktree。",
-  "files_changed": ["PROGRESS.md"],
-  "worktree": "opt-docs-1782637586",
-  "direction": "docs:progress",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-06-28T04:12:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "scout-scan IGNORE_DIRS: add out/target for build output exclusion",
+  "situation": "scout-scan IGNORE_DIRS excluded .venv-sidecar and site-packages but missed out/ (Electron/Vite build output) and target/ (Rust cargo output). x-tool reported 5 TODOs; investigation showed they came from x-tool/moni/ (a real subdirectory, not out/), so the out/ exclusion is preventive. target/ prevents future false positives when moni Rust port matures.",
+  "action": "Added 'out' and 'target' to IGNORE_DIRS set in scripts/scout-scan.py. Also investigated x-tool's 5 TODOs: they are real (broker_qmt.py stubs in x-tool/moni/ subdir), not false positives from build output.",
+  "files_changed": ["scripts/scout-scan.py"],
+  "worktree": "opt-scout-scan-1782618644",
+  "direction": "scout-scan:build-output-exclusion",
   "outcome": "succeeded",
-  "outcome_evidence": "opt-worktree.sh 输出 '✓ 提交到 opt-docs-1782637586 方向=docs:progress'；PROGRESS.md 已写入 worktree",
-  "next_suggestion": "open-design（score=10.01）补 PROGRESS.md，或 1BfrYn9G（score=10.0）补 PROGRESS.md"
+  "outcome_evidence": "os.walk debug confirmed out/ is pruned after fix; IGNORE_DIRS now contains 'out' and 'target'; committed to opt-scout-scan-1782618644",
+  "next_suggestion": "Commit orphaned case files (049, 050) sitting in AS main dirty; or triage x-tool/moni/broker_qmt.py TODO stubs (mark deferred if not actionable now)"
 }

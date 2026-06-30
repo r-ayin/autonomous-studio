@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-209",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-29T(na: script env 无 Date.now)",
+  "project": "1BfrYW9R (oneday-design)",
+  "work_unit": "为 build.js/smoke.test.js 增加负测：注入拼写错 JSX 引用断言 build exit 1，补齐 state NEXT_SUGGESTION 标记的「当前仅正测」缺口",
+  "situation": "scout-scan #1 = 1BfrYW9R (score=0.0，健康)，推荐「无明确小工作单位/可做文档润色」。state NEXT_SUGGESTION 给出其具体小单位：smoke.test.js 仅正测（exit 0 + 29 components + single-file bundle），缺负测证明 build.js 的「未解析引用→exit 1」分支真能拦错。build.js 硬编码 index=path.join(dir,'index.html')，负测无法指向临时注入文件而不污染真实产物。",
+  "action": "1) build.js：index 改为 process.env.ONEDAY_INDEX ? path.resolve(env) : 默认真实 index.html——加测试钩子，默认行为不变（正测无 env 仍跑真实 index.html）。2) smoke.test.js：加第 3 个 test，用 fs.mkdtempSync 在 os.tmpdir 建临时 index.html，内含 inline <script type=text/babel> 定义 function Component 但引用 <Componnt />（拼写错，无定义），spawnSync node build.js 传 ONEDAY_INDEX=tmp，断言 status≠0 且 stderr match /未解析/。try 路径无残留（tmp 在系统 tmpdir，进程退出即留空目录，不影响仓库）。",
+  "files_changed": ["1BfrYW9R/build.js", "1BfrYW9R/test/smoke.test.js"],
+  "worktree": "opt-gates-1782735487（方向 gates:negative-test，commit 5b8df3d；与 opt-gates-1782734568 同 area 但前者已 merge 入 onedaybot-dev，本枝从 6cb7fe4 开新 worktree）",
+  "direction": "gates:negative-test",
+  "outcome": "succeeded",
+  "outcome_evidence": "worktree 内 `node --test test/smoke.test.js` → tests 3 pass 0 fail（含新增负测「build.js 对未解析的 JSX 引用（拼写错误）exit 1」ok 3）；opt-worktree.sh commit 输出「✓ 提交到 opt-gates-1782735487 方向=gates:negative-test」；git log -1 = 5b8df3d；主工作树 git status 干净（改动隔离进 worktree，main/onedaybot-dev 安全）。负测可证伪：若 build.js 未解析检查被移除/破坏，第 3 个 test 会 fail。",
+  "next_suggestion": "opt-gates-1782735487 待人工审 diff + merge 入 onedaybot-dev（diff 小：build.js +4 行 env 覆盖、smoke.test.js +1 test 块，纯增量无正测改动）。merge 后 onedaybot-dev 领先 origin 仍待 push（需 GitHub PAT，非本引擎职责）。其余 state NEXT_SUGGESTION 项不变：opt-worktree cmd_commit case-207 空文件前置断言、commit-gate reset-bypass case-047、AS main dirty 孤儿 case 归档。"
+}

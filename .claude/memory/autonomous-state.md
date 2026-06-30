@@ -73,6 +73,11 @@ metadata:
 <!-- GOAL: scout -->
 <!-- GOAL_ID: G-2026-06-15-002 -->
 <!-- GOAL_STATUS: active -->
+<!-- ACTIVE_GOAL: ralph-wiggum-autonomous-loop (每轮一个小工作单位，scout-scan 排序选任务) -->
+<!-- LAST_UPDATED: 2026-06-29 -->
+<!-- LAST_WORKTREE: opt-state-1782700340 (case-127: review+merge pending worktree, orphan归档+state字段已入main e19f2a0) -->
+<!-- LAST_OUTCOME: done -->
+<!-- NEXT_SUGGESTION: [1] wechat-main/shizi PROGRESS.md >0.5天 stale, 可同步更新; [2] x-tool 9 本地提交待推 GitHub(PAT 见 memory:x-tool-push-ghproxy-no-creds); [3] moni-master 后端/量化小任务(WFO/因子回测, 禁前端重构) -->
 
 | 字段 | 内容 |
 |------|------|

@@ -1,0 +1,24 @@
+{
+  "case_id": "case-2026-06-29-200",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-29T10:58:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "infra:case-orphan-rehome — 1BfrYW9R 的 4 个孤儿 case 文件归档回 AS decisions/（canonical home）",
+  "situation": "scout-scan #1 = 1BfrYW9R(score=0.0, dirty=1)，推荐'无明确小工作单位'。核查 dirty=1 来源：1BfrYW9R/.claude/decisions/ 有 4 个今日 untracked case 文件(001-004，均记录 1BfrYW9R 的 docs/gates 工作，timestamp 06:30-07:05)。按 loop 约定 step5 case 应写 autonomous-studio/.claude/decisions/，这 4 个滞留在目标项目属 case-file-orphan-on-cross-project-work 反模式(参 memory)。AS decisions/ 今日已有 001(03:13, 不同 case: git reset 清理)+005/048/064-100/185/186/187/188-198，max=198。",
+  "action": "文件系统归档(非 git commit——AS 与 1BfrYW9R 的 .claude/decisions/ 均按惯例 untracked，git check-ignore exit=1 且 ls-files 为空):(1) cp 002/003/004 原名入 AS(三者在 AS 均不存在，已验证 free);(2) cp 001→AS case-2026-06-29-199.json(001 在 AS 已被占，renumber 到 max+1=199)，并 Edit 内部 case_id 字段 '001'→'199' 使文件名与字段一致;(3) rm 1BfrYW9R 的 4 个孤儿文件。未深读源码，纯元数据归档。",
+  "files_changed": [
+    "autonomous-studio/.claude/decisions/case-2026-06-29-002.json",
+    "autonomous-studio/.claude/decisions/case-2026-06-29-003.json",
+    "autonomous-studio/.claude/decisions/case-2026-06-29-004.json",
+    "autonomous-studio/.claude/decisions/case-2026-06-29-199.json"
+  ],
+  "worktree": "none(filesystem-rehome; decisions untracked by convention, no opt-worktree commit applicable)",
+  "direction": "infra:case-orphan-rehome",
+  "outcome": "succeeded",
+  "outcome_evidence": "1BfrYW9R `git status --short` 归档后输出为空(dirty 1→0，dirty=1 信号消除);AS `ls .claude/decisions/ | grep -E '2026-06-29-(002|003|004|199)'` 返回 4 个文件名;case-199.json `grep case_id` 现为 'case-2026-06-29-199'(字段与文件名一致);002/003/004 在 AS 归档前经逐个 `test -f` 验证 free(无覆盖);199/200 经同样验证 free。无 git 提交(decisions 惯例 untracked)，main 未受触碰。",
+  "next_suggestion": [
+    "autonomous-studio: scout-scan 标 dirty=15 + 延期 TODO=6(已 triage)；下轮可清理 1 个空 worktree(scout-scan 标 '空(可清理)=1')或核查 triage TODO 可否核销",
+    "1BfrYW9R: 现 dirty=0、无待处理 worktree、标记全 0，健康良好，可跳过；若复现 dirty 应优先查是否又有 case 写错位置",
+    "wechat-main: 延续 case-003/004 建议，仍有 2 pending worktree(1 空)可清理 + decisions/ 孤儿 case 核查"
+  ]
+}
