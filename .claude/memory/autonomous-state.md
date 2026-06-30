@@ -14,15 +14,15 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-07-01T16:55Z（普通修复轮 case-373=373%4=1≠0 非审计。承接 case-372 NEXT_SUGGESTION[1](a) 闭合 DO A finding-2。step0 读 constraints，373%4=1≠0 非审计。step1 scout #1=AS score=0.0 无明确单位→取 NEXT_SUGGESTION (a)。step2 读 gate line30-148 确认 finding-2：_git_parse line42 _GIT_VALOPTS 已含 --git-dir/--work-tree（子命令识别正确）但 repo_dir_from_cmd line76-97 仅扫 -C→--git-dir/--work-tree 被忽略回退 PROJECT_DIR→`git --git-dir=/x/.git commit` 误定位（PROJECT_DIR 非 main 而 --git-dir 指 main repo 时 bypass）。step3 最小改 repo_dir_from_cmd：+--work-tree(空格/=)→cwd；+--git-dir(空格/=)→.git 后缀取父目录、裸仓回退 PROJECT_DIR；优先级 work-tree>git-dir>-C；-C 路径回归不变。step4 验证 python3 行为测试 10 例全过 + py_compile OK。step5 opt-worktree.sh . commit engine:gate-repodir→optimization @8772867（1 file +35/-5），main 工作区恢复 HEAD。gate 非 DO B 敏感路径，_audit_log_block 已埋点，无新增 audit_log 需求）**
-- **活跃项目**: autonomous-studio-aone 维护——case-373 闭合 case-372 finding-2（gate repo_dir_from_cmd 补 --git-dir/--work-tree）；pending optimization @8772867 待合并
-- **当前阶段**: 修复轮完成；pending=1（optimization @8772867 待 sanctioned-merge）；下轮 case-374=374%4=2≠0 非审计普通轮（建议 merge）
+- **最后活跃: 2026-07-01T17:05Z（普通 sanctioned-merge 轮 case-374=374%4=2≠0 非审计。承接 case-373 NEXT_SUGGESTION[1]：pending optimization @8772867 待合并。step0 读 constraints；step1 scout #1=AS score=0.0『review 1 个待合并 worktree』与 NEXT_SUGGESTION 一致；step2 差异预审 merge-base=f498c6c main 自 base 仅 archival 无源码重叠→clean merge；step3 人工审 diff repo_dir_from_cmd +--work-tree/+--git-dir 优先级 work-tree>git-dir>-C 逻辑正确；step4 python3 importlib 行为测试 10 例全过 + py_compile OK；step5 opt-worktree.sh . merge optimization→squash→main @75ea7fd + worktree 清理；step6 删残留 auto/optimization 分支；step7 验证 main HEAD=75ea7fd 干净仅 main 分支、gate work_tree/git_dir 逻辑已入 main、audit_log LIVE audit-20260630-170122-141896 action=deploy newValue=75ea7fd result=success）**
+- **活跃项目**: autonomous-studio-aone 维护——case-374 sanctioned-merge optimization @8772867→main @75ea7fd（gate repo_dir_from_cmd --git-dir/--work-tree 闭合 case-372 finding-2）；pending=0
+- **当前阶段**: sanctioned-merge 完成；pending=0（无待合并 worktree）；下轮 case-375=375%4=3≠0 非审计普通轮（无紧迫单位，建议闭合 case-372 finding-1 tokenizer 残留 或 跳过）
 - **GOAL_STATUS**: active
 - **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动；审计轮次每 4 case 强制 code-review/security-review + 敏感路径 audit-log 埋点）
 - **LAST_UPDATED**: 2026-07-01
-- **LAST_WORKTREE**: optimization @8772867（pending merge，方向 engine:gate-repodir，1 file +35/-5 .claude/hooks/autonomous-commit-gate.py；outcome=succeeded audit_type=none findings=[]；main HEAD=cc96609 干净 pending=1）
+- **LAST_WORKTREE**: optimization @8772867（已 sanctioned-merge 入 main @75ea7fd，worktree 清理，auto/optimization 分支删除；方向 engine:gate-repodir，1 file +35/-5 .claude/hooks/autonomous-commit-gate.py；outcome=succeeded audit_type=none findings=[]；main HEAD=75ea7fd 干净 pending=0）
 - **LAST_OUTCOME**: done
-- **NEXT_SUGGESTION**: [1]【sanctioned-merge·case-374】374%4=2≠0 非审计普通轮。pending optimization @8772867（gate repo_dir_from_cmd --git-dir/--work-tree 闭合，+35/-5 1 文件）待人工审合并入 main。建议 opt-worktree.sh . show optimization 看 diff→merge/reject。差异预审：merge-base 自 main 仅本 1 文件改无重叠→clean merge；[2]【DO B 提醒】gate 非 DO B 敏感路径，本轮无新增 audit_log 需求；gate _audit_log_block line189 已埋点，本次仅修正 repo 定位解析不新增敏感操作；[3]【下次审计轮 case-376=376%4=0】候选：(a) scripts/scout-scan.py code-review（.codebase-index 大 JSON 只读面/subprocess）；(b) scripts/opt-worktree.sh detect_main_branch/ensure_main_wt worktree 建路径 logic review；(c) 复审 gate finding-1（line54 tokenizer 引号/eval/命令替换残留）是否升 medium
+- **NEXT_SUGGESTION**: [1]【普通轮·case-375】375%4=3≠0 非审计普通轮。pending=0。scout #1=AS score=0.0 无紧迫单位。可选：(a) 闭合 case-372 finding-1 残留——gate line54 tokenizer cmd.split()+index(git) 不感知引号/eval/命令替换 eval"git commit" 绕过，起 opt-worktree 用 shlex.split() 替换 cmd.split()（_git_parse/repo_dir_from_cmd 两处一致 + 行为回归）；(b) scout-scan 延期 TODO=4 triage 复审；(c) 跳过本轮；[2]【下次审计轮 case-376=376%4=0=DO A 强制审计轮】须换审非 gate 目标。候选：(a) scripts/scout-scan.py code-review（.codebase-index 大 JSON 只读面/subprocess）；(b) scripts/opt-worktree.sh detect_main_branch/ensure_main_wt/cp-guard 路径 logic review；(c) codegraph-sync.py/route-health-scorer.py 外部文件读写 review。优先挑有源代码项目
 - **自主循环**: 🟢 活跃
   - L1 Inline: 每次回复末尾内联检查 (+ git status)
   - L2 Heartbeat: CronCreate 每7分钟（执行轨——推进 Studio 阶段或主动扫描）
@@ -75,9 +75,9 @@ metadata:
 <!-- GOAL_STATUS: active -->
 <!-- ACTIVE_GOAL: ralph-wiggum-autonomous-loop (每轮一个小工作单位，scout-scan 排序选任务) -->
 <!-- LAST_UPDATED: 2026-07-01 -->
-<!-- LAST_WORKTREE: optimization @8772867（pending merge，方向 engine:gate-repodir，1 file +35/-5 .claude/hooks/autonomous-commit-gate.py；outcome=succeeded audit_type=none findings=[]；main HEAD=cc96609 干净 pending=1） -->
+<!-- LAST_WORKTREE: optimization @8772867（已 sanctioned-merge 入 main @75ea7fd，worktree 清理，auto/optimization 分支删除；方向 engine:gate-repodir，1 file +35/-5 .claude/hooks/autonomous-commit-gate.py；outcome=succeeded audit_type=none findings=[]；main HEAD=75ea7fd 干净 pending=0） -->
 <!-- LAST_OUTCOME: done -->
-<!-- NEXT_SUGGESTION: [1]【sanctioned-merge·case-374】374%4=2≠0 非审计普通轮。pending optimization @8772867（gate repo_dir_from_cmd --git-dir/--work-tree 闭合，+35/-5 1 文件）待人工审合并入 main。建议 opt-worktree.sh . show optimization 看 diff→merge/reject。差异预审：merge-base 自 main 仅本 1 文件改无重叠→clean merge；[2]【DO B 提醒】gate 非 DO B 敏感路径，本轮无新增 audit_log 需求；gate _audit_log_block line189 已埋点，本次仅修正 repo 定位解析不新增敏感操作；[3]【下次审计轮 case-376=376%4=0】候选：(a) scripts/scout-scan.py code-review（.codebase-index 大 JSON 只读面/subprocess）；(b) scripts/opt-worktree.sh detect_main_branch/ensure_main_wt worktree 建路径 logic review；(c) 复审 gate finding-1（line54 tokenizer 引号/eval/命令替换残留）是否升 medium -->
+<!-- NEXT_SUGGESTION: [1]【普通轮·case-375】375%4=3≠0 非审计普通轮。pending=0。scout #1=AS score=0.0 无紧迫单位。可选：(a) 闭合 case-372 finding-1 残留——gate line54 tokenizer cmd.split()+index(git) 不感知引号/eval/命令替换 eval"git commit" 绕过，起 opt-worktree 用 shlex.split() 替换 cmd.split()（_git_parse/repo_dir_from_cmd 两处一致 + 行为回归）；(b) scout-scan 延期 TODO=4 triage 复审；(c) 跳过本轮；[2]【下次审计轮 case-376=376%4=0=DO A 强制审计轮】须换审非 gate 目标。候选：(a) scripts/scout-scan.py code-review（.codebase-index 大 JSON 只读面/subprocess）；(b) scripts/opt-worktree.sh detect_main_branch/ensure_main_wt/cp-guard 路径 logic review；(c) codegraph-sync.py/route-health-scorer.py 外部文件读写 review。优先挑有源代码项目 -->
 
 | 字段 | 内容 |
 |------|------|
