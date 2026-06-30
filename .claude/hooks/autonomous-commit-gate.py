@@ -10,7 +10,9 @@ r"""autonomous-commit-gate.py — PreToolUse Hook (matcher: Bash)
 触发条件(全部满足才拦):
   1. .claude/.autonomous_active 标记存在(引擎自治激活时建)
   2. 目标分支是 main/master(或 push 显式推 main/master ref)
-  3. 子命令是 git commit / git push / git merge
+  3. 子命令是会在当前分支创建提交/移动 main ref 的 git 子命令:
+     commit / push / merge / cherry-pick / revert / am / rebase
+     / reset(--hard/--soft/--mixed) / branch(-f/-D/-d/-m/-M) / update-ref
 
 豁免:case 元数据归档——commit 仅触及 .claude/decisions/case-*.json 时放行。
   跨项目 case 按先例(0f77848/06937a9)直提 AS main 归档,这是元数据而非代码优化,
@@ -44,8 +46,15 @@ CASE_FILE_RE = re.compile(r"(^|/)\.claude/decisions/case-[^/]+\.json$")
 STATE_FILE_RE = re.compile(r"(^|/)\.claude/memory/autonomous-state\.md$")
 # 取一个值的 git 全局选项(-C <path>、-c <k=v>、--git-dir <path>、--work-tree <path>)
 _GIT_VALOPTS = {"-C", "-c", "--git-dir", "--work-tree", "-b", "-B"}
-# 拦截的 git 子命令(commit/push/merge/reset/branch/update-ref);豁免 checkout/switch(opt-worktree 内部用)
-_GUARDED = {"commit", "push", "merge", "reset", "branch", "update-ref"}
+# 拦截的 git 子命令。commit-creating 类(commit/push/merge/cherry-pick/revert/am/rebase)
+# 会在当前分支创建提交——于 main 上执行即直写 main,case-440 审计发现原 _GUARDED 漏掉
+# cherry-pick/revert/am/rebase:引擎跑 `git cherry-pick <sha>` / `git revert <sha>` /
+# `git am <mbox>` / `git rebase <upstream>` 在 main 上即绕过 gate 直写 main,违背
+# "main 永远安全"确定性 backstop。补齐后这四子命令于 main 分支同 commit/merge 被拦。
+# reset/branch/update-ref 走各自 ref-mover 专路(见 _eval_segment);checkout/switch
+# 豁免(opt-worktree 内部用,改 working tree 不动 main ref)。
+_GUARDED = {"commit", "push", "merge", "cherry-pick", "revert", "am", "rebase",
+            "reset", "branch", "update-ref"}
 # shell 顺序/管道控制符——命令链按此拆段逐段评估,堵 `A && git commit` 类绕过(见 _git_segments)
 _SHELL_OPS_RE = re.compile(r"\s*(?:&&|\|\||;|\||\n)\s*")
 
@@ -343,7 +352,13 @@ def _eval_segment(seg):
         return None
     branch = current_branch(seg)
     repo = repo_dir_from_cmd(seg)
-    if sub in ("commit", "push", "merge"):
+    # commit-creating 子命令:在当前分支创建提交/移动其 ref。于 main 上执行即直写 main → 拦。
+    # 含 cherry-pick/revert/am/rebase(case-440 补齐:原仅 commit/push/merge 在此路,这四者
+    # 同样创建提交却走 not-in-_GUARDED 早退放行→绕过)。归档豁免仅限 commit(其余操作 refs/
+    # commits 无 staged 文件概念)。rebase --onto <newbase> <upstream> <branch> 显式指向 main
+    # 的形态未单独覆盖(需解析位置参数,刻意构造,低危;当前分支=main 的常见形态已拦)。
+    _COMMIT_CREATING = {"commit", "push", "merge", "cherry-pick", "revert", "am", "rebase"}
+    if sub in _COMMIT_CREATING:
         # 目标分支是 main/master → 拦(分支从本段 -C 解析)
         targets_main = branch in MAIN_BRANCHES
         if sub == "push":
