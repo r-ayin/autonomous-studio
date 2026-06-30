@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-06-30-315",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-30T00:47:44Z",
+  "project": "1BfrYW9R",
+  "work_unit": "为 dev-server.js process.on('SIGINT') 独立注册行补 smoke ㉗ SIGINT 优雅关闭回归锁（与 ㉖ SIGTERM 互补，合围 process.on 信号注册全集）",
+  "situation": "scout-scan 2026-06-30T00:40:47Z 报告 8 项目全健康度良好无紧迫小工作单位，#1=1BfrYW9R（score=0.0，推荐「可跳过或做文档润色」）。读 dev-server.js line 102-103 发现 shutdown() 函数被 process.on('SIGTERM') 与 process.on('SIGINT') 两行独立注册（共用 shutdown 实现但注册行分开），而 smoke.test.js ㉖（line 1282）只发 SIGTERM 断言干净退出——SIGINT 注册行零测覆盖。缺口：删掉 `process.on('SIGINT', ...)` 行后 ㉖ 仍全绿（SIGTERM 处理器不动），本地 Ctrl-C 通道回归成默认动作信号杀（status=null/signal=SIGINT、在途响应中断）却无测可证伪。属项目「每维度一锁」既定约定（㉖→SIGTERM/PaaS 通道、⑥㉒→启动期错误）下唯一未锁的关闭子维度。注：scout 推荐做文档润色，但纯文档润色对该项目会引入 GATES 漂移风险（㉑ 锁定 pass 计数）非最小改动友好；改为补一个真实未锁维度的小回归锁，既最小（3 文件）又非 churn（锁定独立注册行，与 ㉖ 正交）。",
+  "action": "1) test/smoke.test.js 在 ㉖ 块后新增 ㉗ 测试，镜像 ㉖ 结构：注入 ONEDAY_DIR 临时 served 目录（含 index.html）spawn dev-server.js（偏端口 3082，避开 ㉖ 3083 及其他已占偏端口），先轮询 GET / 200 作控制组，再 child.kill('SIGINT') 等子进程 5s 内退出，断言 status===0 && signal===null（干净退出非被信号杀）+ 退出后再 GET / 须 ECONNREFUSED（证 server.close 真停监听非 handler 空跑 no-op）；2) GATES.md canonical 箭头形 pass 计数 bump 28→29、㉗ 条目入测试清单（与 ㉖ 互补说明）+ 历史追加注补 ㉗；3) PROGRESS.md 最近里程碑前置 ㉗ 完整里程碑文（按 ㉕ 既立「前置最新里程碑」约定）。提交走 opt-worktree 隔离（deploy:sigint-lock 方向，与 ㉖ SIGTERM 锁 deploy 区一致），不直接动 main。",
+  "files_changed": [
+    "test/smoke.test.js",
+    "GATES.md",
+    "PROGRESS.md"
+  ],
+  "worktree": "opt-deploy-1782780397",
+  "direction": "deploy:sigint-lock",
+  "outcome": "succeeded",
+  "outcome_evidence": "npm test 实跑 29 pass 0 fail（㉗ ok 28，㉑ gates-doc-drift 通过证 GATES canonical 29 == smoke 注册 29 == 实跑 29 三对齐）；突变复测：sed 删 dev-server.js `process.on('SIGINT', ...)` 行后 npm test 报 not ok 28 — `dev-server SIGINT 后应 exit 0...实际 status=null signal=SIGINT`（㉖ SIGTERM 仍 ok），cp 还原后 29 pass 0 fail 复绿，证锁真咬且与 ㉖ 维度正交；opt-worktree.sh 1BfrYW9R commit deploy:sigint-lock 提交到 worktree opt-deploy-1782780397 commit 6af4353，main（1BfrYW9R onedaybot-dev）git status -s 空（cp+restore 干净）、GATES.md main 侧 grep '29 pass' 计 0（28-pass 旧态，㉗ 隔离在 worktree 不污染 main）；worktree 内 npm test 复测 fail 0。",
+  "next_suggestion": "1BfrYW9R 至此 process.on 信号注册全集（SIGTERM/SIGINT）已锁，关闭维度闭合。下轮可：a) 审 diff merge opt-deploy-1782780397 入 1BfrYW9R main（人工批准合并，纯测试+文档无代码变更，低风险；审单提交用 git show --stat 6af4353 勿用两点 diff 防 [[diverged-base-two-dot-diff-misread]]）；b) 或顺延 scout #2 autonomous-studio「review 1 个待合并 worktree」做人工审 merge/reject。1BfrYW9R 自身 deploy 通道已闭合，剩余 Phase 1 真实后端 API 接入依赖 personal-assistant 后端（跨项目，非小工作单位）。"
+}
