@@ -1,0 +1,27 @@
+{
+  "case_id": "case-2026-07-01-400",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-07-01T04:53:00+08:00",
+  "project": "autonomous-studio",
+  "work_unit": "housekeeping:archive-orphan-cases — 用 loop-archive-cases.sh 归档滞留 AS main 的 2 个 untracked 孤儿 case（398/399，皆已 merge 的工作记录）",
+  "situation": "scout-scan 全 8 项目 health=0.0，#1 1BfrYW9R 推荐润色/跳过（[[scout-all-zero-pick-dirty-signal]] case-391 全零态）。1BfrYW9R 实测 38 pass 0 fail、dev-server.js 每条响应路径均已上回归锁（㉓㉔㉕㉖㉗㉘㉙㉚㉞㉟㊱），真饱和不下移润色。按指引找 dirty 信号：autonomous-studio dirty=2，git status 显 2 个 untracked case JSON（case-398/399）——皆上轮已完成+merge 的工作记录滞留 main 未归档（case-398 描述 opt-tooling-1782852080 husk-prune fix 已 merge 入 40cccda；case-399 描述该 merge 本身）。此即 loop-archive-cases.sh 注释所述缺口：跨项目轮次 case 写 AS main 但进目标项目 worktree，滞留成孤儿。",
+  "action": "运行 bash scripts/loop-archive-cases.sh（从 workspace 根，默认 project=autonomous-studio）。脚本扫 AS main porcelain untracked case JSON → 前置断言磁盘确有文件（防 porcelain 误读产空 commit，对齐 [[opt-worktree-empty-files-silent-bogus-commit]]）→ opt-worktree commit housekeeping:archive-cases 把 398/399 cp 进 housekeeping worktree → main 还原（untracked 删）→ 自测 main 干净。首轮 CWD 残留 autonomous-studio（前序 cd 致 PWD 双拼 PROJECT）报错，cd 回 workspace 根重跑成功。",
+  "files_changed": [],
+  "worktree": "opt-housekeeping-1782852774（路径 .opt-worktrees/autonomous-studio/opt-housekeeping-1782852774，branch auto/opt-housekeeping-1782852774，tip 8b253c0，待人工批准 merge）",
+  "direction": "housekeeping:archive-cases",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "archive 脚本 stdout: 发现 2 个孤儿 case → opt-worktree commit housekeeping:archive-cases → 自测通过 AS main 干净",
+    "git -C autonomous-studio status --porcelain = 空（main 干净，dirty=2 信号消除）",
+    "git worktree list 含 /home/admin/workspace/.opt-worktrees/autonomous-studio/opt-housekeeping-1782852774 tip 8b253c0",
+    "git -C <wt> show --stat HEAD = commit 8b253c0 归档 2 个孤儿 case，2 files changed 56 insertions（28+28 行，非空 commit，非 bogus）",
+    "git -C <wt> ls-tree HEAD .claude/decisions/ 含 case-2026-07-01-398.json (blob 3dffadd) 与 case-2026-07-01-399.json (blob a54d180)",
+    "提交 author email = syp02536326@taobao.com（autonomous-commit-gate 接受，未触发 opt@auto 邮箱拒，对齐 [[push-rule-email-opt-auto-rejected]]）",
+    "AS main 磁盘 decisions/ 现 max case num = 397（398/399 已迁出，400 无撞号，对齐 [[case-id-collision-agent-self-pick]] 防撞）"
+  ],
+  "next_suggestion": [
+    "下轮可 merge opt-housekeeping-1782852774 回 AS main（口径 bash scripts/opt-worktree.sh autonomous-studio merge opt-housekeeping-1782852774）；merge 前 git show --stat 8b253c0 证仅 2 case JSON 无副作用。",
+    "scout 全零态持续：下轮若仍无 dirty 信号，接 case-399 遗留的结构性大项——standing-wt-from-standing-wt 嵌套根治（opt-worktree.sh 顶部加 PROJECT 守卫：pwd 含 /.opt-worktrees/ 则上溯真 main checkout），单独立 case。",
+    "1BfrYW9R 真饱和（38 测覆盖 dev-server 全响应路径）；其 Phase 1 UI 子步骤须改 index.html 超 2 源文件上限，宜跨 context 规划，不本轮做。"
+  ]
+}
