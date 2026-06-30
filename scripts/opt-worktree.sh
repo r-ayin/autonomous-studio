@@ -19,6 +19,8 @@
 #   opt-worktree.sh [project] merge <worktree>            # 人工批准后：squash 合并→main + 清理
 #   opt-worktree.sh [project] reject <worktree>           # 人工拒绝：归档/删
 #   opt-worktree.sh [project] next-case                   # 查下一个可用 case 编号（扫 main + 所有 pending worktree，防撞号）
+#   opt-worktree.sh [project] install-hooks [--quiet]     # 装 core.hooksPath=hooks（fresh clone 须跑一次，让 pre-commit 守卫生效）；--quiet 供脚本化场景降噪（成功/缺文件均静默，仅写 config）
+#   opt-worktree.sh [project] install-ref-hooks [repo...] # 把 reference-transaction 钩装到子项目仓（case-103 rollout；缺省扫兄弟 git 仓）
 # 例: opt-worktree.sh shizi commit "docs:governance" "说明" PROGRESS.md GATES.md
 set -euo pipefail
 
@@ -30,14 +32,39 @@ WT_BASE="$PROJECT/../.opt-worktrees/$(basename "$PROJECT")"
 # 动态探测项目默认分支：x-tool/moni 用 master，autonomous-studio 用 main。
 # 硬编码 main 会导致 master 项目 worktree add 失败被 || true 吞、随后写 .opt-direction 崩。
 detect_main_branch() {
-  local b
-  b=$(git -C "$1" symbolic-ref --short HEAD 2>/dev/null) || { echo main; return; }
+  # 恢复 d3a1a8e(merge-checkout-guard) 的 detached-HEAD 探测：5d0ed82(direction-meta-exclusion)
+  # 基于旧基座构建，其 @@ -30,16 +30,8 @@ hunk 连带把本函数 revert 回盲目 'echo main'——master 项目里 main 不
+  # 存在，cmd_merge 的 git checkout main 失败被 || true 吞、squash 提交进 detached HEAD 黑洞。
+  local b repo="$1"
+  # 正常情况：当前就在某分支上。
+  b=$(git -C "$repo" symbolic-ref --short HEAD 2>/dev/null) && { echo "$b"; return; }
+  # detached HEAD：symbolic-ref 失败，旧实现盲目回退 'main'——但 master 项目里
+  # main 不存在，后续 git checkout main 失败被 || true 吞掉，merge 会在 detached
+  # HEAD 上提交进黑洞。改为按 main→master 顺序取真实存在的分支，再兜底首个分支。
+  for b in main master; do
+    git -C "$repo" rev-parse --verify --quiet "refs/heads/$b" >/dev/null && { echo "$b"; return; }
+  done
+  b=$(git -C "$repo" for-each-ref --format='%(refname:short)' refs/heads 2>/dev/null | head -1)
   echo "${b:-main}"
 }
 MAIN_BRANCH="$(detect_main_branch "$PROJECT")"
 
 area_of() { echo "${1%%:*}"; }
 slug() { echo "$1" | tr ':' '-' | tr '/' '-'; }
+
+# 防御性根因补强（与 4fcb8bc 互补，非冗余）：worktree 方向标记桩 .opt-direction 写入
+# 工作区后，立即登记到该 worktree 专属 info/exclude，让 git 永不追踪它。4fcb8bc 在
+# cmd_merge 落地前 unstage+删桩（merge 兜底），但部分 worktree 分支仍可能在 merge 前
+# 误提交桩→各项目 main 历史泄漏（dingtalk-auto/x-tool/shizi/skills/1BfrYn9G 均有）。
+# info/exclude 从源头阻断：标记留磁盘可读（opt-worktree 自身读它定 area），但 git
+# add/commit 永不纳入。用 git --git-path 取 linked worktree 各自独立的 exclude 文件，幂等追加。
+_ignore_opt_direction_marker() {
+  local wt="$1"
+  [[ -z "$wt" ]] && return 0
+  local excl; excl=$(git -C "$wt" rev-parse --git-path info/exclude 2>/dev/null) || return 0
+  [[ -n "$excl" && -f "$excl" ]] || return 0
+  grep -qx -- ".opt-direction" "$excl" 2>/dev/null || printf '%s\n' ".opt-direction" >> "$excl"
+}
 
 ensure_main_wt() {
   local dir="$WT_BASE/optimization"
@@ -46,6 +73,7 @@ ensure_main_wt() {
     git -C "$PROJECT" worktree add -b auto/optimization "$dir" "$MAIN_BRANCH" 2>/dev/null || \
       git -C "$PROJECT" worktree add "$dir" auto/optimization 2>/dev/null || true
     echo "engine:general" > "$dir/.opt-direction"
+    _ignore_opt_direction_marker "$dir"
     echo "✓ 建 optimization worktree: $dir"
   fi
 }
@@ -55,7 +83,120 @@ current_area() {
   [[ -f "$dir/.opt-direction" ]] && area_of "$(cat "$dir/.opt-direction")" || echo "engine"
 }
 
-cmd_init() { ensure_main_wt; }
+cmd_init() { ensure_main_wt; _install_hooks "${@:3}"; }
+
+# 安装/校验 core.hooksPath=hooks（case-068 NEXT 可选 A 收口）。
+# case-068 已在主仓 git config core.hooksPath=hooks，但 git config 不随提交传播——
+# fresh clone（或新机器）须重跑本命令才能让 pre-commit 守卫生效。本函数幂等：
+# 写 config + 校验 hooks/pre-commit 是否落地（未合并 optimization 前主仓无此文件，
+# 仅告警不阻断——config 先就位，合并后钩子文件一落地即自动生效）。
+# --quiet：脚本化/CI 场景降噪——成功与"缺文件（fresh clone 未合并 optimization 的
+# 预期态）"均不打印，仅写 config 后 return 0；调用方信任 exit 0（本函数恒不阻断）。
+_install_hooks() {
+  local quiet=0
+  [[ "${1:-}" == "--quiet" ]] && quiet=1
+  local hook="$PROJECT/hooks/pre-commit"
+  git -C "$PROJECT" config core.hooksPath hooks
+  (( quiet )) && return 0
+  if [[ -f "$hook" ]]; then
+    echo "✓ core.hooksPath=hooks 已装；pre-commit 守卫生效（$hook 存在）"
+  else
+    echo "⚠ core.hooksPath=hooks 已装，但 $hook 不存在——主仓尚未合并 optimization（含 case-068 钩子）；合并后守卫自动生效"
+  fi
+}
+cmd_install_hooks() { _install_hooks "${@:3}"; }
+
+# install-ref-hooks — 把 reference-transaction 钩子批量装到子项目仓（case-103 rollout）
+# 背景：case-103 的 hooks/reference-transaction 只护 autonomous-studio-aone 本仓 main；
+#   case-047 实发于 shizi（CWD 漂移致 `git reset --hard` 误快进子项目 main，绕过
+#   commit-gate）。各子项目仓须各自装钩才护——本子命令把引擎仓 hooks/reference-transaction
+#   复制到目标仓生效的 hooks 目录（honors core.hooksPath，缺省 .git/hooks）+ chmod +x，
+#   幂等（cmp 一致则跳过）。与 install-hooks 互补：install-hooks 只设 core.hooksPath=hooks
+#   （引擎仓自身）；本子命令把 ref 守卫扩散到各子项目仓。
+# 源钩须先在引擎仓存在（case-103 已在 optimization worktree 落地 hooks/reference-transaction；
+#   未合并到 main 前须以本 worktree（或含该文件的 checkout）为 <project> 运行）；否则报错退出，
+#   不静默装空。
+# 用法: opt-worktree.sh <project> install-ref-hooks [repo1 repo2 ...]
+#   project = 引擎仓（含 hooks/reference-transaction 源）
+#   repoN   = 子项目仓路径（装钩目标）；缺省扫 $PROJECT/.. 下各 git 仓（跳过引擎自身）
+cmd_install_ref_hooks() {
+  local engine="$PROJECT"
+  local src="$engine/hooks/reference-transaction"
+  [[ -f "$src" ]] || { echo "❌ 引擎仓无 hooks/reference-transaction（case-103 未上 main？在 optimization worktree 内运行或先 merge auto/optimization）: $src" >&2; exit 1; }
+
+  local repos=()
+  if (( $# >= 3 )); then
+    repos=( "${@:3}" )
+  else
+    # 缺省：扫引擎仓兄弟目录下各 git 仓（子项目），跳过引擎自身
+    local d
+    while IFS= read -r -d '' d; do
+      [[ "$(cd "$d" && pwd -P)" == "$engine" ]] && continue
+      git -C "$d" rev-parse --git-dir >/dev/null 2>&1 || continue
+      repos+=( "$(cd "$d" && pwd -P)" )
+    done < <(for d in "$engine"/../*/; do [[ -d "$d" ]] && printf '%s\0' "$d"; done)
+  fi
+  [[ ${#repos[@]} -gt 0 ]] || { echo "（未发现子项目仓；显式传路径：opt-worktree.sh <project> install-ref-hooks <repo>...）"; exit 0; }
+
+  local installed=0 skipped=0 repo
+  for repo in "${repos[@]}"; do
+    [[ -d "$repo" ]] || { echo "⚠️ 跳过（非目录）: $repo" >&2; continue; }
+    git -C "$repo" rev-parse --git-dir >/dev/null 2>&1 || { echo "⚠️ 跳过（非 git 仓）: $repo" >&2; continue; }
+    # 生效的 hooks 目录：core.hooksPath 优先（相对仓根），否则 .git/hooks
+    local hp hooksdir
+    hp=$(git -C "$repo" config core.hooksPath 2>/dev/null || true)
+    if [[ -n "$hp" ]]; then
+      hooksdir="$repo/$hp"
+    else
+      hooksdir="$(git -C "$repo" rev-parse --absolute-git-dir)/hooks"
+    fi
+    mkdir -p "$hooksdir"
+    local dst="$hooksdir/reference-transaction"
+    if [[ -f "$dst" ]] && cmp -s "$src" "$dst"; then
+      echo "✓ 已最新（跳过）: $(basename "$repo")  → $dst"
+      skipped=$((skipped+1))
+    else
+      cp -p "$src" "$dst"
+      chmod +x "$dst"
+      echo "✓ 装钩: $(basename "$repo")  → $dst"
+      installed=$((installed+1))
+    fi
+  done
+  echo "install-ref-hooks 完成: 新装 $installed / 已最新 $skipped"
+}
+
+# 连带 revert 可见性守卫——抽成独立函数供 cmd_commit 与直接 worktree git commit
+# 两路径共用（case-065 NEXT 收口：直接提交路径原本不经此守卫，是真实漏洞——近几轮
+# engine 自指文件改 opt-worktree.sh 走直接 git commit，case-065 守卫从未被触发）。
+# 在 cwd（须为含 HEAD 的 worktree/分支）对已 staged 改动做精确自检：本次 staged
+# 删除行 ∩ 本分支相对 $MAIN_BRANCH 合并基的新增行（本分支自身已落地内容）→ 命中即警告。
+# 命中说明正删掉一个仅存于本分支的守卫/修复行，极可能旧基座编辑致连带 revert
+# （历史 b8458a6/5d0ed82 连 4 commit 毁掉 d3a1a8e/b476c86/5d0ed82 守卫，至 case-063/064
+# 审计才发现）。不中止（避免误伤合法重构），把静默 revert 变可见——"审计才发现"→"提交即见"。
+_assert_no_collateral_revert() {
+  local _mb; _mb=$(git merge-base "$MAIN_BRANCH" HEAD 2>/dev/null || true)
+  [[ -n "$_mb" ]] || return 0
+  local _staged; _staged=$(git diff --cached --name-only 2>/dev/null || true)
+  [[ -n "$_staged" ]] || return 0
+  local _f _rm _add _overlap
+  while IFS= read -r _f; do
+    [[ -z "$_f" || "$_f" == ".opt-direction" ]] && continue
+    _rm=$(git diff --cached -- "$_f" 2>/dev/null | grep -E '^-[^-]' | sed 's/^-//' || true)
+    [[ -n "$_rm" ]] || continue
+    _add=$(git diff "$_mb" HEAD -- "$_f" 2>/dev/null | grep -E '^\+[^+]' | sed 's/^+//' || true)
+    [[ -n "$_add" ]] || continue
+    _overlap=$(grep -F -x -f <(printf '%s\n' "$_add") <(printf '%s\n' "$_rm") || true)
+    if [[ -n "$_overlap" ]]; then
+      echo "⚠️ 连带-revert 疑似：$_f 删除了本分支已落地的行——若非有意请立即核对（case-063/064 根因，静默 revert 会毁已提交守卫）：" >&2
+      echo "$_overlap" >&2
+    fi
+  done <<< "$_staged"
+}
+
+# 直接 worktree git commit 前的手动守卫入口：agent 在 worktree 内 git add 后、commit 前
+# 跑 `opt-worktree.sh <project> precommit` 即得与 cmd_commit 同样的连带-revert 可见性。
+# 不改 staged、不中止（与 _assert_no_collateral_revert 语义一致）。
+cmd_precommit() { _assert_no_collateral_revert; }
 
 cmd_commit() {
   local direction="${3:?need direction}"
@@ -83,6 +224,7 @@ cmd_commit() {
       mkdir -p "$target"
       git -C "$PROJECT" worktree add -b "auto/opt-$(slug "$new_area")-$ts" "$target" "$MAIN_BRANCH" 2>/dev/null
       echo "$direction" > "$target/.opt-direction"
+      _ignore_opt_direction_marker "$target"
       echo "↔ 方向分歧（$cur_area → $new_area），开新 worktree: $(basename "$target")"
     fi
   fi
@@ -96,7 +238,7 @@ cmd_commit() {
   # 改显式 cp：①指定文件 cp 到 target → ②worktree add+commit → ③main 还原
   #   (tracked → checkout HEAD / untracked 新文件 → rm) → ④断言 worktree 有新 commit 且 main 干净
   cd "$PROJECT"
-  local files="${@:5}"
+  local -a files=("${@:5}")   # 数组保留含空格的文件名（旧 "${@:5}" 拼成空格串再 for f in $files 会按 IFS 分词，空格文件名断裂）
   if [[ -z "$(git status --porcelain)" ]]; then
     echo "（无未提交改动，跳过）"
     return 0
@@ -104,12 +246,79 @@ cmd_commit() {
   local head_before; head_before=$(git -C "$target" rev-parse HEAD)
 
   # ① 迁移改动到 target worktree
-  if [[ -n "$files" ]]; then
+  # cp-overwrite 守卫（case-060）：target 文件若与 main HEAD 不同（前轮未合并的已提交改动），
+  # cp 会静默抹掉。检测后跳过+警告，让人工 merge 后能察觉并补做；不中止整批避免阻塞正常流程。
+  _cp_guard() {
+    local src="$1" dst="$2"
+    if [[ -e "$dst" ]]; then
+      local main_rel; main_rel="${src#"$PROJECT"/}"
+      # 比较 target 现有内容 vs main HEAD 同名文件——不同即 target 有 main 不具备的改动
+      if ! git -C "$PROJECT" show "HEAD:$main_rel" >/dev/null 2>&1; then
+        # main HEAD 无此文件。若 target 已 track 它（target ahead 含此文件未合并的新增），
+        # cp main 工作区版本会抹掉 target 已提交内容（case-104 engine 自指文件类数据丢失风险）→ 跳过。
+        # 仅当 target 也未 track（双方均新增）才安全覆盖。
+        if git -C "$target" ls-files --error-unmatch "$main_rel" >/dev/null 2>&1; then
+          echo "⚠️ cp-guard: $main_rel 在 main HEAD 不存在但 worktree 已 track（前轮未合并新增），跳过以避免覆盖 target 已提交内容。请人工 merge 后重做，或（engine 自指文件）直编 opt-wt 版本后 wt 内提交（case-104）。" >&2
+          return 1
+        fi
+        : # main HEAD 无此文件 且 target 也未 track → 双方新增，安全覆盖（untracked 路径）
+      elif ! cmp -s "$dst" <(git -C "$PROJECT" show "HEAD:$main_rel" 2>/dev/null); then
+        echo "⚠️ cp-guard: $main_rel 在 worktree 与 main HEAD 不同（前轮未合并改动），跳过以避免覆盖。请人工 merge 后重做。" >&2
+        return 1
+      fi
+    fi
+    mkdir -p "$(dirname "$dst")"
+    cp -p "$src" "$dst"
+    return 0
+  }
+  # deletion 守卫（case-021）：main 删除了 tracked 文件时，worktree 同步删除。
+  # 但 worktree 该文件若与 main HEAD 不同（前轮未合并改动），删除会抹掉 pending →
+  # 跳过+警告，与 _cp_guard 同语义（case-060）。返回 0=已同步删除，1=跳过。
+  _del_guard() {
+    local src="$1" dst="$target/$1"
+    if [[ -e "$dst" ]]; then
+      local main_rel; main_rel="${src#"$PROJECT"/}"
+      if ! git -C "$PROJECT" show "HEAD:$main_rel" >/dev/null 2>&1; then
+        # main HEAD 无此文件——非"main 删除已提交文件"的合法同步场景
+        #（main index 暂存新增但工作区已删，或 target 自有 ahead 新增）。
+        # 此时 cmp 对照空流会让 target 空 tracked 文件误判"相同"进而 git rm
+        # 删掉 target 自有已提交文件（case-106 _cp_guard ahead-only 漏洞的删除对称面）→ 跳过。
+        echo "⚠️ del-guard: $main_rel 在 main HEAD 不存在（非合法删除同步），跳过以避免误删 worktree 自有 tracked 内容。请人工 merge 后重做，或（engine 自指文件）直编 opt-wt 版本后 wt 内提交（case-104）。" >&2
+        return 1
+      fi
+      if ! cmp -s "$dst" <(git -C "$PROJECT" show "HEAD:$main_rel" 2>/dev/null); then
+        echo "⚠️ del-guard: $main_rel 在 worktree 与 main HEAD 不同（前轮未合并改动），跳过删除以避免抹掉。请人工 merge 后重做。" >&2
+        return 1
+      fi
+      git -C "$target" rm -f -- "$src" >/dev/null 2>&1 || rm -f "$dst"
+    fi
+    echo "→ 同步删除: $src"
+    return 0
+  }
+  # cp-guard 跳过的文件清单：这些文件 main 现存改动与前轮未合并的 worktree 提交冲突，
+  # 不 cp 不还原，原样保留在 main 工作区待人工 merge 后重做——杜绝 case-059/060 的静默抹掉。
+  local -a skipped=()
+  _is_skipped() {
+    local x="$1" s
+    for s in "${skipped[@]}"; do [[ "$s" == "$x" ]] && return 0; done
+    return 1
+  }
+  local copied=0
+  if [[ ${#files[@]} -gt 0 ]]; then
     local f
-    for f in $files; do
-      [[ -e "$f" ]] || { echo "⚠️ 指定文件不存在，跳过: $f" >&2; continue; }
-      mkdir -p "$target/$(dirname "$f")"
-      cp -p "$f" "$target/$f"
+    for f in "${files[@]}"; do
+      if [[ -e "$f" ]]; then
+        _cp_guard "$f" "$target/$f" || { skipped+=("$f"); continue; }
+      elif git ls-files --error-unmatch "$f" >/dev/null 2>&1; then
+        # main 删除了 tracked 文件 → worktree 同步删除（修 case-021：
+        # 旧 [[ -e ]]||skip 在文件已删时跳过 cp，worktree git add -A 不复现 deletion，
+        # 删除类清理静默丢失，须手动建 worktree 规避）
+        _del_guard "$f" || { skipped+=("$f"); continue; }
+      else
+        echo "⚠️ 指定文件不存在且非 tracked，跳过: $f" >&2
+        continue
+      fi
+      copied=$((copied+1))
     done
   else
     echo "⚠️ 未指定文件列表，cp 全部改动（含用户 WIP 风险，建议显式传文件）" >&2
@@ -117,24 +326,48 @@ cmd_commit() {
     while IFS= read -r -d '' p; do
       p="${p#???}"               # 去掉前导 "XY "（status 2 字符 + 空格）
       case "$p" in *" -> "*) p="${p##* -> }";; esac   # rename 取新路径
-      [[ -e "$p" ]] || continue
-      mkdir -p "$target/$(dirname "$p")"
-      cp -p "$p" "$target/$p"
+      if [[ -e "$p" ]]; then
+        _cp_guard "$p" "$target/$p" || { skipped+=("$p"); continue; }
+      elif git ls-files --error-unmatch "$p" >/dev/null 2>&1; then
+        # 同步 tracked 文件删除（与显式文件分支同修复，见 case-021）
+        _del_guard "$p" || { skipped+=("$p"); continue; }
+      fi
+      copied=$((copied+1))
     done < <(git status --porcelain -z)
+  fi
+  # 全部文件被 cp-guard 跳过（或不存在）→ 无内容可提交。当前 .opt-direction 被
+  # .gitignore 忽略，故 `git add -A` 不 stage 任何真改动，`git commit` 随即以
+  # "nothing to commit" 硬失败（set -e abort）——报错晦涩易被误读为脚本故障。
+  # 更危险：若日后 .opt-direction 被移出 .gitignore，`git add -A` 会 stage 方向桩，
+  # 生成 .opt-direction-only 空提交，head-advance 断言因 HEAD 前进而通过 → 误报成功
+  # （历史 de5728b 即此症）。故 cp 前置守卫：copied=0 直接 warn+exit，不进 ②。
+  if (( copied == 0 )); then
+    echo "⚠️ 无文件被实际迁移（全部被 cp-guard 跳过或不存在）——无内容可提交，中止，不生成空提交。被跳过文件 main 改动已保留，请人工 merge 对应 worktree 后重做。" >&2
+    if (( ${#skipped[@]} > 0 )); then echo "   跳过文件: ${skipped[*]}" >&2; fi
+    exit 1
   fi
 
   # ② worktree 内提交
   cd "$target"
   git add -A
+  # .opt-direction 是 worktree 方向标记桩（untracked 元数据，cmd_new 写入），永不进提交——
+  # 恢复 5d0ed82(direction-meta-exclusion) 的剔除逻辑：b476c86(show-truncation-guard) 基于旧基座
+  # 构建，其 @@ -126,10 +126,6 @@ hunk 连带删除此行。git add -A 历史上把 .opt-direction 暂存、3 次泄漏
+  # 进 shizi/x-tool/opt-docs 提交需 chore 清理；此处显式从索引剔除（已 tracked 则 untrack，
+  # 工作树文件保留供 cmd_show 读，未 tracked 则 --ignore-unmatch no-op）。
+  git rm -r --cached -q --ignore-unmatch -- .opt-direction 2>/dev/null || true
+  # ⑤ 连带 revert 可见性守卫（case-063/064 根因防线，case-065 抽成共用函数）
+  _assert_no_collateral_revert
   git -c user.name="autonomous-studio" -c user.email="opt@auto" commit -q -m "opt($direction): $msg
 
 [auto-optimization on worktree $(basename "$target") — 待人工审合并]"
 
   # ③ 还原 main：tracked → checkout HEAD；untracked 新文件 → rm（已 cp 走）
   cd "$PROJECT"
-  if [[ -n "$files" ]]; then
+  if [[ ${#files[@]} -gt 0 ]]; then
     local f2
-    for f2 in $files; do
+    for f2 in "${files[@]}"; do
+      _is_skipped "$f2" && { echo "⏸ cp-guard 跳过 $f2：保留 main 改动待人工 merge 后重做（不抹除）" >&2; continue; }
       if git ls-files --error-unmatch "$f2" >/dev/null 2>&1; then
         git checkout HEAD -- "$f2" 2>/dev/null || true   # tracked：还原到 HEAD
       else
@@ -146,6 +379,7 @@ cmd_commit() {
     while IFS= read -r -d '' p2; do
       p2="${p2#???}"
       case "$p2" in *" -> "*) p2="${p2##* -> }";; esac
+      _is_skipped "$p2" && { echo "⏸ cp-guard 跳过 $p2：保留 main 改动待重做" >&2; continue; }
       if git ls-files --error-unmatch "$p2" >/dev/null 2>&1; then
         git checkout HEAD -- "$p2" 2>/dev/null || true
       else
@@ -161,11 +395,23 @@ cmd_commit() {
     echo "⚠️ 断言失败：worktree 无新 commit（cp/commit 未生效），改动仍在 main" >&2
     exit 1
   fi
-  local leak
-  if [[ -n "$files" ]]; then
-    leak=$(git status --porcelain -- $files)
+  # leak 断言排除 cp-guard 跳过的文件——它们按设计保留在 main（未 cp 未还原），不算泄漏
+  local leak=""
+  if [[ ${#files[@]} -gt 0 ]]; then
+    local -a kept=() ff
+    for ff in "${files[@]}"; do _is_skipped "$ff" || kept+=("$ff"); done
+    if [[ ${#kept[@]} -gt 0 ]]; then
+      leak=$(git status --porcelain -- "${kept[@]}")   # "${kept[@]}" 全展开（旧 -- $files 在 files 改数组后仅展开首元素→漏检其余文件的残留改动）
+    fi
   else
-    leak=$(git status --porcelain)
+    local _line _path
+    while IFS= read -r _line; do
+      [[ -z "$_line" ]] && continue
+      _path="${_line#???}"
+      case "$_path" in *" -> "*) _path="${_path##* -> }";; esac
+      _is_skipped "$_path" && continue
+      leak+="${_line}"$'\n'
+    done < <(git status --porcelain)
   fi
   if [[ -n "$leak" ]]; then
     echo "⚠️ 断言失败：本次提交的文件在 main 仍有残留改动（还原未生效），人工核对：" >&2
@@ -198,8 +444,19 @@ cmd_show() {
   echo "提交:"
   git -C "$dir" log --oneline "$MAIN_BRANCH"..HEAD 2>/dev/null
   echo "--- diff ---"
+  # head -300 截断时必须告知审阅者有遗漏——5+ 提交的 worktree diff 常超 300 行，
+  # 静默截断会让合并门禁审阅漏看改动。先量总行数，截断时打印省略量 + 完整 diff 命令。
+  # （b476c86 引入此守卫；b8458a6 基于 b476c86 之前的旧基座构建，diff 连带 revert 了
+  # 此 hunk，后续提交均未恢复——本 commit 修复该静默回归。）
+  local total
+  total=$(git -C "$dir" diff "$MAIN_BRANCH"...HEAD 2>/dev/null | wc -l)
+  total="${total// /}"
   git -C "$dir" diff "$MAIN_BRANCH"...HEAD 2>/dev/null | head -300
-  echo "..."
+  if [[ "$total" =~ ^[0-9]+$ ]] && (( total > 300 )); then
+    echo "...（diff 共 ${total} 行，仅显示前 300 行——完整 diff: git -C \"$dir\" diff \"$MAIN_BRANCH\"...HEAD）"
+  else
+    echo "..."
+  fi
   echo "审完: opt-worktree.sh merge \"$PROJECT\" \"$wt\"   或   opt-worktree.sh reject \"$PROJECT\" \"$wt\""
 }
 
@@ -208,11 +465,29 @@ cmd_merge() {
   local dir="$WT_BASE/$wt"
   [[ -d "$dir" ]] || { echo "❌ worktree 不存在: $wt"; exit 1; }
   cd "$PROJECT"
-  git checkout "$MAIN_BRANCH" 2>/dev/null || true
+  # 切回主分支准备合并。恢复 d3a1a8e(merge-checkout-guard) 的失败即中止：5d0ed82 基于旧基座
+  # 构建，其 diff 连带把此行 revert 回 `|| true` 吞掉错误——checkout 失败（detached HEAD + 探测
+  # 出错分支、或工作区脏）绝不能被吞，否则 merge 会在错的 HEAD 上 squash 提交进黑洞。失败即中止。
+  if ! git checkout "$MAIN_BRANCH" 2>/dev/null; then
+    echo "❌ 切回 $MAIN_BRANCH 失败（detached HEAD？工作区脏？分支不存在？），中止合并，未改动 $PROJECT"
+    exit 1
+  fi
   if git merge --squash "auto/$(basename "$dir")" 2>/dev/null || git merge --squash "$wt" 2>/dev/null; then
+    # .opt-direction 是 worktree 本地方向标记桩（untracked 为主，部分 worktree 分支误提交了它）。
+    # git merge --squash 把分支差异整批暂存进 main，含此桩 → 历史上每次 merge 都把 .opt-direction
+    # 泄漏到 main（dingtalk-auto/x-tool/shizi/skills 等均有「移除泄漏的 .opt-direction」chore 跟在
+    # merge 后）。落地前剔除：已暂存则 unstage，工作区有则删，保证 main 不带 worktree 内部元数据。
+    if git diff --cached --name-only -- .opt-direction 2>/dev/null | grep -q .; then
+      git reset -q HEAD .opt-direction 2>/dev/null || true
+      git rm --cached --quiet .opt-direction 2>/dev/null || git restore --staged .opt-direction 2>/dev/null || true
+    fi
+    rm -f "$PROJECT/.opt-direction"
     git -c user.name="autonomous-studio" -c user.email="opt@auto" commit -q -m "merge: 人工批准合并 optimization worktree '$wt'
 
-$(git log --oneline auto/$(basename "$dir") 2>/dev/null | head -5)"
+$(git log --oneline "$MAIN_BRANCH"..auto/$(basename "$dir") 2>/dev/null | head -5)"
+    # ↑ 只列 worktree 相对 main 的 ahead 提交（本 worktree 真实贡献）。旧 `git log --oneline auto/...`
+    # 从根起 log 整条分支史，会把 main 已有提交灌进合并消息正文（实测 873f688 正文混入
+    # 2aa0eba/0a2124d/4dc2565 等 main 提交，仅 734512b 属该 worktree），误导审阅。
     echo "✓ 已 squash 合并 $wt → $MAIN_BRANCH"
     git -C "$PROJECT" worktree remove "$dir" --force 2>/dev/null || rm -rf "$dir"
     echo "✓ worktree 清理"
@@ -295,7 +570,7 @@ cmd_next_case() {
 }
 
 case "$CMD" in
-  init) cmd_init ;;
+  init) cmd_init "$@" ;;
   commit) cmd_commit "$@" ;;
   list) cmd_list ;;
   show) cmd_show "$@" ;;
@@ -303,5 +578,8 @@ case "$CMD" in
   reject) cmd_reject "$@" ;;
   cleanup) cmd_cleanup ;;
   next-case) cmd_next_case "$@" ;;
-  *) echo "用法: opt-worktree.sh <project> <init|commit|list|show|merge|reject|cleanup|next-case> ..."; exit 1 ;;
+  precommit) cmd_precommit ;;
+  install-hooks) cmd_install_hooks "$@" ;;
+  install-ref-hooks) cmd_install_ref_hooks "$@" ;;
+  *) echo "用法: opt-worktree.sh <project> <init|commit|list|show|merge|reject|cleanup|next-case|precommit|install-hooks|install-ref-hooks> ..."; exit 1 ;;
 esac

@@ -9,7 +9,7 @@
   "files_changed": ["scripts/autonomous-loop.sh"],
   "worktree": "optimization (auto/optimization branch)",
   "direction": "engine:state-persistence",
-  "outcome": "done",
+  "outcome": "succeeded",
   "outcome_evidence": "opt-worktree list 显示 optimization | 1 提交 | 2 files changed 6 insertions(+); git status main clean; studio-precheck.sh 第30行 grep GOAL_STATUS 与 PROMPT step6 回写字段对齐。",
   "next_suggestion": "下轮：本 fix 待人工 opt-worktree.sh show/merge 合入 main 后 loop 才真正用上 step6；合并前每轮仍需 agent 手动回写 state（本轮已手动回写）。可转 P1：shizi 5 处 dirty + 缺 GATES.md（debug 测试文件入库/清理 triage）。",
   "outcome_enum_verified": true

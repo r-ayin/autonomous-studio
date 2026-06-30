@@ -1,0 +1,40 @@
+#!/usr/bin/bash
+# pre-commit — 连带-revert 可见性守卫的 git 钩子入口（case-068，落实 state 可选 A）
+#
+# 背景：opt-worktree.sh 的 _assert_no_collateral_revert（case-063/064 根因防线，
+#   case-065 抽成共用函数 + precommit 子命令）把"静默 revert 已落地守卫"变成
+#   "提交即见"的警告。但它依赖 agent 在 worktree 内 git add 后、commit 前主动跑
+#   `opt-worktree.sh <project> precommit`——近几轮 engine 自指改 opt-worktree.sh
+#   走直接 git commit 路径，case-065 守卫从未被触发（state case-067 NEXT 已记）。
+#   本钩子把守卫接到 git commit 真实路径：core.hooksPath=hooks 后，auto/* 分支
+#   的每次 git commit 自动触发，不再依赖 agent 自觉。
+#
+# 设计约束（与守卫语义一致，case-066 维持现状）：
+#   • 不中止（exit 0）——避免误伤合法重构；守卫只 warn，是否阻断待实战样本积累
+#     再决定（state 可选 B，无样本前不升级 exit 1）。
+#   • 仅 auto/* 分支（opt worktree）触发——main 仓 HEAD==MAIN_BRANCH，merge-base
+#     退化、diff 为空，跑了也是空跑；显式跳过避免噪音与误报。
+#   • 用 worktree 自身的 scripts/opt-worktree.sh（repo_root）——main 仓的脚本还是
+#     16 commit 之前的旧版（无 precommit 子命令，optimization 未合并），用 main
+#     的会 exit 1 阻断提交。MAIN_BRANCH 仍从 main 仓解析（detect_main_branch）。
+#   • 守卫在 HOOK 的 cwd（即当前 worktree，已 staged）跑 git diff --cached 与
+#     git merge-base——cmd_precommit 不 cd，故 cwd 不变，staged 上下文保留。
+set -euo pipefail
+
+# 仅 opt worktree（auto/* 分支）触发；其他分支（main / detached）静默放行。
+case "$(git symbolic-ref --short HEAD 2>/dev/null || true)" in
+  auto/*) ;;
+  *) exit 0 ;;
+esac
+
+repo_root=$(git rev-parse --show-toplevel)
+main_wt=$(git worktree list --porcelain | awk '/^worktree /{print $2; exit}')
+[[ -n "$main_wt" ]] || exit 0
+opt="$repo_root/scripts/opt-worktree.sh"
+[[ -f "$opt" ]] || exit 0   # 脚本不在（fresh checkout 未带）→ 不阻断，降级回旧行为
+
+# 委派给 opt-worktree.sh 的 precommit 子命令（PROJECT=main 仓 → 解析正确 MAIN_BRANCH；
+# 守卫在 cwd=本 worktree 对 staged 改动自检）。opt-worktree.sh precommit 恒 exit 0
+# （守卫仅 warn），故本钩子恒 exit 0——不阻断 commit。
+bash "$opt" "$main_wt" precommit
+exit 0

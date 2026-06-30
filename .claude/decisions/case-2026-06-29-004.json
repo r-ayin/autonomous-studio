@@ -12,7 +12,7 @@
     "quanzhan/planning/roadmap.md"
   ],
   "worktree": "opt-docs-1782640587（已合并，操作完成）",
-  "direction": "docs",
+  "direction": "docs:planning",
   "outcome": "succeeded",
   "outcome_evidence": "git log quanzhan master 显示三次提交：3b3f259(GATES.md) a9ee3d4(PROGRESS.md) dc7a160(.opt-direction 清除) 411fe4b(planning/roadmap.md)；scout-scan #1 项目结构缺失问题已闭环",
   "next_suggestion": "下轮选 #2 text-counter-extension：同类 opt-docs worktree 待合并，补 planning/；或选 #3 browser-use 的 34 个 TODO triage"

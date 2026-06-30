@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-06-30-084",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-30T03:20Z",
+  "project": "skills",
+  "work_unit": "补 skills/PROGRESS.md（scout #1 健康缺口）+ 同步 GATES.md 移除陈旧『待合并』标注",
+  "situation": "scout-scan 2026-06-30 报 skills 为 #1（score=2.0 ⏳blocked），理由：PROGRESS.md 缺失⏳待合并(opt-docs-1782736126)、GATES.md 待合并(opt-docs-1782736126)、planning/ 待合并(opt-docs-1782736126)。本轮核验发现该 blocked 状态为陈旧元数据：opt-docs-1782736126 分支已不存在（git branch 无该分支、git log opt-docs-1782736126 报 unknown revision）、对应 worktree 已不在 .opt-worktrees/（仅剩 optimization）。git log --all -- skills/PROGRESS.md 在任何分支都无提交记录，即 PROGRESS.md 从未被提交过——『等合并』worktree 已丢失，缺口为真缺失而非待合并。skills 为纯文档型 skill 仓库（30 一级目录/37 SKILL.md，fn=14 全脚本入口，TODO/FIXME/HACK=0/0/0），补 PROGRESS.md 是 scout 排序出的最高健康度结构性缺口，且非引擎自润色（skills 是 scout 认定的真实项目，非 engine 自身代码）。",
+  "action": "1) 新建 skills/PROGRESS.md（30 行）：对齐根仓库 PROGRESS.md 格式——当前状态（30 目录/37 SKILL.md/0 标记，最近合并 opt-skills-1782736482）、最近变更 4 条、待办池（dingtalk-sheet-pull-skill 缺 SKILL.md、writing-style 缺 name+description frontmatter、planning/ 缺失、跨 skill [[link]] 可达性核验，均源自 GATES.md 已记录缺口）、纪律段。2) 编辑 skills/GATES.md NICE 区第 25 行：『[ ] PROGRESS.md 记录 skill 增删（当前 ⏳待合并 opt-docs-1782736126）』→『[x] PROGRESS.md 记录 skill 增删（2026-06-30 补齐；原 opt-docs-1782736126 worktree/分支已不存在，陈旧「待合并」标注移除）』，移除指向已死分支的陈旧标注并勾选通过。3) bash scripts/opt-worktree.sh . commit skills:progress-doc <msg> skills/PROGRESS.md skills/GATES.md —— 方向分歧 engine→skills 开新 worktree opt-skills-1782760777，main 工作区还原干净。",
+  "files_changed": ["skills/PROGRESS.md", "skills/GATES.md"],
+  "worktree": "opt-skills-1782760777 (autonomous-studio-aone, area=skills:progress-doc, commit ae69d4e, ahead of main=1)",
+  "direction": "skills:progress-doc",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "git -C opt-skills-1782760777 log --oneline -1 = ae69d4e opt(skills:progress-doc): 补 skills/PROGRESS.md...；git show --stat HEAD = skills/GATES.md |2 +-|、skills/PROGRESS.md |30 +++|（2 files changed, 31 insertions, 1 deletion）",
+    "main 工作区 git status --short skills/ 无输出（干净，main 永远安全）；skills/PROGRESS.md 在 main 不存在（ls 报 No such file，正确——走人工 merge gate）",
+    "opt-worktree 提交输出：『↔ 方向分歧（engine → skills），开新 worktree: opt-skills-1782760777』『✓ 提交到 opt-skills-1782760777 方向=skills:progress-doc』",
+    "next-case 返回 case-2026-06-30-084 无撞号",
+    "GATES.md 第 25 行已由 [ ] 待合并改为 [x] 补齐（worktree 内提交版本）"
+  ],
+  "next_suggestion": "opt-skills-1782760777 待人工审合并到 main（合并后 skills 的 scout score 应从 2.0 下降、解除 #1 blocked、PROGRESS.md 落地）。下轮无人工 merge 时：1) 可继续填 skills GATES.md CRITICAL 遗留缺口——dingtalk-sheet-pull-skill/ 补 SKILL.md 或标 deprecated、writing-style/SKILL.md 补 name+description frontmatter（均为 1-2 文件小工作单位，scout 排序后大概率仍靠前）；2) optimization worktree（34 ahead, 7f89966）仍待人工合并落地 telemetry；3) 勿重启 engine 自指自润色——本轮证明 skills 非 engine 自身、补文档为真实缺口，可安全继续 skills 内门禁项收尾。"
+}

@@ -1,0 +1,25 @@
+{
+  "case_id": "case-2026-06-29-045",
+  "agent_id": "ralph-autonomous-studio",
+  "timestamp": "2026-06-29T13:16:27Z",
+  "project": "agent-dashboard",
+  "work_unit": "补齐审批决策闭环：前端 handleApprove/handleDeny 仅有本地状态更新无后端调用，后端 approval_service.respond 已存在但无 HTTP 路由暴露",
+  "situation": "scout-scan #1 = agent-dashboard (score=0.38, TODO=2/0/0 密度0.038)。两处 TODO 均在 frontend/src/App.tsx：L142 'TODO: POST to backend approval API'（handleApprove）、L156 'TODO: POST to backend message API'（handleSendMessage）。核查发现 approval_service.respond(sid,request_id,decision) 已实现（记录决策 + publish 到 approval_response:{sid}:{request_id} 通道唤醒阻塞中的 agent），但 backend/app/main.py 无对应 REST 路由——前端审批按钮只改本地 UI 状态，决策永远到不了等待中的 agent，审批闭环断裂。message_injector 走的是 Socket.IO agent_message 事件（main.py L467）而非 REST POST，与 L156 TODO 描述的 'POST to backend message API' 路径不同，属设计差异需单独处理，本轮不碰。",
+  "action": "最小双文件改动闭合审批 TODO：(1) backend/app/main.py — import 行加 respond as approval_respond；在 session_details 路由后新增 POST /api/sessions/{sid}/approvals/{request_id}，body={decision}，校验 approve/deny 否则 422，调用 approval_respond 返回 {recorded:bool}（复用 respond 内置幂等守卫）。(2) frontend/src/App.tsx — 新增 postApproval(sid,requestId,decision) helper（fetch POST + 错误降级 console.warn）；handleApprove/handleDeny 改为调用 postApproval('approve'/'deny') 后再 setCards；删除 L142 TODO 注释。",
+  "files_changed": ["backend/app/main.py", "frontend/src/App.tsx"],
+  "worktree": "opt-agent-dashboard-1782738987 (/home/admin/workspace/.opt-worktrees/agent-dashboard/opt-agent-dashboard-1782738987 — 方向 agent-dashboard:approval-wiring)",
+  "direction": "agent-dashboard:approval-wiring",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "main.py: ast.parse 通过（backend/.venv/bin/python -c 'ast.parse' → 'main.py syntax OK'）",
+    "App.tsx: tsc --noEmit 输出中无 App.tsx 条目（grep 'App.tsx' 无命中 → 'no type errors from my changes'）；ApprovalQueue.tsx 的 snake/camelCase 报错为 pre-existing（本轮未触碰该文件）",
+    "worktree HEAD 4ba098a，git show --stat: backend/app/main.py +20/-1, frontend/src/App.tsx +18/-1（共 2 文件 36+/2-）",
+    "worktree 内 grep: 'approvals/{request_id}|approval_respond' 命中 3 处（路由就位）；'TODO: POST to backend approval' 命中 0 处（TODO 已清）",
+    "main 工作树已被 opt-worktree 还原为干净（响应符合 opt-worktree 提交→还原 main 设计）"
+  ],
+  "next_suggestion": [
+    "处理 App.tsx L156 message TODO：后端走 Socket.IO agent_message 事件而非 REST，需前端引入 socket client 发 emit('agent_message',{sid,content})，路径与 approval 不同，建议单独一轮（先确认 socketManager 是否已暴露 emit 接口）",
+    "合并 opt-agent-dashboard-1782738987 到 agent-dashboard main（人工审 diff 后 opt-worktree.sh merge）",
+    "下轮 scout 重扫：agent-dashboard TODO 应从 2 降到 1（仅剩 message TODO），score 可能让出 #1"
+  ]
+}

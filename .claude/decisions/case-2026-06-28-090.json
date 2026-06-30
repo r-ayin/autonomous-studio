@@ -10,7 +10,7 @@
     "planning/status.json"
   ],
   "worktree": "dingtalk-auto/opt-docs-1782639001",
-  "direction": "docs",
+  "direction": "docs:planning",
   "outcome": "succeeded",
   "outcome_evidence": "git commit 6c9ff01 成功：'opt(docs:planning): 补 planning/status.json — 项目路线图三件套完成'，1 file changed, 61 insertions(+)。opt-docs-1782639001 现包含 GATES.md + PROGRESS.md + planning/status.json 三件套。",
   "next_suggestion": "1) 人工批准合并 dingtalk-auto/opt-docs-1782639001（三件套 GATES.md+PROGRESS.md+planning/status.json，4 commits）; 2) linshi（scout #2）补 planning/ 目录; 3) open-design（scout #3）补 planning/ 目录"

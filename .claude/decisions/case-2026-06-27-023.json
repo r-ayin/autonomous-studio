@@ -1,7 +1,7 @@
 {
   "case_id": "case-2026-06-27-023",
   "agent_id": "ralph-autonomous-loop",
-  "timestamp": "2026-06-27T11:30:00+08:00",
+  "timestamp": "2026-06-27T11:30:00Z",
   "project": "sunset-prediction",
   "work_unit": "补 prediction-engine 首个回归测试（GATES P0「0测试」）",
   "situation": "scout-scan 排 sunset-prediction #1（score=1.0），推荐工作单位=文档润色/无 planning/。读 PROGRESS/GATES 发现真实结构性缺口是 P0「0测试覆盖」，遂改为补回归测试（更实于文档润色）。prediction-engine.js 是纯 ESM 模块无 I/O，适合 node:test 冒烟测试。",

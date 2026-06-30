@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-06-30-063",
+  "agent_id": "ralph-autonomous-studio",
+  "timestamp": "2026-06-30T00:15Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "engine:show-truncation-restore — 恢复 cmd_show 的 head -300 截断守卫（被 b8458a6 基于旧基座连带 revert，后续未恢复）",
+  "situation": "scout-scan 报告全部项目 blocked（#1 skills score=2.0 等合并 opt-docs-1782736126，末尾「⚠️ 无可操作工作单位」需人工合并 opt-* worktree 解锁）。autonomous-studio 不被排除，转引擎自身。承接 case-062 NEXT【3·新小工作单位】考察 cmd_show 的 head -300 截断。审 cmd_show（worktree HEAD d237426 line 244-256）发现仍是纯 `git diff ... | head -300` + `echo \"...\"`，无省略量提示。但 b476c86(show-truncation-guard) 提交信息明示已加「diff 超 300 行时打印省略量+完整 diff 命令」。溯源：git grep 守卫标记「仅显示前 300」逐 commit 验证——仅 b476c86 tree 命中 2 处，b8458a6(紧随其后)起全部消失。git show b8458a6 diff 确认：该 commit 本应只改 cmd_commit 的 files 数组（b8458a6 提交信息仅述 files-array-quoting），但其 diff 含 `@@ -198,17 +198,8 @@ cmd_show()` hunk，把 b476c86 的守卫（local total + wc -l + >300 分支打印省略量）revert 回纯 `echo \"...\"`。根因：b8458a6 基于 b476c86 之前的旧基座构建（其 parent tree 无守卫），diff 应用时连带把 cmd_show 恢复成旧态——典型跨 commit 静默回归，0927e26/1b1f6b4/528ac01/b22245b/d237426 均未察觉恢复。合并门禁审阅大 worktree（如现 13 ahead）时静默截断会让审阅者漏看超 300 行的改动。",
+  "action": "在 optimization worktree 内直接编辑 scripts/opt-worktree.sh（非 cmd_commit cp——opt-worktree.sh 自身有未合并分歧，cp-guard 会跳过/硬阻断；状态明示引擎侧勿 cp 该文件进 worktree，直接编辑 worktree 文件提交）。恢复 b476c86 的守卫逻辑于 cmd_show：`echo \"--- diff ---\"` 后加注释（说明 b476c86 引入、b8458a6 连带 revert、本 commit 修复回归）+ `local total; total=$(git diff ... | wc -l); total=\"${total// /}\"` + 保留 `head -300` + `if [[ \"$total\" =~ ^[0-9]+$ ]] && (( total > 300 )); then echo \"...（diff 共 ${total} 行，仅显示前 300 行——完整 diff: git -C \\\"$dir\\\" diff \\\"$MAIN_BRANCH\\\"...HEAD）\"; else echo \"...\"; fi`。守卫逻辑与 b476c86 原版一致（保留已审阅形式），仅加溯源注释。",
+  "files_changed": ["scripts/opt-worktree.sh"],
+  "worktree": "optimization (branch auto/optimization, commit a934105)",
+  "direction": "engine:show-truncation-restore",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "bash -n scripts/opt-worktree.sh → SYNTAX OK（语法通过）",
+    "git diff vs worktree HEAD(d237426)：scripts/opt-worktree.sh +12/-1，单文件，仅 cmd_show 区域",
+    "git grep 守卫标记验证：HEAD-tree scripts/opt-worktree.sh 命中「仅显示前 300|total=$(git」=2 处（修复前 d237426 为 0 处），grep -c '仅显示前 300'=1",
+    "worktree commit a934105 已落地：git log --oneline -1 → 'a934105 opt(engine:show-truncation-restore): ...'；worktree 现 13 ahead（main..HEAD count=13）",
+    "边界功能实测（test_guard 函数复刻守卫逻辑）：total=350→打印「...（diff 共 350 行，仅显示前 300 行...）」；301→打印省略量；300→纯 '...'（边界 not >300 不误报）；50→纯 '...'；0→纯 '...'（空 diff 不误报有省略）；''→纯 '...'（非数字被 regex ^[0-9]+$ 拦截，不进算术比较，无 bash 错误）",
+    "溯源证据：git grep -c '仅显示前 300|total=$(git' 逐 commit——204bc93/d3a1a8e/5d0ed82 无、b476c86=2、b8458a6/0927e26/1b1f6b4/528ac01/b22245b/d237426 均无（证 b8458a6 revert、后续未恢复）"
+  ],
+  "next_suggestion": "【1·人工·最高优先】合并 optimization worktree → main（现 13 ahead：a934105 show-truncation-restore + d237426 empty-commit-guard + b22245b cp-guard-preserve + 528ac01/1b1f6b4/0927e26/b8458a6/b476c86/5d0ed82/d3a1a8e/2978eaf/204bc93/96c5d57。squash merge 一次性获得；本轮修复的守卫在合并后即对 cmd_show 生效）。【2·merge 后】cp-guard 升级硬阻断（abort 整批而非 warn+skip）——empty-commit-guard 已封全跳过误报，硬阻断进一步统一语义：任一文件分歧即整批 abort 消除「半提交」。【3·新小工作单位】本轮发现 b8458a6 连带 revert 模式提示：worktree 内多 commit 基于彼此旧基座构建易静默回退已落地修复。建议 merge 后做一次「worktree 全 commit vs HEAD tree」回归审计——对每个 opt(engine:*) commit 用 git grep 验证其声称的改动是否仍在 HEAD tree（如本轮 b476c86 守卫被 revert 即此审计本应早发现）。【4·解锁 scout】人工合并 opt-docs-1782736126 → 解锁 skills(#1)；或 opt-agent-dashboard/opt-browser-use/opt-xtool 任一。引擎侧勿 cp opt-worktree.sh/scout-scan.py 进 optimization worktree（必覆盖存活工作）——直接编辑 worktree 文件提交如本轮。"
+}

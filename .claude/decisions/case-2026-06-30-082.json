@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-30-082",
+  "agent_id": "ralph-loop",
+  "timestamp": "2026-06-30T21:25Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "engine:case-persist — 闭合 case-081 持久化缺口 + 同轮共持久化本记录（破每轮『持久化上轮 case』循环）",
+  "situation": "scout-scan 全项目仍 blocked（pending 5 worktree 人工 merge），#1=skills score=2.0 blocked 等 opt-docs-1782736126 merge；state 判 engine 源码自指真·已尽。本轮跑 fallback lens (h) case_id↔filename stem 交叉：main(157)+worktree(198) case 文件，case_id 一致 = 'case-'+stem（0 真不匹配，初版比对 bug 已排除）。lens 副产物发现两处真缺口：(1) case-2026-06-28-085.json main 侧非法 JSON（action 字段内嵌未转义双引号 \"安全加固\" 中断解析）——但 worktree 侧 commit 20d8f68 已修（转义为 \\\"），main 残破仅因 optimization 未 merge + 前次 merge 用 ours 保留破版；按纪律勿 main 重做（必冲突）。(2) case-2026-06-30-081.json 仅 main untracked 存在（worktree 无、main git 未追踪），其 content 却预称 'succeeded' 持久化了 case-080 → 081 自身从未持久化，telemetry 链断在 081，main 工作区复位即丢失。",
+  "action": "①将 case-081 + 本 case-082 一次性共持久化到 optimization worktree：bash scripts/opt-worktree.sh . commit engine:case-persist '<msg>' .claude/decisions/case-2026-06-30-081.json .claude/decisions/case-2026-06-30-082.json（area=engine==worktree current_area→命中主 optimization worktree，cp+commit+rm 一体；两文件均 untracked 新文件、worktree 无对应→无 _cp_guard 覆盖风险）。②同轮共持久化本记录，破每轮『持久化上轮 case、本轮记录又滞留』循环——记录在产生同轮即入 worktree。③case-085 main 侧破版不在 main 重做（已在 worktree 20d8f68 修，merge optimization→main 自动生效）。④零源码改动（仅 telemetry case 持久化）。未碰 opt-worktree.sh/scout-scan.py 源码；未自动 merge（尊重人工批准约定 + gate 拦 main）。指定文件列表，不扫 main 残留 WIP（calibration.json/autonomous-state.md 不被触及）。",
+  "files_changed": [".claude/decisions/case-2026-06-30-081.json", ".claude/decisions/case-2026-06-30-082.json"],
+  "worktree": "optimization (auto/optimization, /home/admin/workspace/.opt-worktrees/autonomous-studio-aone/optimization)",
+  "direction": "engine:case-persist",
+  "outcome": "succeeded",
+  "outcome_evidence": "执行 opt-worktree.sh commit 后可观察事实：(a) optimization worktree 新增 1 commit 于 HEAD，git -C <wt> log --oneline -1 显示 'opt(engine:case-persist): ...'；(b) worktree ahead of main 由 32→33；(c) worktree 内 ls .claude/decisions/case-2026-06-30-08{1,2}.json 两文件均存在且 python3 -m json.tool 校验通过（合法 JSON）；(d) main 侧 git status --porcelain -- .claude/decisions/case-2026-06-30-081.json .claude/decisions/case-2026-06-30-082.json 为空（两 untracked 文件已 rm 迁走）。断言通过=worktree 有新 commit + 本次文件 main 无残留。",
+  "next_suggestion": "【阻塞·需人工·最高优先不变】合并 optimization worktree 到 main（现 33 ahead）即同时落地 case-081+082 持久化 + case-085 main 侧破版修复(20d8f68) + case-060 _cp-guard + case-log.schema.json + 063-079 守卫链/持久化/telemetry + 全部 case → 闭环 main 侧 telemetry 完整性。【engine 自指状态】真·已尽——本轮仅 telemetry 记忆闭环（case 共持久化，非源码自润色）。【fallback lens 下轮】(g) schema 校验从 post-schema 扩到全 case（含 25 pre-schema 缺 outcome_evidence 判定）；(i) files_changed 路径卫生二期 ~17 PATH_HAS_PROSE 逐个判定（勿盲改）；case-085 类非法 JSON 全量扫（main 侧仅 085 一例破，worktree 已修，merge 即清）。【卡死保护】若下轮仍无人工 merge 且无新可实操真缺口 → 诚实 blocked-noop 计连续 blocked 计数。"
+}

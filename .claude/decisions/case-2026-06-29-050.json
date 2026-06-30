@@ -1,0 +1,25 @@
+{
+  "case_id": "case-2026-06-29-050",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-29T14:30Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "scout-scan discover_projects 符号链接去重——同库被计两次致健康榜 #1/#2 同分霸榜",
+  "situation": "scout-scan #1=autonomous-studio(score=0.04,TODO=3 active) 且 #2=autonomous-studio-aone(score=0.04,TODO=3) 同分霸榜。核查发现 /home/admin/workspace/autonomous-studio 是指向 autonomous-studio-aone 的符号链接（ls -la 确认 lrwxrwxrwx autonomous-studio -> autonomous-studio-aone，readlink -f 两者均解析为 /home/admin/workspace/autonomous-studio-aone）。discover_projects(workspace) 用 os.scandir entry.is_dir()，该方法跟随 symlink 返回 True，故 symlink 条目与真目录条目都被当作独立项目加入 → 同一 git 库被双计：健康分翻倍、active TODO(3) 双计、#1/#2 同分霸榜。3 个 active TODO 本身是 .md 散文假阳（decision-archive.md/autonomous-state.md），正是待合并 worktree 96c5d57(engine:marker-md-exclusion) 的 count_markers 排除 .md 修复所针对的——triage 它们与 96c5d57 重复，故改打结构性根因：symlink 双计。",
+  "action": "scripts/scout-scan.py discover_projects 增加 realpath 去重：遍历候选目录时算 os.path.realpath(entry.path)，已见 realpath 跳过；同库既出 symlink 又出真目录时保留真目录（路径稳定、不随链接移除而消失），用真目录覆盖已记录的 symlink 条目。单函数改动，22+/4- 行。未触碰 count_markers（避免与待合并 96c5d57 的 .md 排除修复纠缠）。提交用独立 area scout:symlink-dedup 开新 worktree opt-scout-1782742915（避开 engine 主 worktree——后者 scout-scan.py 已含 96c5d57 的 .md 修复，同 area cp 提交会覆盖丢失该修复）。",
+  "files_changed": ["scripts/scout-scan.py"],
+  "worktree": "opt-scout-1782742915 (branch auto/opt-scout-symlink-dedup-1782742915, commit 734512b, direction scout:symlink-dedup)",
+  "direction": "scout:symlink-dedup",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "python3 -c 调 discover_projects('/home/admin/workspace') 返回 16 项目中 autonomous-studio 条目消失，仅 autonomous-studio-aone(islink=False) 单条，realpath 去重生效。",
+    "全量 python3 scripts/scout-scan.py --workspace ...autonomous-studio-aone 重跑：推荐榜 #1=autonomous-studio-aone(score=0.04) #2=x-tool(score=0.01) #3=skills(2.0 blocked)，此前 duplicate 的 #2 autonomous-studio 条目消失——双计根因消除。",
+    "tests/test_scout_scan.py 直接运行 exit=0（4 个回归测试通过，无 discover_projects 覆盖故无破坏）。",
+    "main 干净：git status --porcelain 不含 scripts/scout-scan.py（opt-worktree cmd_commit ③ 还原 HEAD）；改动隔离在 worktree opt-scout-1782742915 commit 734512b，diff --stat HEAD~1 HEAD = scripts/scout-scan.py 22+/4-。"
+  ],
+  "next_suggestion": [
+    "(1) 人工 opt-worktree.sh . show opt-scout-1782742915 审 734512b diff → opt-worktree.sh . merge opt-scout-1782742915 合并落地 main（squash）。注意：与待合并 96c5d57(engine:marker-md-exclusion) 同改 scout-scan.py 但区域不同（discover_projects vs count_markers），合并顺序无依赖，git 应能自动合并；建议先合 96c5d57 再合本 worktree，合并后 autonomous-studio-aone active TODO 3(.md)→0 + 单条入榜，score 0.04→~0.0 跌出推荐榜，x-tool 升 #1。",
+    "(2) 合并后转 x-tool(score=0.01, TODO=1 真代码) triage 其唯一 active code TODO——grep 定位 x-tool 源码 \\bTODO\\b\\s*[:-] 命中行(非 .md)，标注 TODO(deferred) 或清掉。",
+    "(3) 待合并 worktree 当前两个：engine optimization(96c5d57, marker-md-exclusion) + opt-scout-1782742915(symlink-dedup)；二者均改 scout-scan.py，人工合并时留意顺序与潜在冲突（区域不同预期干净）。",
+    "(4) 残留分支清理：case-048 NEXT #2 遗留 cmd_merge 成功路径不删 auto/<branch> 分支污染——仍待评估加 git branch -D。"
+  ]
+}

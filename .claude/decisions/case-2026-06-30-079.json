@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-06-30-079",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-06-30T20:15:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "engine:case-schema — 补全 case-log 缺失的 JSON schema（lens (g) outcome_evidence 类型规约：先统计分布再定规约）",
+  "situation": "scout-scan 全项目 blocked 待人工 merge（skills #1 等 opt-docs-1782736126 merge），无子项目可操作代码工作单位。state NEXT_SUGGESTION 列 lens (g) outcome_evidence 类型规约为下轮单元，明确要求『先统计分布再定规约，勿盲改』。统计 170 个 post-schema case（含 outcome_evidence 的）字段分布：13 字段全员 present；outcome_evidence 123 string / 47 list 双形并存；next_suggestion 161 string / 9 list 双形；outcome 枚举 {succeeded:165, superseded:3, rolled_back:2}；direction 170/170 含冒号；files_changed 324 项全 str。关键发现：case-log 根本无 schema 约束——audit-log.schema.json 经 grep 确认不含 case_id/outcome_evidence（它是安全审计事件另一契约），故 195 个 case 文件零 schema，正是历轮 telemetry 持续漂移的根因。",
+  "action": "按 lens (g) 规约流程：①统计 170 case 字段分布（de-facto 契约）→ ②据统计新建 .claude/decisions/case-log.schema.json（13 required 字段 / outcome 4 值枚举 / outcome_evidence 与 next_suggestion 用 oneOf 同时接纳 string 与 array<string>，不强制归一避免 churn 170 case / direction 冒号 pattern / case_id pattern / additionalProperties:true 接纳 outcome_enum_verified 等扩展字段）→ ③手写 type+pattern+enum+oneOf 校验器对 170 case 全量验证。不回写 churn 任何既有 case。直接编辑 worktree + 直接 git commit（同 0bd7f36/27890c8 先例，规避 opt-worktree.sh cp 覆盖存活引擎工作；gate 仅拦 main commit/merge，worktree 直接提交合法）。",
+  "files_changed": [
+    ".claude/decisions/case-log.schema.json"
+  ],
+  "worktree": "optimization (branch auto/optimization, /home/admin/workspace/.opt-worktrees/autonomous-studio-aone/optimization)",
+  "direction": "engine:case-schema",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "新建文件 .claude/decisions/case-log.schema.json（draft-07，13 required 字段，outcome 枚举 succeeded|failed|rolled_back|superseded，outcome_evidence/next_suggestion oneOf string|array<string>）",
+    "手写校验器对 170 post-schema case 全量跑 required+type+enum+pattern+oneOf：ok=170 fail=0（无 jsonschema 模块故手写等价校验）",
+    "grep 确认 audit-log.schema.json 不含 case_id/outcome_evidence → 证实 case-log 此前零 schema",
+    "outcome_evidence 双形统计 123 string / 47 list；next_suggestion 161 string / 9 list——schema oneOf 同时接纳，不 churn 既有 case"
+  ],
+  "next_suggestion": "【阻塞·需人工·最高优先】合并 optimization worktree 到 main（现 31 ahead）即落地本轮 case-log.schema.json + 历次 telemetry case（case-072..078）→ merge 后 main 侧可对全 195 case 跑 schema 校验闭环，且未来 case 写入即受 schema 约束不再漂移。【下轮 lens】(g)二期：把分布统计与 schema 校验从 170 post-schema 扩到全 195（含 25 pre-schema 缺 outcome_evidence case）——判定 pre-schema 历史遗产是否需 schema 版本号豁免（新 required 会把它们标 invalid，但 schema 仅供未来校验不强制回写）；或换 (h) case_id↔filename stem 全量交叉（此前仅验近期 fix-case）。【子项目】仍全 blocked，人工合并 opt-docs-1782736126 即解锁 skills(scout #1)。"
+}

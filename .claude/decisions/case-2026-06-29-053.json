@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-053",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-06-29T22:55Z",
+  "project": "autonomous-studio-aone (engine)",
+  "work_unit": "scout-scan pending_triage_in_worktrees 自指守卫：排除 engine 自身 .opt-worktrees/_indexes/*.json，避免把扫描副产物当待 triage 代码债误报",
+  "situation": "scout-scan 全项目 ⏳blocked（#1 skills(2.0) 等 opt-docs-1782736126 合并；无可操作工作单位）。卡死保护触发顺延至 engine 自身结构性债。定位：pending_triage_in_worktrees(path, marker_files) 用 count_markers 返回的 mfiles 集合与 worktree diff 求交集判定'标记文件是否已被 triage'。但 count_markers 不区分来源——当 path 是 engine 自身时，mfiles 包含 .opt-worktrees/_indexes/<proj>.json（scout-scan 自己写的索引 JSON），这些 JSON 在 optimization worktree 里被修改（marker-md-exclusion + merge-branch-cleanup 提交都动了 scout-scan.py → 重新生成索引 JSON）→ diff 命中 → 误报 triage_pending_wts=['optimization']。结果：engine 自身的真代码 TODO(deferred) 被错认为'已 triage 待合并'而非'真未处理'，health_priority 减分 + blocked 列表错位。同类自指缺口此前已在 _STRIP_STRINGS(counts={\"FIXME\":0})、_STRIP_BACKTICKS、.md 排除等处逐个补过，pending_* 系列漏了。",
+  "action": "pending_triage_in_worktrees 入口加自指守卫：mset = {f for f in marker_files if not (f.startswith('.opt-worktrees/') and f.endswith('.json'))}，过滤后再与 worktree diff 求交。安全论证：(1) .opt-worktrees/ 在 IGNORE_DIRS 里本就被 os.walk 跳过，理论上不会出现在 mfiles——但实际因历史遗留或路径拼接差异仍可能混入，过滤是防御性兜底；(2) 仅作用于 engine 自身扫描场景，其他项目不受影响（它们的 mfiles 不含该前缀）；(3) 与现有 .md 排除、字符串剥离、backtick 剥离同构——都是'把非代码信号从代码债检测里剥掉'的统一策略。",
+  "files_changed": ["scripts/scout-scan.py"],
+  "worktree": "optimization (auto/optimization 分支, commit 2978eaf, 待人工 opt-worktree.sh . merge optimization)",
+  "direction": "engine:scout-pending-selfindex-guard",
+  "outcome": "succeeded",
+  "outcome_evidence": "python3 -c ast.parse ✓ syntax OK。git -C optimization log main..HEAD 显示 2978eaf 1 file changed 8 insertions(+), 1 deletion(-)。main status --porcelain 仅含 autonomous-state.md(M) + case-*.json(??) + .loop-* 运行时文件，无 scripts/scout-scan.py 改动残留（断言还原成功）。重跑 scout-scan.py → skills 仍 #1 score=2.0 ⏳blocked（预期：本轮 fix 改的是引擎自指误报，不影响 skills 的 PROGRESS/GATES/planning 待合并状态）。worktree 现含 3 待合并提交：96c5d57(marker-md-exclusion) + 204bc93(merge-branch-cleanup) + 2978eaf(self-index-guard)。",
+  "next_suggestion": "(1) 人工 opt-worktree.sh . show optimization 审 → merge 落地 main（worktree 现含 3 提交可一起审：96c5d57 + 204bc93 + 2978eaf，全是 scout/opt-worktree 结构性修复）。(2) merge 后 scout-scan 引擎自指彻底干净：count_markers 排 .md + pending_triage 排索引 JSON + cmd_merge 删分支污染。(3) 下一轮 scout 仍全 blocked——核心阻塞仍是 4 pending worktree(opt-agent-dashboard/opt-browser-use/opt-docs/opt-xtool)待人工合并；建议人工批量 merge 解锁后再轮转项目侧。(4) 若仍要找 engine 小单位：cmd_merge line 211 git checkout MAIN_BRANCH 在 detached HEAD 项目会失败被 || true 吞，可加防护；或 triage 其他项目 deferred TODO(shizi deferred1/open-design deferred2/stagehand deferred7)。"
+}

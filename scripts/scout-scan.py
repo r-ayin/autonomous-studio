@@ -305,6 +305,32 @@ def pending_in_opt_worktrees(path, filename):
     return hits
 
 
+def worktree_ahead(project_path, wt_name):
+    """待合并 opt-worktree 领先 main 的 commit 数（死锁提示 + --json 调度用：少的先合）。
+
+    与 pending_in_opt_worktrees 同构的 base..HEAD 计算，但返回 commit 计数而非文件命中。
+    死锁态下人工/调度器面对一串裸 worktree 名不知哪个该先合、哪个改动小——附 ahead 计数
+    让人一眼挑出 +1 commit 的小改先合（如 opt-skills-* 单文件 frontmatter），避免对 +N
+    大改 worktree 的犹豫拖累整个解锁节奏。读失败返回 None（显示/消费时不附计数）。
+    """
+    wt_dir = os.path.join(os.path.dirname(project_path), ".opt-worktrees",
+                          os.path.basename(project_path), wt_name)
+    if not os.path.isdir(wt_dir):
+        return None
+    try:
+        base = subprocess.run(["git", "rev-parse", "HEAD"], cwd=project_path,
+                              capture_output=True, text=True, timeout=5).stdout.strip()
+        if not base:
+            return None
+        r = subprocess.run(["git", "rev-list", "--count", f"{base}..HEAD"],
+                           cwd=wt_dir, capture_output=True, text=True, timeout=5)
+        if r.returncode == 0 and r.stdout.strip().isdigit():
+            return int(r.stdout.strip())
+    except Exception:
+        pass
+    return None
+
+
 def pending_triage_in_worktrees(path, marker_files):
     """含真标记的文件是否在某待合并 opt-worktree 的 diff 里——是则该 worktree 可能已 triage 这些 TODO/FIXME/HACK。
 
@@ -495,6 +521,23 @@ def scan_project(p):
         "marker_files": sorted(m_files),
         "triage_pending_wts": pending_triage_in_worktrees(path, m_files),
     }
+    # 结构化待合并 worktree 摘要：跨四类 pending 去重，附 ahead 计数与命中类别——
+    # 供 --json 调度器程序化挑 ahead 最小的 worktree 先合（解锁死锁），而非只靠死锁文本。
+    # 历史问题：死锁文本仅人读，loop 调度器消费 --json 时拿不到"哪个 worktree 改动最小"，
+    # 无法程序化提示人工先合 +1 小改；此字段补齐该缺口（worktree_ahead 同源 base..HEAD）。
+    _wt_cats = {}
+    for _w in rep["progress_pending_wts"]:
+        _wt_cats.setdefault(_w, set()).add("progress")
+    for _w in rep["gates_pending_wts"]:
+        _wt_cats.setdefault(_w, set()).add("gates")
+    for _w in rep["planning_pending_wts"]:
+        _wt_cats.setdefault(_w, set()).add("planning")
+    for _w in rep["triage_pending_wts"]:
+        _wt_cats.setdefault(_w, set()).add("triage")
+    rep["pending_wts"] = [
+        {"wt": _w, "categories": sorted(_wt_cats[_w]), "ahead": worktree_ahead(path, _w)}
+        for _w in sorted(_wt_cats)
+    ]
     # 文件索引（限制规模，避免大库超时）
     tree, symbols, n = file_tree_and_symbols(path)
     rep["file_count_indexed"] = n

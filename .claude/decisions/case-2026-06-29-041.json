@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-041",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-29T12:48Z",
+  "project": "skills",
+  "work_unit": "补 skills/GATES.md（文档型 skill 仓库质量门禁）",
+  "situation": "scout-scan #1 skills(score=6.0)：缺 GATES.md、无 planning/，PROGRESS.md 待合并(opt-docs-1782736126)。skills 为纯文档型 skill 集合（30 一级目录/37 SKILL.md，fn=14 全脚本入口，TODO/FIXME/HACK=0/0/0），无运行时代码门禁可套用，需面向文档合规建门槛。",
+  "action": "静态扫描 skills 仓库收集可观察事实（SKILL.md 存在性 + name/description frontmatter 合规），据此写 skills/GATES.md：CRITICAL=SKILL.md 存在+frontmatter 合规+链接可达；IMPORTANT=description 长度上限+嵌套命名；NICE=examples/PROGRESS/planning。所有项标注静态/动态核验方法 + 实测结果。",
+  "files_changed": ["skills/GATES.md"],
+  "worktree": "opt-skills-1782736482",
+  "direction": "skills:gates",
+  "outcome": "succeeded",
+  "outcome_evidence": "skills/GATES.md 已创建（Write 成功）；提交到 opt-skills-1782736482（opt-worktree 输出「✓ 提交到 opt-skills-1782736482 方向=skills:gates」）。门禁事实可复核：`find skills -name SKILL.md|wc -l`=37；`ls skills/dingtalk-sheet-pull-skill/SKILL.md` 缺失（CRITICAL ⚠️）；`grep -c '^name:' skills/writing-style/SKILL.md`=0（frontmatter ⚠️）。",
+  "next_suggestion": "skills 仍可继续降 score：(1) 补 dingtalk-sheet-pull-skill/SKILL.md 或标 deprecated；(2) 补 writing-style/SKILL.md 的 name+description frontmatter；(3) 建 skills/planning/ 沉淀 skill 设计决策。或转 #2 browser-use(score=0.68, TODO=34 密度0.068) triage 前 1-2 个 TODO。opt-skills-1782736482 + opt-docs-1782736126 待人工合并到 main。"
+}

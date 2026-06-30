@@ -1,0 +1,20 @@
+{
+  "case_id": "case-2026-06-29-062",
+  "agent_id": "ralph-autonomous-studio",
+  "timestamp": "2026-06-29T23:58Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "engine:empty-commit-guard — cmd_commit 全部文件被 cp-guard 跳过时前置守卫中止，不生成空提交/不误报成功",
+  "situation": "scout-scan 报告全部项目 blocked（#1 skills score=2.0 等合并 opt-docs-1782736126，其余 score=0.0；末尾「⚠️ 无可操作工作单位」需人工合并 opt-* worktree 解锁）。autonomous-studio 不被排除，转引擎自身。承接 case-061 NEXT_SUGGESTION【3·新小工作单位】：skip 路径全文件被跳过时仍生成 .opt-direction-only 空提交，断言因 head 前进而通过→误报成功（历史 de5728b commit 仅 '.opt-direction | 1 +'）。审 cmd_commit 发现：cp 循环后无「实际 cp 了几个文件」的计数，全跳过时直接进 ②git add -A + commit。当前 .opt-direction 被 .gitignore 忽略（repo root .gitignore:35），故全跳过时 git add -A 不 stage 任何真改动→git commit 'nothing to commit' 硬失败（set -e abort），报错晦涩易被误读为脚本故障；且若日后 .opt-direction 被移出 .gitignore，git add -A 会 stage 方向桩生成 .opt-direction-only 空提交，head-advance 断言（line 186 head_before!=head_after）因 HEAD 前进而通过→误报成功（de5728b 症状回归）。两路均需封死。",
+  "action": "在 optimization worktree 内直接编辑 scripts/opt-worktree.sh（非 cmd_commit cp——opt-worktree.sh 自身有未合并分歧，cp-guard 会跳过；状态明示引擎侧勿 cp 该文件进 worktree）。（1）cp 循环前声明 local copied=0；（2）files 分支与 WIP 分支在 _cp_guard 成功后各 copied=$((copied+1))（被跳过/不存在的不计）；（3）cp 循环 if/else 块后、②git add -A 前置守卫：(( copied == 0 )) → 打印「⚠️ 无文件被实际迁移（全部被 cp-guard 跳过或不存在）——无内容可提交，中止，不生成空提交。被跳过文件 main 改动已保留，请人工 merge 对应 worktree 后重做」+ 列跳过文件 + exit 1，不进 ②。守卫在 git add -A 之前，故 .opt-direction 是否被忽略均生效，彻底封死 de5728b 症状回归路径。",
+  "files_changed": ["scripts/opt-worktree.sh"],
+  "worktree": "optimization (branch auto/optimization, commit d237426)",
+  "direction": "engine:empty-commit-guard",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "bash -n scripts/opt-worktree.sh → SYNTAX OK（语法通过）",
+    "git diff vs worktree HEAD：scripts/opt-worktree.sh +14/-0，单文件",
+    "worktree commit d237426 已落地：git log --oneline -1 → 'd237426 opt(engine:empty-commit-guard): ...'；worktree 现 12 ahead（main..HEAD count=12）",
+    "临时仓功能实测（/tmp 仓 myproj）：①全跳过路径——worktree X.txt 提交为 a+b-from-worktree（与 main HEAD 'a' 分歧）→ main 编辑 X.txt=a+b-from-main-user → 跑 commit engine:test-skip X.txt → stderr 打印 '⚠️ cp-guard: X.txt 在 worktree 与 main HEAD 不同…跳过' + '⚠️ 无文件被实际迁移（全部被 cp-guard 跳过或不存在）——无内容可提交，中止，不生成空提交' + '   跳过文件: X.txt' → exit=1 → cat main X.txt='a\\nb-from-main-user'（用户编辑完整保留）→ git status main 显示 ' M X.txt'（改动仍在）→ git -C worktree rev-list --count main..HEAD=1（仅分歧提交，未新增空提交，证伪 de5728b 症状）；②正常路径回归——main Y.txt='orig\\nnew-edit'（无分歧）→ 跑 commit engine:happy Y.txt → stdout '✓ 提交到 optimization 方向=engine:happy' → exit=0 → cat main Y.txt='orig'（还原 HEAD）→ cat worktree Y.txt='orig\\nnew-edit'（编辑落地），行为与修复前一致，无回归"
+  ],
+  "next_suggestion": "【1·人工】合并 optimization worktree → main（现 12 ahead：含本次 d237426 empty-commit-guard + b22245b cp-guard-preserve + 528ac01/1b1f6b4/0927e26/b8458a6/b476c86/5d0ed82/d3a1a8e/2978eaf/204bc93/96c5d57 等。squash merge 一次性获得）。【2·merge 后】cp-guard 升级为硬阻断（abort 整批而非 warn+skip）——本轮 empty-commit-guard 已封全跳过误报，硬阻断可进一步统一语义：任一文件分歧即整批 abort（而非部分 cp+部分 skip），消除「半提交」状态。【3·新小工作单位】cmd_show 的 head -300 截断（b476c86 已加省略量提示）可考虑按终端宽度自适应或加 --full 开关；cmd_merge 合并消息 head -5 上限可能漏列多提交 worktree，可改列全部 ahead。【4·解锁 scout】人工合并 opt-docs-1782736126 → 解锁 skills(#1)；或 opt-agent-dashboard/opt-browser-use/opt-xtool 任一解锁侧轮转。引擎侧勿 cp opt-worktree.sh/scout-scan.py 进 optimization worktree（必覆盖存活工作）——直接编辑 worktree 文件提交如本轮。"
+}

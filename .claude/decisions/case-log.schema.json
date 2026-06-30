@@ -1,0 +1,106 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://autonomous-studio/decisions/case-log.schema.json",
+  "title": "Decision Case Log Entry",
+  "description": "自主引擎每轮自治工作单位的蒸馏闭环记录。一个 case = 一轮小工作单位的可观察事实快照（situation/action/outcome_evidence），用于跨 context 传递目标与回溯。规约来源：对 170 个 post-schema case 的字段分布统计（2026-06-30，lens (g) outcome_evidence 类型规约）——schema 描述 de-facto 契约，不回写 churn 既有 case。",
+  "type": "object",
+  "required": [
+    "case_id",
+    "agent_id",
+    "timestamp",
+    "project",
+    "work_unit",
+    "situation",
+    "action",
+    "files_changed",
+    "worktree",
+    "direction",
+    "outcome",
+    "outcome_evidence",
+    "next_suggestion"
+  ],
+  "additionalProperties": true,
+  "properties": {
+    "case_id": {
+      "type": "string",
+      "description": "case 唯一标识，与文件名同 stem（case-YYYY-MM-DD-NNN.json → case-YYYY-MM-DD-NNN）",
+      "pattern": "^case-\\d{4}-\\d{2}-\\d{2}-\\d{3}$",
+      "examples": ["case-2026-06-30-079"]
+    },
+    "agent_id": {
+      "type": "string",
+      "description": "记录该 case 的 agent 标识（如 ralph-wiggum / engine）"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time",
+      "description": "记录时间，ISO 8601（UTC，Z 后缀），如 2026-06-30T19:42:00Z"
+    },
+    "project": {
+      "type": "string",
+      "description": "工作单位归属项目（autonomous-studio 表示引擎自指/telemetry）"
+    },
+    "work_unit": {
+      "type": "string",
+      "description": "本轮聚焦的小工作单位一句话描述"
+    },
+    "situation": {
+      "type": "string",
+      "description": "触发该工作单位的可观察上下文（scout-scan 报告/lens 命中/阻塞态等）"
+    },
+    "action": {
+      "type": "string",
+      "description": "实际执行的最小改动动作（改了什么、怎么提交）"
+    },
+    "files_changed": {
+      "type": "array",
+      "description": "本轮 commit diff 中真实触碰的文件路径列表（显式路径，禁 brace 展开 / 禁散文括号嵌路径，需与 commit diff 逐文件一致）",
+      "items": { "type": "string" }
+    },
+    "worktree": {
+      "type": "string",
+      "description": "提交所在 worktree 名称与路径"
+    },
+    "direction": {
+      "type": "string",
+      "description": "提交方向 area:subdirection（必含冒号分隔，如 engine:case-schema）",
+      "pattern": "^[^:]+:[^:]+"
+    },
+    "outcome": {
+      "type": "string",
+      "description": "本轮结果枚举",
+      "enum": ["succeeded", "failed", "rolled_back", "superseded"]
+    },
+    "outcome_evidence": {
+      "description": "支撑 outcome 的可观察事实（命令输出/scout 实测/diff 计数等）。lens (g) 统计：170 case 中 123 为 string、47 为 array<string>——两种形式均合法，schema 同时接纳，不强制归一（避免 churn 170 case）。无论何种形式，内容必须是可观察事实，不接受散文。",
+      "oneOf": [
+        { "type": "string", "minLength": 1 },
+        { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+      ]
+    },
+    "next_suggestion": {
+      "description": "下轮工作单位建议（≥1 条）。统计：170 case 中 161 为 string、9 为 array<string>——两种形式均合法。",
+      "oneOf": [
+        { "type": "string", "minLength": 1 },
+        { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+      ]
+    }
+  },
+  "examples": [
+    {
+      "case_id": "case-2026-06-30-079",
+      "agent_id": "ralph-wiggum",
+      "timestamp": "2026-06-30T20:10:00Z",
+      "project": "autonomous-studio",
+      "work_unit": "engine:case-schema — 补全缺失的 case-log JSON schema（lens g 类型规约）",
+      "situation": "scout-scan 全项目 blocked 待人工 merge；state NEXT_SUGGESTION 列 lens (g) outcome_evidence 类型规约为下轮单元，要求先统计分布再定规约勿盲改。统计 170 post-schema case 发现 outcome_evidence 123 string/47 list 双形并存，且 case-log 根本无 schema 约束（audit-log.schema.json 是安全审计事件另一契约，不含 case 字段）。",
+      "action": "统计 case 字段分布 → 据 de-facto 契约新建 case-log.schema.json（13 required 字段 + outcome 枚举 + outcome_evidence/next_suggestion 双形 oneOf + direction 冒号 pattern + case_id pattern）。不 churn 既有 case。直接编辑 worktree + 直接 git commit（同 0bd7f36/27890c8 先例，避免 opt-worktree.sh cp 覆盖存活工作）。",
+      "files_changed": [".claude/decisions/case-log.schema.json"],
+      "worktree": "optimization (auto/optimization, /home/admin/workspace/.opt-worktrees/autonomous-studio-aone/optimization)",
+      "direction": "engine:case-schema",
+      "outcome": "succeeded",
+      "outcome_evidence": "新建 .claude/decisions/case-log.schema.json；python3 json.load 校验 170 post-schema case 全部通过 required+type+enum+pattern（outcome_evidence/next_suggestion 双形 oneOf 接纳 123 string 与 47 list）；audit-log.schema.json 经 grep 确认不含 case_id/outcome_evidence，证实 case-log 此前无 schema。",
+      "next_suggestion": "【阻塞·需人工·最高优先】合并 optimization worktree 到 main 落地本轮 schema + 历次 telemetry case。merge 后 main 侧可对全 195 case 跑 schema 校验闭环。【下轮 lens】(g)二期：把 outcome_evidence/next_suggestion 双形统计从 170 扩到全 195（含 25 pre-schema 缺字段 case，校验其缺 outcome_evidence 是否违反新 required——pre-schema 历史遗产判定是否需 schema 版本号豁免）；或换 (h) case_id↔filename stem 全量交叉（仅验过近期 fix-case）。"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "case_id": "case-2026-06-30-075",
+  "agent_id": "ralph-autonomous-studio",
+  "timestamp": "2026-06-30T18:50Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "engine:case-log-persist — case_id↔filename 交叉一致性 lens：扫 190 case，修 case-2026-06-27-024/025 的 case_id 缺日期前缀违规",
+  "situation": "scout-scan 全项目仍 blocked（pending 5 worktree 待人工 merge，#1=skills score=2.0 blocked 等 opt-docs-1782736126 merge）。gate 拦 main 直 commit/merge，无法自动合并解锁。上轮(case-074)已尽 schema 完整性 lens（13 字段+outcome 枚举+类型，post-schema 0 违规）。本轮换新 lens：case_id 必须与文件名 date+num 交叉一致——此维度上轮未查（上轮仅查字段存在/类型/枚举，case_id 非空即过 presence 检查，但 'case-024' 这种缺日期前缀的残缺值不会被枚举/类型 lens 命中）。",
+  "action": "确定性 Python 扫描 worktree 190 case：case_id 必含文件名 date+num。命中 2 真违规（均 06-27 post-schema）：case-2026-06-27-024 case_id='case-024'、case-2026-06-27-025 case_id='case-025'（均缺 '2026-06-27-' 日期前缀）。timestamp/outcome/evidence 原本均合法，仅 case_id 残缺。最小 1 行 sed 各改：case-024→case-2026-06-27-024，case-025→case-2026-06-27-025。pre-schema 历史遗产(06-15~06-17)缺字段不动（沿用 state 策略）。outcome_evidence empty 命中系 scan 误报（case-025 evidence 为 list 类型富证据，scan 仅认 string——非真违规，不采信不改）。直接编辑 worktree 文件 + 直接 git commit（沿用 case-059/085/001 模式，勿 cp opt-worktree.sh 进 worktree 覆盖存活工作）。另迁入上轮遗留 main-untracked case-074 入 worktree（074 文档化 f64e1c2 但上轮未 commit 进 worktree，避免 orphan）。post-fix 复扫：post-06-17 case_id↔filename 违规=0。",
+  "files_changed": [
+    ".claude/decisions/case-2026-06-27-024.json",
+    ".claude/decisions/case-2026-06-27-025.json",
+    ".claude/decisions/case-2026-06-30-074.json (migrate main-untracked→worktree)",
+    ".claude/decisions/case-2026-06-30-075.json (本轮日志)"
+  ],
+  "worktree": "optimization (branch auto/optimization, /home/admin/workspace/.opt-worktrees/autonomous-studio-aone/optimization, 新增 commit 2733966 case_id 修复 + 本轮 case 迁入，现 24 ahead of main 待人工合并)",
+  "direction": "engine:case-log-persist",
+  "outcome": "succeeded",
+  "outcome_evidence": "git log --oneline main..HEAD 显示 2733966 'fix(engine:case-log-persist): 修 case-024/025 case_id↔filename 交叉一致性违规'；ahead=24；grep case_id 两文件现 'case-2026-06-27-024'/'case-2026-06-27-025'；python3 json.load 两文件 parse OK；post-fix 确定性复扫 'post-06-17 cases: case_id↔filename violations = 0'。",
+  "next_suggestion": "【阻塞·需人工·最高优先】合并 optimization worktree 到 main 即同时落地 case-024/025 case_id 修复 + case-001 枚举修复 + case-085 JSON 修复 + 063-074 engine 守卫链/安装链/降噪/持久化 + 32 case(040-071) + case-059/072/073/074/075 日志 → 闭环 main 侧 telemetry 完整性。【merge 后 main 侧复扫】应 post-06-17 case_id↔filename 0 违规 + post-schema 0 违规。【merge 前·下轮 fallback】本轮 case_id↔filename lens 已清 post-06-17 违规；下轮可换新 lens：(b) outcome_evidence 类型规约（string vs list 不一致，case-025 是 list 而 schema 语境隐含 string——需先确认 schema 是否允许 list，勿盲改）；或 (c) files_changed↔worktree diff 交叉一致（case 声称改的文件是否真在对应 worktree commit diff 里）。若仍无人 merge 则诚实 blocked-noop case。★未自动 merge（gate 拦+尊重人工批准约定）。★未碰 pending-merge 子项目代码。★未重启 engine 代码自指（telemetry 持久化新 lens 非代码自润色）。"
+}

@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-040",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-29T12:30:00Z",
+  "project": "skills",
+  "work_unit": "补 PROGRESS.md（scout-scan 健康度 #1 缺口）",
+  "situation": "scout-scan 文本报告将 skills 评为 #1（score=10.0），理由：缺 PROGRESS.md、缺 GATES.md、无 planning/。skills 是文档型 skill 索引仓库（非可执行代码），自始至终无 PROGRESS.md，导致健康扫描结构性扣分最高。",
+  "action": "为 skills 仓库新建 PROGRESS.md：标注仓库性质（skill 索引+内容仓库）、当前阶段、已有内容清单（SKILL.md 入口 + 5 个子目录 + 7 个顶层主题文档）、待办（GATES.md/planning/同步脚本）、架构（索引→子文件→同步 ~/.claude/skills/）。仅新增 1 个文件，未读任何源代码，未碰 .codebase-index/ 大 JSON。",
+  "files_changed": ["PROGRESS.md"],
+  "worktree": "opt-docs-1782736126",
+  "direction": "docs:progress",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh 输出「✓ 提交到 opt-docs-1782736126 方向=docs:progress」；worktree 从 33b616d 起新增提交；scout-scan 健康信号「PROGRESS.md: 缺失」将转为「有」",
+  "next_suggestion": "skills 仍缺 GATES.md 与 planning/——下轮可补 GATES.md（文档型项目门槛：frontmatter 合规 + 链接可达性），进一步降 health score；或转 #2 browser-use（TODO=34 密度0.068）triage 前 1-2 个 TODO"
+}

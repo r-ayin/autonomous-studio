@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-06-29-051",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-29T22:35:00Z",
+  "project": "x-tool",
+  "work_unit": "scout-scan #1 x-tool active TODO=1 triage — scaffold 模板占位符转 deferred",
+  "situation": "上轮 case-050 修复 scout discover_projects symlink 双计 + 合并 engine optimization(96c5d57 marker-md-exclusion) 与 opt-scout-1782742915(symlink-dedup) 后，autonomous-studio-aone 与 autonomous-studio(symlink) 同时跌出推荐榜。scout-scan 重跑新 #1 = x-tool(score=0.01, active TODO=1)。grep 定位唯一 active TODO 在 claude/setup-claude-mac.sh:90 '# TODO: Replace with your actual DeepSeek API key'——scaffold 安装脚本的 .env 模板占位符，提示用户安装后手动替换 API key，非代码债务。scout-scan MARKER_RE r'\\bTODO\\b[:/-]' 匹配 'TODO:' 形式计入 active；真代码 TODO(deferred) 已有专门 regex 走 deferred 计数。该 TODO 语义本就是 deferred（等用户动作），只是缺 (deferred) 标记致被误判 active。",
+  "action": "将 '# TODO: Replace with your actual DeepSeek API key' 改为 '# TODO(deferred): 用户安装后手动替换为真实 DeepSeek API key（scaffold 模板占位符，非代码债务）'。保留原意、明确 deferred 语义、附中文说明避免后续 reviewer 误以为是真债。opt-worktree.sh commit 因检查 main 工作区而非 worktree 内文件状态报'无未提交改动'跳过——改用 git -C <worktree> add/commit 直接提交到 auto/opt-xtool-1782743518 分支（366c017）。验证：opt-worktree.sh list 显示 1 提交 1 file changed；show 显示 diff 干净单行替换。",
+  "files_changed": [
+    "/home/admin/workspace/.opt-worktrees/x-tool/opt-xtool-1782743518/claude/setup-claude-mac.sh"
+  ],
+  "worktree": "opt-xtool-1782743518 (branch auto/opt-xtool-1782743518, direction xtool:triage-todo-placeholder, commit 366c017)",
+  "direction": "xtool:triage-todo-placeholder",
+  "outcome": "succeeded",
+  "outcome_evidence": "(1) git -C /home/admin/workspace/.opt-worktrees/x-tool/opt-xtool-1782743518 log -1 --oneline → 366c017 opt(xtool:triage-todo-placeholder)... (2) opt-worktree.sh /home/admin/workspace/x-tool list → opt-xtool-1782743518 | 方向=xtool:triage-todo-placeholder | 1 提交 | 1 file changed, 1 insertion(+), 1 deletion(-) (3) opt-worktree.sh show opt-xtool-1782743518 diff 显示 setup-claude-mac.sh:90 单行替换 TODO:→TODO(deferred): (4) main 分支未触动（worktree 隔离）",
+  "next_suggestion": [
+    "人工 opt-worktree.sh /home/admin/workspace/x-tool merge opt-xtool-1782743518 合并落地 → x-tool active TODO 1→0 score 0.01→~0.0 跌出推荐榜",
+    "下一轮 scout-scan 预计新 #1 = skills(score=2.0 ⏳blocked)，其 PROGRESS.md/GATES.md/planning/ 均待合并 opt-docs-1782736126——别重做，等人工合并该 worktree；若持续 blocked 则顺延到 #3 1BfrYn9G(健康良好可跳过)或转其他项目文档润色",
+    "engine worktree optimization(主) 当前 0 提交(clean)——之前两个 worktree(engine 96c5d57 + opt-scout-1782742915)均已成功合并 main，无需再操作",
+    "case-048 NEXT #2 遗留问题仍未解：cmd_merge 成功路径不删 auto/<branch> 分支(仅 cmd_reject 删)残留分支污染 cleanup——评估加 git branch -D 前先确认无 branch-checkout-in-worktree 误删风险(本案例 opt-xtool-1782743518 合并后也会留 auto/opt-xtool-1782743518 分支)"
+  ]
+}

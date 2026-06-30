@@ -1,7 +1,7 @@
 {
   "case_id": "case-2026-06-29-007",
   "agent_id": "autonomous-loop",
-  "timestamp": "2026-06-29T00:36:00+08:00",
+  "timestamp": "2026-06-29T00:36:00Z",
   "project": "shizi",
   "work_unit": "triage TODO(src/agent/handler.ts:108) — docs:governance",
   "situation": "scout-scan 排 #1 shizi(score=2.2)，理由：GATES.md 待合并(opt-docs-1782657987)、无 planning/、1 个 TODO 待 triage。TODO 位于未跟踪新文件 src/agent/handler.ts:108，内容为设计备注（引擎暂用单一 vision config，未来可支持每维度独立 config），非 bug。",

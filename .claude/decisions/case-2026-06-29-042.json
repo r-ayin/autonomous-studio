@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-042",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-29T12:45:00Z",
+  "project": "skills",
+  "work_unit": "为 1d-platform-dev 知识型技能仓补 GATES.md 质量门禁（scout-scan #1 健康缺口：缺 GATES.md）",
+  "situation": "scout-scan 将 skills 排为推荐工作单位 #1（score=6.0），理由『缺 GATES.md; 无 planning/; PROGRESS.md 待合并(opt-docs-1782736126)』，推荐动作『补 GATES.md（1 文件，无需深读代码）』。首轮误判目标：scout 实扫 /home/admin/workspace 父目录的 17 个兄弟项目，#1 的 skills 是兄弟仓 /home/admin/workspace/skills（commit 33b616d cloud-preview + 94 文件均匹配），非本仓 autonomous-studio-aone/skills 子目录。曾在错误位置 autonomous-studio-aone/skills/ 建 GATES.md，发现该子目录已有 pending worktree auto/opt-skills-1782736482（commit 含 skills/GATES.md 38 行，direction skills:gates）覆盖此工作 → 判定为重复已做工作，撤回。转而定位正确目标：兄弟仓 /home/admin/workspace/skills 真缺 GATES.md 且无 pending GATES worktree（仅 opt-docs-1782736126 含 PROGRESS.md、optimization 空），确属未做工作单位。",
+  "action": "1) rm 错误位置的 autonomous-studio-aone/skills/GATES.md + rmdir 空的 .opt-worktrees/skills/，恢复 main 干净；2) 读兄弟仓根 SKILL.md（1 文件，name=1d-platform-dev，资源表引用 7 个 .md）+ ls 结构（5 子目录/7 资源 .md）以贴合实情；3) 写 /home/admin/workspace/skills/GATES.md（45 行，CRITICAL/IMPORTANT/NICE 三档 + 核验说明表 + 已知缺口，全部基于可观察事实：frontmatter、7/7 资源文件存在、scout 标记 0/0/0、PROGRESS 待合并）；4) opt-worktree.sh /home/admin/workspace/skills commit docs:gates —— 复用同 area 的 opt-docs-1782736126 worktree 提交。",
+  "files_changed": ["/home/admin/workspace/skills/GATES.md"],
+  "worktree": "/home/admin/workspace/.opt-worktrees/skills/opt-docs-1782736126",
+  "direction": "docs:gates",
+  "outcome": "succeeded",
+  "outcome_evidence": "worktree opt-docs-1782736126 新增 commit 706b106『opt(docs:gates): docs(gates): 补 1d-platform-dev 技能仓 GATES.md 质量门禁』；git diff main --stat 显示 GATES.md +45 行；main /home/admin/workspace/skills/GATES.md 不存在（ls 报 No such file，opt-worktree cp/restore 断言通过，改动未滞留 main）；兄弟仓 main status 仅余既有未跟踪子目录（1d-platform-dev/ oneday-capability-register/ oneday-open-cli/），无 GATES.md 残留。",
+  "next_suggestion": "下轮可推进：① 合并 opt-docs-1782736126（含 PROGRESS.md + 本次 GATES.md）到 skills main —— 需人工批准（opt-worktree.sh merge），合并后 skills 健康分将大幅下降、退出霸榜；② 修 scout 盲点：skills（aone 子目录版）已有 pending GATES worktree auto/opt-skills-1782736482 但 scout 仍报『缺 GATES.md』排 #1（per-project WT_BASE 扫描漏检 root 仓 worktree），易导致重复重做，值得修 pending_in_opt_worktrees 扫描范围；③ #2 browser-use（TODO=34）triage 前 1-2 个标记。"
+}

@@ -1,0 +1,58 @@
+#!/usr/bin/bash
+# reference-transaction — 硬拦对主分支 ref 的非 commit 直写（case-047 昂贵半边）
+#
+# 背景：case-047（2026-06-27）实证 CWD 漂移致 `git reset --hard` 在 shizi main
+#   checkout 误执行，把 main 快进 2 commit，绕过 case-045 commit-gate（gate 只拦
+#   commit/push/merge，不拦 reset/update-ref/branch -f 对主 ref 直写）。case-102
+#   在 autonomous-loop.sh PROMPT 纪律段加了软纪律明禁 ref 直写，但软纪律仍可能被
+#   CWD 漂移 / agent 遗忘绕过。本钩子是硬约束：git 层拦截，不依赖 agent 自觉。
+#
+# 规则：对 refs/heads/main|master 的写，仅当 new 的第一父 == old 时放行——这覆盖
+#   正常 `git commit`（父=旧 main）、cmd_merge 的 `git merge --squash` 后提交
+#   （父=旧 main）、1-ahead ff。reset --hard <forward-2+>（old 是祖先非父）、
+#   update-ref <unrelated>、branch -f <tip>、回退 reset 均不满足 → 拦。
+#   逃生口 OPT_MAIN_WRITE_OK=1 供有意的多步领先 ff merge / 有意 reset 放行。
+#
+# 已知覆盖边界（不阻塞）：
+#   • reset --hard <forward-1>：old 恰为 new 父 → 放行（case-047 是 forward-2，命中）。
+#   • 本钩随 autonomous-studio-aone 仓 hooks/ 落地，仅护本仓 main；各子项目仓
+#     （shizi/x-tool/...）须各自装钩才护——后续 rollout 单位。
+#
+# 触发面：core.hooksPath=hooks（case-068 装配）后，主仓 / 各 worktree 的每次 ref
+#   更新都经此钩。auto/* worktree 提交写 refs/heads/auto/* → case 早退 exit 0，零干扰。
+
+state="$1"
+# 只在事务 prepared 时判定并拦截——prepared 时 ref 尚未更新，exit 1 中止事务
+# （committed 已落地拦无意义；aborted 是回滚放行）。S2 实测 prepared exit 1 → ref 不动。
+[[ "$state" == "prepared" ]] || exit 0
+
+while read -r old new ref; do
+  [[ -z "$ref" ]] && continue
+  case "$ref" in
+    refs/heads/main|refs/heads/master) ;;
+    *) continue ;;
+  esac
+  # 全 0 new = 分支删除 → 拦（不许删主分支）
+  if [[ "$new" =~ ^0+$ ]]; then
+    echo "⛔ reference-transaction: 拒绝删除主分支 $ref（case-047 硬约束）" >&2
+    exit 1
+  fi
+  # 全 0 old：`git update-ref <ref> <new>`（不带期望旧值）与 `git branch -f` 都传 0000
+  # 而非真实旧值——不能当"分支创建"放行。prepared 时 ref 尚未更新，rev-parse 取真实
+  # 当前值作为 old；ref 不存在才是真创建（放行）。
+  if [[ "$old" =~ ^0+$ ]]; then
+    old=$(git rev-parse --quiet --verify "$ref" 2>/dev/null || true)
+    [[ -z "$old" ]] && continue
+  fi
+  # 逃生口：有意的 ref-mover（多步领先 ff merge / 有意 reset）显式放行
+  [[ -n "$OPT_MAIN_WRITE_OK" ]] && continue
+  # 放行 iff old 是 new 的第一父（正常 commit / squash 合并提交 / 1-ahead ff）
+  parent=$(git rev-parse --quiet --verify "$new^" 2>/dev/null || true)
+  if [[ "$parent" != "$old" ]]; then
+    echo "⛔ reference-transaction: 拒绝对 $ref 的非 commit 直写（old 非 new 第一父）—— case-047 硬约束。" >&2
+    echo "   误执行了 reset/update-ref/branch -f 到主分支？改走 opt-worktree.sh <project> merge 合并 worktree。" >&2
+    echo "   确为有意 ref-mover：OPT_MAIN_WRITE_OK=1 git ..." >&2
+    exit 1
+  fi
+done
+exit 0
