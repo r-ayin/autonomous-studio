@@ -16,6 +16,8 @@ import os
 import sys
 import json
 import re
+import random
+import string
 from datetime import datetime, timezone
 
 # 强制 UTF-8：防止 Windows GBK 环境导致 stdin 解码失败 / stdout emoji 崩溃
@@ -58,6 +60,73 @@ def safe_append_jsonl(filepath: str, record: dict):
             f.write(json.dumps(record, ensure_ascii=False) + "\n")
     except Exception:
         pass  # 静默失败
+
+# ── 敏感数据脱敏 + 审计埋点（DO B / .claude/decisions/audit-log.schema.json）──────
+# decision-observer 把用户输入/助手消息预览落盘到 .claude/decision-log.jsonl,
+# 属"用户输入存取"敏感路径。若用户在 prompt 里粘贴 API key/token/password（调试
+# 时常见），原样落盘即凭证明文 at-rest。下面 _redact_secrets 在写日志前擦除常见
+# 秘钥模式;_audit_log_input_write 在确实擦到秘钥时补一条 audit JSONL,使敏感写
+# 可观测(result 如实反映成功/失败,不恒 success)。fail-safe:脱敏/审计失败绝不
+# 阻断主流程(吞异常)。
+
+_SECRET_PATTERNS = re.compile(
+    r'(sk-[A-Za-z0-9_-]{16,}'                       # OpenAI / Anthropic sk-
+    r'|sk-ant-[A-Za-z0-9_-]{16,}'
+    r'|gh[pousr]_[A-Za-z0-9]{36,}'                  # GitHub token
+    r'|AKIA[0-9A-Z]{16}'                            # AWS access key id
+    r'|Bearer\s+[A-Za-z0-9._-]{8,}'                 # Bearer token
+    r'|eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}'  # JWT
+    r'|(?:password|passwd|pwd|secret|token|api[_-]?key|access[_-]?key)'
+    r'\s*[:=]\s*["\']?[A-Za-z0-9_\-+/=]{4,}'        # key=value / key: value
+    r')',
+    re.IGNORECASE
+)
+
+
+def _redact_secrets(text: str) -> tuple:
+    """擦除 text 中的常见秘钥模式,返回 (redacted_text, redaction_count)。
+    纯正则替换为 [REDACTED],不收集也不外泄原值。"""
+    if not text:
+        return text, 0
+    matches = _SECRET_PATTERNS.findall(text)
+    redacted = _SECRET_PATTERNS.sub("[REDACTED]", text)
+    return redacted, len(matches)
+
+
+def _audit_log_input_write(result: str, detail: str = ""):
+    """审计埋点(DO B):仅当用户输入预览含可识别秘钥被擦除时,append-only 写一条
+    JSONL 到 <PROJECT_DIR>/.audit/audit-YYYY-MM-DD.jsonl,使敏感写可观测。
+    对齐 audit-log.schema.json:action=file_write,resource=decision-log.jsonl。
+    fail-safe:日志写失败绝不影响 hook 主流程(吞异常)。"""
+    try:
+        now = datetime.now(timezone.utc)
+        date = now.strftime("%Y%m%d")
+        date_dashed = now.strftime("%Y-%m-%d")
+        rid = now.strftime("%H%M%S")
+        suffix = "".join(random.choices(string.ascii_lowercase + string.digits, k=6))
+        entry = {
+            "id": f"audit-{date}-{rid}-{suffix}",
+            "timestamp": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "userId": "engine",
+            "userRole": "engine",
+            "action": "file_write",
+            "resource": {"type": "file",
+                         "identifier": ".claude/decision-log.jsonl",
+                         "newValue": "redacted user-input preview"},
+            "result": result,
+            "ip": "local",
+            "sensitive": True,
+            "sensitiveLevel": "medium",
+            "details": {"reason": "decision-observer.py 用户输入预览含秘钥,擦除后落盘",
+                        "errorMessage": detail[:200]},
+        }
+        adir = os.path.join(PROJECT_DIR, ".audit")
+        os.makedirs(adir, exist_ok=True)
+        with open(os.path.join(adir, f"audit-{date_dashed}.jsonl"), "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except Exception:
+        pass  # 审计写失败不影响 hook 主流程
+
 
 def safe_read_json(filepath: str) -> dict:
     """安全读取 JSON 文件，失败返回空字典"""
@@ -395,8 +464,11 @@ def count_decisions(message: str) -> int:
 # ── 会话隔离 ──────────────────────────────────────────────
 
 def get_session_file(session_id: str) -> str:
-    """获取当前会话的上下文文件路径"""
-    return os.path.join(PROJECT_DIR, ".claude", "sessions", f"{session_id}.json")
+    """获取当前会话的上下文文件路径。
+    session_id 来自 Claude Code 框架(可信),但做防御性清洗:剥离路径分隔符,避免
+    构造 ../ 写出 .claude/sessions/ 之外(防止 path traversal 写任意文件)。"""
+    safe_id = re.sub(r'[^A-Za-z0-9_\-]', '_', session_id or "unknown") or "unknown"
+    return os.path.join(PROJECT_DIR, ".claude", "sessions", f"{safe_id}.json")
 
 
 def write_session_context(session_id: str, data: dict):
@@ -442,13 +514,21 @@ def handle_user_prompt_submit(data: dict):
         studio_status["lastUpdated"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         safe_write_json(STUDIO_STATUS_FILE, studio_status)
 
+    preview = prompt[:300] if len(prompt) > 300 else prompt
+    try:
+        redacted_preview, redaction_count = _redact_secrets(preview)
+        if redaction_count > 0:
+            _audit_log_input_write("success", f"redacted {redaction_count} secret(s) from prompt preview")
+    except Exception as e:
+        redacted_preview = preview
+        _audit_log_input_write("failure", f"redaction error: {str(e)[:160]}")
     record = {
         "type": "user_input",
         "session_id": session_id,
         "classification": classification,
         "project_hint": extract_project_hint(prompt),
         "prompt_length": len(prompt),
-        "prompt_preview": prompt[:300] if len(prompt) > 300 else prompt,
+        "prompt_preview": redacted_preview,
     }
     if stage_confirmed:
         record["studio_stage_confirmed"] = stage_confirmed
@@ -490,6 +570,14 @@ def handle_stop(data: dict):
     if outcome:
         safe_append_jsonl(LOG_FILE, outcome)
 
+    msg_preview = message[:500] if len(message) > 500 else message
+    try:
+        redacted_msg_preview, msg_rc = _redact_secrets(msg_preview)
+        if msg_rc > 0:
+            _audit_log_input_write("success", f"redacted {msg_rc} secret(s) from assistant message preview")
+    except Exception as e:
+        redacted_msg_preview = msg_preview
+        _audit_log_input_write("failure", f"redaction error: {str(e)[:160]}")
     record = {
         "type": "assistant_response",
         "session_id": session_id,
@@ -497,7 +585,7 @@ def handle_stop(data: dict):
         "phase": extract_phase(message),
         "decision_count": count_decisions(message),
         "message_length": len(message),
-        "message_preview": message[:500] if len(message) > 500 else message,
+        "message_preview": redacted_msg_preview,
     }
     safe_append_jsonl(LOG_FILE, record)
 
