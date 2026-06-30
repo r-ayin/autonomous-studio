@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-30-310",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-30T00:12:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "review + merge 1 pending worktree (opt-deploy-1782778067) — PROGRESS.md 漂移收口",
+  "situation": "scout-scan #1 推荐 1BfrYW9R(score=0.0): review 1 待合并 worktree。pending worktree auto/opt-deploy-1782778067 (commit b5b3609) 单提交，diff 仅 PROGRESS.md + .opt-direction 两文件各一行。上轮 merge e0cbaae 把 SIGTERM 优雅关闭回归锁(㉖)合入 onedaybot-dev——dev-server.js 加了 process.on('SIGTERM') 处理器(server.close→process.exit(0)+3s 兜底)、smoke.test.js 加 ㉖ 测试、GATES.md pass 计数 27→28——但漏改 PROGRESS.md「最近里程碑」字段，仍滞留 ㉕ MIME(27 pass)。形成 PROGRESS↔GATES/test 文档漂移：GATES canonical 箭头形已声称 28 pass、smoke 注册 28 测、实跑 28 pass，而 PROGRESS 最近里程碑仍述 27 pass 时代的 ㉕。pending worktree 按既立约定(㉕ commit 显式「PROGRESS 最近里程碑前置 ㉕」)补前置 ㉖ 完整里程碑文。",
+  "action": "审验而非盲合：(1) git diff onedaybot-dev...HEAD 确认 diff 纯 PROGRESS.md + .opt-direction，零代码/测试变更——.opt-direction 仅 deploy:graceful-shutdown→deploy:progress-sync 子方向标记；(2) 三对齐核验——GATES.md grep '28 pass 0 fail'、smoke.test.js grep -c '^\\s*test\\(' = 28、实跑 npm test = 28 pass 0 fail，证 GATES↔test↔实跑一致在 28，唯独 PROGRESS 落后；(3) 里程碑文准确性核验——dev-server.js line 99-103 grep 命中 server.close(()=>process.exit(0))+setTimeout 3s 兜底+process.on SIGTERM/SIGINT；smoke line 1282 grep 命中 ㉖ SIGTERM 测含 status===0/signal===null/ECONNREFUSED 断言，与里程碑文所述一致；(4) worktree 内 npm test 复测 28 pass 0 fail。通过后按既立 merge 约定(参考 e0cbaae/1eef14d 形)在 1BfrYW9R 主 worktree(onedaybot-dev,dirty=0) 执行 git merge --no-ff auto/opt-deploy-1782778067，merge commit 8bb8056 带审验证据 body。合并后复测 PROGRESS 最近里程碑已显 ㉖ SIGTERM、npm test 28 pass 0 fail。清理：git worktree remove opt-deploy-1782778067 + git branch -D auto/opt-deploy-1782778067；保留常设 optimization worktree(非 stale，依 [[scout-scan-standing-worktree-not-stale]] 不动)。",
+  "files_changed": ["1BfrYW9R/PROGRESS.md", "1BfrYW9R/.opt-direction"],
+  "worktree": "1BfrYW9R (base onedaybot-dev; merged-from auto/opt-deploy-1782778067, now removed)",
+  "direction": "deploy:progress-sync",
+  "outcome": "succeeded",
+  "outcome_evidence": "merge commit 8bb8056 on onedaybot-dev (parent e0cbaae + b5b3609); post-merge `grep 最近里程碑 PROGRESS.md` 首段显「2026-06-30 SIGTERM 优雅关闭回归锁 —— `npm test` ㉖」；post-merge `npm test` = # pass 28 / # fail 0；git worktree list 仅余主 worktree + optimization(已删 opt-deploy-1782778067)；三对齐(GATES 28 pass / smoke 28 注册 / 实跑 28 pass)成立",
+  "next_suggestion": "1BfrYW9R deploy 通道已闭合(Phase 3 启动/服务/方法/关闭四维回归锁全 + PROGRESS/GATES/test 三对齐)，.opt-direction 现 progress-sync 已落地——下轮可让 scout-scan 重排；1BfrYW9R 若再排 #1 多半因无新 worktree 而降至健康良好档，届时顺延 #2 autonomous-studio(延期已 triage TODO=6，不计 triage 推荐故非紧迫)或 #3 moni(受 [[moni-quant-fixes-2026-06]] 环境依赖阻塞，且前端重构受 autonomous-constraints.md 排除)。更值做的：autonomous-studio 侧 case 积压(本 case 310 跨项目写 AS main 将滞留 dirty=1，依 [[case-file-orphan-on-cross-project-work]] 待手工归档或下轮 AS worktree cp 拾取)——下轮若 AS 排 #1 可顺势归档积压 case。"
+}
