@@ -490,7 +490,11 @@ $(git log --oneline "$MAIN_BRANCH"..auto/$(basename "$dir") 2>/dev/null | head -
     # 2aa0eba/0a2124d/4dc2565 等 main 提交，仅 734512b 属该 worktree），误导审阅。
     echo "✓ 已 squash 合并 $wt → $MAIN_BRANCH"
     git -C "$PROJECT" worktree remove "$dir" --force 2>/dev/null || rm -rf "$dir"
-    echo "✓ worktree 清理"
+    # 合并后删 auto/<wt> 分支（case-322 收口：cmd_reject/cmd_cleanup 已有此行，root live
+    # cmd_merge 亦有，AS 副本 cmd_merge 漏此行致 stale auto/* ref 残留→下轮 scout-scan
+    # 误报待合并）。2>/dev/null||true 容错：分支名解析失败/已删不阻断合并收尾。
+    git -C "$PROJECT" branch -D "auto/$(basename "$dir")" 2>/dev/null || true
+    echo "✓ worktree 清理（worktree 目录 + auto/<wt> 分支）"
   else
     echo "❌ 合并冲突，人工处理: cd $dir && 解决后 opt-worktree.sh merge"
     git merge --abort 2>/dev/null || true
