@@ -63,17 +63,34 @@ def _tokenize(cmd):
         return cmd.split()
 
 
+def _is_git_token(t):
+    """识别 git 调用 token:裸 'git' 或 basename 为 git 的路径(/usr/bin/git、./git、bin/git)。
+    堵 case-428 审计 finding:原 toks.index('git') 精确匹配 'git' token,全路径调用
+    `/usr/bin/git commit` 的 token='/usr/bin/git' 不匹配→index 失败→_git_parse 返回
+    (None,[])→gate 漏过(全路径 git commit 直提 main 不拦),与 case-372/376/378 同类
+    绕过向量。要求路径形含 '/' 故裸别名(如 mygit)不误命中;若 `/path/git` 后跟恰好
+    'commit'/'push' 等受拦子命令的极罕见非 git 命令会被误拦——fail-safe(过拦安全,
+    用户可 rm 标记或走 opt-worktree),过拦代价远低于全路径绕过代价。"""
+    if t == "git":
+        return True
+    return "/" in t and os.path.basename(t) == "git"
+
+
 def _git_parse(cmd):
     """tokenize 命令,返回 (子命令 or None, 子命令之后的 token 列表)。
     跨过 git 与子命令之间的全局选项:取值的选项(-C <path> 等)连同其值一起跳过,
     其他 -/-- 开头的标志只跳过自身。这样 `git -C <path> commit` 正确识别子命令=commit。
-    非 git 命令(无独立 "git" token)返回 (None, [])。"""
+    非 git 命令(无 git token)返回 (None, [])。git token 识别见 _is_git_token——
+    兼容全路径调用(/usr/bin/git),堵 case-428 全路径绕过。"""
     toks = _tokenize(cmd)
-    try:
-        i = toks.index("git")
-    except ValueError:
+    gi = None
+    for idx, t in enumerate(toks):
+        if _is_git_token(t):
+            gi = idx
+            break
+    if gi is None:
         return None, []
-    i += 1
+    i = gi + 1
     while i < len(toks):
         t = toks[i]
         if t in _GIT_VALOPTS and i + 1 < len(toks):  # -C <path> 等:跳过两项
