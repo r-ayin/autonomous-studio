@@ -224,8 +224,9 @@ def _git_segments(cmd):
     commit 会被当成前段参数而放行;逐段评估即可命中后段真实 commit。分支与 repo 按本段
     -C 解析,故跨 repo 链(`-C A status && -C B commit`)也能正确定位 B 的分支。
     递归终止:_unwrap_indirect 幂等(无壳时 inner==cmd),每层剥壳使命令严格变短,深度受
-    _unwrap_indirect 8 层上限束缚。残留:命令替换 $(git ...)/反引号、source/. 脚本文件
-    内容、--norc 等长选项 -c 形态不在展开范围(需 LLM 刻意构造,低危)。"""
+    _unwrap_indirect 8 层上限束缚。残留:source/. 脚本文件内容、--norc 等长选项 -c
+    形态不在展开范围(需 LLM 刻意构造,低危)。命令替换 $(...)/反引号由 main() 调
+    _cmd_substitutions 单独评估(见 case-378),不在此函数职责内。"""
     expanded = _unwrap_indirect(cmd)
     out = []
     for seg in [s for s in _SHELL_OPS_RE.split(expanded) if s]:
@@ -235,6 +236,76 @@ def _git_segments(cmd):
             out.extend(_git_segments(inner))
         else:
             out.append(seg)
+    return out
+
+
+def _cmd_substitutions(cmd):
+    """提取命令替换 $(...) 与反引号 `...` 的内层命令串列表。shell 执行替换时把
+    内层命令输出代入——内层若含受拦 git 子命令等同直接执行,须评估。堵 case-378
+    闭合的 `out=$(git commit -m wip)` / `out=$(git push origin main)` 类绕过——
+    shlex 不解 $(),token 形如 'out=$(git' 上 index('git') 失败→原 _git_parse 漏过。
+
+    手动扫描配对括号(支持嵌套)并尊重引号:单引号串内 shell 不展开(整段跳过),
+    双引号串内 $()/` 仍展开(正常扫,双引号内 ) 不误终结 $( )。$(( 算术展开)与
+    $(< file) 进程替换不含 git 子命令,跳过。残留:反引号内嵌反引号、$(... $(...) ...)
+    深嵌套(需真 shell parser,刻意构造,低危,与 case-376 文档边界一致)不展开。"""
+    out = []
+    i, n = 0, len(cmd)
+    while i < n:
+        c = cmd[i]
+        if c == "'":  # 单引号串:shell 不展开 $()/`,整段跳过(免误提取字面量致 FP)
+            j = i + 1
+            while j < n and cmd[j] != "'":
+                j += 1
+            i = j + 1
+            continue
+        if c == "$" and i + 1 < n and cmd[i + 1] == "(":
+            if i + 2 < n and cmd[i + 2] == "(":  # $(( 算术展开:跳到匹配 ))
+                depth, j = 2, i + 3
+                while j < n and depth > 0:
+                    depth += 1 if cmd[j] == "(" else (-1 if cmd[j] == ")" else 0)
+                    j += 1
+                i = j
+                continue
+            depth, j, inner = 1, i + 2, []
+            while j < n and depth > 0:
+                cj = cmd[j]
+                if cj == '"':  # 双引号内 ) 不终结 $( —— 跳到闭 "
+                    k = j + 1
+                    while k < n and cmd[k] != '"':
+                        if cmd[k] == "\\" and k + 1 < n:
+                            k += 2
+                            continue
+                        k += 1
+                    inner.extend(cmd[j:k + 1])
+                    j = k + 1
+                    continue
+                if cj == "(":
+                    depth += 1
+                elif cj == ")":
+                    depth -= 1
+                    if depth == 0:
+                        break
+                inner.append(cj)
+                j += 1
+            if depth == 0:
+                out.append("".join(inner))
+            i = j + 1
+            continue
+        if c == "`":  # 反引号命令替换
+            j, inner = i + 1, []
+            while j < n and cmd[j] != "`":
+                if cmd[j] == "\\" and j + 1 < n:  # \` 转义:取字面量
+                    inner.append(cmd[j + 1])
+                    j += 2
+                    continue
+                inner.append(cmd[j])
+                j += 1
+            if j < n:
+                out.append("".join(inner))
+            i = j + 1
+            continue
+        i += 1
     return out
 
 
@@ -377,6 +448,18 @@ def main():
         block_detail = _eval_segment(seg)
         if block_detail is not None:
             break
+
+    # 命令替换内层命令也评估——堵 `out=$(git commit -m wip)` 类绕过(shlex 不解 $(),
+    # token 'out=$(git' 上 index('git') 失败→段循环漏过;提取 $()/` 内层后递归评估即命中)。
+    # 已被上面段循环命中则不再评估(免重复 _audit_log_block)。
+    if block_detail is None:
+        for sub_cmd in _cmd_substitutions(cmd):
+            for seg in _git_segments(sub_cmd):
+                block_detail = _eval_segment(seg)
+                if block_detail is not None:
+                    break
+            if block_detail is not None:
+                break
 
     if block_detail is None:
         print("{}")
