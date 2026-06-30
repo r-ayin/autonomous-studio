@@ -1,0 +1,17 @@
+{
+  "case_id": "2026-06-30-328",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-30T02:50:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "scout-scan: count_pending_worktrees 加内容等价对账根治 squash-merge 下待合并 false-positive",
+  "situation": "scout-sscan 的 count_pending_worktrees 仅按 ahead=git rev-list --count main..HEAD>0 判 worktree 待合并。但 opt-worktree 走 git merge --squash(opt-worktree.sh:249)，worktree 分支 commit 哈希永不落 main，ahead>0 永真——故对「work 全已 squash 合入 main 但 standing worktree 分支 ref 未随清理」的形态持续 false-positive 标待合并，直致 reject/init 重置才消(case-327 1BfrYW9R / case-219)。state NEXT_SUGGESTION 头条即此结构性改进。",
+  "action": "先验证 state 提议的 git cherry 方案：合成 repo 测 git merge --squash 后 git cherry -v main wt——squash 把多 commit 合一的 patch-id 不等于各单 commit patch-id，cherry 显 '+'(仅 1-commit squash 才显 '-')，故 cherry 在批量 squash 下不触发，对 opt-worktree 实跑流程无效；case-327 记录的「cherry 全 -」疑为 1-commit 或误记。改采内容等价两步法：(1) 三点 git diff --name-only main...HEAD 取 worktree 侧自 merge-base 起改动文件(不含 main 后增无关文件，免疫 [[diverged-base-two-dot-diff-misread]] 误读)；(2) 对这些文件两点 git diff --exit-code main HEAD——exit 0 即改动文件两 tip 内容一致=work 已落 main=superseded(stale)，exit 1=真未落=待合并。任一步失败/空(纯空 commit)退化为只看 ahead 不变，保守不误标。details 增 superseded 字段。root live 与 AS git 两副本同改同 cp 同步。",
+  "files_changed": [
+    "scripts/scout-scan.py"
+  ],
+  "worktree": "autonomous-studio/auto/optimization (待 commit+merge)",
+  "direction": "scout:superseded-detection",
+  "outcome": "succeeded",
+  "outcome_evidence": "python3 -m py_compile 通过;合成 repo 建 3 真实 worktree 调 count_pending_worktrees: staleA(work squash-merged+main 增无关 smoke.js)→superseded=True 计 stale; pendingB(work 未落 main+main 增无关 other.js)→superseded=False 计 with_content; pendingC(纯新 work 无 main advance)→superseded=False 计 with_content;断言 with_content==2 & stale==1 & superseded==[staleA] 全 PASS;复跑 live scout-scan /home/admin/workspace 8 项目仍全 score=0.0 报「健康度良好」无回归;diff scripts/scout-scan.py autonomous-studio/scripts/scout-scan.py 空=两副本逐字节一致。",
+  "next_suggestion": "(1) git cherry 在 squash-merge 下不可靠已记本案,后续勿再尝试 cherry 方案;内容等价法对 batch-squash 单/多 commit 均生效。(2) details 现带 superseded 字段,可让 scout-scan 文本报告在 stale 行标注 superseded 以便人工区分「空 worktree 废弃」与「已合并 ref 残留」两类 stale。(3) AS 46 个陈旧 auto/opt-* orphan 分支 ref(case-322 next a)仍待批量 branch -D 清理。(4) AS 归档完整性 smoke 守卫(case-326)仍待做。"
+}
