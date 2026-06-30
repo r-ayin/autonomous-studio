@@ -149,7 +149,7 @@ cmd_commit() {
   mkdir -p "$gitdir/info"
   echo ".opt-direction" >> "$gitdir/info/exclude"
   git add -A
-  git -c user.name="autonomous-studio" -c user.email="opt@auto" commit -q -m "opt($direction): $msg
+  git -c user.name="autonomous-studio" -c user.email="syp02536326@taobao.com" commit -q -m "opt($direction): $msg
 
 [auto-optimization on worktree $(basename "$target") — 待人工审合并]"
 
@@ -247,7 +247,7 @@ cmd_merge() {
   #   `git merge --squash "$wt"` 又用裸名（非 auto/ 前缀）也非有效 ref → 两路皆败 →
   #   误报"合并冲突"（case-223 发现，case-226 修）。
   if git merge --squash "auto/$(basename "$dir")" 2>/dev/null; then
-    git -c user.name="autonomous-studio" -c user.email="opt@auto" commit -q -m "merge: 人工批准合并 optimization worktree '$wt'
+    git -c user.name="autonomous-studio" -c user.email="syp02536326@taobao.com" commit -q -m "merge: 人工批准合并 optimization worktree '$wt'
 
 $(git log --oneline auto/$(basename "$dir") 2>/dev/null | head -5)"
     echo "✓ 已 squash 合并 $wt → $MAIN_BRANCH"
