@@ -1,0 +1,31 @@
+{
+  "case_id": "case-2026-07-01-383",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-01T18:30:00Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "sanctioned-merge: optimization @866b03f → main（case-382 security-review 修复落地，1 file scripts/opt-worktree.sh +17 _validate_wt_name 守卫防 rm -rf 路径遍历）",
+  "situation": "普通轮 case-383=383%4=3≠0 非审计。承接 case-382 NEXT_SUGGESTION[1]/state LAST_WORKTREE:optimization @866b03f pending sanctioned-merge（case-382 DO A 审计替代轮发现的 opt-worktree.sh cmd_merge/reject/show 的 <worktree> CLI 参数未校验 basename 致 rm -rf 路径遍历缺口已修于 worktree，待合并入 main）。纯部署合并轮无新源码改动。预审:merge-base=3be3fde(case-382 归档前 main)，auto/optimization 实际 changeset(3be3fde..866b03f --stat)仅 scripts/opt-worktree.sh 1 file +17，与 main 归档环(case-382.json 新增 + state.md 更新，已于 case-382 轮直提 main @eb9dd91)无源码重叠→clean squash。",
+  "action": "(1) 核验 pending:git worktree list → optimization @866b03f [auto/optimization] 存在;git branch → + auto/optimization + * main(HEAD=eb9dd91 case-382 归档)。(2) 预审冲突面:git diff main..HEAD -- scripts/opt-worktree.sh → +17 _validate_wt_name 守卫(diff 起始 index 6a7dc5e..410f464，main 自 merge-base 未改 opt-worktree.sh)→ 三方 squash merge 无冲突;归档环 case-382.json/state.md 仅 main 侧改动→merge 保留 main 归档结果不回滚。(3) bash scripts/opt-worktree.sh . merge optimization → 三方 squash merge → main @04688e5(merge commit)+worktree 清理(✓ 已 squash 合并 / ✓ worktree 清理)。(4) auto/optimization 残留本地分支(squash 不标 merged 需 -D)git branch -D auto/optimization → Deleted branch auto/optimization (was 866b03f)。(5) opt-worktree.sh 非 LIVE 部署文件(/home/admin/.claude/hooks/ 无 opt-worktree.sh)→合并后即生效,无 LIVE cp 需求,与 case-379 gate LIVE cp 不同。(6) 回归:bash -n scripts/opt-worktree.sh exit 0;syntax OK;git grep _validate_wt_name → L257(定义)+L529(cmd_show)+L555(cmd_merge)+L602(cmd_reject)四处落 main HEAD;守卫 6 例重跑:'..'/'.'/'foo/../../etc'/'../etc' 被 exit1 拒(❌ worktree 名非法),'optimization'/'x' 合法穿过进正常 'worktree 不存在' ALL PASS;全量 scout-scan 烟测 TODO=0/FIXME=0/HACK=0 无回归;「待处理 worktree」行消失(pending=0)。",
+  "files_changed": ["scripts/opt-worktree.sh"],
+  "worktree": "optimization @866b03f（已 sanctioned-merge→main @04688e5 squash,worktree 已清理,auto/optimization 残留分支已 git branch -D;opt-worktree.sh 非 LIVE 部署文件无 LIVE 同步需求;方向 engine:opt-worktree-security;case-382 security-review 修复现落 main）",
+  "direction": "engine:opt-worktree-security",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "git log --oneline -2 → 04688e5 merge: 人工批准合并 optimization worktree 'optimization'（squash merge commit 落 main）/ eb9dd91 case-382 归档——归档环保留",
+    "git grep -n _validate_wt_name scripts/opt-worktree.sh → 257:_validate_wt_name() { / 529:_validate_wt_name \"$wt\"(cmd_show) / 555:_validate_wt_name \"$wt\"(cmd_merge) / 602:_validate_wt_name \"$wt\"(cmd_reject)——case-382 四处守卫调用均落 main HEAD",
+    "ls .claude/decisions/case-2026-07-01-382.json 存在 + autonomous-state.md LAST_WORKTREE 标 optimization @866b03f 在——归档环(case-382.json + state.md)经三方 merge 保留未回滚(clean squash 验证)",
+    "git worktree list → 仅 /home/admin/workspace/autonomous-studio-aone 04688e5 [main](optimization worktree 已清理);git branch → 仅 * main(auto/optimization 已 -D)",
+    "git branch -D auto/optimization → Deleted branch auto/optimization (was 866b03f)",
+    "bash -n scripts/opt-worktree.sh → exit 0(OK syntax)",
+    "守卫 6 例重跑:wt='..' → 拒;wt='.' → 拒;wt='foo/../../etc' → 拒;wt='../etc' → 拒;wt='optimization' → 穿过进 'worktree 不存在';wt='x' → 穿过进 'worktree 不存在'——ALL PASS(纵深防御守卫生效,合法路径不误拦)",
+    "全量 scout-scan 烟测 → 标记: TODO=0 FIXME=0 HACK=0;#1 autonomous-studio-aone score=0.0 「无明确小工作单位」(待处理 worktree 行消失,pending=0)——无回归",
+    "ls /home/admin/.claude/hooks/opt-worktree.sh → 不存在(opt-worktree.sh 非 LIVE 部署文件,合并后即生效,无需 cp LIVE)"
+  ],
+  "next_suggestion": [
+    "【下次审计轮·case-384=384%4=0=DO A 强制审计轮】换审非 gate/opt-worktree/scout-scan 目标(已审:opt-worktree.sh case-382、gate 连续多轮、scout-scan.py case-380)。剩余候选优先级:(a) scripts/route-health-scorer.py(331 行,外部文件读写/评分 logic,未审过,优先);(b) codegraph-sync.py(索引读写,自动更新感知);(c) .claude/hooks/reference-transaction(已部署本体未深审)。",
+    "【普通轮·case-383 已完成 pending=0】下轮 case-384 审计轮直接走 DO A 路径挑有源码项目。当前 pending=0,main HEAD=04688e5 干净。",
+    "【opt-worktree.sh 残留低危(非下轮必碰)】json_escape 未转义 0x00-0x08/0x0b/0x0c/0x0e-0x1f 控制符(JSON 规范要求),wt/sha/reason 派生值实践不含此类字符→理论 JSON 合规性缺口,维持现状。"
+  ],
+  "audit_type": "none",
+  "audit_findings": []
+}
