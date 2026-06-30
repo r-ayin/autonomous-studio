@@ -1,0 +1,17 @@
+{
+  "case_id": "case-2026-07-01-392",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-07-01T03:25:00+08:00",
+  "project": "autonomous-studio",
+  "work_unit": "cmd_merge 末尾加 ensure_main_wt，合并即 ff standing optimization worktree 至新 main tip",
+  "situation": "scout-scan 全项目 health=0.0（#1 1BfrYW9R 真饱和：36/36 测试过、0 TODO/FIXME；#2 AS 7 延期 TODO 皆已 triage）。按 scout-all-zero-pick-dirty-signal 纪律下移查 dirty 信号：全 dirty=0，转查 standing optimization worktree。实踩 standing WT tip=876679b 落后 main 2fac19e 一个 merge（git merge-base --is-ancestor auto/optimization main 返回 0=true），tree diff `git diff main HEAD --stat` 显 .claude/decisions/case-2026-07-01-391.json | 18 deletions（standing WT 缺 main 已有的 case-391.json）。根因：cmd_merge（行518-558）合并 fresh worktree 进 main 后不调 ensure_main_wt；case-363 的 ff-only 自愈仅挂在 cmd_commit 首行（行259），故每次他枝 merge 后 standing WT 必陈旧至下次 cmd_commit 才自愈——case-391 outcome_evidence 自己已记录『standing optimization ff 自愈至 75a876b(落后 main 1 merge，下轮 commit 触发再自愈)』但未根治。",
+  "action": "cmd_merge 末尾（worktree 清理 echo 之后、else 之前）加 `ensure_main_wt` 调用 +6 行注释。ff-only+祖先校验（merge-base --is-ancestor）已在 ensure_main_wt 内保未合并改动不丢，merge 后 standing WT 必为 main 祖先故 ff 安全。两副本同改（AS git + root live）防漂移。",
+  "files_changed": [
+    "scripts/opt-worktree.sh"
+  ],
+  "worktree": "opt-opt-tooling-1782847924(commit d08ad00→squash merged 7deb467,分支 auto/opt-opt-tooling-1782847924 已删,worktree 目录已清)；standing optimization worktree 经新 cmd_merge ensure_main_wt ff 2fac19e→7deb467(自验证)",
+  "direction": "opt-tooling:merge-ff-standing-wt",
+  "outcome": "succeeded",
+  "outcome_evidence": "merge 输出含 `↻ standing optimization worktree 快进至 main（2fac19ed... → 7deb4675...，落后内容已同步）`；merge 后 git -C standing-WT log --oneline -1 == 7deb467 == main tip（merge 前 standing WT==2fac19e，merge 使 main 进 7deb467，standing WT 经新代码路径同步跟上，不再停 2fac19e）；ls standing-WT/.claude/decisions/case-2026-07-01-391.json 存在(merge 前缺失)；git show HEAD:scripts/opt-worktree.sh 第558行=ensure_main_wt(行259 cmd_commit 的同名调用仍存，双触发点)；diff root-live vs AS-git 副本 IDENTICAL；AS main porcelain 空；bash -n 语法通过。",
+  "next_suggestion": "AS 工具链本轮补 standing WT merge-time ff。下轮 scout 大概率仍全 0.0：1BfrYW9R 真饱和(36 测试/0 标记)，可考虑其结构性大项（.design/RECIPES.md Phase1 真后端 API / Phase2 表单校验+骨架屏 / Phase3 监控）但皆超小工作单位，宜拆 Phase1 子步骤；或审 sunset-prediction(PROGRESS 0.2天最活跃)有无断言级缺口。AS 自身待办：7 延期 TODO 已 triage 非紧急。若仍无 dirty 信号，可复查 ensure_main_wt 在 cmd_reject/cmd_cleanup 是否也需补（reject/cleanup 不推进 main 故不生陈旧，低优）。"
+}
