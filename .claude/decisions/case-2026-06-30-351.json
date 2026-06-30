@@ -1,0 +1,18 @@
+{
+  "case_id": "case-2026-06-30-351",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-30T13:15Z",
+  "project": "sunset-prediction",
+  "work_unit": "merge pending opt-gates-1782824938 worktree -> main (GATES 🟡 python health-check.py 核销 + health-check.py SRC_DIR 可移植性修复)",
+  "situation": "scout-scan 全 8 项目 score=0.0(健康),无紧迫小工作单位;持久化 state NEXT_SUGGESTION #1 = sunset-prediction opt-gates-1782824938 待人工 merge。sunset-prediction main tip ff6c70b,worktree auto/opt-gates-1782824938 tip 951d8a3,scout-scan 显 待合并=1。须先证真未合非 [[scout-scan-pending-merge-false-positive]] 误报。",
+  "action": "(1) git log main..auto/opt-gates-1782824938 显 1 commit(951d8a3),三点 name-only=2 文件(GATES.md+health-check.py),两点 --exit-code=1(真 diff 非 [[git-cherry-unreliable-for-squash-merge]] 假象)——证 worktree 真未合。(2) diff 复核:纯 gates 核销(🟡 [ ]→[x] 缀实跑证据)+health-check.py SRC_DIR 去 /mnt/e/x-tool/wanxia 硬编码改 env WANXIA_SRC_DIR 默认脚本目录(与 967f857 同模式),零行为回归。(3) opt-worktree.sh sunset-prediction merge opt-gates-1782824938:fast-forward ff6c70b..951d8a3→squash 提交 d515311 上 main,auto/opt-gates-1782824938 分支删,worktree 目录清理。",
+  "files_changed": [
+    "sunset-prediction/GATES.md",
+    "sunset-prediction/health-check.py"
+  ],
+  "worktree": "opt-gates-1782824938(已 merge+清理,main d515311)",
+  "direction": "gates:merge",
+  "outcome": "succeeded",
+  "outcome_evidence": "git -C sunset-prediction log --oneline -2 main 显 d515311 'merge: 人工批准合并 optimization worktree opt-gates-1782824938'(父 ff6c70b);git worktree list 仅余 standing optimization wt(opt-gates 已清);grep 'python health-check' GATES.md L35 显 [x] 🟡;grep SRC_DIR health-check.py L9 显 os.environ.get('WANXIA_SRC_DIR', os.path.dirname(os.path.abspath(__file__))) 旧硬编码 /mnt/e/x-tool/wanxia 已无;auto/opt-gates-1782824938 分支 git branch 不再列。",
+  "next_suggestion": "sunset-prediction 剩余未过 GATES:🟡 POST /api/xhs/generate 手动触发路由(仅 cron 22:30,实现路由解锁另一 🟡)=下轮小工作单位候选;🟡 前端 npm run build(package.json 无 build 脚本);🟡 小红书限流。或 wechat-main GATES 实跑核销(dirty=3 须先查 pending worktree log)。AS case-350/351 untracked 待归档器捡入 housekeeping wt。"
+}

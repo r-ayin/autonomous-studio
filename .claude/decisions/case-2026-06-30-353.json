@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-30-353",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-30T13:30:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "review + merge 待合并 worktree opt-tests-1782825852（405 Content-Type 头部测试加固）",
+  "situation": "scout-scan #1 推荐 1BfrYW9R：1 个待合并 worktree（auto/opt-tests-1782825852, tip b70e327）。base onedaybot-dev tip 8808462 是上一轮 opt-tests-1782822400 的 squash merge，故本 worktree 为真新待合并（git cherry 显 + 与 squash 语义一致，非误报）。worktree 仅改 3 文件：test/smoke.test.js(+6 行断言) + GATES.md/PROGRESS.md 文档同步，无 server 改动。",
+  "action": "审 diff：新断言锁 405 响应须带 Content-Type: text/plain（与 ㉘ 404 头部对称）。核对 server dev-server.js line 40 writeHead(405,{Allow,Content-Type:'text/plain; charset=utf-8'}) 已设该头——断言堵的是「有人改回 writeHead(405,{Allow})」回归缺口，server 当前正确故测试应绿。在 worktree 内跑 node --test test/smoke.test.js 验证：33/33 pass（含新断言）。遂 bash scripts/opt-worktree.sh 1BfrYW9R merge opt-tests-1782825852 → squash fast-forward 合入 onedaybot-dev（3 文件 +8/-2），auto/opt-tests-1782825852 分支删除、worktree 目录清理。",
+  "files_changed": ["test/smoke.test.js", "GATES.md", "PROGRESS.md"],
+  "worktree": "opt-tests-1782825852 (merged & cleaned; base onedaybot-dev)",
+  "direction": "tests:405-content-type-header",
+  "outcome": "succeeded",
+  "outcome_evidence": "git diff onedaybot-dev..auto/opt-tests-1782825852 --name-only 显 3 文件；node --test 输出 '# pass 33 # fail 0'；merge 命令输出 'Fast-forward'+'✓ 已 squash 合并 opt-tests-1782825852 → onedaybot-dev'+'Deleted branch auto/opt-tests-1782825852 (was b70e327)'+'✓ worktree 清理'。onedaybot-dev 现 6 commits ahead of origin/onedaybot-dev（本地积压，按既有约定不推 GitHub）。",
+  "next_suggestion": "1BfrYW9R 仍有 standing optimization worktree（auto/optimization, 966a60f）及多个 auto/opt-deploy、auto/opt-docs、auto/opt-gates 残留 ref——下轮可对 auto/optimization 做 cherry/内容等价审，确认是否 stale（按 [[git-cherry-unreliable-for-squash-merge]] 用三点 name-only + 两点 exit-code 非 cherry）；另 onedaybot-dev 本地 6 commits ahead origin 未推，符合 [[x-tool-push-ghproxy-no-creds]] 同类约束，不列为待办。"
+}
