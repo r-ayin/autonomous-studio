@@ -1,0 +1,23 @@
+{
+  "case_id": "case-2026-06-30-346",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-30T12:25:00Z",
+  "project": "1BfrYW9R (oneday-design)",
+  "work_unit": "追加 dev-server.js server.on('error') 的 else 分支（非 EADDRINUSE 监听错误）回归锁 test ㉛",
+  "situation": "scout-scan 排 1BfrYW9R 为 #1（score=0.0，全项目健康良好无紧迫单位）。复查 dev-server.js 发现 server.on('error') 处理器含两分支：EADDRINUSE 分支（test ⑥ 已锁）与 else 分支（非端口占用监听错误如 EACCES/EAFNOSUPPORT，零覆盖）。若有人把处理器收紧成 EADDRINUSE-only（删 else 兜底），EACCES 等错误进监听器后空跑、进程半死不退，而 ⑥ 仍全绿——else 兜底沦为死代码，与该项目「证明处理器非死代码」的 ⑥ 理念相悖。属结构性覆盖盲区，非文档润色。",
+  "action": "新增 test ㉛：非 root（uid 1001）绑特权端口 80 实测可靠触发 EACCES（区别于 ⑥ 的 EADDRINUSE），spawnSync 起子进程断言三连——(1) exit 非 0、(2) stderr 含 else 分支专有文案「dev-server listen failed」、(3) stderr 不含 uncaught 栈帧（/\\n[ \\t]*at[ \\t]/）。root 环境绑 80 成功走 ⑤ 成功路径故 getuid()===0 时 skip。端口命名 const privPort = 80（非 const port =）不入 ㉙ 唯一性集合。GATES.md canonical pass 计数 32→33 同步 bump + 追加 ㉛ 描述与 milestone（㉑ gates-doc-drift 对账要求）。",
+  "files_changed": [
+    "test/smoke.test.js",
+    "GATES.md"
+  ],
+  "worktree": "opt-tests-1782822400",
+  "direction": "tests:listen-error-else-branch",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "npm test 实测 33 pass 0 fail（test ㉛ ok 33，duration_ms 37.3ms——EACCES 触发快）",
+    "突变复测：把 dev-server.js 的 else 分支删除（处理器收紧成 EADDRINUSE-only，`if (err.code === EADDRINUSE') process.exit(1)`）后跑套件 → not ok 33 / pass 32 fail 1，其余 32 测仍绿；还原后 33 pass 0 fail——证锁真咬（cp 备份 /tmp/dev-server.js.bak 还原，git diff dev-server.js 空）",
+    "worktree opt-tests-1782822400 commit 442b84a：git show --stat 显示 test/smoke.test.js +54 行、GATES.md 2 行变更（.opt-direction -1 为 opt-worktree 自动管理）",
+    "GATES.md ㉑ gates-doc-drift 测在 bump 前先转红（GATES 称 32 实际 33 注册），bump 32→33 后转绿——对账守卫双向验证"
+  ],
+  "next_suggestion": "1BfrYW9R 的 server.on('error') 全集（EADDRINUSE ⑥ + else ㉛）已闭合，listen 期错误覆盖完整。下轮可转向：dev-server.js 启动期 stdout「Dev server: http://localhost:${port}」日志格式的回归锁（现存测只断言日志含端口数字，未锁完整格式串——若有人改成 stderr 输出或改文案，⑤/⑫/㉚ 的日志断言可能漂移）。或顺延 scout #2 autonomous-studio。本项目 worktree opt-tests-1782822400 待人工 merge。"
+}

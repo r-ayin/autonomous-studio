@@ -1,0 +1,34 @@
+{
+  "case_id": "case-2026-06-30-348",
+  "agent_id": "ralph-loop",
+  "timestamp": "2026-06-30T12:45:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "循环末尾自动归档孤儿 case — 接入 loop-archive-cases.sh 进 runner + 同步 AS 副本 + 提交",
+  "situation": "scout-scan 全项目 score=0.0（健康），无紧迫工作单位。查 autonomous-state.md NEXT_SUGGESTION 指向多轮遗留缺口: scripts/loop-archive-cases.sh (case-341 未竟)。case-341 曾称脚本就绪+自测通过但 main/WT/磁盘三处均无 [[case-record-claims-nonexistent-file]]。实测发现: root-live scripts/loop-archive-cases.sh 已于 19:15 落盘(3929B) 但 (a) AS git 副本无 (b) 未接入 autonomous-loop.sh runner (c) 未提交 — 即 case-341 的就绪声明是空头支票。后果: 跨项目轮次写的 case-*.json 滞留 AS main 成 untracked 孤儿, scout 误算 dirty, cmd_next_case 可能撞号 [[case-file-orphan-on-cross-project-work]] [[case-id-collision-agent-self-pick]]。本轮 346/347 即此类孤儿。",
+  "action": "1) 实跑 bash scripts/loop-archive-cases.sh autonomous-studio: 检出 AS main untracked 346/347 → 经 opt-worktree commit housekeeping:archive-cases cp 进 opt-housekeeping-1782823523 worktree (commit 5d34541) → main 还原 → 脚本内置自测断言 main 无 untracked case-*.json, exit 0。即 case-341 声称的功能首次真正端到端验证通过。2) 接入 runner: 在 autonomous-loop.sh while 循环 sleep 2 前插 'bash $WORKSPACE/scripts/loop-archive-cases.sh autonomous-studio || true', 两副本(root-live + AS)同改 [[opt-worktree-root-as-copy-drift]]。3) 同步: cp scripts/loop-archive-cases.sh root-live → autonomous-studio/scripts/ (AS git 副本此前无此文件)。4) bash -n 语法校验两脚本通过。5) opt-worktree commit tooling:archive-loop-wire 提交 AS scripts/autonomous-loop.sh + scripts/loop-archive-cases.sh → opt-tooling-1782823671 worktree (commit d911042), main 还原干净。",
+  "files_changed": [
+    "scripts/autonomous-loop.sh (root-live + AS, +5 行接入)",
+    "scripts/loop-archive-cases.sh (root-live 既有, AS 副本新建同步)",
+    "autonomous-studio/.claude/decisions/case-2026-06-30-348.json (本 case)"
+  ],
+  "worktree": "autonomous-studio/opt-tooling-1782823671 (commit d911042, 待人工审合并); 归档副产物 opt-housekeeping-1782823523 (commit 5d34541, 待合并)",
+  "direction": "tooling:archive-loop-wire",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "归档实跑输出: '✓ 自测通过：autonomous-studio main 干净，2 个 case 已入 housekeeping worktree 待合并' exit=0",
+    "归档后 git -C autonomous-studio status --short .claude/decisions/ 无输出(干净)",
+    "housekeeping wt commit 5d34541 ls-files 含 case-2026-06-30-346.json + 347.json(及 340-345 历次归档)",
+    "AS 副本 bash -n scripts/autonomous-loop.sh && bash -n scripts/loop-archive-cases.sh → 语法 OK(无输出)",
+    "diff scripts/autonomous-loop.sh autonomous-studio/scripts/autonomous-loop.sh 空(两副本一致)",
+    "diff scripts/loop-archive-cases.sh autonomous-studio/scripts/loop-archive-cases.sh 空(两副本一致)",
+    "opt-worktree commit 输出 '✓ 提交到 opt-tooling-1782823671 方向=tooling:archive-loop-wire' exit=0",
+    "tooling wt d911042: grep -c loop-archive-cases.sh scripts/autonomous-loop.sh = 1 (接入行落地)",
+    "提交后 AS main status --short 无输出(干净, 未污染 main)"
+  ],
+  "next_suggestion": [
+    "🔴 待人工审合并 opt-tooling-1782823671 (d911042, 接入+同步) 与 opt-housekeeping-1782823523 (5d34541, 归档 346/347)。合 main 后须再 cp AS main scripts/autonomous-loop.sh + loop-archive-cases.sh → root-live scripts/ (合 main 漏 cp 同步根 live 是高发漂移 [[opt-worktree-root-as-copy-drift]])",
+    "下轮起 runner 每轮末尾自动调归档器, 跨项目轮次 case 不再滞留 main — 观察 1-2 轮确认 housekeeping worktree 持续接收新 case 且 main 持续干净",
+    "case-341 应在蒸馏闭环标记 superseded(就绪声明不实, 本轮 348 真正落地+验证)",
+    "scout 全 0.0 时其他可选: AS 7 条延期已 triage TODO 逐条核销; sunset-prediction/wechat-main GATES 实跑核销; moni 后端/量化(前端重构受 constraints 排除)"
+  ]
+}

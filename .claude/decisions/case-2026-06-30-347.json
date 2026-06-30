@@ -1,0 +1,25 @@
+{
+  "case_id": "case-2026-06-30-347",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-30T12:35:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "review and merge 1 pending worktree (opt-tests-1782822400) into onedaybot-dev",
+  "situation": "scout-scan ranked 1BfrYW9R #1 with exactly 1 pending worktree awaiting human review. The pending commit 442b84a added smoke test ㉛ covering the dev-server.js server.on(error) else branch (non-EADDRINUSE listen errors like EACCES), bumping GATES.md pass count 32 to 33. Commit message claimed mutation tri-test (3 regressions all caught) and 33 pass 0 fail, but per case-343 lesson commit claims are not accepted without observable verification.",
+  "action": "Verified the commit claims against source before merging: (1) grep dev-server.js confirmed line 89 else branch emits the exact文案 'ERROR: dev-server listen failed:' matching the test regex, and line 86 EADDRINUSE branch emits 'already in use (EADDRINUSE)' — the test's branch-dispatch assertion is grounded in real source. (2) Checked out the pending test+GATES into a scratch working tree and ran node --test test/smoke.test.js → 33 pass 0 fail (subtest 33 = the new EACCES else-branch lock, ok). (3) Reset the scratch checkout (git reset --hard HEAD, onedaybot-dev ref unmoved since target was HEAD itself) leaving main working tree clean. (4) Ran opt-worktree.sh 1BfrYW9R merge opt-tests-1782822400 → squash merge into onedaybot-dev, auto/opt-tests-1782822400 branch deleted (case-322 fix confirmed in output), worktree dir cleaned. (5) Re-ran the suite on merged main → 0 fail.",
+  "files_changed": [
+    "test/smoke.test.js",
+    "GATES.md",
+    ".opt-direction"
+  ],
+  "worktree": "opt-tests-1782822400 (merged and cleaned; no standing worktree remains for this unit)",
+  "direction": "tests:listen-error-else-branch",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "git log oneline shows new commit 8808462 'merge: 人工批准合并 optimization worktree opt-tests-1782822400' on onedaybot-dev",
+    "git worktree list now contains only the standing optimization worktree (auto/optimization at 966a60f); opt-tests-1782822400 dir and branch removed",
+    "merge output line: 'Deleted branch auto/opt-tests-1782822400 (was 442b84a)' and 'worktree 清理（worktree 目录 + auto/<wt> 分支）'",
+    "node --test test/smoke.test.js on merged main: '# pass 33 # fail 0' (re-run after merge)",
+    "dev-server.js:89 grep hit: console.error('ERROR: dev-server listen failed:', err.message) — grounds the test regex in real source"
+  ],
+  "next_suggestion": "1BfrYW9R pending queue is now drained (0 pending merges). Next loop: re-run scout-scan; if 1BfrYW9R still ranks high only due to the standing empty optimization worktree, skip it (case-206 standing-worktree-not-stale filter should suppress, but verify). Likely next #1 becomes autonomous-studio (7 deferred triaged TODOs) or another project's structural gap. Do not force work on 1BfrYW9R — it is healthy."
+}
