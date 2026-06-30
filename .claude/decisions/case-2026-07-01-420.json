@@ -1,0 +1,54 @@
+{
+  "case_id": "case-2026-07-01-420",
+  "agent_id": "ralph-autonomous",
+  "timestamp": "2026-07-01T21:35:00Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "code-audit:dataworks-dev-assistant/bff_client.py",
+  "situation": "审计轮（case-420=420%4=0）。承接 case-419 NEXT: case-420 审计轮 DO A 续审 bff_client.py 鉴权路径。scout-scan #1=autonomous-studio-aone score=0.0（唯一有源码项目），工作树 clean 无 diff 供 code-review/security-review skill 评审，故按 DO A.2 手工审计 main HEAD 敏感源文件 bff_client.py（认证/凭证/外部调用/写操作 chokepoint）。",
+  "action": "通读 bff_client.py 全文 830 行，聚焦 _do_request HTTP chokepoint、_build_headers 认证、_log 调试日志、confirm_write 两阶段确认、_audit_write 埋点。识别 4 处发现 F1-F4。仅修 F3（最小、明显正确、1 文件）：_log 文件写入 makedirs+open 未 try/except，磁盘/权限异常会沿 _do_request 抛出阻断真实 API 调用；_log_warn (L415-419) 已 guard，此处不一致。包 try/except 对齐 _log_warn，行为不变仅防崩溃。F1/F2/F4 记入 audit_findings 不盲改（F1 依赖服务端裁决/by design；F2 redaction 改动大盲改风险高；F4 CLI 硬停 by design）。未触新敏感路径故无新增 audit-log 埋点（_do_request L543-553 已有 _audit_write）。改动经 ast.parse 校验 OK，经 opt-worktree 提交到 opt-audit-1782855215 @1e89dde，方向 audit:bff-client。",
+  "files_changed": ["skills/dataworks-dev-assistant/core/bff_client.py"],
+  "worktree": "opt-audit-1782855215",
+  "direction": "audit",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "git -C opt-audit-1782855215 log -1: 1e89dde 'opt(audit:bff-client): case-420 审计 bff_client.py: _log 文件写入加 try/except...（F3）'",
+    "python3 -c 'import ast; ast.parse(open(\"skills/dataworks-dev-assistant/core/bff_client.py\").read())' → AST OK",
+    "diff 范围：bff_client.py _log 方法（原 L388-409），新增 docstring 说明 + try/except 包裹 makedirs+open，与 _log_warn L415-419 模式一致，无逻辑变更",
+    "git worktree list: opt-audit-1782855215 @1e89dde [auto/opt-audit-1782855215] pending=1；main @62122b0 未动"
+  ],
+  "next_suggestion": [
+    "case-421=421%4=1≠0 非审计轮·sanctioned-merge：预审+合并 opt-audit-1782855215 @1e89dde 到 main（squash），1 文件 _log try/except 修复，无冲突预期",
+    "case-424=424%4=0 下次审计轮：续审 .claude/hooks/pipeline-gate.py 或 autonomous-commit-gate.py（提交门禁鉴权路径），或 dataworks audit_log.py record 的 result 字段是否如实反映失败"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "skills/dataworks-dev-assistant/core/bff_client.py",
+      "line": 390,
+      "severity": "low",
+      "finding": "_log 方法 os.makedirs + open(file,'a') 写入未 try/except；_do_request 是 HTTP chokepoint，调试日志磁盘/权限异常会抛出阻断真实 API 调用。_log_warn (L415-419) 已 guard，此处不一致（F3）",
+      "remediation": "已修复：包 try/except Exception: pass 对齐 _log_warn，行为不变仅防崩溃（本轮落地）"
+    },
+    {
+      "file": "skills/dataworks-dev-assistant/core/bff_client.py",
+      "line": 388,
+      "severity": "medium",
+      "finding": "_log 将完整 response.data（可能含 PII：currentUser 用户信息、表元数据）写入 ~/.dataworks/logs/dw_bff_calls.log，无 redaction、无轮转、未加密（F2）",
+      "remediation": "建议后续：对 response.data 中已知 PII 字段（baseId/邮箱/工号/手机号）redact + 加日志轮转上限。改动较大需真实环境验证，本轮不盲改"
+    },
+    {
+      "file": "skills/dataworks-dev-assistant/core/bff_client.py",
+      "line": 101,
+      "severity": "low",
+      "finding": "token_required=True 但 BFF_TOKEN 缺失时仅 print 警告不 raise，客户端以 self.token=None 继续；写操作会无本地认证发起（依赖服务端拒绝）。_audit_write 仍记 bypass 故非 silent（F1）",
+      "remediation": "建议后续：token_required 且无 token 时对写操作 fail-fast（raise）。属 by-design 让服务端裁决，本轮不盲改"
+    },
+    {
+      "file": "skills/dataworks-dev-assistant/core/bff_client.py",
+      "line": 624,
+      "severity": "info",
+      "finding": "confirm_write 10s 确认间隔防护用 sys.exit(1) 硬停进程（F4）",
+      "remediation": "CLI 工具 by-design 硬停防绕过，无需改；若未来作为库嵌入可改 raise"
+    }
+  ]
+}
