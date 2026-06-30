@@ -14,15 +14,15 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-06-29T02:35Z（engine:cleanup — opt-worktree 新增 cleanup 子命令 + 实清 13 个 0 提交死桩 worktree，scout-scan 需合并列表瘦身 24→18，case-2026-06-29-039, commit a87e380 in optimization worktree）**
+- **最后活跃: 2026-06-30T04:51Z（scout:父级轮转 — #1 huiyis(score=2.0)等合并 opt-docs-1782793013 别重做 / #2 autonomous-studio(score=0.03 推幽灵 triage TODO) / #3 1BfrYn9G(review 2 待合并 worktree) 三者全 blocked 于 pending 人工 merge, 自治 gate 拦无法 merge。核实 AS #2 是幽灵: main working-tree TODO=4 = decision-archive.md:856/864/872 三条案例标题散文(pending opt-scanner-1782794236 IGNORE_DIRS +decisions 已修) + autonomous-state.md:17 未提交记忆散文(瞬态; 干净树验 pending fix 后 AS TODO=0), 无真代码债。遵 NEXT_SUGGESTION『全 blocked 顺延扫父级取真可自治 #1』: 逐项核验 skills/stagehand-analysis/x-tool/quanzhan/shizi active TODO=0(仅 deferred), 唯 agent-dashboard active TODO=1 且 0 待合并 worktree dirty=0 = 真·未阻塞 target。count_markers 定位 frontend/src/App.tsx:172 真 TODO 债(handleSendMessage 桩, 原注释拟 POST 后端消息 API)。核查后端 main.py:486 @sio.event agent_message→message_injector.inject 是 Socket.IO 非 REST, 无 /messages 路由; 前端已有 socketManager.sendMessage 单例(socketManager.ts:162, messageStore.ts:45 同款)。最小改 1 文件 2 处: import +socketManager / handleSendMessage 调 socketManager.sendMessage 清 TODO。area dashboard≠engine → opt-worktree 自动开新隔离 opt-dashboard-1782795095(e7982d2 +4/-2)。验 worktree TODO=0、main 干净。case-336。pending 人工 merge 仍是 #1-3 阻塞源）**
 - **活跃项目**: 持续自治管线巡检——按 scout-scan 健康度排序轮转
-- **当前阶段**: 死桩已清——scout-scan 待合并列表回归真实 pending（18 项全有真提交）；真实 blocked 仍需人工合并，但死桩不再虚胖
+- **当前阶段**: 父级多项目轮转巡检——AS 仓 scout 失明待人工 merge opt-scout，期间切 --workspace /home/admin/workspace 取真 #1 推进
 - **GOAL_STATUS**: active
 - **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动）
-- **LAST_UPDATED**: 2026-06-29
-- **LAST_WORKTREE**: optimization (a87e380 — engine:cleanup — opt-worktree cleanup 子命令 + 清 13 死桩)
+- **LAST_UPDATED**: 2026-06-30
+- **LAST_WORKTREE**: opt-dashboard-1782795095 (e7982d2 — dashboard:message-send — agent-dashboard App.tsx:172 真 TODO 清债: handleSendMessage 桩接入 socketManager.sendMessage 单例(后端消息通道是 Socket.IO @sio.event agent_message 非 REST POST, 无 /messages 路由; socketManager.ts:162/messageStore.ts:45 同款); 1 文件 +4/-2 待人工 merge; worktree TODO=0、main 干净; 真·可自治#1 因父级#1-3全blocked于人工merge)
 - **LAST_OUTCOME**: done
-- **NEXT_SUGGESTION**: 死桩已清、真实 pending 仍需人工合并（aone/optimization 11 提交含本轮 cleanup + 既有 scout-deadlock-banner/commit-gate；skills/opt-skills-1782670300；quanzhan/opt-server-1782676356）。下轮：1) 引擎不自动 push/merge（main 永远安全），靠新 cleanup 子命令控死桩增量——可定期跑 opt-worktree <p> cleanup；2) 可给 scout-scan pending 检测加 5s timeout 容错（大库 git diff 偶发超时致 pending 误判，全部-blocked 横幅曾间歇出现）；3) 死桩清掉后重跑 scout-scan 选非 blocked 项目做新一轮小工作单位（quanzhan/kaoqin ranking 可能变化）
+- **NEXT_SUGGESTION**: 【需人工·低阻力】(1) opt-worktree.sh /home/admin/workspace/agent-dashboard merge opt-dashboard-1782795095 落地 handleSendMessage Socket.IO 接入(1 文件 +4/-2 零冲突), merge 后 agent-dashboard active TODO=0 永久健康。(2) 仍 pending 人工 merge 阻塞源(自治 gate 拦无法 merge): huiyis/opt-docs-1782793013(3 文件 +102)、AS 仓 opt-scanner-1782794236(scanner 第5类虚高修复, merge 后 AS TODO=0 永久退出幽灵 #2)+opt-scout-1782792420(解引擎 0 项目失明)、1BfrYn9G 2 worktree、dingtalk-auto/kaoqin/pc_agent 各 1。(3) 下轮自治: 父级 #1-3 仍 blocked 则继续顺延——候选 browser-use(active TODO=32 疑第三方 vendored 噪声, 核实是否该加 IGNORE)/或各项目 deferred TODO 中可真解者(shizi deferred=1 最小); 若全无真债则本轮型 blocked-only 可写 case 存档等人工 merge 推进。
 - **自主循环**: 🟢 活跃
   - L1 Inline: 每次回复末尾内联检查 (+ git status)
   - L2 Heartbeat: CronCreate 每7分钟（执行轨——推进 Studio 阶段或主动扫描）
@@ -74,10 +74,10 @@ metadata:
 <!-- GOAL_ID: G-2026-06-15-002 -->
 <!-- GOAL_STATUS: active -->
 <!-- ACTIVE_GOAL: ralph-wiggum-autonomous-loop (每轮一个小工作单位，scout-scan 排序选任务) -->
-<!-- LAST_UPDATED: 2026-06-29 -->
-<!-- LAST_WORKTREE: opt-state-1782700340 (case-127: review+merge pending worktree, orphan归档+state字段已入main e19f2a0) -->
+<!-- LAST_UPDATED: 2026-06-30 -->
+<!-- LAST_WORKTREE: agent-dashboard/opt-dashboard-1782795095 (e7982d2: dashboard:message-send — App.tsx:172 真 TODO 清债, handleSendMessage 接入 socketManager.sendMessage 单例; 后端消息通道是 Socket.IO(@sio.event agent_message→message_injector.inject)非 REST POST 无 /messages 路由; 1 文件 +4/-2 待人工 merge; worktree TODO=0 main 干净) -->
 <!-- LAST_OUTCOME: done -->
-<!-- NEXT_SUGGESTION: [1] wechat-main/shizi PROGRESS.md >0.5天 stale, 可同步更新; [2] x-tool 9 本地提交待推 GitHub(PAT 见 memory:x-tool-push-ghproxy-no-creds); [3] moni-master 后端/量化小任务(WFO/因子回测, 禁前端重构) -->
+<!-- NEXT_SUGGESTION: [1]【需人工·低阻力】opt-worktree.sh /home/admin/workspace/agent-dashboard merge opt-dashboard-1782795095 落地 handleSendMessage Socket.IO 接入(1 文件 +4/-2 零冲突)，merge 后 agent-dashboard active TODO=0 永久健康; [2] 仍 pending 人工 merge 阻塞源: huiyis/opt-docs-1782793013、AS 仓 opt-scanner-1782794236(merge 后 AS 退出幽灵 #2)+opt-scout-1782792420(解引擎失明)、1BfrYn9G 2 worktree、dingtalk-auto/kaoqin/pc_agent 各 1——自治 gate 拦无法 merge; [3] 下轮自治: 父级 #1-3 仍 blocked 继续顺延——候选 browser-use(active TODO=32 疑 vendored 噪声核实加 IGNORE)/shizi deferred=1 可真解; 全无真债则 blocked-only 存档等人工 merge -->
 
 | 字段 | 内容 |
 |------|------|
