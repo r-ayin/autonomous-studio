@@ -1,0 +1,31 @@
+{
+  "case_id": "case-2026-06-30-362",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-30T15:30Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "scout-scan:polyglot",
+  "situation": "普通路径轮次：362%4=2≠0=非审计（DO A 不触发）。承接 case-361 NEXT_SUGGESTION[2]：scout-scan shebang 缺口——循环指令每轮 step1 写 'bash scripts/scout-scan.py' 但该文件 shebang 为 #!/usr/bin/env python3，bash 解释器逐行解析报 syntax error（line 18 import / line 38 ( 等处），每轮需手工改 python3 重试（case-361 起记录，本轮 step1 亦复现该错）。step0 读 constraints DO NOT+DO 全文（DO NOT 禁日常自我润色，但此为每轮复现的真实操作性缺陷非润色）。step1 改 python3 跑通：#1=autonomous-studio-aone score=0.0 无明确小工作单位（仅推荐文档润色——被 DO NOT 排除）。无 #2 可顺延（workspace 仅 1 项目）。故取 NEXT_SUGGESTION[2] 的代码修复分支：给 scout-scan.py 加 sh/python3 polyglot 头，使 bash 调用能 re-exec 到 python3。",
+  "action": "设计 polyglot：保留 #!/usr/bin/env python3 shebang（直执 ./script 仍原生 python3，性能不损），在其下插入两行——一行 # 注释（bash/python 均为注释，说明意图防后人误删）+ 一行 `''''exec python3 -- \"$0\" \"$@\" # '''`。机制：bash 调用时 line1 shebang 为注释，polyglot 行被 bash 解析为 `''''exec`+`python3`+`--`+`$0`+`$@`+`# '''`(comment)→四空引号串接成空+exec 单词→exec python3 -- \"$0\" \"$@\" re-exec 自身于 python3；python3 直执时该行为单个字符串字面量（''' 开启三引号串，内容 'exec python3 -- \"$0\" \"$@\" # ，''' 闭合），no-op。先在 /tmp/poly-test.py 验证 bash/sh/python3/direct-exec 四种调用均 PYOK，再测 #!/usr/bin/env python3 变体（/tmp/poly2.py）同样四式通过。确认 scout-scan.py 不使用 __doc__（grep 无命中）→polyglot 行成为模块首字符串字面量致 __doc__ 被 exec 串覆盖的代价为零。Edit scripts/scout-scan.py 插入 polyglot 头（+4 行）。验证实脚本：bash scripts/scout-scan.py --workspace . 产出完整健康报告（#1 AS score=0.0）+python3 同跑通过+ast.parse OK+--json 输出 json.load 解析为有效 JSON projects=1。提交：opt-worktree.sh . commit scout-scan:polyglot（首次漏 project 参数致 line29 'cd: commit: No such file' 报错——interface 为 [project] commit，补 . 重跑通过）→方向分歧 engine→scout-scan 开新 worktree opt-scout-scan-1782833675，commit 5695a05。",
+  "files_changed": [
+    "scripts/scout-scan.py"
+  ],
+  "worktree": "opt-scout-scan-1782833675 @5695a05（方向 scout-scan:polyglot，pending sanctioned-merge；main 干净 HEAD=7d41e33）",
+  "direction": "scout-scan:polyglot",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "bash scripts/scout-scan.py --workspace . 退出码 0 且产出 '#1 autonomous-studio-aone (score=0.0)' 完整报告——此前同命令报 'line 38: syntax error near unexpected token (`' 失败，本轮修复后循环约定调用直接跑通",
+    "python3 scripts/scout-scan.py --workspace . 同样产出完整报告 → 无回归（原有调用路径不受影响）",
+    "python3 -c ast.parse(scout-scan.py) → ast OK → 语法合法",
+    "python3 scout-scan.py --workspace . --json | python3 -c json.load → json OK projects=1 → 结构化输出未破",
+    "git diff HEAD~1 -- scripts/scout-scan.py（worktree 5695a05）= 仅 +4 行（1 shebang 注释行 + 3 polyglot 行），无其他改动",
+    "git status --porcelain（main）空 → main 工作树干净，改动隔离于 worktree",
+    "opt-worktree.sh . list → opt-scout-scan-1782833675 | 方向=scout-scan:polyglot | 1 提交 | 1 file changed 4 insertions → 提交已落地 pending"
+  ],
+  "next_suggestion": [
+    "[1]【sanctioned-merge·case-363】承接本轮 pending worktree opt-scout-scan-1782833675 @5695a05（scout-scan:polyglot，+4 行 1 文件）。main 自 f9b36aa 起未动 scout-scan.py→预期 squash 干净无冲突（与 case-357/359 同为非 disjoint superset 路径，但本改动相对 main 是纯新增头无重叠更干净）。运行 opt-worktree.sh . merge opt-scout-scan-1782833675 合并入 main。合并后从 case-363 起循环 step1 的 'bash scripts/scout-scan.py' 将原生跑通，消除每轮 syntax-error 重试。363%4=3≠0 非审计普通路径可做 sanctioned-merge",
+    "[2]【审计盲区轮换·case-364】364%4=0=DO A 强制审计。换审 scripts/opt-worktree.sh cmd_merge（case-361 暴露真缺口：line499 git merge --squash 冲突即 abort-exit，squash 无 MERGE_HEAD 致 line520 git merge --abort no-op，已 resolve+stage 的 merge 无法落地需手工复刻 commit；可审+补 resume 分支：检测 index 已 staged 且无 MERGE_HEAD→跳过 re-merge 直接 commit）或审 scout-scan.py 索引路径 FS 写敏感性",
+    "[3]【gate 残留·低危延后】$(git)/反引号命令替换未纳入 _SHELL_OPS_RE 拆分（case-360 已记，需 LLM 刻意构造，不闭环）"
+  ],
+  "audit_type": "none",
+  "audit_findings": []
+}
