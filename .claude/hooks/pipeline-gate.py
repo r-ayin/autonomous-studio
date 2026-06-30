@@ -17,12 +17,17 @@ PreToolUse Bash(git commit/push):
 Stop: 扫描 studio 项目未收尾(current.stage!=done)→ 提醒
 """
 from __future__ import annotations
+import datetime
 import json
 import os
+import random
 import re
+import string
 import subprocess
 import sys
 from pathlib import Path
+
+PROJECT_DIR = os.environ.get("CLAUDE_PROJECT_DIR") or os.getcwd()
 
 DOCS = {"CLAUDE.md", "PROGRESS.md", "GATES.md", "README.md", "PROJECTS.md",
         "PROTOCOL.md", "status.json", "prd.json", "prd.md", ".gitignore"}
@@ -59,6 +64,53 @@ def _block(reason: str) -> None:
 
 def _remind(reason: str) -> None:
     print(json.dumps({"decision": "remind", "reason": reason}, ensure_ascii=False))
+
+
+# git 调用识别（case-432 audit）：旧 `"git " in cmd` 子串只匹配空格分隔，漏过 tab/
+# 换行分隔的 `git\tcommit`——与 case-378/428 全路径/分隔符绕过同类向量。改 regex：
+# git 作为 token（裸 `git` 或路径形 `.../git`），前后为行首/空白/斜杠/行尾。
+# 不覆盖 `$IFS` 变量展开（需 shell 解析，同 case-428 token 法局限，不盲实现）。
+_GIT_INVOKED = re.compile(r"(?:^|[\s/])git(?=\s|$)")
+
+
+def _is_git_commit_or_push(cmd: str) -> bool:
+    return bool(_GIT_INVOKED.search(cmd)) and ("commit" in cmd or "push" in cmd)
+
+
+def _audit_log_block(cmd: str, reason: str) -> None:
+    """审计埋点（DO B：permission 敏感路径——commit/push 流水线门禁拦截）。
+    append-only 写 JSONL 到 <PROJECT_DIR>/.audit/audit-YYYY-MM-DD.jsonl，schema 对齐
+    .claude/decisions/audit-log.schema.json；与 autonomous-commit-gate._audit_log_block
+    对称（case-428 已为 main 直写门禁落埋点，本 gate 覆盖 studio 流水线门禁拦截端）。
+    fail-safe——写失败绝不影响拦截决策（吞异常，仍走原 _block exit 0 路径）。"""
+    try:
+        now = datetime.datetime.now(datetime.timezone.utc)
+        date = now.strftime("%Y%m%d")
+        date_dashed = now.strftime("%Y-%m-%d")
+        rid = now.strftime("%H%M%S")
+        suffix = "".join(random.choices(string.ascii_lowercase + string.digits, k=6))
+        entry = {
+            "id": f"audit-{date}-{rid}-{suffix}",
+            "timestamp": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "userId": "engine",
+            "userRole": "engine",
+            "action": "compliance_check",
+            "resource": {"type": "permission",
+                         "identifier": "studio-pipeline-gate",
+                         "newValue": reason[:200]},
+            "result": "denied",
+            "ip": "local",
+            "sensitive": True,
+            "sensitiveLevel": "medium",
+            "details": {"reason": f"pipeline-gate 拦截:{reason}",
+                        "errorMessage": cmd[:200]},
+        }
+        adir = os.path.join(PROJECT_DIR, ".audit")
+        os.makedirs(adir, exist_ok=True)
+        with open(os.path.join(adir, f"audit-{date_dashed}.jsonl"), "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
 
 
 def _is_doc_or_meta(file_path: str, root: Path) -> bool:
@@ -133,20 +185,23 @@ def main() -> None:
     # ── PreToolUse: Bash git commit/push ───────────────────
     if event == "PreToolUse" and tool == "Bash":
         cmd = tool_input.get("command", "")
-        if "git " in cmd and ("commit" in cmd or "push" in cmd):
+        if _is_git_commit_or_push(cmd):
             cwd = _parse_git_cwd(cmd) or tool_input.get("cwd") or os.getcwd()
             root = _project_root(cwd)
             if not root:
                 return  # 非 studio 项目提交
             cur = _load_current(root)
             if not cur:
+                _audit_log_block(cmd, f"commit 前先 triage (project={root.name})")
                 _block(f"commit 前先 triage: python3 scripts/triage.py --kind small|complex  (project={root.name})")
             if cur.get("kind") == "complex" and not cur.get("verify_passed"):
+                _audit_log_block(cmd, f"complex commit 前须 verify (stage={cur.get('stage')}, project={root.name})")
                 _block(f"complex 任务 commit 前须 verify: python3 scripts/triage.py --verify-passed"
                        f"  (stage={cur.get('stage')}, project={root.name})")
             if cur.get("kind") == "small":
                 scale = _diff_scale(root)
                 if scale and (scale[0] > 3 or scale[1] > 50):
+                    _audit_log_block(cmd, f"small diff 超规模 (files={scale[0]}, +{scale[1]}行, project={root.name})")
                     _block(f"小修 triage 但 diff 超规模(files={scale[0]}, +{scale[1]}行) — "
                            f"重新: python3 scripts/triage.py --kind complex --desc '...'  (project={root.name})")
             return
