@@ -1,0 +1,30 @@
+{
+  "case_id": "case-2026-07-01-381",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-01T18:18:00Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "sanctioned-merge: optimization @de8530f → main（case-380 code-audit 修复落地，1 file scout-scan.py +29/-18）",
+  "situation": "普通轮 case-381=381%4=1≠0 非审计。承接 case-380 NEXT_SUGGESTION[1]/state LAST_WORKTREE:optimization @de8530f pending sanctioned-merge（case-380 DO A 代码审计轮发现的 scout-scan.py count_markers 多行 docstring 剥离缺口已修于 worktree，待合并入 main）。纯部署合并轮无新源码改动。预审:merge-base=4b5522c(=main 在 case-380 归档前)，auto/optimization 实际 changeset(4b5522c..de8530f --name-only)仅 scripts/scout-scan.py 1 file +29/-18，与 main 归档环(case-380.json 新增 + state.md 更新)无源码重叠→clean squash。",
+  "action": "(1) scout-scan #1 autonomous-studio-aone score=0.0 推荐「review 1 个待合并 worktree(人工审 diff + merge/reject)」——确认合并任务为 #1。(2) 预审冲突面:git diff 4b5522c..main -- scripts/scout-scan.py --stat → 空(main 自 merge-base 未改 scout-scan.py)→ 三方 squash merge 无冲突；auto/optimization changeset 仅 scout-scan.py；归档环 case-380.json/state.md 仅 main 侧改动→merge 正确保留 main 归档结果不回滚。(3) bash scripts/opt-worktree.sh . merge optimization → 三方 squash merge → main @ba03817(merge commit)+worktree 清理。(4) auto/optimization 残留本地分支(squash 不标 merged 需 -D)git branch -D auto/optimization → Deleted branch auto/optimization (was de8530f)。(5) scout-scan.py 非 LIVE 部署文件(/home/admin/.claude/hooks/scout-scan.py 不存在)→合并后即生效,无 LIVE cp 需求,与 case-379 gate LIVE cp 不同。(6) 回归:python3 -m py_compile scripts/scout-scan.py exit 0;git show HEAD:scripts/scout-scan.py 确认 _STRIP_TRIPLE(line76)/_STRIP_HTML_COMMENTS+re.DOTALL(line69)/fh.read()(line189,192)三处修复均落 main;全量 scout-scan 烟测 autonomous-studio TODO=0/FIXME=0/HACK=0(scout-scan.py 自指无新 FP,count_markers 多行 docstring 剥离正确工作)无回归;「待处理 worktree」行消失(无 pending)。",
+  "files_changed": ["scripts/scout-scan.py"],
+  "worktree": "optimization @de8530f（已 sanctioned-merge→main @ba03817 squash,worktree 已清理,auto/optimization 残留分支已 git branch -D;scout-scan.py 非 LIVE 部署文件无 LIVE 同步需求;方向 engine:scout-scan-strip;case-380 code-audit 修复现落 main）",
+  "direction": "engine:scout-scan-strip",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "git log --oneline -1 → ba03817 merge: 人工批准合并 optimization worktree 'optimization'（squash merge commit 落 main）",
+    "git show HEAD:scripts/scout-scan.py | grep → line69 _STRIP_HTML_COMMENTS = re.compile(r\"<!--.*?-->\", re.DOTALL);line76 _STRIP_TRIPLE = re.compile(r'\"\"\"[\\s\\S]*?\"\"\"|...');line189 content = fh.read();line192 content = _STRIP_TRIPLE.sub(\"\", content)——case-380 三处修复均落 main HEAD",
+    "ls .claude/decisions/case-2026-07-01-380.json 存在 + autonomous-state.md SCOUT_MODE:active 在——归档环(case-380.json + state.md)经三方 merge 保留未回滚(clean squash 验证)",
+    "git worktree list → 仅 /home/admin/workspace/autonomous-studio-aone ba03817 [main](optimization worktree 已清理);git branch → 仅 * main(auto/optimization 已 -D)",
+    "git branch -D auto/optimization → Deleted branch auto/optimization (was de8530f)",
+    "python3 -m py_compile scripts/scout-scan.py → exit 0(OK)",
+    "全量 scout-scan 烟测 → 标记: TODO=0 FIXME=0 HACK=0;#1 autonomous-studio-aone score=0.0 「无明确小工作单位——可跳过或做文档润色」(待处理 worktree 行消失,pending=0)——无回归",
+    "ls /home/admin/.claude/hooks/scout-scan.py → No such file(scout-scan.py 非 LIVE 部署文件,合并后即生效,无需 cp LIVE)"
+  ],
+  "next_suggestion": [
+    "【普通轮·case-382=382%4=2≠0 非审计】pending=0,scout-scan #1 AS score=0.0 无紧迫单位(纪律:不做日常自我润色)。可选:跳过本轮或挑 state 候选 (a) scripts/opt-worktree.sh 做预备性 security-review 阅读准备(非审计轮不正式产出)。若无真结构问题→合理跳过,等 case-384 审计轮。",
+    "【下次审计轮·case-384=384%4=0=DO A 强制审计轮】换审非 gate 目标。剩余候选优先级:(a) scripts/opt-worktree.sh security-review(detect_main_branch/ensure_main_wt/cp-guard/_assert_no_collateral_revert/audit_log json_escape 路径 logic,bash 注入面最值得审,优先);(b) scripts/route-health-scorer.py(331 行,外部文件读写/评分 logic);(c) .claude/hooks/autonomous-commit-gate.py 本体(已连续多轮触,优先级低)。",
+    "【scout-scan 残留低危(非审计轮不碰)】_STRIP_BACKTICKS 仍逐行,多行 markdown 围栏代码块 ``` 不匹配单反引号正则——刻意构造低危,维持轻量扫描器边界,真需精确可上 tree-sitter(见文件尾升级路径注释)。"
+  ],
+  "audit_type": "none",
+  "audit_findings": []
+}
