@@ -562,6 +562,27 @@ cmd_cleanup() {
     removed=$((removed + 1))
   done
   echo "清理完成: 删 $removed / 跳 $skipped（有真提交或未提交改动）"
+
+  # 阶段 2：清理无 linked worktree 的 auto/opt-* 孤儿分支（case-356 fix 已防新 leak，
+  # 残留为历史遗留）。仅当分支名匹配 auto/opt-* 且 WT_BASE 下无同名目录时删除。
+  local orphan_removed=0 orphan_skipped=0 branch wt_dir
+  while IFS= read -r branch; do
+    [[ -z "$branch" ]] && continue
+    # git branch --list 输出带前导空格和可能的 * 当前分支标记，trim 掉
+    branch="${branch#"${branch%%[![:space:]]*}"}"   # 去前导空白
+    branch="${branch#\* }"                           # 去当前分支标记
+    [[ "$branch" == auto/opt-* ]] || continue
+    local slug="${branch#auto/}"
+    wt_dir="$WT_BASE/$slug"
+    if [[ -d "$wt_dir" ]]; then
+      orphan_skipped=$((orphan_skipped + 1))
+      continue
+    fi
+    git -C "$PROJECT" branch -D "$branch" 2>/dev/null || true
+    echo "✓ 清理孤儿分支: $branch（无 linked worktree）"
+    orphan_removed=$((orphan_removed + 1))
+  done < <(git -C "$PROJECT" branch --list 'auto/opt-*' 2>/dev/null)
+  echo "孤儿分支清理: 删 $orphan_removed / 跳 $orphan_skipped（有 linked wt）"
 }
 
 # 取当天（或指定日）下一个可用 case 编号：扫 main 工作树 + 所有 pending opt worktree 的
