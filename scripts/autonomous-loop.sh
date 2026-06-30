@@ -122,6 +122,10 @@ while true; do
     fi
   fi
   echo "[$(date +%H:%M:%S)] 轮次 $ITER 结束，提交在 opt-worktree（待人工 opt-worktree.sh show/merge）"
+  # 循环末尾归档孤儿 case（case-341 未竟，多轮遗留）：跨项目轮次写的 case 滞留 AS main
+  # 成 untracked→scout 误算 dirty/撞号。扫 AS main untracked case-*.json，cp 进 housekeeping
+  # worktree 提交、main 还原。自测守卫已在脚本内；失败不阻断主循环（|| true）。
+  bash "$WORKSPACE/scripts/loop-archive-cases.sh" autonomous-studio || true
   sleep 2  # 短暂喘息，避免空转打爆 API
 done
 
