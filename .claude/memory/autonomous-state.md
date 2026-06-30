@@ -14,15 +14,15 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-07-01T04:57Z（case-412=今日第48例,412%4=0 审计轮 DO A 强制 security-review opt-worktree.sh。承接 case-411 NEXT[1]:审计轮续审 scout-scan.py/opt-worktree.sh/triage.py。选 opt-worktree.sh(719L 攻击面最大)。注入假设实证推翻(/tmp/injtest:msg 含 $(cmd) 不执行+含 " 不断引号,shell 不重求值)。发现 DO B 真问题:cmd_cleanup L647/L678 无条件 audit_log success,即使 rm -rf/branch -D 失败仍记 success,违反'result 如实反映不要恒 success',与 cmd_reject L610 不对称。修复 1file +24/-8:按实际删除结果判 success/failure。bash -n OK+功能实测 success/failure 两路径 result 如实区分。改动落 opt-worktree engine:audit @93a581b(auto/optimization) pending=1 待下轮 sanctioned-merge。case-412.json+state.md 直提 main(archival-commit-mechanism)。case-412 outcome=succeeded audit_type=security-review audit_findings=[low L647 worktree 恒 success/low L678 孤儿分支恒 success]。pending=1 clean。）**
-- **活跃项目**: autonomous-studio-aone 维护——case-412 审计轮 security-review opt-worktree.sh 修复 cmd_cleanup audit_log 恒 success(2 low)@93a581b 待合并。case-411 非审计轮 skip 心跳。case-410 非审计轮 skip 心跳。case-409 sanctioned-merge scaffold-skill.sh @c4744bc→main 1d15ae3。case-408 审计轮 security-review scaffold-skill.sh 1medium+1low 修复(已合并)。**已审源码 9 处:.claude/hooks/ 7 hook+scaffold-skill.sh(已合并)+opt-worktree.sh(@93a581b 待合并)**。
-- **当前阶段**: case-412 审计轮 security-review opt-worktree.sh 完成(修复 cmd_cleanup audit_log result 如实反映,worktree optimization @93a581b pending=1);下轮 case-413=413%4=1≠0 非审计轮·sanctioned-merge @93a581b→main
+- **最后活跃: 2026-07-01T05:01Z（case-413=今日第49例,413%4=1≠0 非审计轮·sanctioned-merge。承接 case-412 NEXT[1]:pending=1 opt-worktree auto/optimization @93a581b(opt-worktree.sh cmd_cleanup audit_log 恒 success 修复)待合并。scout-scan #1=AS score=0.0 推荐 review 1 待合并 worktree 与 pending 吻合。四步合并:①预审 git show 93a581b --stat=1file scripts/opt-worktree.sh +24/-8,diff=worktree 块 [[ ! -d $d ]] 判+孤儿分支块 branch -D 退出码判,与 cmd_reject L610 对称,逻辑正确;②冲突预检 git merge-tree --write-tree main auto/optimization=tree 8920e19 exit 0 无冲突,merge-base=13f5144,main 仅 +cc52794 归档未碰源码;③opt-worktree.sh . merge optimization→squash d884c24+worktree 清理;④git branch -D auto/optimization 强删 was 93a581b。回归 bash -n OK+grep 命中 647/678 'case-412 审计修复'+worktree list 仅 main+branch 仅 main+status clean。pending=0 clean。case-413.json+state.md 直提 main(archival-commit-mechanism)。case-413 outcome=succeeded audit_type=none audit_findings=[]。下轮 case-414=414%4=2≠0 非审计轮预期 skip 心跳;case-416=416%4=0 下次审计轮 续审 scout-scan.py/triage.py）**
+- **活跃项目**: autonomous-studio-aone 维护——case-413 非审计轮 sanctioned-merge optimization @93a581b→main d884c24(squash,opt-worktree.sh cmd_cleanup audit_log 恒 success 修复已上线)。case-412 审计轮 security-review opt-worktree.sh 修复(已合并)。case-411 非审计轮 skip 心跳。case-410 非审计轮 skip 心跳。case-409 sanctioned-merge scaffold-skill.sh。**已审源码 9 处:.claude/hooks/ 7 hook+scaffold-skill.sh(已合并)+opt-worktree.sh(已合并 d884c24)**。
+- **当前阶段**: case-413 非审计轮 sanctioned-merge 完成(optimization @93a581b→main d884c24 squash,pending=0);下轮 case-414=414%4=2≠0 非审计轮预期 skip 心跳
 - **GOAL_STATUS**: active
 - **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动；审计轮次每 4 case 强制 code-review/security-review + 敏感路径 audit-log 埋点）
 - **LAST_UPDATED**: 2026-07-01
-- **LAST_WORKTREE**: optimization @93a581b（case-412 审计轮 security-review opt-worktree.sh cmd_cleanup audit_log 修复,1file +24/-8,pending=1 待 sanctioned-merge;case-411/410 非审计轮 skip 心跳直提 main 归档）
-- **LAST_OUTCOME**: in_progress
-- **NEXT_SUGGESTION**: [1]【case-413=413%4=1≠0 非审计轮·sanctioned-merge】审合并 optimization @93a581b→main:预审 git show 93a581b --stat(1file +24/-8)+git merge-tree --write-tree main auto/optimization 冲突预检+opt-worktree.sh . merge optimization+回归(bash -n+grep case-412 修复+功能 cleanup success/failure 路径)。[2]【case-416=416%4=0 下次审计轮】续审 scout-scan.py(677L)+triage.py(136L),本轮预算聚焦 opt-worktree.sh 攻击面最大者未及此二文件。
+- **LAST_WORKTREE**: optimization @93a581b→main d884c24（case-412 修复已 squash 合并,pending=0,worktree+branch 已清理;case-413 非审计轮 sanctioned-merge 直提 main 归档）
+- **LAST_OUTCOME**: done
+- **NEXT_SUGGESTION**: [1]【case-414=414%4=2≠0 非审计轮·skip 心跳】scout-scan score=0.0 无明确小工作单位,核实四步(同 case-403/406/410/411 skip 模式):git status 空+worktree list 仅 main+branch 仅 main+grep TODO(deferred) 4 命中全已 triage。[2]【case-416=416%4=0 下次审计轮】DO A 强制续审 scout-scan.py(677L)+triage.py(136L),case-412 已审 opt-worktree.sh(攻击面最大者),此二文件未及。
 - **自主循环**: 🟢 活跃
   - L1 Inline: 每次回复末尾内联检查 (+ git status)
   - L2 Heartbeat: CronCreate 每7分钟（执行轨——推进 Studio 阶段或主动扫描）
@@ -75,9 +75,9 @@ metadata:
 <!-- GOAL_STATUS: active -->
 <!-- ACTIVE_GOAL: ralph-wiggum-autonomous-loop (每轮一个小工作单位，scout-scan 排序选任务) -->
 <!-- LAST_UPDATED: 2026-07-01 -->
-<!-- LAST_WORKTREE: optimization @93a581b（case-412 审计轮 security-review opt-worktree.sh cmd_cleanup audit_log 修复,1file +24/-8,pending=1 待 sanctioned-merge） -->
-<!-- LAST_OUTCOME: in_progress -->
-<!-- NEXT_SUGGESTION: [1]case-413 非审计轮 sanctioned-merge optimization @93a581b→main;[2]case-416 审计轮 续审 scout-scan.py/triage.py -->
+<!-- LAST_WORKTREE: optimization @93a581b→main d884c24（case-412 修复已 squash 合并,pending=0,worktree+branch 已清理） -->
+<!-- LAST_OUTCOME: done -->
+<!-- NEXT_SUGGESTION: [1]case-414 非审计轮 skip 心跳;[2]case-416 审计轮 续审 scout-scan.py/triage.py -->
 
 | 字段 | 内容 |
 |------|------|
