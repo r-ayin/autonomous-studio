@@ -563,9 +563,7 @@ def scan_project(p):
     rep["symbols"] = {"functions": len(symbols["functions"]),
                       "classes": len(symbols["classes"]),
                       "headings": len(symbols["headings"])}
-    # 索引落盘到项目 .claude/ 或 workspace 索引目录
-    idx_dir = os.path.join(os.path.dirname(path), ".opt-worktrees", "_indexes")
-    # 存到 workspace 级索引目录（不污染项目）
+    # 索引落盘到 workspace 级 .codebase-index/（不污染项目源码树）
     idx_dir = os.path.join(os.path.dirname(path) or ".", ".codebase-index")
     os.makedirs(idx_dir, exist_ok=True)
     with open(os.path.join(idx_dir, f"{p['name']}.json"), "w", encoding="utf-8") as f:
