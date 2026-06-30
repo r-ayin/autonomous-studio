@@ -253,6 +253,13 @@ $(git log --oneline auto/$(basename "$dir") 2>/dev/null | head -5)"
     echo "✓ 已 squash 合并 $wt → $MAIN_BRANCH"
     git -C "$PROJECT" worktree remove "$dir" --force 2>/dev/null || rm -rf "$dir"
     echo "✓ worktree 清理"
+    # 根治 standing worktree 自指循环（[[opt-worktree-merge-leaves-branch-ref]]）：
+    # merge 后若不删 auto/<wt> 分支 ref，下轮 cmd_init 的 `worktree add -b auto/optimization`
+    # 因 ref 已在而失败、fallback 检出陈旧 tip，新提交堆在旧 tip 上 → cherry 显伪 +、
+    # 两点 diff 永显伪删、每轮重审同 worktree 写新 case 称已合而 main 拿不到。同 cmd_reject。
+    # gate 豁免：autonomous-commit-gate 仅拦 -D main/master，auto/* 放行（已证 cmd_reject 在用）。
+    git -C "$PROJECT" branch -D "auto/$(basename "$dir")" 2>/dev/null || true
+    echo "✓ 分支 ref auto/$(basename "$dir") 清理"
   else
     echo "❌ 合并冲突，人工处理: cd $dir && 解决后 opt-worktree.sh merge"
     git merge --abort 2>/dev/null || true
