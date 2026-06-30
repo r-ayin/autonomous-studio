@@ -277,7 +277,14 @@ cmd_commit() {
       local ts; ts=$(date +%s)
       target="$WT_BASE/opt-$(slug "$new_area")-$ts"
       mkdir -p "$target"
-      git -C "$PROJECT" worktree add -b "auto/opt-$(slug "$new_area")-$ts" "$target" "$MAIN_BRANCH" 2>/dev/null
+      # 失败须清 husk：worktree add 失败（分支名撞/路径冲突）时 mkdir 已建空目录，
+      # set -e 下硬 abort 会留空 husk 累积（.opt-worktrees/<proj>/.opt-worktrees/opt-*，
+      # 见 case-392 husk 清扫：5 个空壳，4 个源此路径）。失败 rmdir + return 1 让调用方感知。
+      if ! git -C "$PROJECT" worktree add -b "auto/opt-$(slug "$new_area")-$ts" "$target" "$MAIN_BRANCH" 2>/dev/null; then
+        rmdir "$target" 2>/dev/null
+        echo "✗ worktree add 失败（分支名撞？路径冲突？），已清空 husk: $(basename "$target")" >&2
+        return 1
+      fi
       echo "$direction" > "$target/.opt-direction"
       _ignore_opt_direction_marker "$target"
       echo "↔ 方向分歧（$cur_area → $new_area），开新 worktree: $(basename "$target")"
