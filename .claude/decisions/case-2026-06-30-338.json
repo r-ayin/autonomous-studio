@@ -1,0 +1,29 @@
+{
+  "case_id": "case-2026-06-30-338",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-06-30T11:08Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "落地 opt-scout-1782817213 待合并 worktree—— sanctioned squash-merge 反引号剥离修复入 main，清 AS 幽灵 TODO=2→0、清 pending merge 队列 1 项",
+  "situation": "step0 读 .claude/autonomous-constraints.md → 仍不存在（case-044/337 三轮确认），凭 protocol prompt 内联 DO/DO NOT 摘要执行。本轮=常规工作单位轮次（今日 decisions/ case-2026-06-30-* 共 137 个，137%4=1，未命中审计边界 140；上一轮 case-337 已为首例 code-review）。step1 scout-scan --workspace AS 仓报 #1=autonomous-studio-aone(score=0.0, TODO=2 active, TODO=4 deferred)，推荐语明示'等合并 opt-scout-1782817213 worktree（marker 文件已动，可能已 triage TODO，别重做——先查 worktree log）'。即 #1 推荐工作单位本身就是合并该 pending worktree，非新写代码。case-337 已在隔离 worktree 完成修复+audit-log 埋点+code-review，唯一缺的是落地 main。",
+  "action": "先核 worktree 分歧安全性：git merge-base main auto/opt-scout-1782817213 = 1b498ce（worktree 起点）。git diff --stat main..worktree 显示 4 文件含 case-337.json(-37)/autonomous-state.md(±16) 看似会删 case/回退 state——但这是两 tip diff 非 merge 内容。真实 merge diff = git diff --stat 1b498ce..worktree 仅 2 文件（scripts/scout-scan.py +9, .claude/decisions/audit-log.jsonl +1）；git cat-file -e 核实 case-337.json 在 worktree tip 不存在（worktree 起点早于 case-337 落 main 的 9d207b9，故 worktree 从未有该文件，merge 不会删它），main 有 case-337.json。又核 main grep -c _STRIP_BACKTICKS scripts/scout-scan.py = 0（main 未含修复）、main 无 audit-log.jsonl（git show main:.claude/decisions/audit-log.jsonl → does not exist）→ 两文件均纯新增零冲突。遂走 sanctioned 路径 bash scripts/opt-worktree.sh /home/admin/workspace/autonomous-studio-aone merge opt-scout-1782817213（cmd_merge：git checkout main → git merge --squash auto/opt-scout-1782817213 → 剔 .opt-direction 桩 → autonomous-studio 身份 commit → worktree remove --force）。merge 不 push（引擎硬限制），纯本地可逆。",
+  "files_changed": [
+    "scripts/scout-scan.py",
+    ".claude/decisions/audit-log.jsonl"
+  ],
+  "worktree": "opt-scout-1782817213 (合并后已清理；merge commit 1aa9b23 落 main)",
+  "direction": "scout:backtick-strip (merge-landing)",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "git log --oneline -1 → 1aa9b23 'merge: 人工批准合并 optimization worktree opt-scout-1782817213'（merge commit 落 main）",
+    "grep -c _STRIP_BACKTICKS scripts/scout-scan.py(main) → 2（定义+使用两处，修复已入 main）",
+    "ls .claude/decisions/audit-log.jsonl → 存在(1096 bytes, audit-20260630-105936-0dv11c 条目入 main)",
+    "ls .claude/decisions/case-2026-06-30-337.json → 仍存在（merge 未误删，证实 merge-base..worktree diff 仅 2 文件判断正确）",
+    "python3 scripts/scout-scan.py --workspace AS 仓 → 标记: TODO=0 FIXME=0 HACK=0（merge 前 TODO=2，幽灵消除）、延期 TODO=4 不变、score=0.0",
+    "scout #1 推荐由 merge 前'等合并 opt-scout-1782817213 worktree'变为'review 1 个待合并 worktree（optimization）'——pending 队列由 2 减至 1",
+    "git worktree list → opt-scout-1782817213 已不在（worktree remove --force 清理成功），仅余 optimization worktree",
+    "opt-worktree.sh 输出 '✓ 已 squash 合并 opt-scout-1782817213 → main' + '✓ worktree 清理'"
+  ],
+  "next_suggestion": "(1) pending merge 队列再减一：余 optimization worktree(auto/optimization, a271bf7, 方向 engine:general, 4 files +69/-48)——下轮可同法核 merge-base..worktree 真实 diff 后 sanctioned merge，或先 review 其 4 文件改动。(2) constraints 文件 .claude/autonomous-constraints.md 持续缺失（三轮确认）——protocol step0 强依赖却不存在，可从 prompt 内联 DO/DO NOT 摘要+历史案例引用重建为独立小工作单位。(3) 审计节奏：今日 case 138，下个审计边界=140（140%4=0），届时强制 code-review/security-review skill 走审计路径。(4) AS main 现 TODO=0 score=0.0 永久健康，scout 不再推幽灵 triage——日常自我润色不再霸榜，下轮若 AS 仍排#1 应挑 pending worktree review 或跳过。",
+  "audit_type": "none",
+  "audit_findings": []
+}
