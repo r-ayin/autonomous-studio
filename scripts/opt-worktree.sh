@@ -405,9 +405,18 @@ cmd_commit() {
     # 审计修复（case-356）：回滚本调用新建的分歧 worktree——copied=0 中止时它无任何提交内容，
     # 留下即成孤儿 wt+分支（污染 worktree list / scout-scan）。仅清本调用新建者，不动复用/
     # optimization 持久 wt。worktree remove --force 因 wt 无 commit 可净移；branch -D 删空分支。
+    # DO B（autonomous-constraints.md）：此回滚是 delete 敏感路径（worktree remove --force +
+    # branch -D），与 cmd_reject/cmd_cleanup 对称记 JSONL 审计日志（action=delete, resource=artifact）。
+    # result 如实反映：worktree 目录已消失=success（branch -D best-effort，失败仅 reason 标注），
+    # 仍在=failure。case-370 闭合全删除路径 audit_log 对称（merge/reject/cleanup/commit-rollback 四路径 LIVE）。
     if (( created_new_wt )) && [[ -n "$new_wt_branch" ]]; then
       git -C "$PROJECT" worktree remove --force "$target" 2>/dev/null || true
       git -C "$PROJECT" branch -D "$new_wt_branch" 2>/dev/null || true
+      if [[ ! -d "$target" ]]; then
+        audit_log success "$(basename "$target")" "" "rollback divergent worktree on copied=0 abort (no content migrated); branch $new_wt_branch -D (best-effort)" delete artifact || true
+      else
+        audit_log failure "$(basename "$target")" "" "rollback incomplete on copied=0 abort: $target still exists after remove --force" delete artifact || true
+      fi
       echo "   已回滚本调用新建的分歧 worktree: $(basename "$target")（避免孤儿）" >&2
     fi
     exit 1
