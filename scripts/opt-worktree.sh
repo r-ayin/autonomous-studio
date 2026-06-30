@@ -87,18 +87,46 @@ ensure_main_wt() {
   else
     # standing worktree 在历次他枝 merge 后会落后 main（main 推进而本枝未 reset）。
     # 不纠正则下轮同 area cmd_commit 把新改动 cp 到过时内容上（基于旧文件提交，case-365）。
-    # 仅当工作区干净且 auto/optimization 是 main 祖先（落后、无 ahead 提交）时 ff-only 快进；
-    # 脏或有 ahead 提交一律跳过——保住未合并工作，绝不丢改动（destructive reset 禁用）。
-    if [[ -z "$(git -C "$dir" status --porcelain 2>/dev/null)" ]] \
-       && git -C "$PROJECT" merge-base --is-ancestor auto/optimization "$MAIN_BRANCH" 2>/dev/null; then
+    # 仅当 auto/optimization 是 main 祖先（落后、无 ahead 提交）时 ff-only 快进；
+    # 有 ahead 提交一律跳过——保住未合并工作，绝不丢改动（destructive reset 禁用）。
+    # 真脏（未合并改动）由 git ff 自身拒绝兜底（非破坏），无需 porcelain 前置守卫。
+    if git -C "$PROJECT" merge-base --is-ancestor auto/optimization "$MAIN_BRANCH" 2>/dev/null; then
       local mb_head cur
       mb_head=$(git -C "$PROJECT" rev-parse "$MAIN_BRANCH" 2>/dev/null)
       cur=$(git -C "$dir" rev-parse HEAD 2>/dev/null)
       if [[ -n "$mb_head" && -n "$cur" && "$mb_head" != "$cur" ]]; then
+        # .opt-direction 是 worktree 本地方向标记桩（设计上 untracked+info/exclude 忽略）。
+        # 但部分 legacy standing 分支曾误提交此桩（main 已 strip，本枝仍 tracked）→
+        # ensure_main_wt 写磁盘方向后 git 报 ` M .opt-direction`→porcelain 非空；更甚 git ff
+        # 自身因 tracked 文件有本地改动而拒绝（case-371 实踩 1BfrYW9R 966a60f）。若桩是唯一脏项
+        # 且 tracked，做 cp/checkout/ff/restore 舞步解锁：桩非真改动绝不丢，与 cmd_commit
+        # cp+断言哲学一致[[opt-worktree-stash-silent-failure]]，禁用 stash（静默失败高发）。
+        local por non_marker marker_tracked=0 bak=""
+        por=$(git -C "$dir" status --porcelain 2>/dev/null || true)
+        if [[ -n "$por" ]]; then
+          non_marker=$(printf '%s\n' "$por" | grep -vE '\.opt-direction$' || true)
+          if [[ -z "$non_marker" ]] \
+             && git -C "$dir" ls-files --error-unmatch .opt-direction >/dev/null 2>&1; then
+            marker_tracked=1
+          fi
+        fi
+        if [[ "$marker_tracked" == 1 ]]; then
+          bak=$(mktemp 2>/dev/null) || true
+          [[ -n "$bak" ]] && cp -f "$dir/.opt-direction" "$bak" 2>/dev/null || true
+          git -C "$dir" checkout -- .opt-direction >/dev/null 2>&1 || true
+        fi
         if git -C "$dir" merge --ff-only "$MAIN_BRANCH" >/dev/null 2>&1; then
-          echo "↻ standing optimization worktree 快进至 $MAIN_BRANCH（$cur → $mb_head，落后内容已同步）"
+          if [[ "$marker_tracked" == 1 ]]; then
+            [[ -n "$bak" && -f "$bak" ]] && cp -f "$bak" "$dir/.opt-direction" 2>/dev/null || true
+            rm -f "$bak" 2>/dev/null || true
+            echo "↻ standing optimization worktree 快进至 $MAIN_BRANCH（$cur → $mb_head，.opt-direction 桩暂存还原解锁）"
+          else
+            echo "↻ standing optimization worktree 快进至 $MAIN_BRANCH（$cur → $mb_head，落后内容已同步）"
+          fi
         else
-          echo "⚠ standing optimization worktree 快进失败（已确认祖先+干净仍失败？），跳过不阻断"
+          [[ -n "$bak" && -f "$bak" ]] && cp -f "$bak" "$dir/.opt-direction" 2>/dev/null || true
+          rm -f "$bak" 2>/dev/null || true
+          echo "⚠ standing optimization worktree 快进失败（已确认祖先仍失败？真脏由 git 拒绝兜底），跳过不阻断"
         fi
       fi
     fi
