@@ -14,15 +14,15 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-07-01T09:25Z（case-560 瞭望轮#48:origin同步+worktree状态核查,git push origin main成功同步10个local-only state commits(9ea7878..b9f7d19),9/9 behind降为1 ahead=10 origin_diff=0已同步,pending_count=9不变,BLOCKED on human merge连续48轮）**
+- **最后活跃: 2026-07-01T09:26Z（case-561 瞭望轮#49:scout快照+pending核查,origin/main=HEAD=7c745f9完全同步,pending_count=9不变,BLOCKED on human merge连续49轮,卡死保护维持）**
 - **活跃项目**: autonomous-studio-aone 维护——**audit-002 scripts module 9 findings:9 pending待merge(全部behind=1 ahead=10,no-conflict,merge-ready via squash)**。audit-001 hooks module 已 cycle-complete(2H merged via 900a3cc/b1d072d)。**已审源码:hooks/ 14 hook 全审+scripts/opt-worktree.sh+autonomous-loop.sh 深审**。
-- **当前阶段**: case-560 瞭望轮#48完成→发现local领先origin 10 commit(全state回写)→push同步远端→验证9 worktree behind统一降为1(仅差本轮即将提交的state commit)、ahead=10、origin_diff=0;**pending_count=9不变**;**BLOCKED on human merge only**(连续48轮无源码改动)。卡死保护维持:本轮未rebase。
+- **当前阶段**: case-561 瞭望轮#49完成→scout-scan确认10待合并worktree(pending=9)→origin/main=HEAD=7c745f9完全同步无漂移;**pending_count=9不变**;**BLOCKED on human merge only**(连续49轮无源码改动)。卡死保护维持:本轮未rebase。
 - **GOAL_STATUS**: active
 - **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动；审计轮次事件驱动 audit-cycle-state + 敏感路径 audit-log 埋点）
-- **LAST_UPDATED**: 2026-07-01(case-560 瞭望轮#48,push origin/main同步10 commit,9 fix behind=1 ahead=10 merge-ready稳定,等用户merge;卡死保护维持)
+- **LAST_UPDATED**: 2026-07-01(case-561 瞭望轮#49,origin/main=HEAD同步,pending_count=9不变,BLOCKED on human merge连续49轮;卡死保护维持)
 - **LAST_WORKTREE**: N/A(纯瞭望+origin同步,零源码改动)。待merge列表(全部behind=1 ahead=10,no-conflict):opt-security-shift-1782878468(H-001)+opt-security-shift-1782878926(H-005)+opt-security-shift-1782879314(M-002)+opt-security-shift-1782879595(M-001)+opt-scripts-shift-1782879918(M-003)+opt-engine-shift-1782880189(M-004)+opt-engine-shift-1782880465(L-001)+opt-scripts-shift-1782884741(L-002v2)+opt-engine-shift-1782881018(L-003)
 - **LAST_OUTCOME**: done
-- **NEXT_SUGGESTION**: [1]【用户merge】9个worktree全部behind=1 ahead=10,opt-worktree.sh merge走sanctioned squash即可(behind仅state-commit无冲突),按H→M→L优先级。[2]merge后derived_fixes[].status→merged,pending_count→0,status→cycle-complete。[3]下轮触发audit-003(候选:engine核心src/或其他未审module)。**⚠️ BLOCKED:仅等用户merge,引擎侧无新工作单位**。连续48轮无源码改动达强提醒阈值。卡死保护:引擎停止主动rebase避免behind数字膨胀。
+- **NEXT_SUGGESTION**: [1]【用户merge】9个worktree全部behind=1 ahead=10,opt-worktree.sh merge走sanctioned squash即可(behind仅state-commit无冲突),按H→M→L优先级。[2]merge后derived_fixes[].status→merged,pending_count→0,status→cycle-complete。[3]下轮触发audit-003(候选:engine核心src/或其他未审module)。**⚠️ BLOCKED:仅等用户merge,引擎侧无新工作单位**。连续49轮无源码改动达强提醒阈值。卡死保护:引擎停止主动rebase避免behind数字膨胀。
 - **自主循环**: 🟢 活跃
   - L1 Inline: 每次回复末尾内联检查 (+ git status)
   - L2 Heartbeat: CronCreate 每7分钟（执行轨——推进 Studio 阶段或主动扫描）
@@ -74,10 +74,10 @@ metadata:
 <!-- GOAL_ID: G-2026-06-15-002 -->
 <!-- GOAL_STATUS: active -->
 <!-- ACTIVE_GOAL: ralph-wiggum-autonomous-loop (每轮一个小工作单位，scout-scan 排序选任务) -->
-<!-- LAST_UPDATED: 2026-07-01(case-560 瞭望轮#48,push origin/main同步10 commit,9 fix behind=1 ahead=10 merge-ready稳定,等用户merge;卡死保护维持) -->
-<!-- LAST_WORKTREE: N/A(纯瞭望+origin同步,零源码改动)。待merge:9个全部behind=1 ahead=10 no-conflict origin已同步 -->
+<!-- LAST_UPDATED: 2026-07-01(case-561 瞭望轮#49,origin/main=HEAD同步,pending_count=9不变,BLOCKED on human merge连续49轮;卡死保护维持) -->
+<!-- LAST_WORKTREE: N/A(纯瞭望,零源码改动)。待merge:9个全部behind=1 ahead=10 no-conflict origin已同步 -->
 <!-- LAST_OUTCOME: done -->
-<!-- NEXT_SUGGESTION: [1]用户merge 9个worktree(全部behind=1 ahead=10 no-conflict,squash即可)。[2]merge后derived_fixes→merged,cycle-complete。[3]下轮audit-003。⚠️ BLOCKED仅等merge,连续48轮无源码改动,卡死保护维持不rebase。 -->
+<!-- NEXT_SUGGESTION: [1]用户merge 9个worktree(全部behind=1 ahead=10 no-conflict,squash即可)。[2]merge后derived_fixes→merged,cycle-complete。[3]下轮audit-003。⚠️ BLOCKED仅等merge,连续49轮无源码改动,卡死保护维持不rebase。 -->
 
 | 字段 | 内容 |
 |------|------|
