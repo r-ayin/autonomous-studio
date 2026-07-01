@@ -78,7 +78,9 @@ run_round() {
   local model="$1" out
   out=$(claude -p "$PROMPT" --model "$model" --permission-mode bypassPermissions 2>&1)
   echo "$out" | tail -30
-  if echo "$out" | grep -qiE '402|429|quota[ _]?exceed|rate[ _]?limit|overloaded|insufficient'; then
+  # L-003 fix (audit-2026-07-01-002): 收窄限流 grep，避免误匹配 'line 429'/'insufficient coverage' 等正常输出
+  # 保留 402/429 裸匹配（几乎只对应 HTTP 状态码）；quota/rate_limit 改为组合词防误中；移除 overloaded/insufficient 单词
+  if echo "$out" | grep -qiE '\b(402|429)\b|quota[ _]?(exceeded|limit)|rate[ _]?limit(ed)?'; then
     return 1
   fi
   return 0
