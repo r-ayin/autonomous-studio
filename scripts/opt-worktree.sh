@@ -472,6 +472,26 @@ cmd_commit() {
     fi
   fi
 
+  # AS-EC-009 (audit-2026-07-02-002): worktree 级互斥锁——防并发 cmd_commit 同 target 损坏。
+  # 场景：两个引擎实例同时 commit 到同一 route-fix worktree（或 direction-shift 撞 ts 概率极低但
+  # optimization 持久 wt 复用常见）。无锁时 B 可能在 A 的 ①cp 之后 ③restore 之前进入，看到混合
+  # 状态；或 A/B 同时 git add+commit 致 index 竞争 / HEAD 断言误报。flock 在 $target/.opt-lock
+  # 上取排他锁，fd 9 持锁覆盖 ①-④ 整段临界区；函数返回（含 ERR trap 退出）时 fd 自动关闭释锁。
+  # wait (-w) 默认阻塞等锁；不超时避免引擎轮次卡死——调用方（autonomous-loop）已有外层超时。
+  local _lockfile="$target/.opt-lock"
+  exec 9>"$_lockfile"
+  if ! flock -x 9; then
+    echo "❌ 无法获取 worktree 锁 $(basename "$target")/.opt-lock（另一 cmd_commit 持有？）——中止，main 改动保留未动" >&2
+    exec 9>&-
+    exit 1
+  fi
+  # 锁内再次校验 target 仍是有效 worktree（等锁期间可能被 cmd_cleanup/cmd_reject 移除）
+  if [[ ! -d "$target/.git" && ! -f "$target/.git" ]]; then
+    echo "❌ 等锁期间 target worktree 已失效: $(basename "$target")——中止，main 改动保留未动" >&2
+    exec 9>&-
+    exit 1
+  fi
+
   # 把当前工作区改动同步到 target worktree 提交
   # 弃用 git stash（phantom-stash 误报根因，见 case-028/029/030/032/004 +
   #   [[opt-worktree-stash-silent-failure]]）：`git stash push -u -- <pathspec>`
