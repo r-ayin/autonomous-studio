@@ -49,6 +49,14 @@ PY_SYM = re.compile(r"^(async\s+)?(def|class)\s+(\w+)", re.M)
 JS_TS_SYM = re.compile(r"^(export\s+)?(async\s+)?(function|class|const|let|var)\s+(\w+)", re.M)
 MD_HEAD = re.compile(r"^#{1,3}\s+(.+)$", re.M)
 
+# merge-round 簿记滞后产物识别：standing opt-worktree 自 merge-base 起改动文件全集皆
+# .claude/decisions/case-*.json（每轮 merge-round 产出的 case 记录本身滞留 worktree 待下轮
+# merge）。这类 worktree 字面 pending（case 记录确未落 main）但非真结构性工作单位——引擎若
+# 每轮依"待合并=1"推"review 待合并 worktree"→ 纯 merge churn：merge case-N 产 case-N+1 待合并，
+# 无真进展（case-373 链）。标 case_only 让推荐层降级，case 记录随下轮真实工作在 standing
+# worktree 内自然合并（real work 提交叠加在 case 之上，merge 一并落地，无独占轮次）。
+CASE_RECORD_RE = re.compile(r"^\.claude/decisions/case-[^/]+\.json$")
+
 # 债务标记计数修正：
 #   1) 剥离字符串字面量——字典键 {"FIXME":0}、f-string、docstring 里的标记名不算债务
 #      （此前 scout-scan.py 自身被自指误算为 FIXME=9/HACK=9，全来自 counts={"FIXME":0} 这类键）
@@ -183,6 +191,12 @@ def count_markers(path):
             if not f.endswith((".py", ".js", ".ts", ".tsx", ".jsx", ".sh", ".go", ".rs")):
                 continue
             rel = os.path.relpath(fp, path)
+            # 剥离 .claude/decisions/ 案例归档 markdown：case 标题常含 "TODO:"（如
+            # "Case 37: triage ...真实 # TODO: 标记"）属引擎元日志非可执行债务，否则
+            # AS 永显伪 TODO=3（实测 2026-06-30：3 个 active TODO 全来自 decision-archive.md
+            # 案例标题，非代码债）。与 <!-- TODO --> /【TODO】 占位符剥离同理念。
+            if rel.startswith(".claude/decisions/"):
+                continue
             hit = False
             try:
                 with open(fp, encoding="utf-8", errors="ignore") as fh:
@@ -369,6 +383,7 @@ def count_pending_worktrees(path):
     total = 0
     stale = 0
     with_content = 0
+    with_content_case_only = 0
     details = []
     for entry in sorted(os.scandir(wt_root), key=lambda e: e.name):
         if not entry.is_dir() or entry.name.startswith("."):
@@ -399,6 +414,7 @@ def count_pending_worktrees(path):
         #     内容一致 = work 已落 main = superseded；exit 1 = 真未落 main = 待合并。
         # 任一步失败/空（如纯空 commit）则退化为只看 ahead（不变），保守不误标。
         superseded = False
+        case_only = False
         if ahead > 0:
             try:
                 n = subprocess.run(["git", "diff", "--name-only", f"{main_branch}...HEAD"],
@@ -409,6 +425,11 @@ def count_pending_worktrees(path):
                                        cwd=entry.path, capture_output=True, text=True, timeout=15)
                     if d.returncode == 0:
                         superseded = True
+                    # case-record-only：改动文件全集皆 case-*.json（merge-round 簿记滞后）。
+                    # 仅当未 superseded（case 记录真未落 main）才标——superseded 的已落 main
+                    # 走 stale 分支不计 with_content，case_only 无意义。空 touched 保守不标。
+                    if not superseded and all(CASE_RECORD_RE.match(f) for f in touched):
+                        case_only = True
             except Exception:
                 pass
         # ensure_main_wt 维护的常设 "optimization" worktree：空闲(0-ahead)时是 infra，
@@ -421,8 +442,11 @@ def count_pending_worktrees(path):
             stale += 1
         elif ahead > 0:
             with_content += 1
-        details.append({"name": entry.name, "ahead": ahead, "superseded": superseded})
-    return {"total": total, "stale": stale, "with_content": with_content, "details": details}
+            if case_only:
+                with_content_case_only += 1
+        details.append({"name": entry.name, "ahead": ahead, "superseded": superseded, "case_only": case_only})
+    return {"total": total, "stale": stale, "with_content": with_content,
+            "with_content_case_only": with_content_case_only, "details": details}
 
 
 def pending_planning_in_worktrees(path):
@@ -549,8 +573,17 @@ def health_priority(r):
         unit = "补 planning/ 目录（路线图文档，无需深读代码）"
     else:
         pw = r.get("pending_worktrees", {})
-        if pw.get("with_content", 0) > 0:
-            unit = f"review {pw['with_content']} 个待合并 worktree（人工审 diff + merge/reject）"
+        wc_case = pw.get("with_content_case_only", 0)
+        wc_real = pw.get("with_content", 0) - wc_case
+        if wc_real > 0:
+            unit = f"review {wc_real} 个待合并 worktree（人工审 diff + merge/reject）"
+            if pw.get("stale", 0) > 0:
+                unit += f"；另有 {pw['stale']} 个空 worktree 可清理"
+        elif wc_case > 0:
+            # 唯一 pending 是 case-record-only（merge-round 簿记滞后）——不推"review 待合并"
+            # 霸榜（否则引擎陷纯 merge churn：merge case-N 产 case-N+1 待合并无真进展）。
+            # case 记录随下轮真实工作在 standing worktree 内合并，不独占轮次。
+            unit = f"无明确小工作单位——{wc_case} 个 case 记录 worktree 为 merge-round 簿记滞后（随下轮真实工作合并，勿独占轮次纯 merge）"
             if pw.get("stale", 0) > 0:
                 unit += f"；另有 {pw['stale']} 个空 worktree 可清理"
         elif pw.get("stale", 0) > 0:

@@ -1,0 +1,17 @@
+{
+  "case_id": "case-2026-07-01-374",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-01T00:37:00+08:00",
+  "project": "autonomous-studio",
+  "work_unit": "scout-scan 加 case-record-only 分类，打破 AS standing optimization worktree 永挂 merge-round case 记录致每轮纯 merge churn 的霸榜环路",
+  "situation": "scout-scan 全 score=0.0：#1=1BfrYW9R 无明确小工作单位（跳过）；#2=autonomous-studio 推 review 1 待合并 worktree。审 AS standing optimization worktree(438f727)：git show --stat 仅 +.claude/decisions/case-2026-07-01-373.json 17 行（上轮 case-373 merge-round 的 case 记录本身滞留 worktree 待下轮 merge）。case-373 又是 merge case-372 的产物，case-372 merge case-371... 形成 merge case-N 产 case-N+1 待合并的无限 churn——每轮引擎依『待合并=1』推『review 待合并 worktree』独占轮次做纯 merge，无真进展。root cause：count_pending_worktrees 把 case-record-only standing worktree（改动全集皆 case-*.json）计 with_content→推荐层落『review N 待合并 worktree』霸榜。",
+  "action": "三处改 scout-scan.py（AS git 副本，root live 同步见 outcome_evidence）：(1)模块级加 CASE_RECORD_RE=re.compile(r'^\\.claude/decisions/case-[^/]+\\.json$')。(2)count_pending_worktrees：每 worktree 在 superseded 检测后，若 not superseded 且 touched 全集皆 CASE_RECORD_RE 匹配则标 case_only=True；summary 加 with_content_case_only 计数 + details 加 case_only 字段。(3)推荐层：wc_real=with_content-with_content_case_only，wc_real>0 才推『review 待合并 worktree』；仅 wc_case>0 则降级为『无明确小工作单位——N 个 case 记录 worktree 为 merge-round 簿记滞后（随下轮真实工作合并，勿独占轮次纯 merge）』。本轮即示范正解：真实引擎修复(scout-scan.py)+case-374 写 main→opt-worktree commit 叠加在 438f727/case-373 之上→merge 一并落地（case-373 滞后记录+fix+case-374 同轮入 main，pending=0，case-374 不滞后因 commit 在 merge 前 ride merge）。两副本逐字节一致（diff -q IDENTICAL）改前已验，merge 后 cp AS→root live[[opt-worktree-root-as-copy-drift]][[scout-scan-copy-provenance]]。",
+  "files_changed": [
+    "scripts/scout-scan.py"
+  ],
+  "worktree": "optimization（standing，已有 case-373 pending=438f727；本轮 commit scout-scan.py+case-374 叠加其上→merge 一并入 main，worktree 删除重建）",
+  "direction": "engine:scout-scan-case-record-lag-break",
+  "outcome": "succeeded",
+  "outcome_evidence": "改前 AS git 副本==root live（diff -q IDENTICAL）。改后 AS git 副本实跑 python3 scripts/scout-scan.py --project autonomous-studio：AS 推荐由『review 1 个待合并 worktree（人工审 diff + merge/reject）』变为『#1 autonomous-studio (score=0.0) — 无明确小工作单位——1 个 case 记录 worktree 为 merge-round 簿记滞后（随下轮真实工作合并，勿独占轮次纯 merge）』。--json 验 pending_worktrees={total:1,stale:0,with_content:1,with_content_case_only:1,details:[{name:optimization,ahead:1,superseded:false,case_only:true}]}——case_only 正确识别。merge 后（见下轮 state 验）：AS main 含 scout-scan.py fix+case-373+case-374，git worktree list 无 pending，root live==AS main（cp 同步）。",
+  "next_suggestion": "scout-scan case-record-lag 霸榜环路本轮根除。下轮候选：(1)1BfrYW9R HEAD×静态 MIME 余集——HEAD /style.js Content-Type application/javascript charset 锁。(2)personal-assistant ECS 已知问题 grounding[[ecs-deploy-target]]动手前 grep 当前源验[[state-next-suggestion-stale-blind]]。(3)main 侧 .opt-direction tracked-leak 根除（wechat-main/personal-assistant）逐项目 git ls-tree HEAD -- .opt-direction 验 tracked。(4)AS 7 个延期(triage)TODO 复审。纪律：case-id 走 cmd_next_case[[case-id-collision-agent-self-pick]]；opt-worktree 命令从 /home/admin/workspace 根跑；case 写 AS main .claude/decisions/ + json.dump[[loop-case-json-recurrent-breakage]]；engine 改两副本同改+cp AS→root live 同步[[opt-worktree-root-as-copy-drift]]；纯 merge-round（case-record-only worktree）勿独占轮次——case 记录随真实工作 ride merge 落地。"
+}

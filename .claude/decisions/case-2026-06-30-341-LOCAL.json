@@ -1,0 +1,17 @@
+{
+  "case_id": "case-2026-06-30-341",
+  "agent_id": "autonomous-studio-loop",
+  "timestamp": "2026-06-30T11:16:08Z",
+  "project": "autonomous-studio",
+  "work_unit": "写 scripts/loop-archive-cases.sh —— 循环末尾扫 AS main 的 untracked case-*.json 自动归档进 AS housekeeping worktree",
+  "situation": "case-338/339/340 三次踩同结构性缺口：循环 step5 把 case 写到 autonomous-studio/.claude/decisions/，但 step4 的 opt-worktree commit 进的是目标项目 worktree（异库）。当目标项目不等于 AS 时，case 文件永远进不了任何 worktree，滞留 AS main 成 untracked 孤儿——下一轮被 scout-scan 当 dirty 信号、cmd_next_case 又可能撞号。state 文件 NEXT_SUGGESTION 已连续多轮把此项列为最高优先真工作单位。",
+  "action": "新建 scripts/loop-archive-cases.sh：①cd 进 PROJECT 扫 git status --porcelain 收集 untracked 的 .claude/decisions/case-*.json（去 XY 前缀+rename 取新路径）②前置断言磁盘确有文件防 porcelain 误读产空 commit ③调 opt-worktree.sh commit housekeeping:archive-cases 把孤儿 case cp 进 AS housekeeping worktree 提交、main 还原 untracked 删 ④自测断言归档后 main 无 untracked case-*.json。修一处实踩 bug：脚本 cd PROJECT 后用相对 PROJECT 调 opt-worktree 致 CWD 已变报不是目录，改把 PROJECT 解析成绝对路径。实跑归档现存的 case-340 孤儿。",
+  "files_changed": [
+    "scripts/loop-archive-cases.sh"
+  ],
+  "worktree": "opt-housekeeping-1782818140 (branch auto/opt-housekeeping-1782818140)",
+  "direction": "housekeeping:archive-cases",
+  "outcome": "succeeded",
+  "outcome_evidence": "脚本实跑 stdout: '✓ 自测通过：/home/admin/workspace/autonomous-studio main 干净，1 个 case 已入 housekeeping worktree 待合并'；git -C opt-housekeeping-1782818140 ls-files 确认 .claude/decisions/case-2026-06-30-340.json 已 tracked；该 worktree commit b3eb6a1 'opt(housekeeping:archive-cases): 归档 1 个孤儿 case...: ...case-2026-06-30-340.json'；git -C autonomous-studio status --porcelain 归档后为空。注意：本 case-341 自身在写盘后仍是 AS main untracked，需二次跑本脚本归档进同一 housekeeping worktree 自证复用。",
+  "next_suggestion": "①二次跑 loop-archive-cases.sh 归档 case-341，验证复用同 area housekeeping worktree（非开新）②把 loop-archive-cases.sh 调用接入 autonomous-loop.sh 每轮末尾自动执行，从根上杜绝孤儿③AS 陈旧 auto/opt-* orphan 分支 ref 批量 -D（gate 放行 auto/*）④scout-scan 全 0.0 时下下轮可做 AS 7 条延期已 triage TODO 逐条核销或 sunset-prediction/wechat-main GATES 实跑核销"
+}

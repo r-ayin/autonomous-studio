@@ -1,0 +1,25 @@
+{
+  "case_id": "case-2026-06-30-333",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-30T04:10:00Z",
+  "project": "1BfrYW9R (oneday-design)",
+  "work_unit": "PROGRESS.md 最近里程碑 drift 收口：前置 ㉘ 404-content-type + ㉙ port-uniqueness 里程碑文，bump 29→31 pass；推进 .opt-direction 由已完成的 tests:port-uniqueness → tests:progress-sync",
+  "situation": "scout-scan #1 推荐 1BfrYW9R 但仅给「无明确小工作单位/文档润色」。深查发现：main(onedaybot-dev @0a47270) 实跑 npm test=31 pass 0 fail，GATES.md canonical 已对齐 31 pass（㉑ gates-doc-drift 测绿），但 PROGRESS.md「最近里程碑」仍滞留 ㉗ SIGINT / 29 pass——上两轮 merge 6967089(加 ㉘ 404-content-type)+0a47270(加 ㉙ port-uniqueness) bump 了 GATES 29→31 却漏改 PROGRESS 里程碑（与 222ed7e 描述的同类 PROGRESS 漂移）。另 main .opt-direction=tests:port-uniqueness 已 stale（该工作由 0a47270 完成）。standing optimization worktree(@966a60f) 落后 main 2 提交且 .opt-direction dirty。",
+  "action": "纯文档漂移收口（零代码/测试变更），复刻 29a127a/222ed7e 既立约定：① Edit PROGRESS.md 第 9 行，在 ㉗ 里程碑前前置 ㉙(端口唯一性静态扫源 const port=N 断言集合==赋值数 + 修复 ㉕/㉓ 3085 撞号下移 3080 + 突变复测回灌撞号转红证锁真咬 + GATES 30→31 + merge 0a47270)与 ㉘(404 显式带 text/plain 头 + 突变复测删头转红 + 偏端口 3081 + GATES 29→30 + merge 6967089)完整里程碑文，承接 ㉗；② npm test 复测 31 pass 0 fail（⑧ 组件计数扫 PROGRESS 严格形未触因里程碑文无数组件声明、㉑ test-count↔GATES 未触因 GATES/test 未改）；③ opt-worktree.sh commit tests:progress-sync 仅传 PROGRESS.md（不传 .opt-direction 以避开 standing worktree 落后致 .opt-direction 三方冲突）；脚本 area 分歧(engine→tests)开新 worktree opt-tests-1782791701(自 fresh 0a47270，非 stale)，.opt-direction 被脚本写入 tests:progress-sync；④ opt-worktree.sh merge：fast-forward squash 干净合入 onedaybot-dev(e30d376)，.opt-direction 同步推进 tests:port-uniqueness→tests:progress-sync，worktree+auto/ 分支 ref 清理。",
+  "files_changed": [
+    "1BfrYW9R/PROGRESS.md",
+    "1BfrYW9R/.opt-direction"
+  ],
+  "worktree": "opt-tests-1782791701 (fresh from onedaybot-dev@0a47270; merged→e30d376, cleaned)",
+  "direction": "tests:progress-sync",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "main HEAD=e30d376 'merge: 人工批准合并 optimization worktree opt-tests-1782791701'",
+    "git diff e30d376~1..e30d376 --stat: .opt-direction 2行 +/-, PROGRESS.md 2行 +/- (仅 2 文件 2 行，零代码/测试)",
+    "PROGRESS.md line 9 首 80 字符='- **最近里程碑**: 2026-06-30 端口分配唯一性回归锁 —— `npm tes' (㉙ 已前置，非 ㉗)",
+    "main .opt-direction 内容=tests:progress-sync (原 tests:port-uniqueness 已推进)",
+    "合并后 npm test 实跑: # pass 31 / # fail 0 (⑧ 组件计数 + ㉑ gates-drift 双绿未触)",
+    "merge 输出 'Fast-forward / 已 squash 合并 opt-tests-1782791701 → onedaybot-dev' + 'Deleted branch auto/opt-tests-1782791701'"
+  ],
+  "next_suggestion": "1BfrYW9R 测试维度已 31 把回归锁极饱和，dev-server.js line 104 setTimeout 3s 强退兜底(.unref)是唯一明确「代码注释提及但零测覆盖」的关闭维度缺口（grep smoke 无 3000/unref/force-exit），与 ㉖㉗(信号注册)互补可锁「server.close 回调永不触发时 3s 兜底真强退」；但计时型测试易 flake，须注入永不 close 的 hung 连接 + 断言 exit within ~4s。或转产品维度：PROGRESS 待办 Phase 2 表单校验/骨架屏（依赖 index.html 内联组件，较大）。另注：standing optimization worktree(@966a60f) 仍落后 main 2 提交，下轮若 area=tests 复用它会落 stale base——可由 cmd_init 重建或忽略(scout 已不当 stale)。"
+}

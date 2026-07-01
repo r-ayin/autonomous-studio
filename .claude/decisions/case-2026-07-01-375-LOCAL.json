@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-01-375",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-01T00:50:00Z",
+  "project": "1BfrYW9R (oneday-design)",
+  "work_unit": "HEAD × 静态 .js MIME charset 回归锁——smoke test ㉔ 增 HEAD /app.js 断言锁 application/javascript; charset=utf-8",
+  "situation": "scout-scan 全 score=0.0，#1=1BfrYW9R「无明确小工作单位」；state NEXT_SUGGESTION 称「HEAD /style.js Content-Type application/javascript charset 锁（test ㉔ 只锁 HEAD / 与 /healthz）」。按 [[state-next-suggestion-stale-blind]] 纪律动手前 grep 当前源验：test ㉔ 实已锁 HEAD / + HEAD /healthz + HEAD /style.css（charset=utf-8，.css），state 对 .css 部分已 stale；但 .js 的 HEAD×charset 确实零覆盖——㉝ charset 测只发 GET /app.js（GET×.js charset 已锁），HEAD /app.js 的 application/javascript; charset=utf-8 无人咬。state 部分 stale 非 fully stale，.js HEAD 变体是真缺口。",
+  "action": "test/smoke.test.js ㉔ 内增 3 断言（HEAD /app.js → 200 + Content-Type match /application\\/javascript;\\s*charset=utf-8/i + body===''）+ servedDir 补 app.js 文件；与 HEAD /style.css 对称〔.css/.js 两文本 MIME 表项 HEAD×charset 合围〕，与 ㉝ 互补〔㉝ 锁 GET×.js charset，本测锁 HEAD×.js charset〕。不新增 test() 注册（35 不变）故 ㉑ gates-doc-drift 不 bump。GATES.md ㉔ 描述加 2026-07-01 强化注记，PROGRESS.md 加 2026-07-01 增量条目。突变复测：sed 删 dev-server.js MIME['.js'] 的 `; charset=utf-8` → ㉔ 转红 not ok 30 + ㉝ 转红 not ok 35（pass33/fail2），还原后 35 pass 0 fail，证锁真咬。",
+  "files_changed": [
+    "test/smoke.test.js",
+    "GATES.md",
+    "PROGRESS.md"
+  ],
+  "worktree": "1BfrYW9R/opt-tests-1782838083 (auto/opt-tests-1782838083)",
+  "direction": "tests",
+  "outcome": "succeeded",
+  "outcome_evidence": "(1) worktree npm test → # tests 35 / # pass 35 / # fail 0（含新 HEAD /app.js 断言）；(2) 突变删 MIME['.js'] charset → ㉔ not ok 30 报「HEAD /app.js Content-Type 须 application/javascript; charset=utf-8…」+ ㉝ not ok 35，还原后 35 pass 0 fail（证锁真咬）；(3) git show --stat HEAD on opt-tests-1782838083 → 3 files changed (GATES.md 2+-1, PROGRESS.md 1+, test/smoke.test.js 14+)，commit amend 后 smoke.test.js 入提交；(4) 1BfrYW9R main porcelain 空（clean，smoke.test.js 已 checkout HEAD 还原）；(5) worktree test/smoke.test.js grep headJs 命中（锁在 worktree 内）。",
+  "next_suggestion": "下轮可 merge opt-tests-1782838083 入 1BfrYW9R main（squash）。注意本轮提交过程踩坑：opt-worktree commit 首次调用误把 direction+msg 合并为单引号串，致 msg 被首文件 test/smoke.test.js 占用、files 仅剩 GATES+PROGRESS、smoke 滞留 main dirty；经 git commit --amend 在 auto/* 分支补 smoke+修 subject 救回（auto/* gate 豁免，--amend 不被拦）。引擎记忆应记：opt-worktree commit direction 与 msg 必须分开两 arg，勿合并引号串。另：state NEXT_SUGGESTION 的 1BfrYW9R 项部分 stale（.css 已锁），grep 验后仅 .js HEAD 变体为真缺口——证实 [[state-next-suggestion-stale-blind]] 须逐子项验。"
+}

@@ -26,7 +26,35 @@ set -euo pipefail
 
 PROJECT="${1:-.}"
 CMD="${2:-list}"
+# Fail-fast: 当 PROJECT 不是目录时立即报错，避免把 'next-case' 等命令误当路径
+# （曾致 'cd: next-case: No such file or directory'：用户省略 project 但写了 command，
+#  $1 被当作 PROJECT，CMD 落到默认 list，再 cd "$PROJECT" 失败且无提示）。
+# 2026-06-30 case-345 从 root live 副本回graft AS main：root 独有此守卫，AS 缺，
+# 整体 cp AS→root 会丢失它（[[opt-worktree-root-as-copy-drift]] 双向漂移收口）。
+if [[ ! -d "$PROJECT" ]]; then
+  echo "错误: '$PROJECT' 不是目录。用法: opt-worktree.sh [project] <init|commit|list|show|merge|reject|cleanup|next-case|new-case|precommit|install-hooks|install-ref-hooks>" >&2
+  exit 2
+fi
 PROJECT="$(cd "$PROJECT" && pwd)"
+# 嵌套根治（standing-wt-from-standing-wt，case-402）：从 standing optimization worktree
+# 内跑本脚本时，PROJECT 落在 .opt-worktrees/<proj>/<wt> 内，下方 WT_BASE 会算成
+# .../.opt-worktrees/<proj>/<wt>/../.opt-worktrees/<wt> → 双嵌到不存在的空壳目录，
+# cmd init 会据此建伪 .opt-worktrees（[[opt-worktree-standing-wt-staleness]] 同源嵌套）。
+# 上溯到 .opt-worktrees 之前的真 main checkout，让 WT_BASE 重新锚定真项目根。
+case "$PROJECT" in
+  */.opt-worktrees/*)
+    _real_prefix="${PROJECT%%/.opt-worktrees/*}"   # .opt-worktrees 之前的工作区根
+    _rest="${PROJECT#*/.opt-worktrees/}"            # <proj>/<wt>[/<sub>]
+    _proj_name="${_rest%%/*}"                       # .opt-worktrees 下与 basename(PROJECT) 同名的真项目目录
+    _candidate="$_real_prefix/$_proj_name"
+    if [[ -d "$_candidate/.git" || -f "$_candidate/.git" ]]; then
+      PROJECT="$_candidate"
+    else
+      echo "错误: 在 .opt-worktrees 内运行但找不到真 main checkout '$_candidate'——请从项目根目录跑本脚本" >&2
+      exit 2
+    fi
+    ;;
+esac
 # per-project 子目录，避免多项目 worktree 撞车（之前 $PROJECT/../.opt-worktrees 共享导致跨项目冲突）
 WT_BASE="$PROJECT/../.opt-worktrees/$(basename "$PROJECT")"
 # json_escape <string>（case-368 security-review defense-in-depth）：audit_log 的
@@ -162,6 +190,52 @@ ensure_main_wt() {
     echo "engine:general" > "$dir/.opt-direction"
     _ignore_opt_direction_marker "$dir"
     echo "✓ 建 optimization worktree: $dir"
+  else
+    # standing worktree 在历次他枝 merge 后会落后 main（main 推进而本枝未 reset）。
+    # 不纠正则下轮同 area cmd_commit 把新改动 cp 到过时内容上（基于旧文件提交，case-365）。
+    # 仅当 auto/optimization 是 main 祖先（落后、无 ahead 提交）时 ff-only 快进；
+    # 有 ahead 提交一律跳过——保住未合并工作，绝不丢改动（destructive reset 禁用）。
+    # 真脏（未合并改动）由 git ff 自身拒绝兜底（非破坏），无需 porcelain 前置守卫。
+    if git -C "$PROJECT" merge-base --is-ancestor auto/optimization "$MAIN_BRANCH" 2>/dev/null; then
+      local mb_head cur
+      mb_head=$(git -C "$PROJECT" rev-parse "$MAIN_BRANCH" 2>/dev/null)
+      cur=$(git -C "$dir" rev-parse HEAD 2>/dev/null)
+      if [[ -n "$mb_head" && -n "$cur" && "$mb_head" != "$cur" ]]; then
+        # .opt-direction 是 worktree 本地方向标记桩（设计上 untracked+info/exclude 忽略）。
+        # 但部分 legacy standing 分支曾误提交此桩（main 已 strip，本枝仍 tracked）→
+        # ensure_main_wt 写磁盘方向后 git 报 ` M .opt-direction`→porcelain 非空；更甚 git ff
+        # 自身因 tracked 文件有本地改动而拒绝（case-371 实踩 1BfrYW9R 966a60f）。若桩是唯一脏项
+        # 且 tracked，做 cp/checkout/ff/restore 舞步解锁：桩非真改动绝不丢，与 cmd_commit
+        # cp+断言哲学一致[[opt-worktree-stash-silent-failure]]，禁用 stash（静默失败高发）。
+        local por non_marker marker_tracked=0 bak=""
+        por=$(git -C "$dir" status --porcelain 2>/dev/null || true)
+        if [[ -n "$por" ]]; then
+          non_marker=$(printf '%s\n' "$por" | grep -vE '\.opt-direction$' || true)
+          if [[ -z "$non_marker" ]] \
+             && git -C "$dir" ls-files --error-unmatch .opt-direction >/dev/null 2>&1; then
+            marker_tracked=1
+          fi
+        fi
+        if [[ "$marker_tracked" == 1 ]]; then
+          bak=$(mktemp 2>/dev/null) || true
+          [[ -n "$bak" ]] && cp -f "$dir/.opt-direction" "$bak" 2>/dev/null || true
+          git -C "$dir" checkout -- .opt-direction >/dev/null 2>&1 || true
+        fi
+        if git -C "$dir" merge --ff-only "$MAIN_BRANCH" >/dev/null 2>&1; then
+          if [[ "$marker_tracked" == 1 ]]; then
+            [[ -n "$bak" && -f "$bak" ]] && cp -f "$bak" "$dir/.opt-direction" 2>/dev/null || true
+            rm -f "$bak" 2>/dev/null || true
+            echo "↻ standing optimization worktree 快进至 $MAIN_BRANCH（$cur → $mb_head，.opt-direction 桩暂存还原解锁）"
+          else
+            echo "↻ standing optimization worktree 快进至 $MAIN_BRANCH（$cur → $mb_head，落后内容已同步）"
+          fi
+        else
+          [[ -n "$bak" && -f "$bak" ]] && cp -f "$bak" "$dir/.opt-direction" 2>/dev/null || true
+          rm -f "$bak" 2>/dev/null || true
+          echo "⚠ standing optimization worktree 快进失败（已确认祖先仍失败？真脏由 git 拒绝兜底），跳过不阻断"
+        fi
+      fi
+    fi
   fi
 }
 
@@ -345,7 +419,14 @@ cmd_commit() {
       target="$WT_BASE/opt-$(slug "$new_area")-$ts"
       new_wt_branch="auto/opt-$(slug "$new_area")-$ts"
       mkdir -p "$target"
-      git -C "$PROJECT" worktree add -b "$new_wt_branch" "$target" "$MAIN_BRANCH" 2>/dev/null
+      # 失败须清 husk：worktree add 失败（分支名撞/路径冲突）时 mkdir 已建空目录，
+      # set -e 下硬 abort 会留空 husk 累积（.opt-worktrees/<proj>/.opt-worktrees/opt-*，
+      # 见 case-392 husk 清扫：5 个空壳，4 个源此路径）。失败 rmdir + return 1 让调用方感知。
+      if ! git -C "$PROJECT" worktree add -b "auto/opt-$(slug "$new_area")-$ts" "$target" "$MAIN_BRANCH" 2>/dev/null; then
+        rmdir "$target" 2>/dev/null
+        echo "✗ worktree add 失败（分支名撞？路径冲突？），已清空 husk: $(basename "$target")" >&2
+        return 1
+      fi
       echo "$direction" > "$target/.opt-direction"
       _ignore_opt_direction_marker "$target"
       created_new_wt=1
@@ -648,7 +729,17 @@ $(git log --oneline "$MAIN_BRANCH"..auto/$(basename "$dir") 2>/dev/null | head -
     audit_log success "$wt" "$merge_sha" "squash-merge worktree into $MAIN_BRANCH" || true
     echo "✓ 已 squash 合并 $wt → $MAIN_BRANCH"
     git -C "$PROJECT" worktree remove "$dir" --force 2>/dev/null || rm -rf "$dir"
-    echo "✓ worktree 清理"
+    # 合并后删 auto/<wt> 分支（case-322 收口：cmd_reject/cmd_cleanup 已有此行，root live
+    # cmd_merge 亦有，AS 副本 cmd_merge 漏此行致 stale auto/* ref 残留→下轮 scout-scan
+    # 误报待合并）。2>/dev/null||true 容错：分支名解析失败/已删不阻断合并收尾。
+    git -C "$PROJECT" branch -D "auto/$(basename "$dir")" 2>/dev/null || true
+    echo "✓ worktree 清理（worktree 目录 + auto/<wt> 分支）"
+    # 合并使 main 推进；standing optimization worktree 此时落后 main（差本次合并内容）。
+    # 仅靠 cmd_commit 首行 ensure_main_wt 自愈（case-363）会留「merge→下次 commit」间的
+    # 陈旧窗口：期间任何对 standing WT 的读取（含引擎查 pending case log）看到旧快照，
+    # 缺最新 case 文件（2026-07-01 实踩：merge opt-bookkeep-7398 后 standing WT 仍停 7324，
+    # 缺 case-2026-07-01-391.json）。合并即 ff，关闭窗口；ff-only+祖先校验保未合并改动不丢。
+    ensure_main_wt
   else
     # case-361 真缺口修复：`git merge --squash` 冲突不写 MERGE_HEAD（squash 不记录 merge），
     # 故 `git merge --abort` 报 `fatal: There is no merge to abort (MERGE_HEAD missing)` exit 128
@@ -784,6 +875,27 @@ cmd_next_case() {
   echo "case-${date}-${next3}.json"
 }
 
+# new-case: 分配并原子预留 case 文件（落空 stub），杜绝 agent 手挑号撞号。
+# 根治 case-id 撞号：next-case 只查号不预留，agent 仍可绕开自挑（case-034/263 均如此）；
+# new-case 在同一进程内 scan→create（noclobber=O_CREAT|O_EXCL），stub 落盘即被后续
+# 扫描计入，并发两调用各得不同号。agent 拿到路径后覆写 stub 为真实 case 内容。
+# 2026-06-30 case-345 从 root live 副本回graft AS main：root 独有，AS 缺，
+# 整体 cp AS→root 会丢失它（[[opt-worktree-root-as-copy-drift]] 双向漂移收口）。
+cmd_new_case() {
+  local date="${3:-$(date +%Y-%m-%d)}"
+  local name f n
+  name=$(cmd_next_case "$@")                       # case-<date>-NNN.json (basename)
+  f="$PROJECT/.claude/decisions/$name"
+  mkdir -p "$(dirname "$f")"
+  # noclobber: 文件已存在则 > 失败 → 增号重试（仅极并发撞号才到这，正常一次成）
+  while ! ( set -o noclobber; : > "$f" ) 2>/dev/null; do
+    n="${name#case-${date}-}"; n="${n%.json}"; n=$((10#$n + 1))
+    printf -v name "case-%s-%03d.json" "$date" "$n"
+    f="$PROJECT/.claude/decisions/$name"
+  done
+  echo "$f"
+}
+
 case "$CMD" in
   init) cmd_init "$@" ;;
   commit) cmd_commit "$@" ;;
@@ -793,8 +905,9 @@ case "$CMD" in
   reject) cmd_reject "$@" ;;
   cleanup) cmd_cleanup ;;
   next-case) cmd_next_case "$@" ;;
+  new-case) cmd_new_case "$@" ;;
   precommit) cmd_precommit ;;
   install-hooks) cmd_install_hooks "$@" ;;
   install-ref-hooks) cmd_install_ref_hooks "$@" ;;
-  *) echo "用法: opt-worktree.sh <project> <init|commit|list|show|merge|reject|cleanup|next-case|precommit|install-hooks|install-ref-hooks> ..."; exit 1 ;;
+  *) echo "用法: opt-worktree.sh <project> <init|commit|list|show|merge|reject|cleanup|next-case|new-case|precommit|install-hooks|install-ref-hooks> ..."; exit 1 ;;
 esac

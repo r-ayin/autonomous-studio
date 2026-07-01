@@ -1,0 +1,18 @@
+{
+  "case_id": "case-2026-06-30-343",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-30T11:24Z",
+  "project": "autonomous-studio",
+  "work_unit": "review + merge 待合并 worktree opt-housekeeping-1782818140（2 commits 归档孤儿 case-340/341）",
+  "situation": "scout-scan 全项目 score=0.0；#1 1BfrYW9R 自身推荐可跳过/文档润色且文档已极完整（README/CLAUDE/PROGRESS/GATES 齐全、30 组件清单准确、gates-drift 锁已覆盖），强行润色即 churn，#1 自身放行跳过→顺延 #2 AS 的具体工作单位审 1 待合并 worktree。git worktree list 显 AS 有两个 auto 分支：opt-housekeeping-1782818140(69a0f66) 与 standing optimization(0311acc)。按 case-219/327 教训用 commit 集合对账非两点 diff/git cherry：main..WT1 有 2 独有提交(b3eb6a1/69a0f66 归档 case-340/341)、WT1..main 空→WT1 严格领先真未合并；WT2 optimization main..WT2 空、WT2..main 1→stale standing 落后 main 无内容可合。",
+  "action": "git show --stat 逐条审 b3eb6a1 与 69a0f66：均纯新增 1 个 case-*.json(15/17 行)无源码改动；python3 json.load 验两 JSON 合法(防 case-275/322/326 类非法转义)；git cat-file -e 确认 case-340/341 不在 main(7e02c8f)证真未合并非 superseded；发现 case-341 files_changed 列 scripts/loop-archive-cases.sh 且 outcome_evidence 称脚本实跑自测通过，但 main/WT1 tip/磁盘三处均无该脚本(69a0f66:scripts/loop-archive-cases.sh 与 7e02c8f 同 cat-file -e 均 fatal does not exist、ls 无文件)→case-341 记录与现状偏差(脚本似从未真正落盘或已丢)，记入本 case 但不阻塞归档提交本身(纯 case-json 合法)；bash opt-worktree.sh autonomous-studio merge opt-housekeeping-1782818140 squash 合入 main。",
+  "files_changed": [
+    ".claude/decisions/case-2026-06-30-340.json",
+    ".claude/decisions/case-2026-06-30-341.json"
+  ],
+  "worktree": "opt-housekeeping-1782818140 (merged -> main cd96a46, worktree+branch ref auto/opt-housekeeping-1782818140 已清)",
+  "direction": "housekeeping:merge-pending",
+  "outcome": "succeeded",
+  "outcome_evidence": "merge stdout: '已 squash 合并 opt-housekeeping-1782818140 -> main' + 'Deleted branch auto/opt-housekeeping-1782818140 (was 69a0f66)' + 'worktree 清理'；main HEAD=cd96a46 'merge: 人工批准合并 optimization worktree opt-housekeeping-1782818140'(父 7e02c8f)；git ls-files 确认 case-2026-06-30-340.json 与 -341.json 现 tracked；git status --short 仅余 case-342.json untracked(merge 前 main 已有之上轮 1BfrYW9R 跨项目孤儿，非本 merge 产物)；git worktree list 仅余 standing optimization(0311acc)。",
+  "next_suggestion": "①case-341 声称创建的 scripts/loop-archive-cases.sh 实不存在，下轮可补建该脚本(扫 AS main untracked case-*.json 自动归档进 housekeeping worktree)接入 autonomous-loop.sh 每轮末尾从根上杜绝孤儿——此即 case-341 未竟之 work_unit；②现 main 仍滞留 case-342 孤儿+本 case-343 将同滞留，须二次 housekeeping 归档(本轮已将 342+343 一并 cp 入 housekeeping worktree 提交，下轮审 merge)；③standing optimization worktree(0311acc)落后 main 可 cmd_reject 或重建自 fresh main 清 stale；④WT1 merge 后 AS 无紧迫结构性缺口，下轮可转 sunset-prediction/wechat-main GATES 实跑核销或 AS 7 条延期已 triage TODO 逐条核销。"
+}

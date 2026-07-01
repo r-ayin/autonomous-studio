@@ -1,0 +1,19 @@
+{
+ "case_id": "case-2026-06-30-329",
+ "agent_id": "autonomous-studio-loop",
+ "timestamp": "2026-06-30T03:05:00Z",
+ "project": "1BfrYW9R (oneday-design)",
+ "work_unit": "dev-server.js 404 响应补 Content-Type: text/plain 头 + smoke ㉘ 回归锁",
+ "situation": "scout-scan 全 8 项目健康度并列 0.0、推荐 #1 1BfrYW9R 但「无明确小工作单位——可跳过或做文档润色」。读 dev-server.js 发现 line 54 `res.writeHead(404)` 无 headers 参数——'Not found' 文本 body 被发出时无 Content-Type 头。其余每条响应路径均显式声明 Content-Type（405→text/plain line 40、/healthz→application/json line 48、/readyz→application/json line 58/62、静态 200→MIME 查表 line 75），独 404 无头是行为不一致缺口。实测确认：起 dev-server（ONEDAY_DIR 临时目录 + 偏端口 3077）GET /nope 返回 status=404、content-type=undefined、body='Not found'。覆盖审计：smoke ⑰(line 634) 只断言 404 状态码（非 200/500），⑯/⑲ 只断言 404 body 不含机密——404 的 Content-Type 头零测覆盖。",
+ "action": "①dev-server.js line 54 改 `res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' })`（与 405 line 40 一致），附 3 行注释说明缺头缺口+㉘ 锁咬住。②test/smoke.test.js 追加第 30 个 test「dev-server.js 404 响应带 Content-Type: text/plain（404 头部回归锁）」：注入 ONEDAY_DIR 临时目录含 index.html，偏端口 3081，先 GET / 200 证服务起来，再 GET /nonexistent 断言 404 + content-type 匹配 /text\\/plain/ + body==='Not found'；与 ⑰ 互补（⑰ 锁状态码，本测锁头部），与 ㉓ 对称（405 已带 text/plain，404 须一致）。③GATES.md IMPORTANT 行 canonical `npm test` → 29 pass 0 fail 改 30、枚举末尾插 ㉘ 条目（含 bump 计数 29→30 同步 ㉑ doc-drift 对账）。",
+ "files_changed": [
+  "1BfrYW9R/dev-server.js",
+  "1BfrYW9R/test/smoke.test.js",
+  "1BfrYW9R/GATES.md"
+ ],
+ "worktree": "opt-1bfr-1782788589（1BfrYW9R 项目，方向 1bfr:404-content-type）",
+ "direction": "1bfr:404-content-type",
+ "outcome": "succeeded",
+ "outcome_evidence": "`npm test` → # tests 30 / # pass 30 / # fail 0（TAP 输出 `ok 30 - dev-server.js 404 响应带 Content-Type: text/plain`）；㉑ gates-doc-drift 测对账 GATES canonical=30 与 smoke 注册数 30 一致（python 校验 match=True）；突变复测——cp dev-server.js 到 /tmp 备份后把 404 行改回 `res.writeHead(404)`（删头）跑 `node --test test/smoke.test.js` 输出 `not ok 30 - ...404 响应带 Content-Type...`，cp 还原后 `ok 30`，证锁真咬非侥幸；`npm run build` exit=0 报 `Build OK — 30 JSX components`（CRITICAL gate 未破）；opt-worktree commit 输出 `✓ 提交到 opt-1bfr-1782788589 方向=1bfr:404-content-type`，worktree tip=8c944c4，`git show --stat HEAD` 含 dev-server.js(+6/-1) + test/smoke.test.js(+63) + GATES.md(+1/-1) 三文件；main `git status --porcelain` 空（clean，worktree 隔离生效）。",
+ "next_suggestion": "1BfrYW9R dev-server.js 仍有零星未锁维度可继续该 idiom：(a) 405 响应未锁 Content-Length/Allow 头完整性已部分锁但 405 body 文本未单测（㉓ 已锁 body='Method Not Allowed'，已覆盖，跳过）；(b) 静态 200 响应未锁 Content-Length 与 body 字节一致（Node 自动设，低价值）；(c) 真正下一个有价值工作单位=PROGRESS.md 未同步本次 ㉘ 里程碑（当前状态行仍止于 ㉗），可补一段 PROGRESS 当前状态叙事使里程碑链不断档。或跳回 scout-scan #2 autonomous-studio（6 个已 triage 延期 TODO，先查 pending worktree log 防重复推荐）。"
+}

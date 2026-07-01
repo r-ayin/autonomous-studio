@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-01-390",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-07-01T03:10:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "审 + 合并待合并 worktree opt-test-1782846007（HEAD × /readyz 就绪探针回归锁），并补 GATES ㉔ canonical prose 与 test 对齐",
+  "situation": "scout-scan #1 推荐 1BfrYW9R 审 1 个待合并 worktree。opt-test-1782846007 tip e5f88c2 单提交：smoke.test.js ㉔ 增 HEAD /readyz 3 断言(200+application/json;charset=utf-8+body空) + PROGRESS 增量。git cherry b6a9d2c e5f88c2 返 +（真未入 main，非 squash 误报）。审 diff 发现：test 真、36 pass 0 fail、突变复测文档齐、锁真咬(HEAD /readyz 异步 fs.access 路由与 /healthz 不同，此前 HEAD 放行零覆盖)；但 GATES ㉔ canonical prose 枚举仅列 HEAD //healthz/style.css/app.js，漏 /readyz——prose 与 test 不符（prose drift）。HEAD /readyz 在 GATES 出现 0 次（grep -c 证实）。",
+  "action": "两步合并。(1) verdict=merge e5f88c2：worktree 干净(e5f88c2)后 opt-worktree.sh 1BfrYW9R merge opt-test-1782846007 → onedaybot-dev 07bc84b squash 合并(smoke+PROGRESS)，auto 分支删除。(2) 补 prose drift：在 main GATES.md ㉔/㉕ 边界锚点「还原后 35 pass 0 fail，证锁真咬；㉕ dev-server.js MIME 表完整覆盖剩余扩展名」后插 2026-07-01 强化条目列 HEAD /readyz(异步 fs.access 路由 dev-server.js line 63-73，与 HEAD /healthz 探针对称)，python 精确替换断言 count==1；npm test 36 pass 0 fail 不变(㉑ arrow 计数未变，新增 prose 非 arrow 形不触发 gates-doc-drift)；opt-worktree.sh 1BfrYW9R commit test:gates-readyz-prose → 新 worktree opt-test-1782846755（standing optimization worktree 触发 ff-only 自愈 b6a9d2c→07bc84b）；merge opt-test-1782846755 → 29a7f1c。",
+  "files_changed": [
+    "1BfrYW9R/test/smoke.test.js",
+    "1BfrYW9R/PROGRESS.md",
+    "1BfrYW9R/GATES.md"
+  ],
+  "worktree": "opt-test-1782846007(审+合并,e5f88c2→merged 07bc84b,分支已删) ; opt-test-1782846755(我新建,GATES prose,37374f7→merged 29a7f1c,分支已删)",
+  "direction": "test:head-readyz-gates-prose",
+  "outcome": "succeeded",
+  "outcome_evidence": "1BfrYW9R main git log: 29a7f1c merge opt-test-1782846755 + 07bc84b merge opt-test-1782846007（两 squash 均落地）；git status --short 空（main 干净）；npm test → # tests 36 # pass 36 # fail 0；grep -c 'HEAD /readyz' GATES.md = 1（prose drift 修复，前置=0）；git cherry 前置返 + 证 e5f88c2 真未入 main 非 false-positive；两 auto/* 分支均 Deleted branch 输出证实清理。",
+  "next_suggestion": "1BfrYW9R HEAD /readyz 锁+prose 已闭合，scout-scan 下轮 #1 应顺位变更。建议下轮重跑 scout-scan 取新 #1（大概率 autonomous-studio 或 wechat-main）；1BfrYW9R ㉔ 探针 HEAD 合围已完整(/healthz+/readyz)，无紧迫后续；可关注 1BfrYW9R 是否还有其他 canonical prose vs test 枚举不符（如 ㉞ nosniff / ㉝ charset 的路径枚举是否齐全），但非紧迫。"
+}

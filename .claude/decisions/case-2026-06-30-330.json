@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-30-330",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-30T03:08:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "review + merge pending worktree opt-1bfr-1782788589 (404 Content-Type 回归锁)",
+  "situation": "scout-scan #1 推荐：1BfrYW9R 有 1 个待合并 worktree（tip 8c944c4 vs onedaybot-dev 966a60f）。git cherry -v 显示 +（patch-id 未入 main），非 case-327 类 standing-ref 误报——是真实待审提交。worktree 内容：dev-server.js 404 响应原 res.writeHead(404) 无 headers 参数，'Not found' 文本 body 无 Content-Type，与 405/healthz/readyz/静态 200 每条响应路径显式声明 Content-Type 不一致；⑰ 只锁 404 状态码未锁头。修复补 res.writeHead(404, {Content-Type: text/plain; charset=utf-8}) + 新增 smoke ㉘（第 30 测）锁 404 头 + GATES pass 计数 29→30 + ㉘ 入枚举。",
+  "action": "审 git show 8c944c4 全 diff（4 文件 +70/-3）：dev-server.js 改动仅 line 54 一行加头+4 行注释，行为最小且与 405 对称；smoke.test.js 新增 63 行负测（偏端口 3081，GET /nonexistent 断言 404+text/plain+body 'Not found'，含突变复测说明）；GATES.md bump 计数+㉘ 入枚举（㉑ doc-drift 对账同步）；.opt-direction 标记。在 worktree 跑 npm test 实测 30 pass 0 fail（㉘ ok 30）。判定为干净、行为级覆盖、与现存 ⑰/㉓ 对称的小工作单位，执行 opt-worktree.sh merge。",
+  "files_changed": ["dev-server.js", "test/smoke.test.js", "GATES.md", ".opt-direction"],
+  "worktree": "opt-1bfr-1782788589 (squash-merged → onedaybot-dev 6967089, branch ref 已清理)",
+  "direction": "1bfr:404-content-type",
+  "outcome": "succeeded",
+  "outcome_evidence": "merge 输出「✓ 已 squash 合并 opt-1bfr-1782788589 → onedaybot-dev」+「Deleted branch auto/opt-1bfr-1782788589 (was 8c944c4)」+「✓ 分支 ref 清理」；main onedaybot-dev tip 6967089「merge: 人工批准合并 optimization worktree 'opt-1bfr-1782788589'」；main 实跑 npm test → # pass 30 # fail 0（含 ㉘ ok 30）；scout-scan 复跑该 worktree 应不再计待合并（branch ref 已删）",
+  "next_suggestion": "1BfrYW9R 待合并清零后，下轮 scout-scan #1 可能易主；候选：autonomous-studio 延期(已triage) TODO=6 可挑一条做实修复（非 triage 润色），或 sunset-prediction/wechat-main GATES 核销续。注意 1BfrYW9R dev-server.js 回归锁已 30 条近覆盖全集（启动/服务/方法/关闭四维），继续在此项目须找新维度避免 saturation。"
+}

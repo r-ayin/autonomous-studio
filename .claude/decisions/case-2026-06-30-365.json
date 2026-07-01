@@ -1,0 +1,30 @@
+{
+  "case_id": "case-2026-06-30-365",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-30T15:35:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "加第 35 个回归锁：每条响应路径 Content-Type 须声明 charset=utf-8（charset 头部不变量回归锁）",
+  "situation": "scout-scan 全项目 score=0.0（常态健康），#1=1BfrYW9R 推荐工作单位=无明确小工作单位/文档润色。1BfrYW9R（oneday-design 个人助手控制面板 UI）已极度成熟：34 个回归锁覆盖启动/服务/方法/关闭/MIME/穿越/端口优先级/gates-drift 全维度，每锁均经突变复测可证伪。读 dev-server.js（1 源文件）+ smoke.test.js（第 2 源文件）定位真缺口：现存测对 Content-Type 全用主类型子串 match（text/html / application/json / text/css / text/plain），锁主类型正确但 charset=utf-8 后缀零断言覆盖。dev-server.js 每个 writeHead 与 MIME 表文本项均显式声明 ; charset=utf-8（405 line40 / healthz / readyz / 404 line54 / MIME html/css/js/json），是跨路径一致的结构不变量却无测咬住。缺口可被现实误改触发：JSON 的 charset 旧规范上属冗余易被 lint/auto-fix 抹掉，text/plain 无 charset 时浏览器可能误猜非 utf-8 编码；删任一 ; charset=utf-8 后现存 34 测主类型子串断言仍全绿无人捕获。",
+  "action": "在 test/smoke.test.js 末尾追加第 35 个 test（㉝ charset 头部回归锁），沿用 HEAD 测（㉔）的脚手架：mkdtemp 临时 served 目录写 index.html/style.css/app.js，spawn dev-server.js 偏端口 3079（grep 确认全局唯一，命名 const port = 入 ㉙ 唯一性集合），轮询 GET / 200 控制组，再对七条响应路径逐一断言 Content-Type 含 charset=utf-8（regex /charset\\s*=\\s*utf-8/i 大小写不敏感空白容忍）：静态 .html（MIME['.html']）、静态 .css、静态 .js、/healthz、/readyz、404（line54）、405（line40 POST）。image/* MIME 项本不带 charset（二进制无编码）故不纳入，与 MIME 表设计一致。同步 bump GATES.md canonical 箭头形 pass 计数 34→35 并追加 ㉝ 里程碑叙事（与 ㉘/㉓ 互补：㉘㉓ 锁有头防缺头，本测锁头含 charset 防截短）。dev-server.js 未改（仅测+文档）。突变复测三连验证锁真咬：cp 备份 dev-server.js 后 sed 把 MIME['.html'] 的 ; charset=utf-8 删掉，跑 node --test 仅本测 not ok 35 报实际 text/html（34 pass 1 fail），cp 还原后 35 pass 0 fail。全程 dev-server.js 仅临时变异已还原，git status 仅 GATES.md+smoke.test.js 两文件改动。",
+  "files_changed": [
+    "1BfrYW9R/test/smoke.test.js",
+    "1BfrYW9R/GATES.md"
+  ],
+  "worktree": "1BfrYW9R opt-tests-1782833066（commit dca993c，父 main HEAD 4042002；同 area 新建 worktree，方向分歧 engine→tests 触发）",
+  "direction": "tests:charset-utf8-lock",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "npm test 实测 # tests 35 / # pass 35 / # fail 0（还原后最终态，bash 输出可观察）",
+    "突变复测：删 MIME['.html'] 的 ; charset=utf-8 后 node --test 输出 'not ok 35 ... 实际：text/html' + '# pass 34 # fail 1'，证锁咬住 .html charset 维度；还原后 35 pass 0 fail",
+    "git status main porcelain 空（commit 进 worktree 非 main，gate 未拦）",
+    "worktree opt-tests-1782833066 git log tip=dca993c（消息含 ㉝ charset 回归锁 + GATES 34→35），父 4042002=main HEAD",
+    "GATES.md canonical 箭头形声明已改为 'npm test → 35 pass 0 fail'，与 smoke.test.js 实际 35 个 test 注册数对账（㉑ gates-doc-drift 测转绿）",
+    "dev-server.js git status 未列（仅临时变异已 cp 还原，grep '.html': 确认 text/html; charset=utf-8 复原）"
+  ],
+  "next_suggestion": [
+    "1BfrYW9R opt-tests-1782833066 worktree 待人工 merge 入 main（commit dca993c；merge 后跑 npm test 验 35 pass 0 fail 仍绿）",
+    "1BfrYW9R 已 35 锁近饱和，下轮可顺延 #2 autonomous-studio 或取 state NEXT_SUGGESTION 候选：(a)复验 sunset-prediction standing auto/optimization ff 自愈是否仍生效；(b)personal-assistant ECS 部署已知问题 grounding；(c)moni 后端/量化/数据任务允许（禁前端重构，见 autonomous-constraints.md）",
+    "若仍选 1BfrYW9R：charset 维度已闭合，剩余可锁的真缺口稀少——可考虑 /readyz 503 reason 字段文案锁、或 HEAD+静态非根文件 Content-Type 锁（㉔ 仅锁 HEAD / 与 HEAD /healthz，HEAD /style.css→text/css 未覆盖但与 GET 同代码路径锁值边际）",
+    "纪律：case 已用 json.dump 风格手写（无嵌入 regex/shell），写完跑 loop-archive-cases.sh 归档保 AS main 干净；merge/opt-worktree 命令从 /home/admin/workspace 根跑，file 参数须 project-relative（本轮首次传 workspace-relative 被 cp-guard 跳过，改 test/smoke.test.js 后成功）"
+  ]
+}
