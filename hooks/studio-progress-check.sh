@@ -69,8 +69,9 @@ print(f"Studio 进度: {done_p0}/{total_p0} P0 任务完成", end="")
 if blocked_p0 > 0:
     print(f" ({blocked_p0} 被阻塞)", end="")
 
-# 如果所有 P0 都完成 → 自动推进 status.json
-if total_p0 > 0 and done_p0 >= total_p0 - blocked_p0:
+# 如果所有 P0 都完成（且无被阻塞的 P0）→ 自动推进 status.json
+# AS-EC-015 fix: blocked_p0 > 0 时不自动推进，避免单向状态机在无回滚机制下误进验证阶段
+if total_p0 > 0 and blocked_p0 == 0 and done_p0 >= total_p0:
     status['currentStage'] = 'verification'
     if 'development' not in status.get('completedStages', []):
         status.setdefault('completedStages', []).append('development')
