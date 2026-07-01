@@ -1,0 +1,23 @@
+{
+  "case_id": "case-2026-07-01-583",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-01T11:45:00Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "tests:i-001-subprocess-refactor",
+  "situation": "audit-2026-07-01-004 (tests module) 的 I-001 finding 派生 fix。原 test_recommendations_are_structurally_complete 与 test_text_output_has_recommendation_section 各 spawn 完整 scout-scan.py 子进程（timeout=180s），慢、依赖 filesystem/git 状态、CI 不友好。scout-scan.py 已模块化（discover_projects/scan_project/health_priority/main 均为可隔离函数），无需 subprocess。另 H-001 引入的 tmp_path 是 pytest fixture，在 unittest runner 下 broken（M-002 structural debt: pytest 未装）。",
+  "action": "重构两个重 subprocess 测试为 importlib 直调：(1) test_recommendations_are_structurally_complete 改调 discover_projects+scan_project+health_priority 直验结构完整性（字段类型+结构，比 JSON 解析更精准）；(2) test_text_output_has_recommendation_section 改 redirect_stdout(StringIO)+main() 捕获文本输出，sys.argv 临时改写后还原；(3) 新增 test_subprocess_smoke_polyglot_shim 守护 polyglot shim 契约（--help 退出码 0 + '--workspace' in stdout，timeout 5s）；(4) test_scan_project_to_health_priority_integration 把 pytest tmp_path fixture 改为 stdlib tempfile.TemporaryDirectory+os.path，兼容 unittest/pytest 双 runner。",
+  "files_changed": ["tests/test_scout_scan.py"],
+  "worktree": "opt-tests-1782904286",
+  "direction": "tests:i-001-subprocess-refactor",
+  "outcome": "succeeded",
+  "outcome_evidence": "worktree commit b8cfba5 pushed to origin/auto/opt-tests-1782904286; 6/6 tests pass under both runners (unittest FunctionTestCase + real workspace via AUTONOMOUS_STUDIO_WORKSPACE env); importlib 部分耗时 <1s vs 原 subprocess ~180s timeout; Code Review URL https://code.alibaba-inc.com/qunbu/autonomous-studio/codereview/new?from=main&to=auto/opt-tests-1782904286",
+  "next_suggestion": [
+    "审 opt-tests-1782904286 diff（含 H-001/M-001/M-003/L-001/I-001 共 5 commits）后 merge/reject，让 derived_fixes 全部落定",
+    "所有 5 条 derived_fixes merged/rejected 后 audit-cycle-state.status 改 cycle-complete → 触发下一轮全量审计",
+    "structural-debt M-002 (pytest 未装+无 CI gate) 仍 open，本轮用 stdlib workaround 绕过但不解决根因"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-01-004",
+  "audit_depth": "shallow"
+}
