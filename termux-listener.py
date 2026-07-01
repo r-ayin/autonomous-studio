@@ -27,14 +27,33 @@ import socket
 import subprocess
 import sys
 import os
+import re
 from datetime import datetime
 
 PORT = 9999
 HOST = "127.0.0.1"
+MAX_MESSAGE_LEN = 500
+VALID_PRIORITIES = {"default", "high", "low", "min", "max"}
+
+
+def _sanitize(text: str, max_len: int = MAX_MESSAGE_LEN) -> str:
+    """剥离控制字符（含换行/null）并截断，防止 termux-notification 解析注入或 UTF-8 半截"""
+    # 移除 \x00-\x1f（含 \n\r\t）和 \x7f；保留空格
+    cleaned = re.sub(r"[\x00-\x1f\x7f]", " ", text)
+    # 合并连续空白
+    cleaned = re.sub(r"\s+", " ", cleaned).strip()
+    if len(cleaned) > max_len:
+        cleaned = cleaned[: max_len - 1] + "…"
+    return cleaned
 
 
 def send_notification(priority: str, title: str, message: str):
     """调用 termux-notification 弹出 Android 系统通知"""
+    # priority 白名单校验（H-001）
+    if priority not in VALID_PRIORITIES:
+        print(f"[!] invalid priority '{priority}' — falling back to default", file=sys.stderr)
+        priority = "default"
+
     cmd = [
         "termux-notification",
         "--title", title,
@@ -47,7 +66,12 @@ def send_notification(priority: str, title: str, message: str):
         cmd.extend(["--vibrate", "300,100,300"])
 
     try:
-        subprocess.run(cmd, timeout=5, capture_output=True)
+        result = subprocess.run(cmd, timeout=5, capture_output=True)
+        if result.returncode != 0:
+            stderr_snippet = (result.stderr or b"").decode("utf-8", errors="replace")[:200]
+            print(f"[!] termux-notification exited {result.returncode}: {stderr_snippet}", file=sys.stderr)
+    except subprocess.TimeoutExpired:
+        print("[!] termux-notification timed out after 5s", file=sys.stderr)
     except Exception as e:
         print(f"[{datetime.now().strftime('%H:%M:%S')}] 通知失败: {e}", file=sys.stderr)
 
@@ -87,6 +111,14 @@ def main():
                 priority = parts[0] if len(parts) > 0 else "default"
                 title = parts[1] if len(parts) > 1 else "Claude Code"
                 message = parts[2] if len(parts) > 2 else data
+
+                # H-001: sanitize external input before it reaches termux-notification
+                title = _sanitize(title, max_len=100)
+                message = _sanitize(message, max_len=MAX_MESSAGE_LEN)
+                if not title:
+                    title = "Claude Code"
+                if not message:
+                    continue
 
                 now = datetime.now().strftime("%H:%M:%S")
                 print(f"[{now}] {priority} | {title} | {message}")
