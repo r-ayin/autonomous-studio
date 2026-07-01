@@ -14,15 +14,15 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-07-01T05:20:00Z（case-513 批量归档13条遗留case JSON(498-512)到main。fix-in-progress 阶段,audit-002 九 fix 仍全 pending merge。连续第5轮瞭望无源码改动）**
-- **活跃项目**: autonomous-studio-aone 维护——**audit-002 scripts module 9 findings 全部已派生(case-494~502)待 merge**。audit-001 hooks module 已 cycle-complete(2H merged via 900a3cc/b1d072d)。**已审源码:hooks/ 14 hook 全审+scripts/opt-worktree.sh+autonomous-loop.sh 深审**。**main 分歧待人工处理**。
-- **当前阶段**: case-513 归档收尾(fix-in-progress 阶段决策日志完整性维护)——9 个 opt-worktree 待人工 sanctioned-merge;本地 main 与 origin 分歧需人工 sync;audit-002 派生完毕,下轮仍 fix-in-progress 瞭望直到所有 fix merge/reject 后触发 audit-003
+- **最后活跃: 2026-07-01T05:18:00Z（case-514 瞭望轮#6:9 pending fix + main 分歧升级 behind=53/ahead=4,连续6轮无源码改动达强提醒阈值）**
+- **活跃项目**: autonomous-studio-aone 维护——**audit-002 scripts module 9 findings 全部已派生(case-494~502)待 merge**。audit-001 hooks module 已 cycle-complete(2H merged via 900a3cc/b1d072d)。**已审源码:hooks/ 14 hook 全审+scripts/opt-worktree.sh+autonomous-loop.sh 深审**。**main 分歧 CRITICAL:behind=53/ahead=4 需人工 sync**。
+- **当前阶段**: case-514 瞭望收尾(fix-in-progress 阶段决策日志完整性维护+分歧升级告警)——9 个 opt-worktree 待人工 sanctioned-merge;本地 main 落后 origin 53 commits 需立即 rebase;audit-002 派生完毕,下轮仍 fix-in-progress 瞭望直到所有 fix merge/reject 后触发 audit-003
 - **GOAL_STATUS**: active
 - **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动；审计轮次事件驱动 audit-cycle-state + 敏感路径 audit-log 埋点）
-- **LAST_UPDATED**: 2026-07-01(case-513 归档13条遗留case JSON,audit-002 九 fix 全 pending,main 分歧告警持续,连续5轮瞭望无源码改动)
-- **LAST_WORKTREE**: null(本轮无新 worktree,仅 main 直提归档)。待 merge 列表:opt-security-shift-1782878468(H-001 0d26e39)+opt-security-shift-1782878926(H-005 f5d21f0)+opt-security-shift-1782879314(M-002 238afb1)+opt-security-shift-1782879595(M-001 06496f7)+opt-scripts-shift-1782879918(M-003 cf0834b)+opt-engine-shift-1782880189(M-004 d7204f3)+opt-engine-shift-1782880465(L-001 ae641be)+opt-scripts-shift-1782880738(L-002 11a5f3c)+opt-engine-shift-1782881018(L-003 4b9d485);auto/optimization 空壳保留
+- **LAST_UPDATED**: 2026-07-01(case-514 瞭望轮#6,audit-002 九 fix 全 pending,main 分歧 behind=53 CRITICAL,连续6轮瞭望无源码改动达强提醒阈值)
+- **LAST_WORKTREE**: null(本轮无新 worktree,仅 main 直提归档 case-514)。待 merge 列表:opt-security-shift-1782878468(H-001 0d26e39)+opt-security-shift-1782878926(H-005 f5d21f0)+opt-security-shift-1782879314(M-002 238afb1)+opt-security-shift-1782879595(M-001 06496f7)+opt-scripts-shift-1782879918(M-003 cf0834b)+opt-engine-shift-1782880189(M-004 d7204f3)+opt-engine-shift-1782880465(L-001 ae641be)+opt-scripts-shift-1782880738(L-002 11a5f3c)+opt-engine-shift-1782881018(L-003 4b9d485);auto/optimization 空壳保留
 - **LAST_OUTCOME**: done
-- **NEXT_SUGGESTION**: [1]【用户动作·高优·升级提醒】已连续5轮瞭望无进展(>=3轮阈值),请审9个fix worktree diff(H-001/H-005优先);每merge/reject一条下轮引擎更新derived_fixes status。[2]【用户动作·必做】main分歧仍未解决:本地领先(origin落后),建议rebase或cherry-pick后pull。[3]【下轮仍瞭望】fix-in-progress 9 pending→继续scout-scan监控;若达6轮无进展,考虑@用户强提醒或暂停自动循环等响应。[4]9个全merge/reject→cycle-complete触发audit-003(审moni-backend/shizi,跳过hooks/scripts)。[5]audit-001 H-010~H-018 structural debt待补登。
+- **NEXT_SUGGESTION**: [1]【CRITICAL·6轮无进展强提醒】请立即审9 fix diff(H-001/H-005优先):bash scripts/opt-worktree.sh diff <wt-name>;每merge/reject一条下轮更新derived_fixes status。[2]【CRITICAL·main分歧53】git fetch && git rebase origin/main(或cherry-pick本地4 ahead到新base);分歧持续阻塞后续sanctioned-merge。[3]【下轮仍瞭望】fix-in-progress 9 pending→继续scout-scan;达9轮(再3轮)无进展考虑自动暂停循环+电话级通知。[4]全merge→cycle-complete触发audit-003(审moni-backend/shizi)。[5]audit-001 H-010~H-018 structural debt待补登。
 - **自主循环**: 🟢 活跃
   - L1 Inline: 每次回复末尾内联检查 (+ git status)
   - L2 Heartbeat: CronCreate 每7分钟（执行轨——推进 Studio 阶段或主动扫描）
@@ -74,10 +74,10 @@ metadata:
 <!-- GOAL_ID: G-2026-06-15-002 -->
 <!-- GOAL_STATUS: active -->
 <!-- ACTIVE_GOAL: ralph-wiggum-autonomous-loop (每轮一个小工作单位，scout-scan 排序选任务) -->
-<!-- LAST_UPDATED: 2026-07-01(case-513 归档13条遗留case JSON,audit-002 九 fix 全 pending,main 分歧告警持续,连续5轮瞭望无源码改动) -->
-<!-- LAST_WORKTREE: null(本轮无新 worktree,仅 main 直提归档)。待 merge:opt-security-shift-1782878468(H-001)+opt-security-shift-1782878926(H-005)+opt-security-shift-1782879314(M-002)+opt-security-shift-1782879595(M-001)+opt-scripts-shift-1782879918(M-003 cf0834b)+opt-engine-shift-1782880189(M-004)+opt-engine-shift-1782880465(L-001)+opt-scripts-shift-1782880738(L-002)+opt-engine-shift-1782881018(L-003);auto/optimization 空壳 -->
+<!-- LAST_UPDATED: 2026-07-01(case-514 瞭望轮#6,audit-002 九 fix 全 pending,main 分歧 behind=53 CRITICAL,连续6轮瞭望无源码改动达强提醒阈值) -->
+<!-- LAST_WORKTREE: null(本轮无新 worktree,仅 main 直提归档 case-514)。待 merge:opt-security-shift-1782878468(H-001)+opt-security-shift-1782878926(H-005)+opt-security-shift-1782879314(M-002)+opt-security-shift-1782879595(M-001)+opt-scripts-shift-1782879918(M-003 cf0834b)+opt-engine-shift-1782880189(M-004)+opt-engine-shift-1782880465(L-001)+opt-scripts-shift-1782880738(L-002)+opt-engine-shift-1782881018(L-003);auto/optimization 空壳 -->
 <!-- LAST_OUTCOME: done -->
-<!-- NEXT_SUGGESTION: [1]【升级提醒】已连续5轮瞭望无进展,请审9 fix diff(H-001/H-005优先)。[2]main分歧未解决,建议rebase/cherry-pick。[3]下轮仍瞭望;达6轮无进展考虑暂停循环等响应。[4]全merge→cycle-complete触发audit-003(审moni-backend/shizi)。[5]audit-001 H-010~H-018 structural debt待补登。 -->
+<!-- NEXT_SUGGESTION: [1]【CRITICAL·6轮无进展强提醒】请立即审9 fix diff(H-001/H-005优先):bash scripts/opt-worktree.sh diff <wt-name>;每merge/reject一条下轮更新derived_fixes status。[2]【CRITICAL·main分歧53】git fetch && git rebase origin/main(或cherry-pick本地4 ahead到新base);分歧持续阻塞后续sanctioned-merge。[3]【下轮仍瞭望】fix-in-progress 9 pending→继续scout-scan;达9轮(再3轮)无进展考虑自动暂停循环+电话级通知。[4]全merge→cycle-complete触发audit-003(审moni-backend/shizi)。[5]audit-001 H-010~H-018 structural debt待补登。 -->
 
 | 字段 | 内容 |
 |------|------|
