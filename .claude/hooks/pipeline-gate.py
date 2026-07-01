@@ -66,15 +66,38 @@ def _remind(reason: str) -> None:
     print(json.dumps({"decision": "remind", "reason": reason}, ensure_ascii=False))
 
 
-# git 调用识别（case-432 audit）：旧 `"git " in cmd` 子串只匹配空格分隔，漏过 tab/
-# 换行分隔的 `git\tcommit`——与 case-378/428 全路径/分隔符绕过同类向量。改 regex：
-# git 作为 token（裸 `git` 或路径形 `.../git`），前后为行首/空白/斜杠/行尾。
-# 不覆盖 `$IFS` 变量展开（需 shell 解析，同 case-428 token 法局限，不盲实现）。
-_GIT_INVOKED = re.compile(r"(?:^|[\s/])git(?=\s|$)")
+# git 调用识别（case-432 audit + audit-2026-07-02-001 M-002 增强）：
+# - token regex: 裸 `git` 或路径形 `/usr/bin/git`、`./bin/git`（basename=git），前后为
+#   行首/空白/斜杠/引号边界；后 lookahead 要求空白或字符串结尾避免匹配 `github` 等子串。
+# - 命令链拆段：按 shell 控制符 `&& / || / ; / |` 拆分，逐段独立判定 git commit/push，
+#   防 `foo && git commit` / `bar || git push` 等复合形态绕过。
+# - 不覆盖 eval/exec/sh -c/$()/反引号等间接执行壳（与 autonomous-commit-gate token 法
+#   同局限；studio 流水线阶段约束被绕过的实际风险受 main gate 兜底，见 M-002 finding）。
+_GIT_TOKEN = re.compile(r"""(?:^|[\s/'"])        # 前边界: 行首/空白/斜杠/引号
+                            (?:[\w./~+-]*/)?      # 可选目录前缀(含 ./ ../ /abs/path/)
+                            git                   # basename=git
+                            (?=[\s'"]|$)          # 后边界: 空白/引号/行尾
+                         """, re.VERBOSE)
+_CHAIN_SPLIT = re.compile(r"\s*(?:&&|\|\||[;|])\s*")
+
+
+def _has_git_commit_or_push(segment: str) -> bool:
+    """单命令段内是否含 git commit/push 子命令。token 命中后再查子命令关键词，
+    避免把 'git status' / 'git log' 误判。子命令可能出现在 -C/-c/--git-dir 等
+    全局选项之后，简化策略：segment 包含 token + ('commit'|'push') 即视为真阳性。"""
+    if not _GIT_TOKEN.search(segment):
+        return False
+    s = segment.lower()
+    return "commit" in s or "push" in s
 
 
 def _is_git_commit_or_push(cmd: str) -> bool:
-    return bool(_GIT_INVOKED.search(cmd)) and ("commit" in cmd or "push" in cmd)
+    """整条命令是否含 git commit/push（支持命令链拆段评估）。"""
+    for seg in _CHAIN_SPLIT.split(cmd):
+        seg = seg.strip()
+        if seg and _has_git_commit_or_push(seg):
+            return True
+    return False
 
 
 def _audit_log_block(cmd: str, reason: str) -> None:
@@ -152,8 +175,14 @@ def _diff_scale(root: Path):
 
 
 def _parse_git_cwd(cmd: str) -> str | None:
-    m = re.search(r"-C\s+(\S+)", cmd)
-    return m.group(1) if m else None
+    """从命令(可能含 &&/||/;/| 链)中提取 git -C <dir> 参数。
+    M-002 增强：遍历所有段，返回第一个含 -C 段的目录；旧版只匹配整串首个 -C，
+    在 `foo && git -C /x commit` 形态下若 foo 也含 -C 会误取 foo 的 -C。"""
+    for seg in _CHAIN_SPLIT.split(cmd):
+        m = re.search(r"-C\s+(\S+)", seg)
+        if m:
+            return m.group(1)
+    return None
 
 
 def main() -> None:
