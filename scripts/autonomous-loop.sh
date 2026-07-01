@@ -23,7 +23,10 @@
 set -uo pipefail
 
 # L-001 fix (audit-2026-07-01-002): Ctrl-C / SIGTERM 时清理 claude -p 子进程，防孤儿
-trap 'echo "[trap] 收到信号，终止子进程组..."; kill 0 2>/dev/null; exit 130' INT TERM
+# AS-EC-007 fix (audit-2026-07-02-002): trap 同时清理 run_round 中 mktemp 的临时文件，
+#   避免 SIGINT 落在 mktemp→shred 窗口内导致敏感输出泄漏到 /tmp。
+CURRENT_OUT_FILE=""
+trap 'echo "[trap] 收到信号，终止子进程组..."; if [ -n "$CURRENT_OUT_FILE" ] && [ -e "$CURRENT_OUT_FILE" ]; then shred -u "$CURRENT_OUT_FILE" 2>/dev/null || rm -f "$CURRENT_OUT_FILE"; fi; kill 0 2>/dev/null; exit 130' INT TERM
 
 WORKSPACE="${1:-.}"
 ENGINE_DIR="${2:-$WORKSPACE/autonomous-studio}"
@@ -96,6 +99,7 @@ PROBE_COUNTDOWN=0
 run_round() {
   local model="$1" out_file rc=0
   out_file=$(mktemp) || return 1
+  CURRENT_OUT_FILE="$out_file"
   claude -p "$PROMPT" --model "$model" --permission-mode bypassPermissions >"$out_file" 2>&1 || true
   tail -30 "$out_file"
   # L-003 fix (audit-2026-07-01-002): 收窄限流 grep，避免误匹配 'line 429'/'insufficient coverage' 等正常输出
@@ -103,6 +107,8 @@ run_round() {
   if grep -qiE '\b(402|429)\b|quota[ _]?(exceeded|limit)|rate[ _]?limit(ed)?' "$out_file"; then
     rc=1
   fi
+  # AS-EC-007: shred 之前清空 CURRENT_OUT_FILE，缩小 trap 清理窗口；trap 兜底已赋值但未清空的 SIGINT 场景
+  CURRENT_OUT_FILE=""
   shred -u "$out_file" 2>/dev/null || rm -f "$out_file"
   return $rc
 }
