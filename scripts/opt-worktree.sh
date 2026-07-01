@@ -345,16 +345,19 @@ cmd_install_ref_hooks() {
 # （历史 b8458a6/5d0ed82 连 4 commit 毁掉 d3a1a8e/b476c86/5d0ed82 守卫，至 case-063/064
 # 审计才发现）。不中止（避免误伤合法重构），把静默 revert 变可见——"审计才发现"→"提交即见"。
 _assert_no_collateral_revert() {
-  local _mb; _mb=$(git merge-base "$MAIN_BRANCH" HEAD 2>/dev/null || true)
+  # AS-EC-008 fix: 接受可选 $1 作为 git -C 目标目录，消除对 cwd 的隐式依赖。
+  # 无参时行为不变（兼容 cmd_precommit 等外部调用方）。
+  local _git_dir="${1:-}"
+  local _mb; _mb=$(git ${_git_dir:+-C "$_git_dir"} merge-base "$MAIN_BRANCH" HEAD 2>/dev/null || true)
   [[ -n "$_mb" ]] || return 0
-  local _staged; _staged=$(git diff --cached --name-only 2>/dev/null || true)
+  local _staged; _staged=$(git ${_git_dir:+-C "$_git_dir"} diff --cached --name-only 2>/dev/null || true)
   [[ -n "$_staged" ]] || return 0
   local _f _rm _add _overlap
   while IFS= read -r _f; do
     [[ -z "$_f" || "$_f" == ".opt-direction" ]] && continue
-    _rm=$(git diff --cached -- "$_f" 2>/dev/null | grep -E '^-[^-]' | sed 's/^-//' || true)
+    _rm=$(git ${_git_dir:+-C "$_git_dir"} diff --cached -- "$_f" 2>/dev/null | grep -E '^-[^-]' | sed 's/^-//' || true)
     [[ -n "$_rm" ]] || continue
-    _add=$(git diff "$_mb" HEAD -- "$_f" 2>/dev/null | grep -E '^\+[^+]' | sed 's/^+//' || true)
+    _add=$(git ${_git_dir:+-C "$_git_dir"} diff "$_mb" HEAD -- "$_f" 2>/dev/null | grep -E '^\+[^+]' | sed 's/^+//' || true)
     [[ -n "$_add" ]] || continue
     _overlap=$(grep -F -x -f <(printf '%s\n' "$_add") <(printf '%s\n' "$_rm") || true)
     if [[ -n "$_overlap" ]]; then
@@ -656,19 +659,42 @@ cmd_commit() {
   fi
 
   # ② worktree 内提交
-  cd "$target"
-  git add -A
+  # AS-EC-008 fix: 用 git -C 替代 cd "$target"，消除 cwd side effect。旧实现 cd 后若
+  # git commit 失败（hook 拒绝/index lock/空提交等），cwd 留在 worktree；下次 cmd_commit
+  # 从错的 cwd 起算相对路径 → stage orphaned files / 误覆盖。git -C 保证 cwd 始终在 $PROJECT。
+  git -C "$target" add -A
   # .opt-direction 是 worktree 方向标记桩（untracked 元数据，cmd_new 写入），永不进提交——
   # 恢复 5d0ed82(direction-meta-exclusion) 的剔除逻辑：b476c86(show-truncation-guard) 基于旧基座
   # 构建，其 @@ -126,10 +126,6 @@ hunk 连带删除此行。git add -A 历史上把 .opt-direction 暂存、3 次泄漏
   # 进 shizi/x-tool/opt-docs 提交需 chore 清理；此处显式从索引剔除（已 tracked 则 untrack，
   # 工作树文件保留供 cmd_show 读，未 tracked 则 --ignore-unmatch no-op）。
-  git rm -r --cached -q --ignore-unmatch -- .opt-direction 2>/dev/null || true
+  git -C "$target" rm -r --cached -q --ignore-unmatch -- .opt-direction 2>/dev/null || true
   # ⑤ 连带 revert 可见性守卫（case-063/064 根因防线，case-065 抽成共用函数）
-  _assert_no_collateral_revert
-  git -c user.name="autonomous-studio" -c user.email="syp02536326@taobao.com" commit -q -m "opt($direction): $msg
+  # AS-EC-008: 传 $target 让守卫在 worktree 上跑，不依赖 cwd。
+  _assert_no_collateral_revert "$target"
+  # AS-EC-008: commit 失败时清理已 cp 到 worktree 的文件，避免下次调用 stage orphaned content。
+  # trap 仅在本地生效，commit 成功后 unset。清理策略：reset HEAD 取消暂存 + checkout 还原 tracked
+  # 文件到 main HEAD 状态 + 删除 untracked 新文件。best-effort，失败仅 warn 不阻断报错传播。
+  local _commit_failed_cleanup=""
+  _commit_failed_cleanup='
+    echo "⚠️ [AS-EC-008 cleanup] commit 失败，清理 worktree 已 cp 文件避免 orphan..." >&2
+    git -C "$target" reset HEAD -- . >/dev/null 2>&1 || true
+    # tracked 文件还原到 main HEAD（worktree 基于 main 分出，HEAD = main HEAD）
+    git -C "$target" checkout HEAD -- . 2>/dev/null || true
+    # untracked 新文件删除（cp 过来的新增文件不在 HEAD 中，checkout 不会碰）
+    git -C "$target" clean -fd --quiet 2>/dev/null || true
+    echo "   cleanup 完成（best-effort）" >&2
+  '
+  trap "$_commit_failed_cleanup" ERR
+  if ! git -C "$target" -c user.name="autonomous-studio" -c user.email="syp02536326@taobao.com" commit -q -m "opt($direction): $msg
 
-[auto-optimization on worktree $(basename "$target") — 待人工审合并]"
+[auto-optimization on worktree $(basename "$target") — 待人工审合并]"; then
+    # trap 已触发 cleanup；此处追加审计日志后退出。set -e 下 trap ERR 先于 exit 执行。
+    audit_log failure "$(basename "$target")" "" "git commit failed after cp; orphan cleanup triggered (AS-EC-008)" commit artifact || true
+    echo "❌ worktree commit 失败（已清理 orphaned files），cwd 保持 $PROJECT。请检查 hook/index lock/commit message。" >&2
+    exit 1
+  fi
+  trap - ERR   # commit 成功，解除 cleanup trap
 
   # ③ 还原 main：tracked → checkout HEAD；untracked 新文件 → rm（已 cp 走）
   cd "$PROJECT"
