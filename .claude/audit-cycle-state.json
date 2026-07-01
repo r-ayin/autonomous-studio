@@ -19,7 +19,7 @@
   ],
   "pending_count": 9,
   "status": "fix-in-progress",
-  "_status_note": "audit-2026-07-01-002 (scripts module) 完成深度审计，9 条 finding (2H/4M/3L)。case-501(L-002)经瞭望轮#10 merge验证发现 fix commit 写入错误绝对路径→REJECTED;瞭望轮#11(case-519)用 realpath --relative-to v2 重新派生 L-002 fix 落 opt-scripts-shift-1782884741(commit 5b7e1b3,diff-tree 确认 M scripts/opt-worktree.sh)。瞭望轮#12(case-520)diff-tree验证全部9 worktree HEAD只改1目标文件,merge-base=main HEAD无冲突。瞭望轮#13(case-521)branch -r --contains确认9 commit均未入origin/main;main diverged from origin/main(ahead=9 engine归档commits,behind=53含历史sanctioned-merge),需用户先git pull --rebase origin/main再sanctioned-merge。两个错误 worktree(1782880738/1782884660)已 reject 清理。当前 pending=9(case-494~500,502,519),待人工 sync main + sanctioned-merge。全部 settled 后 status→cycle-complete。",
+  "_status_note": "audit-2026-07-01-002 (scripts module) 完成深度审计，9 条 finding (2H/4M/3L)。case-501(L-002)经瞭望轮#10 merge验证发现 fix commit 写入错误绝对路径→REJECTED;瞭望轮#11(case-519)用 realpath --relative-to v2 重新派生 L-002 fix 落 opt-scripts-shift-1782884741(commit 5b7e1b3,diff-tree 确认 M scripts/opt-worktree.sh)。瞭望轮#12~#14(case-520~522)diff-tree复检全部9 worktree HEAD只改1目标文件,merge-base=main历史点无冲突。branch -r --contains确认9 commit均未入origin/main;main diverged from origin/main(ahead=9 engine归档commits,behind=53含历史sanctioned-merge),需用户先git pull --rebase origin/main再sanctioned-merge。两个错误 worktree(1782880738/1782884660)已 reject 清理。当前 pending=9(case-494~500,502,519),待人工 sync main + sanctioned-merge。全部 settled 后 status→cycle-complete。",
   "_status_enum": "idle | auditing | fix-in-progress | cycle-complete",
   "last_audit_completed_at": "2026-07-01T03:55:00Z",
   "last_audit_id": "audit-2026-07-01-002",
