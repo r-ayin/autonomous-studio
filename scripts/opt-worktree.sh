@@ -127,14 +127,17 @@ slug() { echo "$1" | tr ':/*?[]' '------'; }
 # direction_kind 判定（用户 2026-07-01 定）：审计深度解绑后，原 area-字符串相等判定太粗，
 # 改用"是否触及项目公共接口文件"作为强信号——命中 = direction-shift（项目方向更新）→ 强制开新
 # worktree 即便 area 同；不命中 = route-fix（原路线修复）→ 走原有 area 复用逻辑。
-# 信号源：/home/admin/workspace/autonomous-studio-aone/.claude/public-interfaces.txt
+# 信号源：$PROJECT/.claude/public-interfaces.txt（相对项目根，避免目录改名/移动后硬编码失效；
+# 旧版硬编码 /home/admin/workspace/autonomous-studio-aone/... 在目录改名后永远读不到 → direction-shift
+# 判定静默降级为 route-fix → cp-guard 拦同文件后续改动 → 引擎卡死。audit-2026-07-01-002 M-003
+# 派生时实踩此坑。）
 #   每行 `<project_name>:<relative_path>`，# 注释，空行忽略。
 # 文件不存在 → 默认 route-fix（向后兼容）。无 files 参数时扫 main 工作区 porcelain。
 # 返回 stdout: "route-fix" | "direction-shift"
 judge_direction_kind() {
   local proj="$1"; shift
   local -a files=("$@")
-  local pi_file="/home/admin/workspace/autonomous-studio-aone/.claude/public-interfaces.txt"
+  local pi_file="$PROJECT/.claude/public-interfaces.txt"
   [[ -f "$pi_file" ]] || { echo "route-fix"; return 0; }
   local proj_name; proj_name="$(basename "$proj")"
   # 若未传 files，扫 main 工作区改动
