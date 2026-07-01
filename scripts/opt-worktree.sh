@@ -751,7 +751,18 @@ cmd_merge() {
     echo "❌ 切回 $MAIN_BRANCH 失败（detached HEAD？工作区脏？分支不存在？），中止合并，未改动 $PROJECT"
     exit 1
   fi
-  if git merge --squash "auto/$(basename "$dir")" 2>/dev/null || git merge --squash "$wt" 2>/dev/null; then
+  # M-003 fix (audit-2026-07-01-002): 旧 `auto/$(basename "$dir")` 假设分支名 = auto/<目录名>,
+  # 但 direction-shift worktree 目录带时间戳后缀、route-fix 复用同 area 时目录名可能与分支
+  # 不完全对应——merge 失败或误合错误分支。改用 symbolic-ref 查实际分支名(cmd_push line 568
+  # 已用同一模式)。fallback 仅当 symbolic-ref 失败(detached HEAD)才退回 basename 拼接,
+  # 并打印警告让审阅者知晓。
+  local wt_branch
+  wt_branch=$(git -C "$dir" symbolic-ref --short HEAD 2>/dev/null)
+  if [[ -z "$wt_branch" ]]; then
+    echo "⚠️  worktree $wt HEAD detached,symbolic-ref 失败;退回 basename 拼接(可能不准)" >&2
+    wt_branch="auto/$(basename "$dir")"
+  fi
+  if git merge --squash "$wt_branch" 2>/dev/null; then
     # .opt-direction 是 worktree 本地方向标记桩（untracked 为主，部分 worktree 分支误提交了它）。
     # git merge --squash 把分支差异整批暂存进 main，含此桩 → 历史上每次 merge 都把 .opt-direction
     # 泄漏到 main（dingtalk-auto/x-tool/shizi/skills 等均有「移除泄漏的 .opt-direction」chore 跟在
@@ -763,10 +774,11 @@ cmd_merge() {
     rm -f "$PROJECT/.opt-direction"
     git -c user.name="autonomous-studio" -c user.email="syp02536326@taobao.com" commit -q -m "merge: 人工批准合并 optimization worktree '$wt'
 
-$(git log --oneline "$MAIN_BRANCH"..auto/$(basename "$dir") 2>/dev/null | head -5)"
+$(git log --oneline "$MAIN_BRANCH".."$wt_branch" 2>/dev/null | head -5)"
     # ↑ 只列 worktree 相对 main 的 ahead 提交（本 worktree 真实贡献）。旧 `git log --oneline auto/...`
     # 从根起 log 整条分支史，会把 main 已有提交灌进合并消息正文（实测 873f688 正文混入
     # 2aa0eba/0a2124d/4dc2565 等 main 提交，仅 734512b 属该 worktree），误导审阅。
+    # M-003: 改用 $wt_branch(symbolic-ref 拿到的真实分支名)替代 basename 拼接。
     local merge_sha; merge_sha="$(git rev-parse HEAD 2>/dev/null || printf '')"
     audit_log success "$wt" "$merge_sha" "squash-merge worktree into $MAIN_BRANCH" || true
     echo "✓ 已 squash 合并 $wt → $MAIN_BRANCH"
@@ -789,7 +801,7 @@ $(git log --oneline "$MAIN_BRANCH"..auto/$(basename "$dir") 2>/dev/null | head -
     # `git reset --merge`（实测 exit 0 清掉 UU、非破坏——保留未冲突本地改动）真正回滚 $PROJECT
     # 至干净 $MAIN_BRANCH，去 $dir 修冲突文件提交到 auto/<wt> 后再跑可干净重试。
     audit_log failure "$wt" "" "squash merge conflict, $PROJECT rolled back to clean $MAIN_BRANCH" || true
-    echo "❌ 合并冲突：已回滚 $PROJECT 至干净 $MAIN_BRANCH。去 $dir 解决冲突文件、提交到 auto/$(basename "$dir")，再跑 opt-worktree.sh merge \"$PROJECT\" \"$wt\"；或 opt-worktree.sh reject \"$PROJECT\" \"$wt\" 放弃"
+    echo "❌ 合并冲突：已回滚 $PROJECT 至干净 $MAIN_BRANCH。去 $dir 解决冲突文件、提交到 $wt_branch，再跑 opt-worktree.sh merge \"$PROJECT\" \"$wt\"；或 opt-worktree.sh reject \"$PROJECT\" \"$wt\" 放弃"
     git merge --abort 2>/dev/null || git reset -q --merge 2>/dev/null || true
     exit 1
   fi
