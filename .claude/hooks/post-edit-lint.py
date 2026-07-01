@@ -54,7 +54,7 @@ def main():
     if ext == "py":
         try:
             cr = subprocess.run(
-                ["python", "-m", "py_compile", file_path],
+                ["python", "-m", "py_compile", "--", file_path],
                 cwd=WORKSPACE_ROOT, capture_output=True, text=True, timeout=15)
             if cr.returncode != 0:
                 findings.append(f"❌ Python 语法错误: {(cr.stderr or '').strip().splitlines()[-1] if cr.stderr else ''}")
