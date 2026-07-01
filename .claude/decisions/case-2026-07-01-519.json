@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-07-01-519",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-01T05:46:00Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "L-002 re-fix v2: opt-worktree.sh files 在 cd PROJECT 前规范化为相对 PROJECT 路径",
+  "situation": "audit-2026-07-01-002 L-002 finding 重新派生。case-501 (opt-scripts-shift-1782880738) 被瞭望轮#10 merge 验证 REJECTED:commit 11a5f3c 把整个 /home/admin/.../opt-worktree.sh 当新文件加入 worktree(810 insertions),正确路径 scripts/opt-worktree.sh 零改动。根因:case-501 fix 用绝对路径 $(pwd)/$_f 作为 files,git add 在 worktree 里把绝对路径当相对 worktree root 处理→创建嵌套 home/admin/... 目录结构。本轮先尝试 v1(绝对路径方案)落 opt-scripts-shift-1782884660,验证发现同一 bug 复现→reject;v2 改用 realpath -m --relative-to=$PROJECT 折回相对路径,commit 5b7e1b3 正确显示 'M scripts/opt-worktree.sh'(Modify 非 Add)。两个错误 worktree 已 reject 清理。",
+  "action": "cmd_commit line 364 cd $PROJECT 之前新增循环:对每个 file 先 realpath -m 到绝对(容忍调用方 cwd 相对路径),再 realpath -m --relative-to=$PROJECT 折回相对路径;cd 后 files 数组用规范化后的值。bash -n 通过。",
+  "files_changed": ["scripts/opt-worktree.sh"],
+  "worktree": "opt-scripts-shift-1782884741",
+  "direction": "scripts:opt-worktree",
+  "outcome": "succeeded",
+  "outcome_evidence": "git diff-tree 显示 ':100755 100755 e3fb536..efb0f26 M scripts/opt-worktree.sh'(Modify 操作、相对路径);git show HEAD 显示 diff hunk @@ -361,8 +361,19 @@ 仅改 cmd_commit 内 12 行;push 成功 auto/opt-scripts-shift-1782884741 → origin。v1 错误 worktree opt-scripts-shift-1782884660(f1682c4)和原 rejected opt-scripts-shift-1782880738(11a5f3c)均已 reject 清理。",
+  "next_suggestion": [
+    "待人工 sanctioned-merge opt-scripts-shift-1782884741 入 main 后,audit-cycle-state derived_fixes case-501 status→merged(L-002 正式闭合)",
+    "其余 7 pending fix (case-494~500, 502) 仍待人工 merge;全部 settled 后 audit-cycle-state.status→cycle-complete 触发下一轮全量审计"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-01-002",
+  "audit_depth": "shallow"
+}
