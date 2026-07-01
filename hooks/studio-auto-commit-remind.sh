@@ -35,10 +35,11 @@ fi
 STATUS_FILE="$PROJECT_DIR/planning/status.json"
 
 # 检查是否在开发阶段
+export AUTO_COMMIT_REMIND_STATUS_FILE="$STATUS_FILE"
 STAGE=$(python3 -c "
-import json
+import json, os
 try:
-    d = json.load(open('$STATUS_FILE'))
+    d = json.load(open(os.environ.get('AUTO_COMMIT_REMIND_STATUS_FILE', '')))
     print(d.get('currentStage', ''))
 except: print('')
 " 2>/dev/null)
