@@ -388,17 +388,40 @@ def count_pending_worktrees(path):
             ahead = int(r.stdout.strip()) if r.returncode == 0 else -1
         except Exception:
             ahead = -1
+        # 内容等价对账：opt-worktree 走 squash-merge，worktree 分支 commit 哈希永不落 main，
+        # 故 ahead>0 永真——只看 ahead 会把「work 全已合入 main 但 standing ref 未清理」的形态
+        # 持续 false-positive 标待合并（case-327 1BfrYW9R / case-219）。注意 git cherry 在 squash-merge
+        # 下不可靠：squash 把多 commit 合一的 patch-id ≠ 各单 commit，cherry 显 '+'（仅 1-commit
+        # squash 才显 '-'，合成测试证），故不用 cherry。改用内容等价两步：
+        # (1) 三点 `git diff --name-only main...HEAD` 取 worktree 侧自 merge-base 起改动的文件
+        #     （不含 main 后增的无关文件，免疫 diverged-base 两点 diff 误读 [[diverged-base-two-dot-diff-misread]]）；
+        # (2) 对这些文件两点 `git diff --exit-code main HEAD`——exit 0 即 worktree 改动文件在两 tip
+        #     内容一致 = work 已落 main = superseded；exit 1 = 真未落 main = 待合并。
+        # 任一步失败/空（如纯空 commit）则退化为只看 ahead（不变），保守不误标。
+        superseded = False
+        if ahead > 0:
+            try:
+                n = subprocess.run(["git", "diff", "--name-only", f"{main_branch}...HEAD"],
+                                   cwd=entry.path, capture_output=True, text=True, timeout=10)
+                touched = [f for f in n.stdout.splitlines() if f.strip()]
+                if n.returncode == 0 and touched:
+                    d = subprocess.run(["git", "diff", "--exit-code", main_branch, "HEAD", "--", *touched],
+                                       cwd=entry.path, capture_output=True, text=True, timeout=15)
+                    if d.returncode == 0:
+                        superseded = True
+            except Exception:
+                pass
         # ensure_main_wt 维护的常设 "optimization" worktree：空闲(0-ahead)时是 infra，
         # 下次 commit 即重建——非 pending、非废弃物。整体跳过，否则每轮都推"清理空
         # worktree"噪音、霸占 #1。仅当它真带未合并内容(ahead>0)时才计入（视同 pending 待合并）。
         if entry.name == "optimization" and ahead == 0:
             continue
         total += 1
-        if ahead == 0:
+        if ahead == 0 or superseded:
             stale += 1
         elif ahead > 0:
             with_content += 1
-        details.append({"name": entry.name, "ahead": ahead})
+        details.append({"name": entry.name, "ahead": ahead, "superseded": superseded})
     return {"total": total, "stale": stale, "with_content": with_content, "details": details}
 
 
