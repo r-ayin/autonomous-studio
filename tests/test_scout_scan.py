@@ -50,7 +50,14 @@ def test_missing_docs_ranks_highest():
 
 
 def test_score_independent_of_commit_recency():
-    """health_priority 不读 last_commit——rep 里根本没有该字段也能算分。"""
+    """health_priority 不读 last_commit——rep 里根本没有该字段也能算分。
+
+    M-003 fix: 原断言仅验 isinstance(score, float) + work_unit 非空，允许退化实现
+    （恒返回 0.0）通过。现锁定两条数值不变量：
+      (a) progress_stale_days 从 fresh→stale 必须让 score 严格上升（stale 贡献生效）；
+      (b) FIXME/HACK 加权贡献精确 = min((F+H)*0.2, 4)（防加权被误删或封顶值漂移）。
+    公式来自 scripts/scout-scan.py:487 health_priority。若重构公式，请同步更新本测试。
+    """
     mod = _load()
     rep = _rep("x", progress_stale_days=0.2, gates=True, planning=True,
                todo=3, fixme=0, hack=0)
@@ -59,6 +66,49 @@ def test_score_independent_of_commit_recency():
     assert "last_commit" not in rep
     assert isinstance(hp["score"], float)
     assert hp["work_unit"]
+
+    # (a) stale 贡献必须生效：fresh(0.2d) vs stale(100d)，其余相同
+    rep_fresh = _rep("f", progress_stale_days=0.2, gates=True, planning=True,
+                     todo=0, fixme=0, hack=0)
+    rep_stale = _rep("s", progress_stale_days=100.0, gates=True, planning=True,
+                     todo=0, fixme=0, hack=0)
+    score_fresh = mod.health_priority(rep_fresh)["score"]
+    score_stale = mod.health_priority(rep_stale)["score"]
+    assert score_stale > score_fresh, (
+        f"stale 项目应得分更高：fresh={score_fresh}, stale={score_stale}"
+    )
+    # STALE_DAYS=7 → stale 贡献 +3；fresh 不触发。差值应恰好 3（无其他变量）
+    assert abs((score_stale - score_fresh) - 3.0) < 1e-9, (
+        f"stale-fresh 差值应为 3.0（STALE_DAYS 阈值贡献），实际 {score_stale - score_fresh}"
+    )
+
+    # (b) FIXME/HACK 加权锁定：min((F+H)*0.2, 4)。
+    # 注意 density 贡献含 TODO+F+H，加 F/H 同时抬高 density；用同 todo baseline
+    # 做差值后需扣除 density 增量才是纯 FIXME/HACK 加权。公式：
+    #   delta = ((T+F+H)/n - T/n)*10 + min((F+H)*0.2, 4) = (F+H)/n*10 + min(...)
+    n = 100  # _rep default
+    f_base, h_base = 0, 0
+    f_add, h_add = 5, 3
+    rep_base = _rep("base", progress_stale_days=0.2, gates=True, planning=True,
+                    todo=3, fixme=f_base, hack=h_base)
+    rep_fixme = _rep("fh", progress_stale_days=0.2, gates=True, planning=True,
+                     todo=3, fixme=f_add, hack=h_add)
+    score_base = mod.health_priority(rep_base)["score"]
+    hp_fixme = mod.health_priority(rep_fixme)
+    expected_delta = ((f_add + h_add) / n) * 10 + min((f_add + h_add) * 0.2, 4.0)  # 0.8 + 1.6 = 2.4
+    delta = hp_fixme["score"] - score_base
+    assert abs(delta - expected_delta) < 1e-9, (
+        f"FIXME/HACK 总增量应为 {expected_delta}，实际 {delta}"
+    )
+    # 封顶验证：F+H=30 → 30*0.2=6 > cap 4 → 加权截到 4；density 增量=30/100*10=3
+    rep_capped = _rep("cap", progress_stale_days=0.2, gates=True, planning=True,
+                      todo=3, fixme=20, hack=10)
+    hp_capped = mod.health_priority(rep_capped)
+    expected_cap_delta = (30 / n) * 10 + 4.0  # 3.0 + 4.0 = 7.0
+    delta_cap = hp_capped["score"] - score_base
+    assert abs(delta_cap - expected_cap_delta) < 1e-9, (
+        f"FIXME/HACK 封顶增量应为 {expected_cap_delta}，实际 {delta_cap}"
+    )
 
 
 def _real_workspace():
