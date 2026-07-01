@@ -518,10 +518,30 @@ cmd_commit() {
     for s in "${skipped[@]}"; do [[ "$s" == "$x" ]] && return 0; done
     return 1
   }
+  # M-002 (audit-2026-07-01-002): 路径安全校验——拒绝绝对路径与含 .. 段，
+  # 防止 _cp_guard/_del_guard 被 f=`../../etc/cron.d/evil` 之类诱导写/删 worktree 外文件。
+  # git status 输出理论上不含恶意路径，但显式 files 由调用方传入须防御；
+  # 隐式分支也过同校验保持一致性（cost ≈ 0）。
+  _validate_path() {
+    local p="$1"
+    if [[ "$p" == /* ]]; then
+      echo "✗ path-security: 拒绝绝对路径: $p" >&2
+      return 1
+    fi
+    local IFS='/' seg
+    for seg in $p; do
+      if [[ "$seg" == ".." ]]; then
+        echo "✗ path-security: 拒绝含 '..' 段的路径: $p" >&2
+        return 1
+      fi
+    done
+    return 0
+  }
   local copied=0
   if [[ ${#files[@]} -gt 0 ]]; then
     local f
     for f in "${files[@]}"; do
+      _validate_path "$f" || { skipped+=("$f"); continue; }
       if [[ -e "$f" ]]; then
         _cp_guard "$f" "$target/$f" || { skipped+=("$f"); continue; }
       elif git ls-files --error-unmatch "$f" >/dev/null 2>&1; then
@@ -541,6 +561,7 @@ cmd_commit() {
     while IFS= read -r -d '' p; do
       p="${p#???}"               # 去掉前导 "XY "（status 2 字符 + 空格）
       case "$p" in *" -> "*) p="${p##* -> }";; esac   # rename 取新路径
+      _validate_path "$p" || { skipped+=("$p"); continue; }
       if [[ -e "$p" ]]; then
         _cp_guard "$p" "$target/$p" || { skipped+=("$p"); continue; }
       elif git ls-files --error-unmatch "$p" >/dev/null 2>&1; then
