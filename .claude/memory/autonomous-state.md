@@ -14,15 +14,15 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-07-01T06:17Z（case-528 瞭望轮#20:9 pending fix worktree 完好性复检,main diverged behind=53/ahead=12 CRITICAL持续）**
-- **活跃项目**: autonomous-studio-aone 维护——**audit-002 scripts module 9 findings:9 pending待merge(case-494~500,502,519)**。audit-001 hooks module 已 cycle-complete(2H merged via 900a3cc/b1d072d)。**已审源码:hooks/ 14 hook 全审+scripts/opt-worktree.sh+autonomous-loop.sh 深审**。**main 分歧 CRITICAL持续:behind=53/ahead=12(case-528归档),需人工 git pull --rebase origin main**。
-- **当前阶段**: case-528 瞭望轮#20完成→9个有效opt-worktree待人工sanctioned-merge(worktree list复检全在,commit hash与audit-cycle-state.note一致);本地main diverged from origin/main(ahead=12 engine归档,behind=53含历史sanctioned-merge);pending_count=9不变;**本轮增量产出:worktree完好性复检确认状态无变化,blocked on human action**
+- **最后活跃: 2026-07-01T07:02Z（case-530 瞭望轮#22:merge-safety预检9/9无冲突+optimization孤儿worktree清理）**
+- **活跃项目**: autonomous-studio-aone 维护——**audit-002 scripts module 9 findings:9 pending待merge(case-494~500,502,519)**。audit-001 hooks module 已 cycle-complete(2H merged via 900a3cc/b1d072d)。**已审源码:hooks/ 14 hook 全审+scripts/opt-worktree.sh+autonomous-loop.sh 深审**。**main 分歧 CRITICAL持续:behind=53/ahead=14(case-530归档),需人工 git pull --rebase origin main**。
+- **当前阶段**: case-530 瞭望轮#22完成→merge-safety预检确认9 worktree vs origin/main 全0真实冲突(merge-safe);L-002 v2 files_in_fix=23异常经核为worktree base差异非污染;optimization孤儿worktree已清理(worktree list 11→10);pending_count=9不变;**本轮增量产出:merge-safety验证+卫生清理,blocked on human action**
 - **GOAL_STATUS**: active
 - **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动；审计轮次事件驱动 audit-cycle-state + 敏感路径 audit-log 埋点）
-- **LAST_UPDATED**: 2026-07-01(case-528 瞭望轮#20,worktree完好性复检,pending 9/9,main behind=53/ahead=12)
-- **LAST_WORKTREE**: null(瞭望轮#20无代码改动)。待merge列表(按优先级):opt-security-shift-1782878468(H-001 0d26e39)+opt-security-shift-1782878926(H-005 f5d21f0)+opt-security-shift-1782879314(M-002 238afb1)+opt-security-shift-1782879595(M-001 06496f7)+opt-scripts-shift-1782879918(M-003 cf0834b)+opt-engine-shift-1782880189(M-004 d7204f3)+opt-engine-shift-1782880465(L-001 ae641be)+opt-engine-shift-1782881018(L-003 4b9d485)+**opt-scripts-shift-1782884741(L-002 v2 5b7e1b3)**;**REJECTED已清理:opt-scripts-shift-1782880738+opt-scripts-shift-1782884660(两次L-002 fix失败,绝对路径bug)**;auto/optimization空壳保留
+- **LAST_UPDATED**: 2026-07-01(case-530 瞭望轮#22,merge-safety预检+optimization清理,pending 9/9,main behind=53/ahead=14)
+- **LAST_WORKTREE**: null(瞭望轮#22无代码改动,仅worktree remove)。待merge列表(按优先级):opt-security-shift-1782878468(H-001 0d26e39)+opt-security-shift-1782878926(H-005 f5d21f0)+opt-security-shift-1782879314(M-002 238afb1)+opt-security-shift-1782879595(M-001 06496f7)+opt-scripts-shift-1782879918(M-003 cf0834b)+opt-engine-shift-1782880189(M-004 d7204f3)+opt-engine-shift-1782880465(L-001 ae641be)+opt-engine-shift-1782881018(L-003 4b9d485)+**opt-scripts-shift-1782884741(L-002 v2 5b7e1b3)**;**REJECTED已清理:opt-scripts-shift-1782880738+opt-scripts-shift-1782884660**;**optimization孤儿已清理(branch -D auto/optimization was b2ec7dd)**
 - **LAST_OUTCOME**: done
-- **NEXT_SUGGESTION**: [1]【用户操作·先stash】git stash push -m 'pre-merge-sync' .claude/memory/autonomous-state.md .claude/decisions/ 暂存工作树变更。[2]【sync main】git pull --rebase origin/main 消解 behind=53(rebase 安全因 main 领先全是 .claude/ 归档 commit,不涉及 worktree 目标文件)。[3]【pop+merge】git stash pop → 按 H→M→L 优先级逐个 bash scripts/opt-worktree.sh merge <branch>(共9条,worktree list复检全在)。每 merge 一个 git push origin main。[4]全 settled 后 derived_fixes[].status→merged,audit-cycle-state.status→cycle-complete,下轮触发 audit-003(候选:.claude/hooks/剩余hook或.planning/)。**⚠️ BLOCKED:引擎侧无新工作单位可做,等用户 sync+merge**。连续 11 轮无源码改动达强提醒阈值。
+- **NEXT_SUGGESTION**: [1]【用户操作·先stash】git stash push -m 'pre-merge-sync' .claude/memory/autonomous-state.md .claude/decisions/ 暂存工作树变更。[2]【sync main】git pull --rebase origin/main 消解 behind=53(rebase 安全因 main 领先全是 .claude/ 归档 commit,不涉及 worktree 目标文件)。[3]【pop+merge】git stash pop → 按 H→M→L 优先级逐个 bash scripts/opt-worktree.sh merge <branch>(共9条,merge-tree预检全0冲突,sanctioned-merge应顺畅)。每 merge 一个 git push origin main。[4]全 settled 后 derived_fixes[].status→merged,audit-cycle-state.status→cycle-complete,下轮触发 audit-003(候选:agent-dashboard/1BfrYn9G/huiyis等未审项目)。**⚠️ BLOCKED:引擎侧无新工作单位可做,等用户 sync+merge**。连续 13 轮无源码改动达强提醒阈值。
 - **自主循环**: 🟢 活跃
   - L1 Inline: 每次回复末尾内联检查 (+ git status)
   - L2 Heartbeat: CronCreate 每7分钟（执行轨——推进 Studio 阶段或主动扫描）
@@ -74,10 +74,10 @@ metadata:
 <!-- GOAL_ID: G-2026-06-15-002 -->
 <!-- GOAL_STATUS: active -->
 <!-- ACTIVE_GOAL: ralph-wiggum-autonomous-loop (每轮一个小工作单位，scout-scan 排序选任务) -->
-<!-- LAST_UPDATED: 2026-07-01(case-528 瞭望轮#20,worktree完好性复检,pending 9/9,main behind=53/ahead=12) -->
-<!-- LAST_WORKTREE: null(瞭望轮#20无代码改动)。待merge(按优先级):opt-security-shift-1782878468(H-001)+opt-security-shift-1782878926(H-005)+opt-security-shift-1782879314(M-002)+opt-security-shift-1782879595(M-001)+opt-scripts-shift-1782879918(M-003)+opt-engine-shift-1782880189(M-004)+opt-engine-shift-1782880465(L-001)+opt-engine-shift-1782881018(L-003)+opt-scripts-shift-1782884741(L-002 v2);REJECTED已清理:1782880738+1782884660 -->
+<!-- LAST_UPDATED: 2026-07-01(case-530 瞭望轮#22,merge-safety预检+optimization清理,pending 9/9,main behind=53/ahead=14) -->
+<!-- LAST_WORKTREE: null(瞭望轮#22无代码改动,仅worktree remove)。待merge(按优先级):opt-security-shift-1782878468(H-001)+opt-security-shift-1782878926(H-005)+opt-security-shift-1782879314(M-002)+opt-security-shift-1782879595(M-001)+opt-scripts-shift-1782879918(M-003)+opt-engine-shift-1782880189(M-004)+opt-engine-shift-1782880465(L-001)+opt-engine-shift-1782881018(L-003)+opt-scripts-shift-1782884741(L-002 v2);REJECTED已清理:1782880738+1782884660;optimization孤儿已清理 -->
 <!-- LAST_OUTCOME: done -->
-<!-- NEXT_SUGGESTION: [1]用户先 git stash .claude/ 工作树变更。[2]git pull --rebase origin/main 消解 behind=53。[3]stash pop + 按 H→M→L 逐个 opt-worktree.sh merge(9条,worktree list复检全在)。[4]全 settled 后 cycle-complete 触发 audit-003。⚠️ BLOCKED on human action,连续 11 轮无源码改动。 -->
+<!-- NEXT_SUGGESTION: [1]用户先 git stash .claude/ 工作树变更。[2]git pull --rebase origin/main 消解 behind=53。[3]stash pop + 按 H→M→L 逐个 opt-worktree.sh merge(9条,merge-tree预检全0冲突)。[4]全 settled 后 cycle-complete 触发 audit-003(候选:agent-dashboard/1BfrYn9G/huiyis)。⚠️ BLOCKED on human action,连续 13 轮无源码改动。 -->
 
 | 字段 | 内容 |
 |------|------|
