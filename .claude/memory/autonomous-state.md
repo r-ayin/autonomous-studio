@@ -14,15 +14,15 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-07-01T00:55:00Z（case-468=今日第104例,468%4=0 审计轮·DO A security-review。承接 case-467 NEXT[2]。scout-scan #1=AS score=0.0『review 1 个待合并 worktree』但 opt-security-1782866336 已由 case-465 审过+引擎无权 merge→按 DO A 改走源码审计,选未审单体 decision-observer.py(776行,DO B 用户输入存取敏感路径)。security-review 全文件逐行审计:无注入面(纯 re+json 无 subprocess)、path traversal 已防(re.sub 清洗 session_id)、无 ReDoS(单字符类有界量词)、prompt_preview 仅落日志不注入系统提示。发现 1 medium:_redact_secrets 值字符类 [A-Za-z0-9_\\-/=] 拒收 @#!$%^&* → password=p@ss! 类凭证整条漏过脱敏直落 decision-log.jsonl at-rest(实测 3/3 漏)。起 opt-security-1782866336 修复(同 area 复用):扩为 [A-Za-z0-9_\\-/=~!@#$%^&*.]。验证 5/5 redact+无 false positive+100k 对抗 3ms 无 ReDoS。py_compile+AST OK。四验干净:porcelain=空、worktree list=main@57d16a9+opt-security@cf17a35+optimization@57d16a9(stub)、rev-list main..opt-security=2。case-468.json+state.md 直提 main(archival-commit-mechanism)。case-468 outcome=succeeded audit_type=security-review audit_findings=[1 medium]。下轮 case-469=469%4=1≠0 非审计轮·skip 或承接新推荐）**
+- **最后活跃: 2026-07-01T01:04:00Z（case-469=今日第105例,469%4=1≠0 非审计轮·sanctioned-merge-review。承接 case-468 NEXT。scout-scan #1=AS score=0.0『review 1 个待合并 worktree』。opt-security-1782866336@cf17a35 ahead=2 含 ba52e9c(case-464 audit-log 埋点)+cf17a35(case-468 redaction 修补),但此前从未作为整体做过合并就绪审查——case-465 只审 ba52e9c 单 commit,case-468 是制造 cf17a35 的审计轮。本轮补缺口:做完整 2-commit worktree 合并就绪审查。关键纠偏:git diff main..worktree 误显 5 case JSON+state.md『删除』,实为 main HEAD vs worktree HEAD 直接对比伪影(worktree 在 5ed9a52 分叉,此后 case-464..468 经 archival-commit-mechanism 直提 main)。改看真 3-way diff:git diff 5ed9a52..worktree --stat=仅 2 源文件(auto-commit.py push 块 3 处 _audit_log_commit + decision-observer.py 字符类扩展),无 case JSON/state.md。main 侧自 merge-base 起仅改 case JSON+state.md(6 文件)与 worktree 改动集完全不相交→无语义冲突。git merge-tree --write-tree main auto/opt-security-1782866336 干演 exit=0 产 tree 3b4a509 无冲突文件=clean merge 可行。两 fix 语义连贯(分属不同函数/文件,均 security-hardening,无重叠)。py_compile OK。四验干净:porcelain=空、worktree list=main@e6d6eb7+opt-security@cf17a35+optimization@57d16a9、rev-list main..opt-security=2。结论:worktree 合并就绪,引擎无权 merge 留人工 squash merge。无新源码改动(审查轮)。case-469.json+state.md 直提 main(archival-commit-mechanism)。case-469 outcome=succeeded audit_type=none audit_findings=[]。下轮 case-470=470%4=2≠0 非审计轮·worktree-cleanup(optimization 死桩残留)或 skip）**
 - **活跃项目**: autonomous-studio-aone 维护——case-468 security-review 审 decision-observer.py 起 opt-security-1782866336@cf17a35(ahead=2 累计 case-464 audit-log+case-468 redaction 修复,待人工 squash merge)。**已审源码 23 处:.claude/hooks/ 11 hook(含 decision-observer.py case-468 1 medium 已起 opt-security 修复待审)+codegraph-sync.py case-456+notify-phone/autonomous-commit-gate/pipeline-gate/post-edit-lint.py case-448+scaffold-skill.sh+opt-worktree.sh+scout-scan.py(case-380/049)+triage.py+bff_client.py(case-420 F3+case-436 F1 已合并 main@125a15e)+audit_log.py(case-424)+autonomous-commit-gate.py(case-428/440 已合并 main@051bb4b)+apply_resource_access.py(case-432 info deferred)+pipeline-gate.py(case-432/433 已合并 main)+notify-phone.py(case-444 已合并 main@9a8748e)+post-edit-lint.py(case-448)+scripts/route-health-scorer.py(case-452 无真问题)+codegraph-sync.py(case-456 无真问题)+discovery-gate.py(case-460 无真问题)+auto-commit.py(case-464 1 medium 已起 opt-security-1782866336@ba52e9c 修复,case-465 审查确认可 merge 待人工)+decision-observer.py(case-468 1 medium redaction 缺口已起 opt-security@cf17a35 修复待审)**。
-- **当前阶段**: case-468 审计轮完成(security-review decision-observer.py,1 medium 修复落 opt-security-1782866336@cf17a35);下轮 case-469=469%4=1≠0 非审计轮·skip 心跳或承接新 scout-scan 推荐
+- **当前阶段**: case-469 非审计轮合并就绪审查完成(opt-security-1782866336 整体 2-commit 经 3-way diff+merge-tree 干演确认无冲突合并就绪,留人工 squash merge);下轮 case-470=470%4=2≠0 非审计轮·worktree-cleanup(optimization 死桩残留)或 skip
 - **GOAL_STATUS**: active
 - **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动；审计轮次每 4 case 强制 code-review/security-review + 敏感路径 audit-log 埋点）
-- **LAST_UPDATED**: 2026-07-01(case-468)
-- **LAST_WORKTREE**: opt-security-1782866336@cf17a35(ahead=2: ba52e9c case-464 audit-log + cf17a35 case-468 redaction;待人工 squash merge)
+- **LAST_UPDATED**: 2026-07-01(case-469)
+- **LAST_WORKTREE**: opt-security-1782866336@cf17a35(ahead=2: ba52e9c case-464 audit-log + cf17a35 case-468 redaction;整体合并就绪审查通过 case-469,待人工 squash merge)
 - **LAST_OUTCOME**: done
-- **NEXT_SUGGESTION**: [1]【人工 merge 待办,累计 2 commit】用户手动 `git merge --squash auto/opt-security-1782866336 && git commit` 落 main(cf17a35 redaction + ba52e9c audit-log 埋点,case-465 已审 ba52e9c 干净、cf17a35 1 行字符类扩展已动态验证),随后 `bash scripts/opt-worktree.sh . cleanup` 清 opt-security+auto/optimization 空 stub。[2]【case-469=469%4=1≠0 非审计轮】opt-security 仍 pending 引擎无权 merge→skip 心跳 或 承接新 scout-scan 推荐(若 main 已被人工 merge 则 cleanup 后续审下一未审源码)。[3]【下个审计轮 case-472=472%4=0】续审剩余未审源码(scripts/distill-patterns.py / confidence-calibrator.js 等)。
+- **NEXT_SUGGESTION**: [1]【case-470=470%4=2≠0 非审计轮·worktree-cleanup】auto/optimization@57d16a9 死桩(0 ahead main,3-way diff 空)残留未清(case-466 曾称已删但实际仍在 worktree list)→跑 opt-worktree.sh . cleanup 删 optimization worktree+branch。[2]【人工 merge 待办,累计 2 commit】用户手动 `git merge --squash auto/opt-security-1782866336 && git commit` 落 main(case-469 已确认合并就绪:3-way diff 仅 2 源文件+merge-tree exit=0 无冲突+两 fix 语义连贯),随后 cleanup 清 opt-security worktree+branch。[3]【下个审计轮 case-472=472%4=0】续审剩余未审源码(scripts/distill-patterns.py / confidence-calibrator.js 等)。
 - **自主循环**: 🟢 活跃
   - L1 Inline: 每次回复末尾内联检查 (+ git status)
   - L2 Heartbeat: CronCreate 每7分钟（执行轨——推进 Studio 阶段或主动扫描）
@@ -75,9 +75,9 @@ metadata:
 <!-- GOAL_STATUS: active -->
 <!-- ACTIVE_GOAL: ralph-wiggum-autonomous-loop (每轮一个小工作单位，scout-scan 排序选任务) -->
 <!-- LAST_UPDATED: 2026-07-01 -->
-<!-- LAST_WORKTREE: opt-security-1782866336@cf17a35（ahead=2: ba52e9c case-464 audit-log + cf17a35 case-468 redaction;待人工 squash merge） -->
+<!-- LAST_WORKTREE: opt-security-1782866336@cf17a35（ahead=2: ba52e9c case-464 audit-log + cf17a35 case-468 redaction;整体合并就绪审查通过 case-469,待人工 squash merge） -->
 <!-- LAST_OUTCOME: done -->
-<!-- NEXT_SUGGESTION: [1]人工 `git merge --squash auto/opt-security-1782866336 && git commit` + cleanup(opt-security+auto/optimization 空 stub)。[2]case-469=469%4=1≠0 非审计轮·skip 或承接新 scout-scan。[3]下个审计轮 case-472 续审 scripts/distill-patterns.py 等 -->
+<!-- NEXT_SUGGESTION: [1]case-470=470%4=2 非审计轮·worktree-cleanup:删 auto/optimization@57d16a9 死桩(0 ahead,case-466 称删实存)。[2]人工 `git merge --squash auto/opt-security-1782866336 && git commit`(case-469 已确认合并就绪)+cleanup opt-security。[3]下个审计轮 case-472 续审 scripts/distill-patterns.py 等 -->
 
 | 字段 | 内容 |
 |------|------|
