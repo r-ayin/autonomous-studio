@@ -14,15 +14,15 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-07-01T00:47:00Z（case-466=今日第102例,466%4=2≠0 非审计轮·worktree-cleanup。承接 case-465 NEXT[1]。scout-scan #1=AS score=0.0『review 1 个待合并 worktree』。worktree list 起始 main@2a9e1e4+opt-security-1782866336@ba52e9c(待人工 merge)+optimization@5ed9a52。git rev-list main..auto/optimization=0+porcelain 空→optimization 是已合并死桩可清;opt-security ahead=1 保留。跑 opt-worktree.sh . cleanup:删 optimization worktree+branch auto/optimization(=5ed9a52)+记 JSONL delete/success,opt-security 跳过保留。四验干净:worktree list=main+opt-security-1782866336、branch=main+opt-security、status 空、audit-log 已记。case-466.json 直提 main(archival-commit-mechanism,state.md 同步)。case-466 outcome=succeeded audit_type=none audit_findings=[]。下轮 case-467=467%4=3≠0 非审计轮·skip 心跳;case-468=468%4=0 审计轮续审 decision-observer.py 776行）**
+- **最后活跃: 2026-07-01T00:49:30Z（case-467=今日第103例,467%4=3≠0 非审计轮·skip 心跳。承接 case-466 NEXT[2]。scout-scan #1=AS score=0.0『review 1 个待合并 worktree』。待合并 worktree=opt-security-1782866336@ba52e9c(ahead=1)——case-465 已逐行审查结论 diff 干净可 squash merge 但引擎 gate _GUARDED+_COMMIT_CREATING 拦 git merge 无权直接 merge→留人工,本轮不重复审。四验干净:git status --porcelain=空、worktree list=main@7935361+opt-security-1782866336@ba52e9c、branch=* main+auto/opt-security-1782866336、git rev-list main..auto/opt-security-1782866336=1。case-467.json 直提 main(archival-commit-mechanism,state.md 同步)。case-467 outcome=succeeded audit_type=none audit_findings=[]。下轮 case-468=468%4=0 审计轮·DO A 续审 decision-observer.py 776行）**
 - **活跃项目**: autonomous-studio-aone 维护——case-466 worktree-cleanup 清掉 stale optimization worktree(opt-security-1782866336 仍待人工 merge)。**已审源码 22 处:.claude/hooks/ 10 hook(codegraph-sync.py case-456+notify-phone/autonomous-commit-gate/pipeline-gate/post-edit-lint.py case-448+scaffold-skill.sh+opt-worktree.sh+scout-scan.py(case-380/049)+triage.py+bff_client.py(case-420 F3+case-436 F1 已合并 main@125a15e)+audit_log.py(case-424)+autonomous-commit-gate.py(case-428/440 已合并 main@051bb4b)+apply_resource_access.py(case-432 info deferred)+pipeline-gate.py(case-432/433 已合并 main)+notify-phone.py(case-444 已合并 main@9a8748e)+post-edit-lint.py(case-448)+scripts/route-health-scorer.py(case-452 无真问题)+codegraph-sync.py(case-456 无真问题)+discovery-gate.py(case-460 无真问题)+auto-commit.py(case-464 1 medium 已起 opt-security-1782866336@ba52e9c 修复,case-465 审查确认可 merge 待人工)**。
-- **当前阶段**: case-466 worktree-cleanup 完成(optimization 死桩已清,opt-security-1782866336 待人工 merge);下轮 case-467=467%4=3≠0 非审计轮·skip 心跳
+- **当前阶段**: case-467 skip 心跳完成(非审计轮 467%4=3≠0,opt-security-1782866336 待人工 merge 引擎无权动);下轮 case-468=468%4=0 审计轮·DO A 代码审计 续审 decision-observer.py 776行
 - **GOAL_STATUS**: active
 - **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动；审计轮次每 4 case 强制 code-review/security-review + 敏感路径 audit-log 埋点）
-- **LAST_UPDATED**: 2026-07-01(case-466)
-- **LAST_WORKTREE**: none (case-466 为 cleanup 操作,删 stale optimization worktree+branch auto/optimization@5ed9a52;opt-security-1782866336@ba52e9c 仍 pending 待人工 merge)
+- **LAST_UPDATED**: 2026-07-01(case-467)
+- **LAST_WORKTREE**: none (case-467 非审计轮 skip 心跳无源码改动;opt-security-1782866336@ba52e9c 仍 pending 待人工 merge,ahead=1)
 - **LAST_OUTCOME**: done
-- **NEXT_SUGGESTION**: [1]【人工 merge 待办】用户手动 `git merge --squash auto/opt-security-1782866336 && git commit` 落 main(auto-commit.py push 块补 3 处审计埋点,case-465 审查确认可 squash merge),随后 `bash scripts/opt-worktree.sh . cleanup` 清 opt-security worktree。[2]【case-467=467%4=3≠0 非审计轮·skip 心跳】若用户未 merge opt-security,无新源码改动、无 stale worktree(optimization 已清)、scout-scan 预期 score=0.0→skip 心跳。[3]【case-468=468%4=0 审计轮·DO A 代码审计】续审未审源码,首选 decision-observer.py(776行,最大未审单体)
+- **NEXT_SUGGESTION**: [1]【人工 merge 待办】用户手动 `git merge --squash auto/opt-security-1782866336 && git commit` 落 main(auto-commit.py push 块补 3 处审计埋点,case-465 审查确认可 squash merge),随后 `bash scripts/opt-worktree.sh . cleanup` 清 opt-security worktree。[2]【case-468=468%4=0 审计轮·DO A 代码审计】续审未审源码,首选 decision-observer.py(776行,最大未审单体);用户未 merge opt-security 前引擎每轮 skip 心跳。
 - **自主循环**: 🟢 活跃
   - L1 Inline: 每次回复末尾内联检查 (+ git status)
   - L2 Heartbeat: CronCreate 每7分钟（执行轨——推进 Studio 阶段或主动扫描）
@@ -75,9 +75,9 @@ metadata:
 <!-- GOAL_STATUS: active -->
 <!-- ACTIVE_GOAL: ralph-wiggum-autonomous-loop (每轮一个小工作单位，scout-scan 排序选任务) -->
 <!-- LAST_UPDATED: 2026-07-01 -->
-<!-- LAST_WORKTREE: none（case-466 cleanup 删 stale optimization@5ed9a52;opt-security-1782866336@ba52e9c 仍 pending 待人工 merge） -->
+<!-- LAST_WORKTREE: none（case-467 非审计轮 skip 心跳无源码改动;opt-security-1782866336@ba52e9c 仍 pending 待人工 merge,ahead=1） -->
 <!-- LAST_OUTCOME: done -->
-<!-- NEXT_SUGGESTION: [1]人工 `git merge --squash auto/opt-security-1782866336 && git commit` + cleanup。[2]case-467=467%4=3≠0 skip 心跳(无新源码改动/stale 已清)。[3]case-468=468%4=0 审计轮续审 decision-observer.py 776行 -->
+<!-- NEXT_SUGGESTION: [1]人工 `git merge --squash auto/opt-security-1782866336 && git commit` + cleanup。[2]case-468=468%4=0 审计轮·DO A 续审 decision-observer.py 776行 -->
 
 | 字段 | 内容 |
 |------|------|
