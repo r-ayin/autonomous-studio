@@ -9,7 +9,7 @@
 - 不做 `moni` 前端重构（用户 2026-06-XX 定，历史包袱大、不在范围内）
 - 不动 `.codebase-index/` 大 JSON（只读不写）
 - 不直接 `git commit` 到 main（autonomous-commit-gate.py 会拦；产出全进 opt-worktree）
-- 不 push 到远端、不改 git config、不 force push
+- 不 push 到 main/master 远端（reference-transaction hook 拦截；只走 opt-worktree.sh merge 走 sanctioned squash）；**但 auto/opt-* 分支自动 push 到 origin**（用户 2026-07-01 改：worktree 分支均经 opt-worktree.sh cmd_commit 内置 push 步骤自动同步远端，无需人工 push）
 - 不碰其他项目的 `.env` / 凭证 / 密钥文件
 - 不做"日常自我润色"型无意义提交（autonomous-studio 自身仅当真有结构性问题才修）
 

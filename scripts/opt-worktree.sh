@@ -560,6 +560,19 @@ cmd_commit() {
     exit 1
   fi
   echo "✓ 提交到 $(basename "$target")  方向=$direction"
+
+  # ⑤ 自动 push opt 分支到 origin（用户 2026-07-01 定）：
+  # worktree 分支均为 auto/opt-* 命名，远端 push 安全；main/master 由 reference-transaction
+  # hook 拦截直写，且 worktree 分支永不命中 main/master。push 失败不阻断 commit（已落本地），
+  # 只 warn——网络/权限问题不应让引擎整轮 fail。
+  local wt_branch; wt_branch=$(git -C "$target" symbolic-ref --short HEAD 2>/dev/null)
+  if [[ -n "$wt_branch" && "$wt_branch" == auto/opt-* ]]; then
+    if git -C "$target" push -u origin "HEAD:${wt_branch}" 2>&1 | sed 's/^/  [push] /'; then
+      echo "✓ 已 push ${wt_branch} → origin/${wt_branch}"
+    else
+      echo "⚠️ push ${wt_branch} 失败（commit 已落本地 worktree，不阻断；下次 merge 时再 push）" >&2
+    fi
+  fi
 }
 
 cmd_list() {
