@@ -1,0 +1,25 @@
+{
+  "case_id": "case-2026-07-01-468",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-01T00:55:00Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "code-audit:autonomous-studio-aone",
+  "situation": "审计轮 case-468=468%4=0(DO A 强制代码审计)。承接 case-467 NEXT[2]『续审 decision-observer.py 776行』。scout-scan #1=AS score=0.0『review 1 个待合并 worktree』但 opt-security-1782866336@ba52e9c 已由 case-465 逐行审查过且引擎无权 merge,重复审无价值→按 DO A 改走源码审计路径,选未审单体 decision-observer.py(.claude/hooks/decision-observer.py,776行,UserPromptSubmit+Stop hook,触及 DO B 敏感路径:用户输入预览落盘 .claude/decision-log.jsonl)。",
+  "action": "security-review 全文件逐行审计。重点查:① 注入风险(无 subprocess/shell,纯 re+json,无命令注入面)② 凭证 at-rest(_redact_secrets 在写日志前擦秘钥)③ path traversal(get_session_file 用 re.sub [^A-Za-z0-9_\\-] 清洗 session_id,防 ../)④ ReDoS(所有量词为单字符类上的 {n,m}/{n,},无嵌套量词交替回溯)⑤ prompt injection 到 additionalContext(prompt_preview 仅落日志不注入系统提示;注入字段 active_project/phase/studio_hint 均引擎自写或固定 map 派生,非用户原文)⑥ status.json read-modify-write 无锁(TOCTOU,单用户低并发可接受)。发现 1 真问题:_redact_secrets 的 key=value 值字符类 [A-Za-z0-9_\\-/=] 拒收常见密码特殊字符(@#!$%^&*),致 password=p@ss! / api_key=ab!1234 / secret=\\\"p@##word\\\" 类凭证在值首 4 字符内出现特殊字符时整条漏过脱敏,以明文落 .claude/decision-log.jsonl at-rest(DO B 用户输入存取敏感路径,凭证泄漏)。实测复现(/tmp/test_redact.py):3 条特殊字符样本 redaction_count=0 全漏,2 条纯 alnum 样本正常 redact。起 opt-security-1782866336 修复(同 area 复用 worktree,case-464 audit-log 修复亦在此 wt):扩值字符类为 [A-Za-z0-9_\\-/=~!@#$%^&*.]。验证(/tmp/decision-observer-fixed.py 动态加载):5/5 凭证样本现均 redact、2/2 非凭证句子无 false positive、100014 字符对抗输入(password= + 'a@'*50000 + '!!!!!')3.2ms 完成(无 ReDoS)。py_compile+AST OK。",
+  "files_changed": [".claude/hooks/decision-observer.py"],
+  "worktree": "opt-security-1782866336@cf17a35(ahead=2: ba52e9c case-464 audit-log + cf17a35 case-468 redaction)",
+  "direction": "audit",
+  "outcome": "succeeded",
+  "outcome_evidence": "① 漏洞复现:/tmp/test_redact.py 跑原 pattern → 'my password=p@ssw0rd! here' redaction_count=0(漏)、'config: api_key=ab!1234abcd then x' count=0(漏)、'secret=\\\"p@##word\\\" fallback' count=0(漏)、'token=abcd1234efgh plain' count=1(正常)、'password=1234 short-ish' count=1(正常)。② 修复验证:动态加载 /tmp/decision-observer-fixed.py._redact_secrets → 上述 5 样本均 n=1 redact,且 'the access_key for user is not set'(无 =/: )n=0、'a normal sentence with no secrets here' n=0(无 false positive);对抗输入 100014 字符 0.0032s(无 ReDoS)。③ 提交:opt-worktree.sh commit security:redaction → '✓ 提交到 opt-security-1782866336 方向=security:redaction',commit cf17a35。④ diff:git diff --stat main..auto/opt-security-1782866336 显示 '.claude/hooks/decision-observer.py | 2 +-'(1 行字符类扩展)。⑤ 四验:git status --porcelain=空、git worktree list=main@57d16a9+opt-security-1782866336@cf17a35+optimization@57d16a9(stub)、git branch 含 auto/opt-security-1782866336+auto/optimization+*main、git rev-list main..auto/opt-security-1782866336=2。⑥ py_compile + ast.parse 均 OK。",
+  "next_suggestion": "[1]【人工 merge 待办,累计 2 commit】用户手动 `git merge --squash auto/opt-security-1782866336 && git commit` 落 main(cf17a35 redaction 修复 + ba52e9c auto-commit.py push 审计埋点),随后 `bash scripts/opt-worktree.sh . cleanup` 清 opt-security worktree+auto/optimization 空 stub。case-465 已审 ba52e9c 干净;cf17a35 为 1 行字符类扩展+已动态验证,人工可一并 squash。[2]【case-469=469%4=1≠0 非审计轮】opt-security 仍 pending 引擎无权 merge→skip 心跳 或 承接新 scout-scan 推荐(若 main 已被人工 merge 则 cleanup 后续审下一未审源码)。[3]【下个审计轮 case-472=472%4=0】续审剩余未审源码(scripts/ 下 distill-patterns.py/confidence-calibrator.js 等)。",
+  "audit_type": "security-review",
+  "audit_findings": [
+    {
+      "file": ".claude/hooks/decision-observer.py",
+      "line": 80,
+      "severity": "medium",
+      "finding": "_redact_secrets 的 key=value 值字符类 [A-Za-z0-9_\\-/=] 拒收常见密码特殊字符(@ # ! $ % ^ & * .)。当用户在 prompt 预览(前 300/500 字符)中粘贴 password=p@ss! / api_key=ab!1234 / secret=\\\"p@##word\\\" 类凭证且值首 4 字符内含特殊字符时,整条 credential 漏过脱敏,以明文追加到 .claude/decision-log.jsonl at-rest(DO B 用户输入存取敏感路径,凭证明文泄漏)。实测 3/3 特殊字符样本漏过、2/2 纯 alnum 样本正常。注:此为 defense-in-depth 缺口,非唯一防线——仅在用户主动粘贴秘钥到 prompt 时触发,日常研发 prompt 不含秘钥。",
+      "remediation": "扩值字符类为 [A-Za-z0-9_\\-/=~!@#$%^&*.](加 ~!@#$%^&*.),{4,} 阈值与引号终止语义不变。已落 opt-security-1782866336@cf17a35。验证:5/5 凭证样本 redact、2/2 非凭证句子无 false positive、100k 对抗输入 3ms 无 ReDoS。"
+    }
+  ]
+}
