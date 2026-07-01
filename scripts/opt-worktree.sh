@@ -702,12 +702,25 @@ cmd_commit() {
   # worktree 分支均为 auto/opt-* 命名，远端 push 安全；main/master 由 reference-transaction
   # hook 拦截直写，且 worktree 分支永不命中 main/master。push 失败不阻断 commit（已落本地），
   # 只 warn——网络/权限问题不应让引擎整轮 fail。
+  # AS-L-002 fix: 原 `2>&1 | sed` 会把 stderr 错误消息也加前缀污染、且 if 取 sed 退出码
+  # (几乎恒 0) 导致 push 失败时误判为成功。改为分离流 + PIPESTATUS 取 git 真实退出码。
   local wt_branch; wt_branch=$(git -C "$target" symbolic-ref --short HEAD 2>/dev/null)
   if [[ -n "$wt_branch" && "$wt_branch" == auto/opt-* ]]; then
-    if git -C "$target" push -u origin "HEAD:${wt_branch}" 2>&1 | sed 's/^/  [push] /'; then
+    local push_out push_err
+    push_err=$(mktemp)
+    push_out=$(git -C "$target" push -u origin "HEAD:${wt_branch}" 2>"$push_err")
+    local push_rc=$?
+    if [[ -n "$push_out" ]]; then
+      printf '%s\n' "$push_out" | sed 's/^/  [push] /'
+    fi
+    if [[ -s "$push_err" ]]; then
+      sed 's/^/  [push:err] /' "$push_err" >&2
+    fi
+    rm -f "$push_err"
+    if (( push_rc == 0 )); then
       echo "✓ 已 push ${wt_branch} → origin/${wt_branch}"
     else
-      echo "⚠️ push ${wt_branch} 失败（commit 已落本地 worktree，不阻断；下次 merge 时再 push）" >&2
+      echo "⚠️ push ${wt_branch} 失败 (rc=${push_rc}，commit 已落本地 worktree，不阻断；下次 merge 时再 push)" >&2
     fi
   fi
 }
