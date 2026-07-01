@@ -137,7 +137,7 @@ slug() { echo "$1" | tr ':/*?[]' '------'; }
 judge_direction_kind() {
   local proj="$1"; shift
   local -a files=("$@")
-  local pi_file="$PROJECT/.claude/public-interfaces.txt"
+  local pi_file="$proj/.claude/public-interfaces.txt"
   [[ -f "$pi_file" ]] || { echo "route-fix"; return 0; }
   local proj_name; proj_name="$(basename "$proj")"
   # 若未传 files，扫 main 工作区改动
@@ -150,14 +150,26 @@ judge_direction_kind() {
     done < <(git -C "$proj" status --porcelain -z 2>/dev/null)
   fi
   [[ ${#files[@]} -eq 0 ]] && { echo "route-fix"; return 0; }
-  local f
+  # 项目名别名生成：public-interfaces.txt 可能用短名（如 autonomous-studio），
+  # 而实际目录带后缀（如 autonomous-studio-aone）。生成候选列表依次尝试匹配。
+  # 后缀列表覆盖常见开发仓命名约定；无命中则仅用原名（保持向后兼容）。
+  local -a name_candidates=("$proj_name")
+  local _suffix
+  for _suffix in -aone -main -dev -repo -workspace; do
+    if [[ "$proj_name" == *"${_suffix}" ]]; then
+      name_candidates+=("${proj_name%"${_suffix}"}")
+    fi
+  done
+  local f candidate
   for f in "${files[@]}"; do
     [[ -z "$f" ]] && continue
-    # 精确行匹配 "<proj>:<f>"
-    if grep -qxF "${proj_name}:${f}" "$pi_file" 2>/dev/null; then
-      echo "direction-shift"
-      return 0
-    fi
+    for candidate in "${name_candidates[@]}"; do
+      # 精确行匹配 "<proj>:<f>"
+      if grep -qxF "${candidate}:${f}" "$pi_file" 2>/dev/null; then
+        echo "direction-shift"
+        return 0
+      fi
+    done
   done
   echo "route-fix"
   return 0
@@ -493,6 +505,29 @@ cmd_commit() {
   done
   cd "$PROJECT"
   local -a files=("${_files_norm[@]}")   # 数组保留含空格的文件名（旧 "${@:5}" 拼成空格串再 for f in $files 会按 IFS 分词，空格文件名断裂）
+
+  # State-only commit guard（audit-2026-07-01-002 follow-up，卡死保护补丁）：
+  # fix-in-progress BLOCKED on human merge 时，引擎每轮仍会回写 autonomous-state / audit-cycle-state / case JSON，
+  # 若允许这些纯状态文件进 worktree commit，会在 optimization 分支堆积无意义 state-sync commit
+  # （实测 60 轮堆了 39 behind + 11 state commit），污染 diff、增加未来 merge 冲突面。
+  # 检测：files 非空 且 全部命中 state-file 模式 → 拒绝提交，提示人工 merge。
+  # 注：files 为空时走下方 git status 兜底（可能真有源码改动未显式列出），此处仅拦截显式声明的纯状态提交。
+  if [[ ${#files[@]} -gt 0 ]]; then
+    local _state_only=1
+    for _f in "${files[@]}"; do
+      case "$_f" in
+        .claude/memory/autonomous-state.md) ;;
+        .claude/audit-cycle-state.json) ;;
+        .claude/decisions/case-*.json) ;;
+        *) _state_only=0; break ;;
+      esac
+    done
+    if [[ $_state_only -eq 1 ]]; then
+      echo "⏸️  state-only commit blocked: 仅含引擎状态文件（autonomous-state/audit-cycle-state/case JSON），fix-in-progress BLOCKED 阶段禁止堆积 state-sync commit。请先人工 merge pending fixes，或本轮跳过 worktree 提交。" >&2
+      return 0
+    fi
+  fi
+
   if [[ -z "$(git status --porcelain)" ]]; then
     echo "（无未提交改动，跳过）"
     return 0
