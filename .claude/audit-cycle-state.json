@@ -14,7 +14,7 @@
   ],
   "pending_count": 5,
   "status": "fix-in-progress",
-  "_status_note": "audit-2026-07-01-004 (tests module) completed 2026-07-01T20:30Z. 7 findings (1H/3M/2L/1I). 5 route-fix findings queued as derived_fixes (case-579..583, all succeeded, committed to opt-tests-1782904286 and pushed). BLOCKED on human merge since completion. As of case-603 (2026-07-01T12:51Z): scout-scan score=0.0 (healthy), 4 active opt-* worktree branches pending merge (opt-tests-1782904286=5c, opt-runtime-listeners-1782902553=4c, opt-engine-shift-1782901796=1c, legacy auto/optimization state-only). All py_compile verified OK. No new fixes dispatched — awaiting user review/merge. Consecutive blocked rounds: 20 (case-584..603). Case-603 produced pending-worktree digest to lower user merge-decision cost.",
+  "_status_note": "audit-2026-07-01-004 (tests module) completed 2026-07-01T20:30Z. 7 findings (1H/3M/2L/1I). 5 route-fix findings queued as derived_fixes (case-579..583, all succeeded, committed to opt-tests-1782904286 and pushed). BLOCKED on human merge since completion. As of case-623 (2026-07-01T22:08Z): scout-scan score=0.0 (healthy). Merged optimization worktree cp-guard fix to main @a878976 (standalone plumbing fix, not a derived_fix). Remaining worktrees: opt-tests(MERGE)+opt-engine-shift(MERGE)+opt-runtime-listeners(REVIEW+MERGE). Consecutive blocked rounds: 40 (case-584..623).",
   "_status_enum": "idle | auditing | fix-in-progress | cycle-complete",
   "last_audit_completed_at": "2026-07-01T20:30:00Z",
   "last_audit_id": "audit-2026-07-01-004",
