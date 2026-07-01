@@ -16,6 +16,7 @@ import sys
 import subprocess
 import tempfile
 from datetime import datetime, timezone
+from pathlib import Path
 
 # Windows GBK 编码兼容
 if sys.platform == "win32":
@@ -231,9 +232,6 @@ def print_recovery_hint(filepath, checkpoint):
 
 # ── main ───────────────────────────────────────
 if __name__ == "__main__":
-    # 兼容 Python 3.6+
-    from pathlib import Path
-
     checkpoint, timestamp = build_checkpoint()
     filepath = write_checkpoint(checkpoint, timestamp)
     prune_old_checkpoints()
