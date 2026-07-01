@@ -4,12 +4,13 @@
   1. 缺 PROGRESS+GATES 的项目排在高分（引擎被导向真正缺照顾的项目）；
   2. health_priority 不依赖 last_commit 新旧（打破 worktree 流程下的自反馈）；
   3. autonomous-studio 不被特殊排除——按健康度公平排名（引擎真有 bug 仍可被选中）；
-  4. 文本输出含「推荐工作单位」段；
+  4. 文本输出含「推荐工作单位」段且 #N 行格式合规（L-001 fix）；
   5. scan_project → health_priority 集成路径（非 _rep 合成旁路）对真实文件系统行为正确。
 """
 import importlib.util
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -160,16 +161,47 @@ def test_recommendations_are_structurally_complete():
             f"recommendation 项缺有效 name: {rc!r}"
 
 
+# L-001 fix: 锁定 #N 行格式 — `<2空格>#<rank> <name> (score=<float>) — <reason>`
+# 防止回归到"只打印字符串、不打印结构化推荐行"的退化实现。
+_REC_LINE_RE = re.compile(
+    r"^  #(\d+)\s+(\S+)\s+\(score=([\d.]+)\)\s+—\s+(.+)$"
+)
+
+
 def test_text_output_has_recommendation_section():
-    """文本模式必须打印「推荐工作单位」段。"""
+    """文本模式必须打印「推荐工作单位」段且 #N 行格式合规（L-001 fix）。
+
+    弱断言 `"#1" in stdout` 允许退化实现通过（例如把 "#1" 写在说明文字里
+    而不是真正的推荐行）。本测试解析每行 #N，验证：
+      - 至少存在一条格式合规的推荐行；
+      - rank 编号从 1 开始连续递增；
+      - score 为非负浮点；
+      - reason 非空。
+    """
     ws = _real_workspace()
     r = subprocess.run(
         [sys.executable, SCRIPT, "--workspace", ws],
         capture_output=True, text=True, timeout=180,
     )
     assert r.returncode == 0, r.stderr
-    assert "推荐工作单位" in r.stdout
-    assert "#1" in r.stdout
+    assert "推荐工作单位" in r.stdout, "缺「推荐工作单位」段标题"
+
+    matches = [_REC_LINE_RE.match(line) for line in r.stdout.splitlines()]
+    rec_lines = [m for m in matches if m]
+    assert rec_lines, (
+        "未找到任何格式合规的 #N 推荐行；"
+        f"期望匹配 {_REC_LINE_RE.pattern!r}"
+    )
+
+    ranks = [int(m.group(1)) for m in rec_lines]
+    assert ranks[0] == 1, f"推荐行 rank 应从 1 起，实际首条 rank={ranks[0]}"
+    assert ranks == list(range(1, len(ranks) + 1)), \
+        f"推荐行 rank 应连续递增，实际 {ranks}"
+
+    for m in rec_lines:
+        score = float(m.group(3))
+        assert score >= 0.0, f"score 应为非负浮点，实际 {score}"
+        assert m.group(4).strip(), f"reason 不应为空：{m.group(0)!r}"
 
 
 def test_scan_project_to_health_priority_integration(tmp_path):
