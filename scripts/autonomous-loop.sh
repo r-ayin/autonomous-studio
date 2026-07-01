@@ -22,6 +22,11 @@
 # 不在 workspace 根目录跑——case/state/audit 都落 engine-dir/.claude/。
 set -uo pipefail
 
+# L-001 fix (audit-2026-07-01-002): Ctrl-C / SIGTERM 时清理整个进程组，
+# 防止 claude -p 子进程成孤儿继续消耗资源/写入状态。
+# kill 0 = 向当前进程组所有进程发信号；exit 130 = 128+SIGINT 标准退出码。
+trap 'kill 0 2>/dev/null; exit 130' INT TERM
+
 WORKSPACE="${1:-.}"
 ENGINE_DIR="${2:-$WORKSPACE/autonomous-studio}"
 WORKSPACE="$(cd "$WORKSPACE" && pwd)"
