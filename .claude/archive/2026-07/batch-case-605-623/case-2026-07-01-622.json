@@ -1,0 +1,32 @@
+{
+  "case_id": "case-2026-07-01-622",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-01T14:03:49Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "engine:state-only-cp-guard (cleanup optimization worktree pollution + add _is_state_only_file precheck)",
+  "situation": "瞭望轮#79。audit-cycle-state.status=fix-in-progress, 5 derived_fixes (case-579..583) 全 pending, BLOCKED on human merge 连续 38 轮（case-584..621）。卡死保护触发但 workspace 仅 1 项目无处可跳。scout score=0.0。诊断发现 optimization worktree 累积 38+ 轮 state-only commits（autonomous-state.md/audit-cycle-state.json/case-*.json/audit-*.md），这些文件按 MEMORY.md archival-commit-mechanism 应直提 main，误入 worktree 导致：(1) cp-guard 对 opt-worktree.sh 自身修复也拦（optimization 内脚本与 main HEAD 不同）；(2) structural-debt.md 被误删；(3) 历史 case/audit 报告在 worktree 里冗余存在。",
+  "action": "[1] reject optimization worktree（清除污染，分支 auto/optimization 已删）。[2] 在 scripts/opt-worktree.sh cmd_commit 加 _is_state_only_file() 预检函数，命中 .claude/memory/autonomous-state.md / .claude/audit-cycle-state.json / .claude/decisions/case-*.json / .claude/audits/audit-*.md → 跳过 cp 并提示'直提 main'。显式文件分支和未指定文件列表的全量扫分支都加了预检。[3] 重建 optimization worktree 并提交本次修复。",
+  "files_changed": ["scripts/opt-worktree.sh"],
+  "worktree": "optimization (freshly rebuilt after rejecting polluted version)",
+  "direction": "engine:state-only-cp-guard",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 4fa24b2 landed in freshly-rebuilt optimization worktree; 'git -C optimization log --oneline -1' shows fix commit; opt-worktree.sh commit returned '✓ 提交到 optimization'; worktree list shows optimization at 4fa24b2 vs prior d36c522 (rejected).",
+  "next_suggestion": [
+    "【用户merge】4 个 worktree 待审：opt-tests(MERGE, 5 commits for audit-004), opt-engine-shift(MERGE, 1 commit judge_direction_kind fix), opt-runtime-listeners(REVIEW+MERGE, 4 commits audit-003 fixes), optimization(MERGE, 1 commit state-only-cp-guard)。按 H→M→L→cleanup 优先级 merge。",
+    "merge opt-tests 后把 audit-cycle-state.derived_fixes[case-579..583].status→merged, pending_count→0, status→cycle-complete → 下轮触发 audit-005。",
+    "audit-005 候选模块：src/ 引擎核心（hooks/scripts/tests/runtime-listeners 已审完）。"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "scripts/opt-worktree.sh",
+      "line": 560,
+      "severity": "medium",
+      "finding": "cmd_commit lacked state-only file precheck — autonomous-state.md/audit-cycle-state.json/case-*.json/audit-*.md were cp'd into optimization worktree despite MEMORY.md archival-commit-mechanism directing them to main. Caused 38+ rounds of state-only commit accumulation, cp-guard blocking subsequent opt-worktree.sh self-fixes, and stale content drift.",
+      "remediation": "Added _is_state_only_file() helper called before _validate_commit_file_path in both explicit-files and all-changes branches. Matching files are skipped with user-visible message directing to main-direct path.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": null,
+  "audit_depth": "shallow"
+}
