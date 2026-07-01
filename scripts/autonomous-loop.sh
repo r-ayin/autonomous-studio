@@ -74,14 +74,20 @@ GLM_FAIL_STREAK=0
 PROBE_COUNTDOWN=0
 
 # 跑一轮；stdout 显示末 30 行，返回 0 成功 / 1 检测到限流信号
+# H-005 fix（audit-002）：输出落临时文件而非 shell 变量。
+#   原实现 out=$(claude -p ... 2>&1) 后 echo|tail + echo|grep 三次复制 MB 级字符串
+#   → bash 变量膨胀 + pipe buffer 全量驻留敏感信息（文件内容/工具结果）。
+#   改为重定向到 mktemp 临时文件，tail/grep 直接读文件，结束 shred -u 清除。
 run_round() {
-  local model="$1" out
-  out=$(claude -p "$PROMPT" --model "$model" --permission-mode bypassPermissions 2>&1)
-  echo "$out" | tail -30
-  if echo "$out" | grep -qiE '402|429|quota[ _]?exceed|rate[ _]?limit|overloaded|insufficient'; then
-    return 1
+  local model="$1" out_file rc=0
+  out_file=$(mktemp) || return 1
+  claude -p "$PROMPT" --model "$model" --permission-mode bypassPermissions >"$out_file" 2>&1 || true
+  tail -30 "$out_file"
+  if grep -qiE '402|429|quota[ _]?exceed|rate[ _]?limit|overloaded|insufficient' "$out_file"; then
+    rc=1
   fi
-  return 0
+  shred -u "$out_file" 2>/dev/null || rm -f "$out_file"
+  return $rc
 }
 
 ITER=0
