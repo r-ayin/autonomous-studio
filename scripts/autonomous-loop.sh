@@ -15,8 +15,8 @@
 #
 # 用法:
 #   autonomous-loop.sh <workspace> [engine-dir]        # 前台跑（看输出）
-#   autonomous-loop.sh <workspace> [engine-dir] --bg   # 后台跑（nohup）
 #   停: touch <engine-dir>/.claude/.stop_autonomous  或 kill 进程
+# 注: 后台运行请自行 nohup ... &，脚本内不做 daemonize（保留前台信号语义）。
 #
 # 引擎自身 cwd = engine-dir（默认 <workspace>/autonomous-studio），
 # 不在 workspace 根目录跑——case/state/audit 都落 engine-dir/.claude/。
