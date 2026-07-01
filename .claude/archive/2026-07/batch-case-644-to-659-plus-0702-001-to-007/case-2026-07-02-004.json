@@ -1,0 +1,23 @@
+{
+  "case_id": "case-2026-07-02-004",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-01T16:18:00Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "瞭望轮#98 — scout-scan健康快照+blocked-on-merge计数80+active cases盘点",
+  "situation": "audit-cycle-state.status=fix-in-progress, 5 derived_fixes (case-579..583) 全部 pending, 阻塞于 human merge。Scout score=0.0 (healthy)。3 worktree 仍 unmerged: opt-tests-1782904286 (52ae82e), opt-engine-shift-1782901796 (8f2cc8b), opt-runtime-listeners-1782902553 (0056380)。Main HEAD=20fcfe2, 无新 merge。Active cases 实际为 10 个 (653-659 + 2026-07-02-001/002/003)，state _status_note 漏列 653。",
+  "action": "跑 scout-scan.py 拿健康快照；确认 main 无新 merge、3 worktree 仍在；blocked 计数从 79 → 80；盘点 active cases 发现 state 漏列 case-653；不派生 fix（无可做小单位），只写瞭望 case + 回写状态提醒用户 review/merge。",
+  "files_changed": [],
+  "worktree": null,
+  "direction": null,
+  "outcome": "succeeded",
+  "outcome_evidence": "scout-scan exit=0, score=0.0; git log -10 main 最新仍为 20fcfe2 (case-654); git worktree list 显示 3 opt-worktree 路径仍在; ls .claude/decisions/case-*.json 返回 10 个 active case 文件 (含 653)",
+  "next_suggestion": [
+    "用户 review/merge (或 reject) 3 个 unmerged worktree: opt-tests-1782904286 (case-579..583), opt-engine-shift-1782901796, opt-runtime-listeners-1782902553 — 已阻塞 80 轮",
+    "merge/reject 落定后 audit-cycle-state.status 改 cycle-complete，下轮触发新一轮全量审计 (target: phases/, never audited, high cross-module coupling)",
+    "修正 audit-cycle-state._status_note active cases 列表补上 case-653"
+  ],
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": null,
+  "audit_depth": "shallow"
+}

@@ -1,0 +1,23 @@
+{
+  "case_id": "case-2026-07-02-008",
+  "agent_id": "ralph-wiggum-loop",
+  "timestamp": "2026-07-01T16:30:57Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "archive-maintenance-and-state-consolidation",
+  "situation": "瞭望轮#102。status=fix-in-progress，5 derived_fixes 全部 pending（blocked on human merge 连续 84+ 轮）。scout-scan score=0.0（健康），无紧迫小工作单位。decisions/ 目录累积 14 个纯瞭望 case (653-659 + 07-02-001..007) 全为 blocked-on-merge 重复快照；另有遗留 .claude/decisions/archive/ 子目录（早期误放，8 个 case）与主归档 .claude/archive/ 并存，结构不一致。",
+  "action": "归档维护：(1) 将 14 个活跃瞭望 case 移到 .claude/archive/2026-07/batch-case-644-to-659-plus-0702-001-to-007/；(2) 将遗留 .claude/decisions/archive/2026-07/batch-case-644-to-652/ 的 8 个 case 移到 .claude/archive/2026-07/batch-case-644-to-652/，删除空遗留目录树。decisions/ 现只剩 case-log.schema.json。无代码改动，未触发 opt-worktree。",
+  "files_changed": [],
+  "worktree": null,
+  "direction": null,
+  "outcome": "succeeded",
+  "outcome_evidence": "ls .claude/decisions/case-*.json | wc -l = 1 (only schema); ls .claude/archive/2026-07/batch-case-644-to-659-plus-0702-001-to-007/ | wc -l = 14; ls .claude/archive/2026-07/batch-case-644-to-652/ | wc -l = 8; test -d .claude/decisions/archive = false (removed).",
+  "next_suggestion": [
+    "继续等待人工 review/merge 3 个 worktree (opt-tests-1782904286, opt-engine-shift-1782901796, opt-runtime-listeners-1782902553) — 5 derived_fixes 仍 pending",
+    "若 merge 长期不来，考虑在 NEXT_SUGGESTION 加提醒频率或主动 ping 用户",
+    "所有项目健康度良好，下轮若无变化可继续做 archive/state 维护或跳过"
+  ],
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": null,
+  "audit_depth": "shallow"
+}
