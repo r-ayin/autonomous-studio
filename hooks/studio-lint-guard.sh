@@ -18,7 +18,7 @@ fi
 INPUT=$(cat)
 TOOL_NAME=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('tool_name',''))" 2>/dev/null)
 
-if [ "$TOOL_NAME" != "Write" ]; then
+if [ "$TOOL_NAME" != "Write" ] && [ "$TOOL_NAME" != "Edit" ]; then
   echo '{}'
   exit 0
 fi
@@ -35,7 +35,13 @@ ERROR=""
 
 case "$EXT" in
   py)
-    CONTENT=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('tool_input',{}).get('content',''))" 2>/dev/null)
+    # Write uses 'content'; Edit uses 'new_string'. Extract whichever is present.
+    CONTENT=$(echo "$INPUT" | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+ti = d.get('tool_input', {})
+print(ti.get('content') or ti.get('new_string') or '')
+" 2>/dev/null)
     if [ -n "$CONTENT" ]; then
       ERROR=$(echo "$CONTENT" | python3 -c "
 import sys, py_compile, tempfile, os
@@ -53,7 +59,13 @@ finally:
     fi
     ;;
   json)
-    CONTENT=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('tool_input',{}).get('content',''))" 2>/dev/null)
+    # Write uses 'content'; Edit uses 'new_string'. Extract whichever is present.
+    CONTENT=$(echo "$INPUT" | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+ti = d.get('tool_input', {})
+print(ti.get('content') or ti.get('new_string') or '')
+" 2>/dev/null)
     if [ -n "$CONTENT" ]; then
       ERROR=$(echo "$CONTENT" | python3 -c "
 import sys, json
@@ -70,11 +82,13 @@ except json.JSONDecodeError as e:
 esac
 
 if [ -n "$ERROR" ]; then
+  export LINT_GUARD_ERROR="$ERROR"
   python3 -c "
-import json
+import json, os
+err = os.environ.get('LINT_GUARD_ERROR', '')
 print(json.dumps({
     'decision': 'block',
-    'reason': 'Lint guard: syntax error detected. Fix the error before writing.\n$ERROR'
+    'reason': 'Lint guard: syntax error detected. Fix the error before writing.\n' + err
 }, ensure_ascii=False))
 "
 else
