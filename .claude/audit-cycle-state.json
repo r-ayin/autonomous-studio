@@ -18,7 +18,7 @@
   ],
   "pending_count": 9,
   "status": "fix-in-progress",
-  "_status_note": "audit-2026-07-01-002 (scripts module) 完成深度审计，9 条 finding (2H/4M/3L) 全部 route-fix。case-494~502 共 9 条已全部派生待 merge。case-516 为连续第8次瞭望无进展(>=6轮强提醒阈值已达,main 分歧 behind=53/ahead=5 CRITICAL)。所有 fix merged/rejected 后 status→cycle-complete 触发下一轮全量审计。",
+  "_status_note": "audit-2026-07-01-002 (scripts module) 完成深度审计，9 条 finding (2H/4M/3L) 全部 route-fix。case-494~502 共 9 条已全部派生待 merge。case-517 为连续第9次瞭望无进展(>=6轮强提醒阈值已达,main 分歧 behind=53/ahead=7 CRITICAL)。所有 fix merged/rejected 后 status→cycle-complete 触发下一轮全量审计。",
   "_status_enum": "idle | auditing | fix-in-progress | cycle-complete",
   "last_audit_completed_at": "2026-07-01T03:55:00Z",
   "last_audit_id": "audit-2026-07-01-002",
