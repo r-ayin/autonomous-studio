@@ -398,7 +398,14 @@ cmd_commit() {
     target="$WT_BASE/opt-$(slug "$new_area")-shift-$ts"
     new_wt_branch="auto/opt-$(slug "$new_area")-shift-$ts"
     mkdir -p "$target"
-    git -C "$PROJECT" worktree add -b "$new_wt_branch" "$target" "$MAIN_BRANCH" 2>/dev/null
+    # worktree add 失败不得吞错继续（audit-002 H-001）：旧实现尾部 `2>/dev/null` 吞掉失败后，
+    # 仍向 mkdir 建出的空 dir 写 .opt-direction 桩并设 created_new_wt=1，造成功假象；后续
+    # cmd_commit 在非 worktree 上 cp/commit 必败且报错晦涩。改为校验：失败→清空 dir+中止。
+    if ! git -C "$PROJECT" worktree add -b "$new_wt_branch" "$target" "$MAIN_BRANCH" 2>/dev/null; then
+      echo "❌ direction-shift 建 worktree 失败: $target——检查 $MAIN_BRANCH 可用性 / $new_wt_branch 残留分支 / 路径权限。中止，未写 .opt-direction 桩。" >&2
+      rmdir --ignore-fail-on-non-empty "$target" 2>/dev/null || true
+      exit 1
+    fi
     echo "$direction" > "$target/.opt-direction"
     _ignore_opt_direction_marker "$target"
     created_new_wt=1
@@ -422,8 +429,8 @@ cmd_commit() {
       # 失败须清 husk：worktree add 失败（分支名撞/路径冲突）时 mkdir 已建空目录，
       # set -e 下硬 abort 会留空 husk 累积（.opt-worktrees/<proj>/.opt-worktrees/opt-*，
       # 见 case-392 husk 清扫：5 个空壳，4 个源此路径）。失败 rmdir + return 1 让调用方感知。
-      if ! git -C "$PROJECT" worktree add -b "auto/opt-$(slug "$new_area")-$ts" "$target" "$MAIN_BRANCH" 2>/dev/null; then
-        rmdir "$target" 2>/dev/null
+      if ! git -C "$PROJECT" worktree add -b "$new_wt_branch" "$target" "$MAIN_BRANCH" 2>/dev/null; then
+        rmdir --ignore-fail-on-non-empty "$target" 2>/dev/null || true
         echo "✗ worktree add 失败（分支名撞？路径冲突？），已清空 husk: $(basename "$target")" >&2
         return 1
       fi
