@@ -393,13 +393,22 @@ def do_commit(repo_name: str, repo_path: str, is_subrepo: bool,
             if rc_remote == 0:
                 rc_push, _, push_err = git(resolved, ["push", "origin", branch], timeout=60)
                 if rc_push == 0:
+                    # DO B 审计埋点（case-464 security-review 发现）：push origin 是敏感
+                    # 出站 subprocess 调用，原仅 stderr 打印不可观测。补 success 记录，
+                    # 使 push 行为可审计（result 如实反映成功/失败，不恒 success）。
+                    _audit_log_commit(repo_name, "success",
+                                      f"push origin/{branch}: {len(changes)} 文件")
                     if not suppress_output:
                         print(f"  [AUTO-PUSH] ✅ {repo_name}: → origin/{branch}", file=sys.stderr)
                 else:
+                    _audit_log_commit(repo_name, "failure",
+                                      f"push origin/{branch} 失败: {push_err[:160]}")
                     if not suppress_output:
                         print(f"  [AUTO-PUSH] ⚠️ {repo_name}: push 失败 — {push_err[:100]}", file=sys.stderr)
-    except Exception:
-        pass  # push 失败不阻塞
+    except Exception as push_exc:
+        # DO B（case-464）：push 异常路径亦记 failure，原 pass 吞掉不可审计。
+        _audit_log_commit(repo_name, "failure", f"push 异常: {str(push_exc)[:160]}")
+        pass  # push 失败不阻塞主流程
 
     return True
 

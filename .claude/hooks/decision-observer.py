@@ -77,7 +77,7 @@ _SECRET_PATTERNS = re.compile(
     r'|Bearer\s+[A-Za-z0-9._-]{8,}'                 # Bearer token
     r'|eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}'  # JWT
     r'|(?:password|passwd|pwd|secret|token|api[_-]?key|access[_-]?key)'
-    r'\s*[:=]\s*["\']?[A-Za-z0-9_\-+/=]{4,}'        # key=value / key: value
+    r'\s*[:=]\s*["\']?[A-Za-z0-9_\-+/=~!@#$%^&*.]{4,}'        # key=value / key: value（含常见密码特殊字符,case-468 修补：原 [A-Za-z0-9_\-+/=] 拒收 @#!$ 等,致 password=p@ss! 类凭证整条漏过脱敏直落 decision-log at-rest）
     r')',
     re.IGNORECASE
 )
