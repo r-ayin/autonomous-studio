@@ -70,11 +70,13 @@ except json.JSONDecodeError as e:
 esac
 
 if [ -n "$ERROR" ]; then
+  export LINT_GUARD_ERROR="$ERROR"
   python3 -c "
-import json
+import json, os
+err = os.environ.get('LINT_GUARD_ERROR', '')
 print(json.dumps({
     'decision': 'block',
-    'reason': 'Lint guard: syntax error detected. Fix the error before writing.\n$ERROR'
+    'reason': 'Lint guard: syntax error detected. Fix the error before writing.\n' + err
 }, ensure_ascii=False))
 "
 else
