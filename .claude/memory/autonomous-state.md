@@ -14,15 +14,15 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-07-01T11:42:47Z（瞭望/light 轮 case-492 收尾·外部 sanctioned-merge 已落地。本轮工作单位=audit-2026-07-01-001 H-005 codegraph-sync.py L355 capability-registry.json 非原子写修复,复用 case-488 H-002 已验证 _atomic_write_json 模式(tempfile.mkstemp+os.replace+异常 unlink 不静默吞错)移植+import tempfile+替换 main() L375 写入点,1 文件 +22/-3,commit 09fe68c@opt-security-1782873915。提交后外部 sanctioned-merge 连发 4 commit 落地 main:b1d072d squash 合 opt-security-1782873915(H-005+H-001+H-002+resume TOCTOU→codegraph-sync/save-checkpoint/resume-checkpoint 3 文件)+900a3cc squash 合 opt-security-1782872471(incremental-save 原子写)+f882598 audit-cycle-001 cycle-complete(audit-cycle-state status=cycle-complete pending_count=0)+4ec3224 合并远端 origin/main(opt-scout+optimization 带 scout-scan.py 改动)。验证 main HEAD=4ec3224 工作树匹配,codegraph-sync.py L23/L35/L375 均在 main,audit-cycle-state.json status=cycle-complete pending_count=0。3 opt-security 分支全删,仅余 auto/optimization 空壳。DO B 判定:capability-registry 写入非敏感路径不埋点。case-492 outcome=succeeded audit_type=audit-log-instrumentation audit_depth=shallow audit_id=audit-2026-07-01-001,H-005 fix 已 merge 入 main 经 b1d072d）**
-- **活跃项目**: autonomous-studio-aone 维护——**audit-cycle-001 已 cycle-complete(2 high H-001+H-002 + medium H-005 均已 merge 入 main),3 opt-security 分支已删,无 pending worktree(仅 auto/optimization 空壳)**。下轮触发 audit-002 全量审计(选未深度审过的项目,看 .claude/audits/ 避免重审 hooks module)。**已审源码 27 处:.claude/hooks/ 14 hook 全审(含 codegraph-sync.py case-456 无真问题+case-492 H-005 原子写修复已 merge main)+scripts/ 多脚本+pc_agent 等**。
-- **当前阶段**: case-492 收尾——H-005 已 merge main(b1d072d);audit-cycle-state status=cycle-complete pending_count=0→下轮 audit-002 全量审计
+- **最后活跃: 2026-07-01T04:01:00Z（派生 fix 轮 case-494·audit-002 H-001 route-fix。opt-worktree.sh:327(direction-shift)+:348(route-fix 新 area)两处 worktree add 失败吞错+空目录残留+写桩造成功假象,仿 ensure_main_wt 守护:失败→rmdir --ignore-fail-on-non-empty $target+exit 1 不写桩。1 文件 +15/-2。bash -n OK+隔离功能测试(预建同名分支强制 worktree add 失败)验证 GUARD_EXIT=1/空目录已清/无桩/无孤儿 wt。落 opt-security-shift-1782878468(commit 0d26e39)待 sanctioned-merge。audit-cycle-state H-001 填 fix_case_id=case-494 status 仍 pending(未 merge) pending_count=9 不变）**
+- **活跃项目**: autonomous-studio-aone 维护——**audit-002 scripts module 9 findings,H-001 已派生 case-494 待 merge,余 8 待派生(H-005→M-002→M-001→M-003→M-004→L-001/002/003)**。audit-001 hooks module 已 cycle-complete(2H merged via 900a3cc/b1d072d)。**已审源码:hooks/ 14 hook 全审+scripts/opt-worktree.sh+autonomous-loop.sh 深审**。
+- **当前阶段**: case-494 收尾——H-001 fix 落 opt-security-shift-1782878468 待人工 sanctioned-merge;下轮派 H-005(autonomous-loop.sh:73 claude 输出改 mktemp 临时文件)
 - **GOAL_STATUS**: active
 - **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动；审计轮次事件驱动 audit-cycle-state + 敏感路径 audit-log 埋点）
-- **LAST_UPDATED**: 2026-07-01(case-492 收尾·merge 落地)
-- **LAST_WORKTREE**: 无 pending worktree(opt-security-1782873915/1782872471/1782866336 三分支已 merge 入 main 并删除;仅 auto/optimization 空壳@aaa88a8 保留)。H-005 fix 经 b1d072d squash 入 main
+- **LAST_UPDATED**: 2026-07-01(case-493 audit-002 完成)
+- **LAST_WORKTREE**: 无(纯审计轮不产 worktree)。opt-security-* 三分支已 merge 入 main 并删;仅 auto/optimization 空壳保留
 - **LAST_OUTCOME**: done
-- **NEXT_SUGGESTION**: [1]【下轮=全量审计 audit-002】audit-cycle-state status=cycle-complete→DO A 全量审计轮。选未深度审过的项目(查 .claude/audits/ 已有报告避免重审 hooks module——audit-2026-07-01-001 已审 hooks 19 findings)。候选未深审项目:看 scout-scan 项目列表挑有源码的(pachong-master/wanxia/moni[DO NOT 排除]/xia 等),跳过纯文档/配置(skills/x-tool)。深度不限可读 5-15 文件+追跨模块数据流+可用 sub-agent(必须 model:sonnet 防 402)。产出独立 deep audit report(.claude/audits/audit-2026-07-01-002.md)+派生 route-fix。[2]【audit-001 遗留 medium】H-005 已 merge。剩余 audit-001 medium:H-009 notify-phone.py L160 ntfy header 注入(未修,下轮可顺手或并入 audit-002)。H-003/004/006/007/008 落入已 merge 文件,需 audit-002 前重审 main HEAD 确认是否仍存。[3]【structural debt】H-010~H-018(low/info structural)尚未写入 structural-debt.md,audit-002 或后续轮补登。[4]【远端】4ec3224 已合 origin/main(opt-scout+optimization),无需再 pull。
+- **NEXT_SUGGESTION**: [1]【下轮=派生 H-001 fix】opt-worktree.sh line 327/348 worktree add 失败后 rmdir $target + 明确 exit 1(仿 ensure_main_wt 模式),1 文件 route-fix,走 opt-worktree commit。[2]【再下轮=派生 H-005 fix】autonomous-loop.sh line 73 claude 输出改 mktemp 临时文件,tail/grep 读文件避免变量膨胀+敏感信息暴露。[3]【后续】M-002 路径遍历校验→M-001 glob 元字符→M-003 symbolic-ref 查分支→M-004 --bg 实现或删除文档→L-* 三个 low。9 个全部 merge/reject 后 audit-cycle-state 回 cycle-complete→触发 audit-003 审 scout-scan.py 或 sibling 项目(agent-dashboard/1BfrYn9G/huiyis)。[4]【structural debt】audit-002 无 structural finding,H-010~H-018(audit-001 low/info)仍未补登 structural-debt.md,可在派生 fix 间隙顺手补。
 - **自主循环**: 🟢 活跃
   - L1 Inline: 每次回复末尾内联检查 (+ git status)
   - L2 Heartbeat: CronCreate 每7分钟（执行轨——推进 Studio 阶段或主动扫描）
@@ -74,10 +74,10 @@ metadata:
 <!-- GOAL_ID: G-2026-06-15-002 -->
 <!-- GOAL_STATUS: active -->
 <!-- ACTIVE_GOAL: ralph-wiggum-autonomous-loop (每轮一个小工作单位，scout-scan 排序选任务) -->
-<!-- LAST_UPDATED: 2026-07-01 -->
-<!-- LAST_WORKTREE: 无 pending(opt-security-1782873915/1782872471/1782866336 三分支已 merge 入 main 并删;仅 auto/optimization 空壳)。H-005 fix 经 b1d072d squash 入 main -->
+<!-- LAST_UPDATED: 2026-07-01(case-494 H-001 派生 fix) -->
+<!-- LAST_WORKTREE: opt-security-shift-1782878468(commit 0d26e39,H-001 fix 待 sanctioned-merge)。audit-002 余 8 finding 待派生 -->
 <!-- LAST_OUTCOME: done -->
-<!-- NEXT_SUGGESTION: [1]下轮=全量审计 audit-002(audit-cycle-state cycle-complete 触发 DO A)。选未深审项目(查 .claude/audits/ 避免重审 hooks),挑有源码的(pachong/wanxia/xia,跳过 skills/x-tool,moni DO NOT 排除),可读 5-15 文件+sub-agent(model:sonnet)。产出 .claude/audits/audit-2026-07-01-002.md+派生 route-fix。[2]audit-001 遗留:H-009 notify-phone ntfy header 注入未修可顺手。[3]H-010~H-018 structural debt 待补登 structural-debt.md。[4]4ec3224 已合 origin/main 无需 pull。 -->
+<!-- NEXT_SUGGESTION: [1]下轮=派生 H-005 fix: autonomous-loop.sh:73 `out=$(claude -p ... 2>&1)` 改 mktemp 临时文件,tail/grep 读文件避免 MB 级变量膨胀+敏感信息驻留,结束 shred/rm。1 文件 route-fix 走 opt-worktree commit。[2]后续 M-002(opt-worktree.sh:431/515 cmd_commit 文件列表 .. 遍历校验)→M-001(slug glob 元字符)→M-003(symbolic-ref 查分支)→M-004(--bg 实现或删文档)→L-001(trap 清理)/L-002(文件转绝对路径)/L-003(grep 模式收窄)。9 个全 merge/reject 后 audit-cycle-state→cycle-complete 触发 audit-003。[3]H-001 fix 待人工 sanctioned-merge opt-security-shift-1782878468 入 main;merge 后回写 audit-cycle-state derived_fixes[H-001].status=merged+pending_count--。[4]audit-001 遗留 H-009 notify-phone ntfy header 注入未修可顺手;H-010~H-018 structural debt 待补登 structural-debt.md。 -->
 
 | 字段 | 内容 |
 |------|------|
