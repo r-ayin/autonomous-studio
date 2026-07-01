@@ -132,13 +132,20 @@ def _real_workspace():
             entries = os.listdir(ws)
         except OSError:
             return False
-        return any(os.path.isdir(os.path.join(ws, d, ".git")) for d in entries)
+        # .git 是目录 = 真项目；.git 是文件 = worktree 副本，不算"真项目"
+        # 这避免在 opt-worktree 内运行时把 worktree 父目录误判为 real workspace
+        return any(
+            os.path.isdir(os.path.join(ws, d, ".git"))
+            for d in entries
+            if not d.startswith(".")
+        )
 
-    if _has_real_project(WORKSPACE):
-        return WORKSPACE
+    # env var 优先：worktree 内运行时推导路径不可靠，env 显式指定最准
     env_ws = os.environ.get("AUTONOMOUS_STUDIO_WORKSPACE")
     if env_ws and _has_real_project(env_ws):
         return env_ws
+    if _has_real_project(WORKSPACE):
+        return WORKSPACE
     raise _unittest.SkipTest(f"no real workspace available (derived={WORKSPACE})")
 
 
