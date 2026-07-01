@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-01-498",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-01T04:30:00Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "fix M-003: cmd_merge symbolic-ref branch resolution",
+  "situation": "audit-2026-07-01-002 finding M-003 (priority 5): cmd_merge line 631/643/670 用 auto/$(basename $dir) 拼分支名，对 direction-shift worktree(目录带时间戳后缀)或 route-fix 复用 worktree(目录名可能与分支不完全对应)会误合错误分支或 merge 失败。cmd_push line 568 已用 symbolic-ref --short HEAD 查真实分支名，cmd_merge 应对称采用同一模式。",
+  "action": "在 cmd_merge 入口新增 wt_branch=$(git -C $dir symbolic-ref --short HEAD)，detached HEAD fallback basename 拼接并打印警告；替换 line 631 merge、line 643 git log、line 670 冲突提示三处 auto/$(basename $dir) 引用为 $wt_branch。bash -n 校验通过。",
+  "files_changed": ["scripts/opt-worktree.sh"],
+  "worktree": "opt-scripts-shift-1782879918",
+  "direction": "scripts:merge-branch-resolution",
+  "outcome": "succeeded",
+  "outcome_evidence": "bash -n 语法校验 exit 0;opt-worktree.sh commit 成功创建 worktree opt-scripts-shift-1782879918 并 push 到 origin/auto/opt-scripts-shift-1782879918(code review URL 已生成);三处 basename 拼接全部替换为 $wt_branch 变量引用",
+  "next_suggestion": "派生 M-004 fix(--bg 参数未实现);待人工 sanctioned-merge opt-scripts-shift-1782879918 + 之前 4 个 pending worktree(opt-security-shift-1782878468/1782878926/1782879314/1782879595)",
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-01-002",
+  "audit_depth": "shallow"
+}
