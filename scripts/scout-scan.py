@@ -421,9 +421,19 @@ def count_pending_worktrees(path):
                                    cwd=entry.path, capture_output=True, text=True, timeout=10)
                 touched = [f for f in n.stdout.splitlines() if f.strip()]
                 if n.returncode == 0 and touched:
-                    d = subprocess.run(["git", "diff", "--exit-code", main_branch, "HEAD", "--", *touched],
-                                       cwd=entry.path, capture_output=True, text=True, timeout=15)
-                    if d.returncode == 0:
+                    # AS-M-003 fix: 分批 diff 防 E2BIG（touched>100 时命令行超 ARG_MAX）。
+                    # 任一批 exit-code!=0 → 非 superseded；全 0 → superseded。
+                    # 批次大小 50 ≈ 平均路径 80B × 50 = 4KB，远低于 Linux ARG_MAX 128KB。
+                    BATCH = 50
+                    all_eq = True
+                    for i in range(0, len(touched), BATCH):
+                        batch = touched[i:i + BATCH]
+                        d = subprocess.run(["git", "diff", "--exit-code", main_branch, "HEAD", "--", *batch],
+                                           cwd=entry.path, capture_output=True, text=True, timeout=15)
+                        if d.returncode != 0:
+                            all_eq = False
+                            break
+                    if all_eq:
                         superseded = True
                     # case-record-only：改动文件全集皆 case-*.json（merge-round 簿记滞后）。
                     # 仅当未 superseded（case 记录真未落 main）才标——superseded 的已落 main
