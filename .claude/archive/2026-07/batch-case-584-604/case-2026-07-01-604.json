@@ -1,0 +1,26 @@
+{
+  "case_id": "case-2026-07-01-604",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-01T13:05:00Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "pending-worktree-merge-digest-refresh",
+  "situation": "fix-in-progress 连续第 21 轮 blocked on human merge。audit-2026-07-01-004 派生的 5 个 derived_fixes (case-579..583) 全部 committed+pushed 到 opt-tests-1782904286，待用户 review/merge。scout-scan score=0.0（健康）。本轮不派生新 fix，产出 merge digest 降低用户决策成本。",
+  "action": "跑 scout-scan（score=0.0）→ 枚举 4 个 pending worktree 分支 → 计算每个 vs main 的 commit/diff stat → 写 digest 到 case + NEXT_SUGGESTION。无源码改动。",
+  "files_changed": [],
+  "worktree": null,
+  "direction": "none",
+  "outcome": "succeeded",
+  "outcome_evidence": "scout-scan exit=0 score=0.0; git rev-parse + git log main..branch 验证 4 个分支均未合并；diff stat 已捕获（opt-tests=256+/20-, opt-runtime-listeners=149+/6-, opt-engine-shift=42+/7-, optimization=state-only legacy）。",
+  "next_suggestion": [
+    "MERGE DIGEST（按优先级）:",
+    "1. auto/opt-engine-shift-1782901796 (1c, 42+/7-) — judge_direction_kind 别名匹配修复，独立低风险，建议先 merge",
+    "2. auto/opt-tests-1782904286 (5c, 256+/20-) — audit-004 tests 模块 5 个 route-fix (H-001/M-001/M-003/L-001/I-001)，py_compile OK，可一次性 squash merge",
+    "3. auto/opt-runtime-listeners-1782902553 (4c, 149+/6-) — audit-003 runtime-listeners 4 个 fix 含 1 direction-shift(M-003 watchdog-boot.ps1)，注意 M-003 是否补入 public-interfaces.txt",
+    "4. auto/optimization (legacy state-only, 11+c) — 仅含历史 autonomous-state.md/case JSON，可在前 3 个 merge 后单独处理或丢弃",
+    "merge 完任一个 → audit-cycle-state.derived_fixes 对应条目改 merged，pending_count--；全部 cleared → status=cycle-complete 触发下一轮全量审计"
+  ],
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": null,
+  "audit_depth": "shallow"
+}
