@@ -29,3 +29,14 @@ Status enum: `open | scheduled | resolved`
 - **severity**: low
 - **status**: open
 - **source_finding**: L-002
+
+## SD-003 — 审计埋点模板代码 6 hook 文件重复实现（DRY 违反）
+
+- **debt_id**: SD-003
+- **audit_id**: audit-2026-07-02-001
+- **project**: autonomous-studio-aone
+- **description**: 6 个 hook 文件各自实现几乎相同的 `_audit_log_*` 审计埋点模板（id/timestamp/userId/resource/result/ip/sensitive/details 构造 + .audit/ makedirs + JSONL append）。差异仅在 action/resource.identifier/details.reason 等业务字段。schema 变更需改 6 处，易漂移。应抽成 `.claude/hooks/_audit_log_helper.py` 暴露 `emit_audit(action, resource_type, resource_id, result, detail="", sensitive_level="medium")` 单函数。属公共接口变更（新增 hooks 模块级共享文件），需 direction-shift worktree。
+- **affected_files**: autonomous-commit-gate.py, discovery-gate.py, pipeline-gate.py, auto-commit.py, notify-phone.py, codegraph-sync.py (及 incremental-save.py 间接)
+- **severity**: low
+- **status**: open
+- **source_finding**: I-001
