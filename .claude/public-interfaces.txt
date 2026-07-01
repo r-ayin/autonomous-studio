@@ -8,21 +8,21 @@
 # 格式：每行 `<project>:<relative-path>`，# 开头是注释，空行忽略。
 # 项目名 = /home/admin/workspace/ 下的目录名。
 
-# === autonomous-studio-aone ===
-autonomous-studio-aone:scripts/autonomous-loop.sh
-autonomous-studio-aone:scripts/opt-worktree.sh
-autonomous-studio-aone:scripts/scout-scan.py
-autonomous-studio-aone:scripts/triage.py
-autonomous-studio-aone:scripts/parallel-dispatch.sh
-autonomous-studio-aone:scripts/parallel-merge.sh
-autonomous-studio-aone:scripts/route-health-scorer.py
-autonomous-studio-aone:scripts/studio-precheck.sh
-autonomous-studio-aone:termux-listener.py
-autonomous-studio-aone:watchdog.sh
-autonomous-studio-aone:hooks/install-studio-hooks.sh
-autonomous-studio-aone:config/settings.json.example
-autonomous-studio-aone:config/scheduled_tasks.json.example
-autonomous-studio-aone:.claude/hooks/__init__.py
+# === autonomous-studio ===
+autonomous-studio:scripts/autonomous-loop.sh
+autonomous-studio:scripts/opt-worktree.sh
+autonomous-studio:scripts/scout-scan.py
+autonomous-studio:scripts/triage.py
+autonomous-studio:scripts/parallel-dispatch.sh
+autonomous-studio:scripts/parallel-merge.sh
+autonomous-studio:scripts/route-health-scorer.py
+autonomous-studio:scripts/studio-precheck.sh
+autonomous-studio:termux-listener.py
+autonomous-studio:watchdog.sh
+autonomous-studio:hooks/install-studio-hooks.sh
+autonomous-studio:config/settings.json.example
+autonomous-studio:config/scheduled_tasks.json.example
+autonomous-studio:.claude/hooks/__init__.py
 
 # === agent-dashboard ===
 agent-dashboard:backend/app/main.py

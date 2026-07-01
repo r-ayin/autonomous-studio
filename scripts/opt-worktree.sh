@@ -120,19 +120,26 @@ detect_main_branch() {
 MAIN_BRANCH="$(detect_main_branch "$PROJECT")"
 
 area_of() { echo "${1%%:*}"; }
-slug() { echo "$1" | tr ':' '-' | tr '/' '-'; }
+# audit-2026-07-01-002 M-001 fix: 原 slug 仅剥 : / ，当 area 含 * ? [ ] 等 glob 元字符时
+# line 413 `ls -d "$WT_BASE"/opt-$(slug "$new_area")-*` 会让 shell 展开成非目标 worktree 路径，
+# 可能选中无关 worktree 做复用 → 跨方向污染。补 tr 剥掉 * ? [ ] ，使 ls -d 的 pattern
+# 永远只含字面字符 + 尾部通配符 `-*`，杜绝误匹配。
+slug() { echo "$1" | tr ':' '-' | tr '/' '-' | tr -d '*?[]'; }
 
 # direction_kind 判定（用户 2026-07-01 定）：审计深度解绑后，原 area-字符串相等判定太粗，
 # 改用"是否触及项目公共接口文件"作为强信号——命中 = direction-shift（项目方向更新）→ 强制开新
 # worktree 即便 area 同；不命中 = route-fix（原路线修复）→ 走原有 area 复用逻辑。
-# 信号源：/home/admin/workspace/autonomous-studio-aone/.claude/public-interfaces.txt
+# 信号源：$PROJECT/.claude/public-interfaces.txt（相对项目根，避免目录改名/移动后硬编码失效；
+# 旧版硬编码 /home/admin/workspace/autonomous-studio-aone/... 在目录改名后永远读不到 → direction-shift
+# 判定静默降级为 route-fix → cp-guard 拦同文件后续改动 → 引擎卡死。audit-2026-07-01-002 M-003
+# 派生时实踩此坑。）
 #   每行 `<project_name>:<relative_path>`，# 注释，空行忽略。
 # 文件不存在 → 默认 route-fix（向后兼容）。无 files 参数时扫 main 工作区 porcelain。
 # 返回 stdout: "route-fix" | "direction-shift"
 judge_direction_kind() {
   local proj="$1"; shift
   local -a files=("$@")
-  local pi_file="/home/admin/workspace/autonomous-studio-aone/.claude/public-interfaces.txt"
+  local pi_file="$PROJECT/.claude/public-interfaces.txt"
   [[ -f "$pi_file" ]] || { echo "route-fix"; return 0; }
   local proj_name; proj_name="$(basename "$proj")"
   # 若未传 files，扫 main 工作区改动
@@ -709,7 +716,16 @@ cmd_merge() {
     echo "❌ 切回 $MAIN_BRANCH 失败（detached HEAD？工作区脏？分支不存在？），中止合并，未改动 $PROJECT"
     exit 1
   fi
-  if git merge --squash "auto/$(basename "$dir")" 2>/dev/null || git merge --squash "$wt" 2>/dev/null; then
+  # M-003 fix (audit-2026-07-01-002): direction-shift worktree 的分支名为 auto/opt-<slug>-<ts>，
+  # 不等于 basename($dir) 也不等于 $wt。旧逻辑 `git merge --squash "auto/$(basename "$dir")"` +
+  # fallback `"$wt"` 对非 optimization worktree 永远 miss → merge 静默失败进 else 分支回滚，
+  # 用户以为合并成功实则丢 commit。先 symbolic-ref 取真实分支名作为首选源；保留原两条 fallback
+  # 兼容历史未命名分支的 worktree（极罕见但存在）。
+  local wt_actual_branch
+  wt_actual_branch=$(git -C "$dir" symbolic-ref --short HEAD 2>/dev/null || true)
+  if git merge --squash "${wt_actual_branch:-__no_branch__}" 2>/dev/null \
+      || git merge --squash "auto/$(basename "$dir")" 2>/dev/null \
+      || git merge --squash "$wt" 2>/dev/null; then
     # .opt-direction 是 worktree 本地方向标记桩（untracked 为主，部分 worktree 分支误提交了它）。
     # git merge --squash 把分支差异整批暂存进 main，含此桩 → 历史上每次 merge 都把 .opt-direction
     # 泄漏到 main（dingtalk-auto/x-tool/shizi/skills 等均有「移除泄漏的 .opt-direction」chore 跟在
