@@ -753,11 +753,11 @@ cmd_list() {
     [[ -d "$d" ]] || continue
     local name; name=$(basename "$d")
     local dir; dir=$(cat "$d/.opt-direction" 2>/dev/null || echo "?")
-    local stat
-    stat=$(git -C "$d" diff --stat "$MAIN_BRANCH" 2>/dev/null | tail -1)
+    local diff_stat
+    diff_stat=$(git -C "$d" diff --stat "$MAIN_BRANCH" 2>/dev/null | tail -1)
     local commits
     commits=$(git -C "$d" rev-list --count "$MAIN_BRANCH"..HEAD 2>/dev/null || echo 0)
-    echo "  $name | 方向=$dir | $commits 提交 | ${stat:-(无 diff)}"
+    echo "  $name | 方向=$dir | $commits 提交 | ${diff_stat:-(无 diff)}"
   done
 }
 
