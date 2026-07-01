@@ -144,8 +144,13 @@ judge_direction_kind() {
   if [[ ${#files[@]} -eq 0 ]]; then
     local p
     while IFS= read -r -d '' p; do
-      p="${p#???}"
-      case "$p" in *" -> "*) p="${p##* -> }";; esac
+      # AS-EC-013 fix: porcelain -z 对 rename/copy (XY[0] = R|C) 输出两条 NUL record:
+      #   "XY newpath\0oldpath\0"。原代码只剥前缀不消费 oldpath → 下一轮 read 把 oldpath
+      #   当独立 record 读入，${p#???} 截断后混入 files 数组 → grep 误判 direction-shift。
+      #   检测 XY[0] ∈ {R,C} 时额外 read -d '' 消费 oldpath record（丢弃）。
+      local _xy="${p:0:2}"
+      p="${p#???}"               # 去掉前导 "XY "（status 2 字符 + 空格）
+      case "$_xy" in R?|C?) local _oldpath; IFS= read -r -d '' _oldpath || true ;; esac
       [[ -n "$p" ]] && files+=("$p")
     done < <(git -C "$proj" status --porcelain -z 2>/dev/null)
   fi
@@ -607,8 +612,11 @@ cmd_commit() {
     echo "⚠️ 未指定文件列表，cp 全部改动（含用户 WIP 风险，建议显式传文件）" >&2
     local p
     while IFS= read -r -d '' p; do
+      # AS-EC-014 fix: 与 judge_direction_kind 同症——rename/copy porcelain -z 双 record，
+      # 不消费 oldpath → cp-guard 拿截断的 oldpath 当文件拷 → 要么报错、要么误拷同名文件。
+      local _xy="${p:0:2}"
       p="${p#???}"               # 去掉前导 "XY "（status 2 字符 + 空格）
-      case "$p" in *" -> "*) p="${p##* -> }";; esac   # rename 取新路径
+      case "$_xy" in R?|C?) local _oldpath; IFS= read -r -d '' _oldpath || true ;; esac
       if [[ -e "$p" ]]; then
         _cp_guard "$p" "$target/$p" || { skipped+=("$p"); continue; }
       elif git ls-files --error-unmatch "$p" >/dev/null 2>&1; then
@@ -680,8 +688,10 @@ cmd_commit() {
   else
     local p2
     while IFS= read -r -d '' p2; do
+      # AS-EC-014 fix (第三处): 还原循环同样需消费 rename oldpath，否则 rm/checkout 作用于截断路径
+      local _xy="${p2:0:2}"
       p2="${p2#???}"
-      case "$p2" in *" -> "*) p2="${p2##* -> }";; esac
+      case "$_xy" in R?|C?) local _oldpath; IFS= read -r -d '' _oldpath || true ;; esac
       _is_skipped "$p2" && { echo "⏸ cp-guard 跳过 $p2：保留 main 改动待重做" >&2; continue; }
       if git ls-files --error-unmatch "$p2" >/dev/null 2>&1; then
         git checkout HEAD -- "$p2" 2>/dev/null || true
