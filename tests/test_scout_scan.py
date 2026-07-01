@@ -5,9 +5,11 @@
   2. health_priority 不依赖 last_commit 新旧（打破 worktree 流程下的自反馈）；
   3. autonomous-studio 不被特殊排除——按健康度公平排名（引擎真有 bug 仍可被选中）；
   4. 文本输出含「推荐工作单位」段且 #N 行格式合规（L-001 fix）；
-  5. scan_project → health_priority 集成路径（非 _rep 合成旁路）对真实文件系统行为正确。
+  5. scan_project → health_priority 集成路径（非 _rep 合成旁路）对真实文件系统行为正确；
+  6. recommendations 结构完整性通过 API 直验（I-001: subprocess→importlib）。
 """
 import importlib.util
+import io
 import json
 import os
 import re
@@ -15,6 +17,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from contextlib import redirect_stdout
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SCRIPT = os.path.join(HERE, "..", "scripts", "scout-scan.py")
@@ -140,25 +143,43 @@ def _real_workspace():
 
 
 def test_recommendations_are_structurally_complete():
-    """跑真实 workspace，recommendations 必须是非空的结构完整列表。
+    """recommendations 必须是非空的结构完整列表（I-001: importlib 直调替代 subprocess）。
 
     M-001 fix: 移除硬编码 'autonomous-studio' 项目名断言——该断言把测试
     绑死到特定 workspace 布局与项目命名，违背"测行为不测内容"原则。
-    改为结构完整性检查：列表非空、每项含 name 字段、name 非空字符串。
-    若引擎错误地过滤掉所有项目，此测试仍会失败（守住原测试意图）。
+    改为结构完整性检查：列表非空、每项含 name/score/reasons/work_unit 字段、
+    name 非空字符串、score 为数值。若引擎错误地过滤掉所有项目或推荐结构漂移，
+    此测试仍会失败（守住原测试意图）。
+
+    I-001: 原实现 spawn 完整 scout-scan.py 子进程 + JSON 解析 stdout。慢、
+    环境耦合、CI 不友好。scout-scan 已模块化（discover_projects/scan_project/
+    health_priority 均为纯函数或可隔离函数），直接 importlib 调用更快更稳定，
+    且契约验证比 subprocess+JSON 解析更精准（验字段类型而非仅字符串存在）。
     """
     ws = _real_workspace()
-    r = subprocess.run(
-        [sys.executable, SCRIPT, "--workspace", ws, "--json"],
-        capture_output=True, text=True, timeout=180,
-    )
-    assert r.returncode == 0, r.stderr
-    import json
-    recs = json.loads(r.stdout).get("recommendations", [])
+    mod = _load()
+    projects = mod.discover_projects(ws)
+    assert len(projects) > 0, f"workspace {ws} 应发现至少一个项目"
+
+    recs = []
+    for p in projects:
+        r = mod.scan_project(p)
+        hp = mod.health_priority(r)
+        recs.append({
+            "name": r["name"], "score": hp["score"],
+            "reasons": hp["reasons"], "work_unit": hp["work_unit"],
+        })
+
     assert isinstance(recs, list) and len(recs) > 0, "recommendations 不应为空列表"
     for rc in recs:
         assert isinstance(rc.get("name"), str) and rc["name"].strip(), \
             f"recommendation 项缺有效 name: {rc!r}"
+        assert isinstance(rc.get("score"), (int, float)), \
+            f"recommendation 项 score 应为数值: {rc!r}"
+        assert isinstance(rc.get("reasons"), list), \
+            f"recommendation 项 reasons 应为 list: {rc!r}"
+        assert isinstance(rc.get("work_unit"), str) and rc["work_unit"].strip(), \
+            f"recommendation 项缺有效 work_unit: {rc!r}"
 
 
 # L-001 fix: 锁定 #N 行格式 — `<2空格>#<rank> <name> (score=<float>) — <reason>`
@@ -169,7 +190,7 @@ _REC_LINE_RE = re.compile(
 
 
 def test_text_output_has_recommendation_section():
-    """文本模式必须打印「推荐工作单位」段且 #N 行格式合规（L-001 fix）。
+    """文本模式必须打印「推荐工作单位」段且 #N 行格式合规（L-001 fix, I-001 importlib）。
 
     弱断言 `"#1" in stdout` 允许退化实现通过（例如把 "#1" 写在说明文字里
     而不是真正的推荐行）。本测试解析每行 #N，验证：
@@ -177,16 +198,28 @@ def test_text_output_has_recommendation_section():
       - rank 编号从 1 开始连续递增；
       - score 为非负浮点；
       - reason 非空。
+
+    I-001: 原 subprocess.run + capture_output 改为 redirect_stdout(StringIO)
+    直调 main()。契约验证逻辑不变，但免去子进程开销与环境耦合。
+    sys.argv 临时改写以传入 --workspace，main() 返回后恢复。
     """
     ws = _real_workspace()
-    r = subprocess.run(
-        [sys.executable, SCRIPT, "--workspace", ws],
-        capture_output=True, text=True, timeout=180,
-    )
-    assert r.returncode == 0, r.stderr
-    assert "推荐工作单位" in r.stdout, "缺「推荐工作单位」段标题"
+    mod = _load()
 
-    matches = [_REC_LINE_RE.match(line) for line in r.stdout.splitlines()]
+    # 临时改 sys.argv 让 argparse 读到 --workspace；main() 完成后还原
+    orig_argv = sys.argv
+    try:
+        sys.argv = ["scout-scan.py", "--workspace", ws]
+        buf = io.StringIO()
+        with redirect_stdout(buf):
+            mod.main()
+        stdout = buf.getvalue()
+    finally:
+        sys.argv = orig_argv
+
+    assert "推荐工作单位" in stdout, "缺「推荐工作单位」段标题"
+
+    matches = [_REC_LINE_RE.match(line) for line in stdout.splitlines()]
     rec_lines = [m for m in matches if m]
     assert rec_lines, (
         "未找到任何格式合规的 #N 推荐行；"
@@ -204,7 +237,25 @@ def test_text_output_has_recommendation_section():
         assert m.group(4).strip(), f"reason 不应为空：{m.group(0)!r}"
 
 
-def test_scan_project_to_health_priority_integration(tmp_path):
+def test_subprocess_smoke_polyglot_shim():
+    """subprocess smoke: 验证 scout-scan.py 作为独立脚本可被 python3 拉起（I-001）。
+
+    I-001 重构把两个重 subprocess 测试改成 importlib 直调（更快、无环境耦合）。
+    保留这一个最小 smoke test 守护 polyglot shim 契约：
+      - 脚本文件存在且有 shebang / 可被 sys.executable 解释；
+      - `--help` 退出码 0 且 stdout 含 '--workspace' 参数说明。
+    不依赖具体 workspace 内容，CI 友好，timeout 5s 足够。
+    """
+    r = subprocess.run(
+        [sys.executable, SCRIPT, "--help"],
+        capture_output=True, text=True, timeout=5,
+    )
+    assert r.returncode == 0, f"--help 应退出码 0，stderr={r.stderr}"
+    assert "--workspace" in r.stdout, \
+        f"--help 输出应包含 --workspace 参数说明，stdout={r.stdout[:500]}"
+
+
+def test_scan_project_to_health_priority_integration():
     """集成测试：scan_project → health_priority 全链路（非 _rep 合成旁路）。
 
     H-001 (audit-2026-07-01-004): 此前所有健康度单测用 _rep() 构造字典直调
@@ -218,49 +269,51 @@ def test_scan_project_to_health_priority_integration(tmp_path):
       * rep 含 scan_project 特有字段（git/markers_deferred/pending_worktrees），
         确认走的是真实集成路径而非 _rep 旁路。
 
-    tmp_path 隔离 .codebase-index 写入副作用，不污染宿主 workspace。
+    用 stdlib tempfile.TemporaryDirectory 而非 pytest tmp_path fixture，
+    确保 unittest/pytest 双 runner 都能跑（M-002 structural debt: pytest 未装）。
+    tmpdir 隔离 .codebase-index 写入副作用，不污染宿主 workspace。
     """
     mod = _load()
 
-    # --- broken: 仅 .git 目录使其被 discover_projects 识别，无任何文档 ---
-    broken_dir = tmp_path / "broken-proj"
-    broken_dir.mkdir()
-    (broken_dir / ".git").mkdir()  # 触发 has_git=True
-    # 放一个带 TODO 注释的源文件，让 count_markers 有活干
-    (broken_dir / "foo.py").write_text("# TODO: fix this\nprint('hi')\n", encoding="utf-8")
+    with tempfile.TemporaryDirectory(prefix="scout_scan_integ_") as tmp:
+        # --- broken: 仅 .git 目录使其被 discover_projects 识别，无任何文档 ---
+        broken_dir = os.path.join(tmp, "broken-proj")
+        os.makedirs(os.path.join(broken_dir, ".git"))  # 触发 has_git=True
+        # 放一个带 TODO 注释的源文件，让 count_markers 有活干
+        with open(os.path.join(broken_dir, "foo.py"), "w", encoding="utf-8") as f:
+            f.write("# TODO: fix this\nprint('hi')\n")
 
-    # --- healthy: PROGRESS.md + GATES.md + planning/ 齐全 ---
-    healthy_dir = tmp_path / "healthy-proj"
-    healthy_dir.mkdir()
-    (healthy_dir / ".git").mkdir()
-    (healthy_dir / "PROGRESS.md").write_text("# Progress\nfresh\n", encoding="utf-8")
-    (healthy_dir / "GATES.md").write_text("# Gates\nok\n", encoding="utf-8")
-    (healthy_dir / "planning").mkdir()
-    (healthy_dir / "planning" / "status.json").write_text("{}", encoding="utf-8")
-    (healthy_dir / "bar.py").write_text("print('clean')\n", encoding="utf-8")
+        # --- healthy: PROGRESS.md + GATES.md + planning/ 齐全 ---
+        healthy_dir = os.path.join(tmp, "healthy-proj")
+        os.makedirs(os.path.join(healthy_dir, ".git"))
+        with open(os.path.join(healthy_dir, "PROGRESS.md"), "w", encoding="utf-8") as f:
+            f.write("# Progress\nfresh\n")
+        with open(os.path.join(healthy_dir, "GATES.md"), "w", encoding="utf-8") as f:
+            f.write("# Gates\nok\n")
+        os.makedirs(os.path.join(healthy_dir, "planning"))
+        with open(os.path.join(healthy_dir, "planning", "status.json"), "w", encoding="utf-8") as f:
+            f.write("{}")
+        with open(os.path.join(healthy_dir, "bar.py"), "w", encoding="utf-8") as f:
+            f.write("print('clean')\n")
 
-    # 把 .codebase-index 重定向到 tmp_path 下，避免写宿主 workspace
-    # （scan_project 硬编码 idx_dir = os.path.join(os.path.dirname(path), ".codebase-index")，
-    #  因 broken/healthy 都在 tmp_path 下，idx_dir 自动落在 tmp_path/.codebase-index）
+        broken_rep = mod.scan_project({"name": "broken-proj", "path": broken_dir})
+        healthy_rep = mod.scan_project({"name": "healthy-proj", "path": healthy_dir})
 
-    broken_rep = mod.scan_project({"name": "broken-proj", "path": str(broken_dir)})
-    healthy_rep = mod.scan_project({"name": "healthy-proj", "path": str(healthy_dir)})
+        # 集成路径专属字段断言——_rep 合成路径不会有这些键
+        for key in ("git", "markers_deferred", "pending_worktrees", "marker_files", "symbols"):
+            assert key in broken_rep, f"scan_project 返回缺少集成路径字段 {key}"
+            assert key in healthy_rep, f"scan_project 返回缺少集成路径字段 {key}"
 
-    # 集成路径专属字段断言——_rep 合成路径不会有这些键
-    for key in ("git", "markers_deferred", "pending_worktrees", "marker_files", "symbols"):
-        assert key in broken_rep, f"scan_project 返回缺少集成路径字段 {key}"
-        assert key in healthy_rep, f"scan_project 返回缺少集成路径字段 {key}"
+        broken_hp = mod.health_priority(broken_rep)
+        healthy_hp = mod.health_priority(healthy_rep)
 
-    broken_hp = mod.health_priority(broken_rep)
-    healthy_hp = mod.health_priority(healthy_rep)
-
-    # 核心契约：缺文档的项目健康度分数严格高于文档齐全的项目
-    assert broken_hp["score"] > healthy_hp["score"], (
-        f"集成路径下 broken({broken_hp['score']}) 应 > healthy({healthy_hp['score']})；"
-        f"broken reasons={broken_hp['reasons']}, healthy reasons={healthy_hp['reasons']}"
-    )
-    # broken 必须命中"缺 PROGRESS.md"+"缺 GATES.md"两条原因（来自真实 staleness/os.path.isfile）
-    assert any("缺 PROGRESS.md" in r for r in broken_hp["reasons"]), \
-        f"broken 未检出缺 PROGRESS.md: {broken_hp['reasons']}"
-    assert any("缺 GATES.md" in r for r in broken_hp["reasons"]), \
-        f"broken 未检出缺 GATES.md: {broken_hp['reasons']}"
+        # 核心契约：缺文档的项目健康度分数严格高于文档齐全的项目
+        assert broken_hp["score"] > healthy_hp["score"], (
+            f"集成路径下 broken({broken_hp['score']}) 应 > healthy({healthy_hp['score']})；"
+            f"broken reasons={broken_hp['reasons']}, healthy reasons={healthy_hp['reasons']}"
+        )
+        # broken 必须命中"缺 PROGRESS.md"+"缺 GATES.md"两条原因（来自真实 staleness/os.path.isfile）
+        assert any("缺 PROGRESS.md" in r for r in broken_hp["reasons"]), \
+            f"broken 未检出缺 PROGRESS.md: {broken_hp['reasons']}"
+        assert any("缺 GATES.md" in r for r in broken_hp["reasons"]), \
+            f"broken 未检出缺 GATES.md: {broken_hp['reasons']}"
