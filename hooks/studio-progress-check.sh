@@ -25,19 +25,23 @@ if [[ ! -f "$STATUS_FILE" ]]; then
 fi
 
 # 用 Python 检查: 所有 P0 task 是否都 done + 当前 stage
-python3 << PYEOF
-import json, sys
+# AS-L-001 fix: heredoc 加引号防 bash 预展开；路径经 env var 传入，避免空格/特殊字符断词
+export STATUS_FILE FILE_PATH
+python3 << 'PYEOF'
+import json, os, sys
 from datetime import datetime
 
-status_path = "$STATUS_FILE"
-prd_path = "$FILE_PATH"
+status_path = os.environ.get('STATUS_FILE', '')
+prd_path = os.environ.get('FILE_PATH', '')
+if not status_path or not prd_path:
+    sys.exit(0)
 
 try:
     with open(status_path) as f:
         status = json.load(f)
     with open(prd_path) as f:
         prd = json.load(f)
-except:
+except Exception:
     sys.exit(0)
 
 if not status.get('locked', False):
