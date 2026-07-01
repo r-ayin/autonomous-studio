@@ -373,6 +373,32 @@ _validate_wt_name() {
   fi
 }
 
+# M-002 (audit-2026-07-01-002): cmd_commit 文件列表校验——拒绝绝对路径与含 .. 段的路径，
+# 防 _cp_guard "$f" "$target/$f" + rm -f "$f" 对 f=`../../etc/cron.d/evil` 写/删 worktree 外文件。
+# 纵深防御：即便引擎只传相对路径，也挡外部注入或手误。合法路径示例: scripts/foo.sh,
+# .claude/hooks/bar.py；非法: /etc/passwd, ../sibling/x, a/../../b, ./../c。
+_validate_commit_file_path() {
+  local f="$1"
+  if [[ -z "$f" ]]; then
+    echo "❌ commit 文件路径为空——拒绝（M-002 防御）" >&2
+    return 1
+  fi
+  # 绝对路径一律拒
+  if [[ "$f" == /* ]]; then
+    echo "❌ commit 文件路径为绝对路径，拒绝: '$f'（M-002 防路径遍历）" >&2
+    return 1
+  fi
+  # 拆段检查 ..（避免 `a/../b`、`..`、`foo/..` 等任何形式）
+  local IFS='/' seg
+  for seg in $f; do
+    if [[ "$seg" == ".." ]]; then
+      echo "❌ commit 文件路径含 '..' 段，拒绝: '$f'（M-002 防路径遍历）" >&2
+      return 1
+    fi
+  done
+  return 0
+}
+
 cmd_commit() {
   local direction="${3:?need direction}"
   local msg="${4:?need commit message}"
@@ -512,6 +538,10 @@ cmd_commit() {
   if [[ ${#files[@]} -gt 0 ]]; then
     local f
     for f in "${files[@]}"; do
+      # M-002 (audit-2026-07-01-002): 路径安全预检——拒绝绝对路径/..遍历，
+      # 防 _cp_guard + rm -f 写/删 worktree 外文件。校验失败跳过该文件（不 abort），
+      # 让合法文件继续迁移；报错已含 finding id 便于追溯。
+      _validate_commit_file_path "$f" || { skipped+=("$f"); continue; }
       if [[ -e "$f" ]]; then
         _cp_guard "$f" "$target/$f" || { skipped+=("$f"); continue; }
       elif git ls-files --error-unmatch "$f" >/dev/null 2>&1; then
@@ -590,6 +620,9 @@ cmd_commit() {
     local f2
     for f2 in "${files[@]}"; do
       _is_skipped "$f2" && { echo "⏸ cp-guard 跳过 $f2：保留 main 改动待人工 merge 后重做（不抹除）" >&2; continue; }
+      # M-002 (audit-2026-07-01-002): 还原阶段同校验——非法路径既不该被 cp 也不该被 rm。
+      # cp 阶段已跳过非法者，此处双保险防手动构造 files 数组绕过。
+      _validate_commit_file_path "$f2" || { echo "⏸ M-002 拒绝还原非法路径: $f2" >&2; continue; }
       if git ls-files --error-unmatch "$f2" >/dev/null 2>&1; then
         git checkout HEAD -- "$f2" 2>/dev/null || true   # tracked：还原到 HEAD
       else
