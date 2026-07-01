@@ -5,11 +5,12 @@
   "current_audit_started_at": "2026-07-01T11:00:00Z",
   "current_audit_project": "autonomous-studio-aone",
   "derived_fixes": [
-    {"fix_case_id": null, "audit_id": "audit-2026-07-01-001", "finding_id": "H-001", "status": "pending"},
-    {"fix_case_id": null, "audit_id": "audit-2026-07-01-001", "finding_id": "H-002", "status": "pending"}
+    {"fix_case_id": "case-2026-07-01-491", "audit_id": "audit-2026-07-01-001", "finding_id": "H-001", "status": "pending", "fix_commit": "ddc0f58", "fix_worktree": "auto/opt-security-1782873915", "note": "shell=True→list+shell=False 命令注入修复,已 commit 待人工 merge"},
+    {"fix_case_id": "case-2026-07-01-488", "audit_id": "audit-2026-07-01-001", "finding_id": "H-002", "status": "pending", "fix_commit": "7b4189b", "fix_worktree": "auto/opt-security-1782873915", "note": "tmp+os.replace 原子写修复,case-490 审计前已由 case-488 修复(审计 main HEAD 故重现),待人工 merge"}
   ],
   "pending_count": 2,
   "status": "fix-in-progress",
+  "_status_note": "两个 high finding 的 fix 均已 commit 在 auto/opt-security-1782873915(ahead=3: 7b4189b H-002 原子写 + bf46478 resume-checkpoint TOCTOU + ddc0f58 H-001 shell 注入),待人工 squash merge 后置 merged→pending_count=0→cycle-complete→触发下一轮全量审计",
   "_status_enum": "idle | auditing | fix-in-progress | cycle-complete",
   "last_audit_completed_at": "2026-07-01T11:10:00Z",
   "last_audit_id": "audit-2026-07-01-001",
