@@ -51,7 +51,9 @@ while true; do
     fi
 
     # ── 2. Claude 进程检查 ────────────────────────
-    CLAUDE_PROCS=$(pgrep -c claude 2>/dev/null || echo 0)
+    # AS-EC-010 fix: pgrep -c claude over-matches (e.g. vim claude.md, grep claude).
+    # Use -x for exact executable name match; fall back to 0 if no match or error.
+    CLAUDE_PROCS=$(pgrep -x -c claude 2>/dev/null || echo 0)
     if [ "$CLAUDE_PROCS" -eq 0 ]; then
         touch "$RESUME_FLAG"
         log "ALERT: No Claude processes running"
