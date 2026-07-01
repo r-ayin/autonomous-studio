@@ -85,7 +85,22 @@ if __name__ == "__main__":
                     "saved_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
                 }
 
-                with open(latest_cp, "w", encoding="utf-8") as f:
-                    json.dump(cp_data, f, ensure_ascii=False, indent=2)
+                # 原子写（case-484 security-review 修复）：latest.json 是 checkpoint 恢复关键路径，
+                # 直接 open("w") 截断后若进程被 kill / 断电会留下半写文件，破坏恢复且被外层
+                # except: pass 静默吞掉。先写同目录临时文件再 os.replace 原子替换（同文件系统
+                # rename 原子，要么完整旧版要么完整新版，无截断态）。失败须清理临时文件。
+                import tempfile
+                dst_dir = os.path.dirname(latest_cp)
+                fd, tmp_path = tempfile.mkstemp(prefix=".latest-", suffix=".tmp", dir=dst_dir)
+                try:
+                    with os.fdopen(fd, "w", encoding="utf-8") as f:
+                        json.dump(cp_data, f, ensure_ascii=False, indent=2)
+                    os.replace(tmp_path, latest_cp)
+                except Exception:
+                    try:
+                        os.unlink(tmp_path)
+                    except OSError:
+                        pass
+                    raise
     except Exception:
         pass
