@@ -24,10 +24,22 @@ set -uo pipefail
 
 WORKSPACE="${1:-.}"
 ENGINE_DIR="${2:-$WORKSPACE/autonomous-studio}"
+BG_FLAG="${3:-}"
 WORKSPACE="$(cd "$WORKSPACE" && pwd)"
 ENGINE_DIR="$(cd "$ENGINE_DIR" && pwd)"
 STOP_MARKER="$ENGINE_DIR/.claude/.stop_autonomous"
 mkdir -p "$ENGINE_DIR/.claude"
+
+# --bg: nohup 后台跑，stdout/stderr 重定向到 engine-dir/.claude/loop.log
+if [[ "$BG_FLAG" == "--bg" ]]; then
+  LOOP_LOG="$ENGINE_DIR/.claude/loop.log"
+  echo "[bg] nohup → $LOOP_LOG (PID $$ will detach)"
+  # 用 exec 替换当前 shell 为 nohup 包裹的自己，去掉 --bg 防递归
+  exec nohup "$0" "$WORKSPACE" "$ENGINE_DIR" >>"$LOOP_LOG" 2>&1 &
+  disown
+  echo "[bg] detached, PID=$!"
+  exit 0
+fi
 
 # 清掉旧的停止标记（启动时）
 rm -f "$STOP_MARKER"
