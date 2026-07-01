@@ -6,14 +6,14 @@
   "current_audit_project": "autonomous-studio-aone",
   "current_audit_module": ".claude/hooks/",
   "derived_fixes": [
-    {"fix_case_id": null, "audit_id": "audit-2026-07-02-001", "finding_id": "H-001", "status": "pending", "priority": 1, "kind": "route-fix", "_note": "stop-completion-gate._strike_count 非原子写致防死循环失效"},
-    {"fix_case_id": null, "audit_id": "audit-2026-07-02-001", "finding_id": "M-001", "status": "pending", "priority": 2, "kind": "route-fix", "_note": "post-edit-lint py_compile 缺 -- 终止符致假阳性"},
-    {"fix_case_id": null, "audit_id": "audit-2026-07-02-001", "finding_id": "M-002", "status": "pending", "priority": 3, "kind": "route-fix", "_note": "pipeline-gate git 识别比主 gate 简化过度致绕过向量"},
-    {"fix_case_id": null, "audit_id": "audit-2026-07-02-001", "finding_id": "L-001", "status": "pending", "priority": 4, "kind": "route-fix", "_note": "save-checkpoint.py Path import 在 main guard 内致潜在 NameError"}
+    {"fix_case_id": "case-2026-07-02-052", "audit_id": "audit-2026-07-02-001", "finding_id": "H-001", "status": "pending", "priority": 1, "kind": "route-fix", "_note": "stop-completion-gate._strike_count 非原子写致防死循环失效"},
+    {"fix_case_id": "case-2026-07-02-053", "audit_id": "audit-2026-07-02-001", "finding_id": "M-001", "status": "pending", "priority": 2, "kind": "route-fix", "_note": "post-edit-lint py_compile 缺 -- 终止符致假阳性"},
+    {"fix_case_id": "case-2026-07-02-054", "audit_id": "audit-2026-07-02-001", "finding_id": "M-002", "status": "pending", "priority": 3, "kind": "route-fix", "_note": "pipeline-gate git 识别比主 gate 简化过度致绕过向量"},
+    {"fix_case_id": "case-2026-07-02-055", "audit_id": "audit-2026-07-02-001", "finding_id": "L-001", "status": "pending", "priority": 4, "kind": "route-fix", "_note": "save-checkpoint.py Path import 在 main guard 内致潜在 NameError"}
   ],
   "pending_count": 4,
   "status": "fix-in-progress",
-  "_status_note": "audit-2026-07-02-001 (.claude/hooks/ module) completed 2026-07-02T02:48Z. 5 findings (1H/2M/1L/1I). 4 route-fixes pending dispatch next round. 1 structural debt (I-001 → SD-001 in structural-debt.md). NEXT: dispatch H-001 fix case (highest priority, stop-completion-gate atomic write).",
+  "_status_note": "audit-2026-07-02-001 (.claude/hooks/ module) completed 2026-07-02T02:48Z. 5 findings (1H/2M/1L/1I). H-001 fix dispatched as case-2026-07-02-052 (worktree opt-hooks-1782932119, pending merge). M-001 fix dispatched as case-2026-07-02-053 (same worktree, commit 240dd45, pending merge). M-002 fix dispatched as case-2026-07-02-054 (same worktree, commit 7c74bd0, pending merge). L-001 fix dispatched as case-2026-07-02-055 (same worktree, commit 1c3bdf4, pending merge). ALL 4 derived route-fixes dispatched; awaiting user merge/reject of opt-hooks-1782932119. Scout #106 (case-2026-07-02-056) confirmed origin/auto/opt-hooks-1782932119 HEAD=1c3bdf4 synced; pending_count=4 unchanged. NEXT: user reviews worktree diff; once all 4 cases merged/rejected, set status=cycle-complete to trigger next full audit.",
   "_status_enum": "idle | auditing | fix-in-progress | cycle-complete",
   "last_audit_completed_at": "2026-07-02T02:48:00Z",
   "last_audit_id": "audit-2026-07-02-001",
