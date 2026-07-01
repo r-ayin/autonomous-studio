@@ -94,6 +94,43 @@ MAIN_BRANCH="$(detect_main_branch "$PROJECT")"
 area_of() { echo "${1%%:*}"; }
 slug() { echo "$1" | tr ':' '-' | tr '/' '-'; }
 
+# direction_kind 判定（用户 2026-07-01 定）：审计深度解绑后，原 area-字符串相等判定太粗，
+# 改用"是否触及项目公共接口文件"作为强信号——命中 = direction-shift（项目方向更新）→ 强制开新
+# worktree 即便 area 同；不命中 = route-fix（原路线修复）→ 走原有 area 复用逻辑。
+# 信号源：/home/admin/workspace/autonomous-studio-aone/.claude/public-interfaces.txt
+#   每行 `<project_name>:<relative_path>`，# 注释，空行忽略。
+# 文件不存在 → 默认 route-fix（向后兼容）。无 files 参数时扫 main 工作区 porcelain。
+# 返回 stdout: "route-fix" | "direction-shift"
+judge_direction_kind() {
+  local proj="$1"; shift
+  local -a files=("$@")
+  local pi_file="/home/admin/workspace/autonomous-studio-aone/.claude/public-interfaces.txt"
+  [[ -f "$pi_file" ]] || { echo "route-fix"; return 0; }
+  local proj_name; proj_name="$(basename "$proj")"
+  # 若未传 files，扫 main 工作区改动
+  if [[ ${#files[@]} -eq 0 ]]; then
+    local p
+    while IFS= read -r -d '' p; do
+      p="${p#???}"
+      case "$p" in *" -> "*) p="${p##* -> }";; esac
+      [[ -n "$p" ]] && files+=("$p")
+    done < <(git -C "$proj" status --porcelain -z 2>/dev/null)
+  fi
+  [[ ${#files[@]} -eq 0 ]] && { echo "route-fix"; return 0; }
+  local f
+  for f in "${files[@]}"; do
+    [[ -z "$f" ]] && continue
+    # 精确行匹配 "<proj>:<f>"
+    if grep -qxF "${proj_name}:${f}" "$pi_file" 2>/dev/null; then
+      echo "direction-shift"
+      return 0
+    fi
+  done
+  echo "route-fix"
+  return 0
+}
+
+
 # 防御性根因补强（与 4fcb8bc 互补，非冗余）：worktree 方向标记桩 .opt-direction 写入
 # 工作区后，立即登记到该 worktree 专属 info/exclude，让 git 永不追踪它。4fcb8bc 在
 # cmd_merge 落地前 unstage+删桩（merge 兜底），但部分 worktree 分支仍可能在 merge 前
@@ -268,6 +305,10 @@ cmd_commit() {
   ensure_main_wt
   local cur_area; cur_area=$(current_area)
   local new_area; new_area=$(area_of "$direction")
+  # direction_kind 判定（用户 2026-07-01）：触及公共接口文件 = direction-shift（强制新 worktree）
+  # 不命中 = route-fix（原 area 复用逻辑）。files 是 ${@:5}（暂记，下方 cmd 流程还会重读）
+  local -a _files_for_judgment=("${@:5}")
+  local direction_kind; direction_kind=$(judge_direction_kind "$PROJECT" "${_files_for_judgment[@]}")
   # 审计修复（case-356）：跟踪本调用是否新建了分歧 worktree。copied=0 中止（line 352）
   # 时须回滚它，否则 git worktree add 建出的 opt-<area>-<ts> worktree+分支成孤儿，
   # 污染 git worktree list / scout-scan（case-353 残留 wt 漂移根因的分歧-wt 面；
@@ -275,9 +316,20 @@ cmd_commit() {
   local created_new_wt=0
   local new_wt_branch=""
 
-  # 选目标 worktree：方向 area 一致 → 主 worktree；不一致 → 复用或开新
+  # 选目标 worktree：direction-shift 优先（强制新 wt）> area 不一致 > area 一致复用 optimization
   local target
-  if [[ "$cur_area" == "$new_area" ]]; then
+  if [[ "$direction_kind" == "direction-shift" ]]; then
+    # 公共接口文件被改 → 项目方向更新，强制开新 worktree（即便 area 同）
+    local ts; ts=$(date +%s)
+    target="$WT_BASE/opt-$(slug "$new_area")-shift-$ts"
+    new_wt_branch="auto/opt-$(slug "$new_area")-shift-$ts"
+    mkdir -p "$target"
+    git -C "$PROJECT" worktree add -b "$new_wt_branch" "$target" "$MAIN_BRANCH" 2>/dev/null
+    echo "$direction" > "$target/.opt-direction"
+    _ignore_opt_direction_marker "$target"
+    created_new_wt=1
+    echo "↔ direction-shift（触及公共接口文件，$cur_area → $new_area）→ 强制开新 worktree: $(basename "$target")"
+  elif [[ "$cur_area" == "$new_area" ]]; then
     target="$WT_BASE/optimization"
   else
     # 先找已有的同 area worktree 复用，没有才建新（避免同方向开一堆 worktree）
@@ -287,7 +339,7 @@ cmd_commit() {
     existing=$( { ls -d "$WT_BASE"/opt-$(slug "$new_area")-* 2>/dev/null || true; } | head -1 )
     if [[ -n "$existing" ]]; then
       target="$existing"
-      echo "→ 复用同 area worktree: $(basename "$target")"
+      echo "→ 复用同 area worktree (route-fix): $(basename "$target")"
     else
       local ts; ts=$(date +%s)
       target="$WT_BASE/opt-$(slug "$new_area")-$ts"
@@ -297,7 +349,7 @@ cmd_commit() {
       echo "$direction" > "$target/.opt-direction"
       _ignore_opt_direction_marker "$target"
       created_new_wt=1
-      echo "↔ 方向分歧（$cur_area → $new_area），开新 worktree: $(basename "$target")"
+      echo "↔ 方向分歧（$cur_area → $new_area，route-fix 新 area），开新 worktree: $(basename "$target")"
     fi
   fi
 

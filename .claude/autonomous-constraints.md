@@ -15,22 +15,42 @@
 
 ---
 
-## DO（审计指令 — 用户 2026-06-30 加）
+## DO（审计指令 — 用户 2026-06-30 加，2026-07-01 重构为事件驱动 + 深度解绑）
 
-### A. 代码审计任务（约每 4 轮一次）
+### A. 全量审计与瞭望节奏（事件驱动，不再固定每 4 轮）
 
-为避免引擎只做"修 TODO/补桩"类小修，每 **4 轮** 至少做一次**代码审计**工作单位，替代普通修复轮次：
+**全量审计轮**（deep audit）—— 事件驱动，由 `.claude/audit-cycle-state.json` 决定是否触发：
 
-1. 仍跑 `scout-scan.py` 拿项目排序，但从 #1 起选一个**有源代码**的项目（跳过纯文档/配置项目）
-2. 用 `code-review` skill 或 `security-review` skill 审计该项目的当前 diff 或最近一次 opt-worktree 改动：
-   - 优先关注：注入风险（SQL/命令/XSS）、权限校验缺失、PII/凭证泄漏、错误处理空洞、并发/资源泄漏
-   - 也可审 main HEAD 最近 1-3 个 commit（`git log -3 --stat`）
-3. 产出：
-   - 若发现真问题 → 起一个 opt-worktree 修复（同小工作单位纪律，1-3 文件）
-   - 若无真问题 → 写一条 case 存档（outcome=succeeded，outcome_evidence 引用审计的具体文件/行号 + skill 输出摘要，不接受散文）
-4. case 的 `work_unit` 字段写 `code-audit:<project>`，`direction` 写 `audit`
+1. 触发条件：`audit-cycle-state.status == idle` 或 `cycle-complete`（即上一次全量审计派生的 fix 全部 merge/reject 落定）。引擎每轮 step 0 读这个文件决定本轮类型。
+2. 全量审计轮**解绑深度限制**：
+   - 可读 5-15 个相关文件（不限于"不超过 2 个源文件"的普通轮约束）
+   - 可追跨模块数据流（input → sink → 副作用）
+   - 可用 sub-agent 跑深度读（**必须 `model: "sonnet"`** 防 402，见 [[subagent-model-preference]]）
+   - 不强制产出 opt-worktree commit；产出独立的 deep audit report
+3. 全量审计范围：
+   - 优先挑"未深度审过"的项目（看 `.claude/audits/` 已有报告，避免重复审同一项目）
+   - 跳过纯文档/配置项目（skills、x-tool）
+   - 一个项目深度审完一次就标 `audited`，本轮不重审
+4. 全量审计**深度不限、但单轮 context 仍受 model 限制**——若项目太大审不完，分段：本轮审 module A，下一轮审计轮（如果其他项目都审过了）续审 module B，audit-cycle-state 记录进度。
 
-### B. 审计日志埋点（修改敏感路径时强制）
+**瞭望/研究轮**（light scout）—— 每轮都做（除全量审计轮外）：
+
+1. 跑 `scout-scan.py --workspace <ws>`（轻量文本报告）拿项目健康快照
+2. 看跨项目趋势：pending worktree 数、最近 24h case 类型分布、积压项目
+3. 检查 `audit-cycle-state.json` 的 pending_count，若 > 0 看派生 fix 是否 blocked（一直没 merge）→ 在 NEXT_SUGGESTION 里提醒用户
+4. 不深读源码；产出只在 case 里写"瞭望快照" + 下轮建议
+5. 若 scout 推荐的项目 #1 是真·小修复（非结构性、1-3 文件能搞定）→ 走普通修复路径，提交 opt-worktree
+
+**派生 fix 派发**（全量审计挖出问题后）：
+
+1. 全量审计 report 里每一条 finding 写：`{finding_id, file, line, severity, kind: route-fix|direction-shift|structural, remediation_sketch}`
+2. `kind=route-fix` 的 → 派生为普通修复 case（最小单位，1-3 文件，走 opt-worktree 复用规则）
+3. `kind=direction-shift` 的 → 派生为方向更新 case（开新 worktree，commit message 标 `direction-shift`）
+4. `kind=structural` 的（拆不成最小单位，需要重构）→ 写入 `.claude/structural-debt.md`（见 D 节），不直接派 fix
+5. 派生 fix case 在 JSON 里加字段 `audit_id`（反向追溯到审计 report）
+6. audit-cycle-state 的 `derived_fixes` 数组登记每个派生 fix 的 `{fix_case_id, audit_id, finding_id, status: pending|merged|rejected}`，全部 `merged|rejected` 后 `status=cycle-complete` → 触发下一轮全量审计
+
+### B. 审计日志埋点（修改敏感路径时强制，不变）
 
 当本轮工作单位触及以下**敏感路径**时，必须同步补 audit-log 埋点代码（按 `.claude/decisions/audit-log.schema.json` 格式）：
 
@@ -50,8 +70,17 @@
 ### C. 审计 case 上报
 
 无论 A 或 B 触发，case JSON 增加字段：
-- `audit_type`: `code-review` | `security-review` | `audit-log-instrumentation` | `none`
-- `audit_findings`: 数组，每条 `{file, line, severity, finding, remediation}`；无发现写 `[]`
+- `audit_type`: `code-review` | `security-review` | `audit-log-instrumentation` | `deep-audit` | `none`
+- `audit_findings`: 数组，每条 `{file, line, severity, finding, remediation, kind}`；无发现写 `[]`
+- `audit_id`: 当 case 是审计轮或派生 fix 时写（格式 `audit-YYYY-MM-DD-NNN`，对应 `.claude/audits/audit-YYYY-MM-DD-NNN.md` 的 id），非审计 case 写 `null`
+- `audit_depth`: `shallow` | `deep`（瞭望轮 = shallow，全量审计轮 = deep），让人能区分"0 findings 是没审深还是真没问题"
+
+### D. 结构性债务队列（structural-debt.md）
+
+A 节 `kind=structural` 的 finding（拆不成最小单位的重构/抽象变更）写入 `.claude/structural-debt.md`：
+- 每条 `{debt_id, audit_id, project, description, affected_files, severity, status: open|scheduled|resolved}`
+- 引擎不主动修 structural-debt（需要更大单位授权）；只累积 + 在 NEXT_SUGGESTION 提醒用户
+- 用户确认修某条 → 转派生 fix case（可能 direction-shift），从 structural-debt 移除或标 scheduled
 
 ---
 

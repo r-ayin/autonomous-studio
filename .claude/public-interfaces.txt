@@ -1,0 +1,189 @@
+# 公共接口文件清单 (public-interfaces.txt)
+#
+# 用途：opt-worktree.sh cmd_commit 预检时读这个文件，判断改动是否触及"项目方向性边界"。
+#   - 改动命中本清单的文件 = direction-shift（项目方向更新）→ 强制开新 worktree
+#   - 不命中 = route-fix（原路线修复）→ 复用现有 worktree（即便 area 同）
+#
+# 维护：人工 review。引擎不自动改本文件（防止自我豁免）。
+# 格式：每行 `<project>:<relative-path>`，# 开头是注释，空行忽略。
+# 项目名 = /home/admin/workspace/ 下的目录名。
+
+# === autonomous-studio-aone ===
+autonomous-studio-aone:scripts/autonomous-loop.sh
+autonomous-studio-aone:scripts/opt-worktree.sh
+autonomous-studio-aone:scripts/scout-scan.py
+autonomous-studio-aone:scripts/triage.py
+autonomous-studio-aone:scripts/parallel-dispatch.sh
+autonomous-studio-aone:scripts/parallel-merge.sh
+autonomous-studio-aone:scripts/route-health-scorer.py
+autonomous-studio-aone:scripts/studio-precheck.sh
+autonomous-studio-aone:termux-listener.py
+autonomous-studio-aone:watchdog.sh
+autonomous-studio-aone:hooks/install-studio-hooks.sh
+autonomous-studio-aone:config/settings.json.example
+autonomous-studio-aone:config/scheduled_tasks.json.example
+autonomous-studio-aone:.claude/hooks/__init__.py
+
+# === agent-dashboard ===
+agent-dashboard:backend/app/main.py
+agent-dashboard:backend/app/__init__.py
+agent-dashboard:backend/app/models.py
+agent-dashboard:backend/app/protocol_adapter.py
+agent-dashboard:backend/app/session_router.py
+agent-dashboard:backend/app/hooks/__init__.py
+agent-dashboard:backend/app/hooks/__main__.py
+agent-dashboard:frontend/src/main.tsx
+agent-dashboard:frontend/src/App.tsx
+agent-dashboard:frontend/src/lib/types.ts
+agent-dashboard:frontend/src/lib/socketManager.ts
+
+# === 1BfrYn9G ===
+1BfrYn9G:server/index.js
+1BfrYn9G:server/routes/agentRoutes.js
+1BfrYn9G:server/routes/auth.js
+1BfrYn9G:server/routes/examBank.js
+1BfrYn9G:server/routes/practices.js
+1BfrYn9G:server/routes/skillsCampaigns.js
+1BfrYn9G:server/routes/staff.js
+1BfrYn9G:server/routes/doltKb.js
+1BfrYn9G:server/routes/masterySessions.js
+1BfrYn9G:src/main.tsx
+1BfrYn9G:src/config/routes.tsx
+1BfrYn9G:src/types/index.ts
+1BfrYn9G:src/onedaycloud/index.ts
+1BfrYn9G:src/onedaycloud/types.ts
+1BfrYn9G:src/shared/services/index.ts
+
+# === huiyis ===
+huiyis:scripts/__init__.py
+huiyis:scripts/scheduler.py
+huiyis:scripts/meeting_api.py
+huiyis:scripts/config.py
+huiyis:scripts/config_server.py
+huiyis:scripts/booker.py
+
+# === dingtalk-auto ===
+dingtalk-auto:main.py
+dingtalk-auto:dashboard.py
+dingtalk-auto:src/__init__.py
+dingtalk-auto:src/bot.py
+dingtalk-auto:src/commands.py
+dingtalk-auto:src/web_server.py
+dingtalk-auto:src/mcp_client.py
+dingtalk-auto:src/parser.py
+
+# === kaoqin ===
+kaoqin:webapp.py
+kaoqin:export.py
+kaoqin:export_attendance.py
+kaoqin:export_calendar.py
+kaoqin:export_leave.py
+kaoqin:mcp_client.py
+kaoqin:config.py
+kaoqin:webhook_notifier.py
+kaoqin:email_notifier.py
+kaoqin:verify.py
+
+# === pc_agent ===
+pc_agent:server/agent/index.js
+pc_agent:server/config/index.js
+pc_agent:server/services/evaluator.js
+pc_agent:server/services/llm-adapter.js
+pc_agent:server/services/workflow-client.js
+pc_agent:server/services/claude-pipeline.js
+pc_agent:server/rules/engine.js
+pc_agent:server/prompts/templates.js
+pc_agent:server/memory/index.js
+pc_agent:skill.js
+
+# === shizi ===
+shizi:manifest.json
+shizi:src/background/index.ts
+shizi:src/agent/index.ts
+shizi:src/agent/protocol.ts
+shizi:src/agent/handler.ts
+shizi:src/engine/analysis-engine.ts
+shizi:src/engine/analyzer-registry.ts
+shizi:src/shared/types.ts
+shizi:src/config/config-loader.ts
+shizi:src/popup/main.tsx
+
+# === agentfw ===
+agentfw:packages/agentfw/src/bin/agentfw.ts
+agentfw:packages/agentfw/src/bin/tap.ts
+agentfw:packages/agentfw/src/bin/tools.ts
+agentfw:packages/agentfw/src/cli/index.ts
+agentfw:packages/agentfw/src/core/routes.ts
+agentfw:packages/agentfw/src/core/routing-policy.ts
+agentfw:packages/agentfw/src/core/packet.ts
+agentfw:packages/agentfw/src/core/model-registry.ts
+agentfw:packages/agentfw/src/core/manifest.ts
+agentfw:packages/agentfw/src/core/masking.ts
+agentfw:packages/agentfw/src/core/config.ts
+agentfw:packages/agentfw/src/daemon/index.ts
+agentfw:packages/agentfw/src/daemon/server.ts
+agentfw:packages/agentfw/src/daemon/api/index.ts
+agentfw:packages/agentfw/src/daemon/routes/load.ts
+
+# === quanzhan ===
+quanzhan:server/index.js
+quanzhan:src/main.tsx
+quanzhan:src/App.tsx
+quanzhan:src/data.ts
+
+# === open-design ===
+open-design:packages/contracts/src/index.ts
+open-design:packages/contracts/src/api/chat.ts
+open-design:packages/contracts/src/api/artifacts.ts
+open-design:packages/contracts/src/api/workspaces.ts
+open-design:packages/contracts/src/api/connectors.ts
+open-design:packages/contracts/src/api/registry.ts
+open-design:packages/contracts/src/plugins/index.ts
+open-design:packages/contracts/src/plugins/manifest.ts
+open-design:packages/registry-protocol/src/index.ts
+open-design:packages/registry-protocol/src/schemas.ts
+open-design:packages/platform/src/index.ts
+open-design:packages/sidecar/src/index.ts
+open-design:packages/sidecar-proto/src/index.ts
+open-design:packages/metatool/src/index.ts
+open-design:packages/metatool/src/cli.ts
+
+# === browser-use ===
+browser-use:browser_use/__init__.py
+browser-use:browser_use/cli.py
+browser-use:browser_use/agent/service.py
+browser-use:browser_use/agent/views.py
+browser-use:browser_use/tools/service.py
+browser-use:browser_use/tools/views.py
+browser-use:browser_use/browser/views.py
+browser-use:browser_use/mcp/server.py
+browser-use:browser_use/mcp/__main__.py
+browser-use:browser_use/skill_cli/main.py
+browser-use:browser_use/skill_cli/__main__.py
+browser-use:browser_use/llm/base.py
+browser-use:browser_use/llm/schema.py
+browser-use:browser_use/controller/__init__.py
+browser-use:browser_use/config.py
+
+# === skills ===
+# 无显著公共接口文件（纯文档/模板项目）
+
+# === stagehand-analysis ===
+stagehand-analysis:packages/core/lib/v3/index.ts
+stagehand-analysis:packages/core/lib/v3/api.ts
+stagehand-analysis:packages/core/lib/v3/v3.ts
+stagehand-analysis:packages/cli/bin/run.js
+stagehand-analysis:packages/cli/src/base.ts
+stagehand-analysis:packages/server-v3/src/server.ts
+stagehand-analysis:packages/server-v3/src/routes/healthcheck.ts
+stagehand-analysis:packages/server-v3/src/routes/readiness.ts
+stagehand-analysis:packages/server-v3/src/types/model.ts
+stagehand-analysis:packages/evals/framework/index.ts
+stagehand-analysis:packages/evals/framework/types.ts
+stagehand-analysis:packages/evals/core/contracts/representation.ts
+stagehand-analysis:packages/evals/core/contracts/results.ts
+stagehand-analysis:packages/evals/core/contracts/targets.ts
+stagehand-analysis:packages/evals/core/contracts/tool.ts
+
+# === x-tool ===
+# 无显著公共接口文件（多独立子工具集合，无统一对外 SDK）
