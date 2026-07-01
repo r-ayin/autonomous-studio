@@ -83,7 +83,9 @@ run_round() {
   local model="$1" out
   out=$(claude -p "$PROMPT" --model "$model" --permission-mode bypassPermissions 2>&1)
   echo "$out" | tail -30
-  if echo "$out" | grep -qiE '402|429|quota[ _]?exceed|rate[ _]?limit|overloaded|insufficient'; then
+  # L-003 fix: 收窄限流检测模式，避免 'line 429:' / 'insufficient coverage' 等正常输出误触发。
+  # 仅匹配 HTTP 状态码上下文 (HTTP 4xx/5xx + quota/rate/overload) 或明确限流短语。
+  if echo "$out" | grep -qiE 'HTTP[ /]+[45][0-9]{2}.*(quota|rate[ _]?limit|overload|exceed)|quota[ _]?exceeded|rate[ _]?limit(ing|[ _]?(exceeded|exceeds))|too many requests|overloaded'; then
     return 1
   fi
   return 0
