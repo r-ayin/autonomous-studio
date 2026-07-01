@@ -92,7 +92,6 @@ pc_agent:server/services/llm-adapter.js
 pc_agent:server/services/workflow-client.js
 pc_agent:server/services/claude-pipeline.js
 pc_agent:server/rules/engine.js
-pc_agent:server/prompts/templates.js
 pc_agent:server/memory/index.js
 pc_agent:skill.js
 
