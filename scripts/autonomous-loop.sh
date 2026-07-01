@@ -15,7 +15,7 @@
 #
 # 用法:
 #   autonomous-loop.sh <workspace> [engine-dir]        # 前台跑（看输出）
-#   autonomous-loop.sh <workspace> [engine-dir] --bg   # 后台跑（nohup）
+#   autonomous-loop.sh <workspace> [engine-dir] --bg   # 后台跑（nohup，日志在 /tmp/autonomous-loop-<ts>.log）
 #   停: touch <engine-dir>/.claude/.stop_autonomous  或 kill 进程
 #
 # 引擎自身 cwd = engine-dir（默认 <workspace>/autonomous-studio），
@@ -24,10 +24,22 @@ set -uo pipefail
 
 WORKSPACE="${1:-.}"
 ENGINE_DIR="${2:-$WORKSPACE/autonomous-studio}"
+BG_FLAG="${3:-}"
 WORKSPACE="$(cd "$WORKSPACE" && pwd)"
 ENGINE_DIR="$(cd "$ENGINE_DIR" && pwd)"
 STOP_MARKER="$ENGINE_DIR/.claude/.stop_autonomous"
 mkdir -p "$ENGINE_DIR/.claude"
+
+# --bg: 自举为后台进程（nohup + 日志重定向），父进程退出。
+# M-004 fix (audit-2026-07-01-002): 文档声称支持但原代码未实现。
+if [[ "$BG_FLAG" == "--bg" ]]; then
+  LOG_FILE="/tmp/autonomous-loop-$(date +%Y%m%d-%H%M%S).log"
+  nohup "$0" "$WORKSPACE" "$ENGINE_DIR" </dev/null >"$LOG_FILE" 2>&1 &
+  BG_PID=$!
+  echo "[autonomous-loop] 已后台启动 PID=$BG_PID 日志=$LOG_FILE"
+  echo "[autonomous-loop] 停: touch $STOP_MARKER  或 kill $BG_PID"
+  exit 0
+fi
 
 # 清掉旧的停止标记（启动时）
 rm -f "$STOP_MARKER"
