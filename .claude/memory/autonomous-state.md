@@ -14,15 +14,15 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-07-01T15:25Z（case-647 瞭望轮#92:大规模归档759case,active降至2,pending_count=5不变,BLOCKED连续64轮）**
-- **活跃项目**: autonomous-studio-aone 维护——**audit-004 tests module 7 findings: 5 route-fix pending待merge(opt-tests-1782904286 @ b8cfba5)+2 structural-debt已记录**。audit-001/002/003 已 cycle-complete(全部merged)。**已审源码:hooks/+scripts/+runtime-listeners/+tests/**。
-- **当前阶段**: case-647 完成→大规模归档(759 cases: 06-27~06-30 + 07-01:365-639 + 640-643,646);active case从803降至2(644,645)。**pending_count=5不变**;**BLOCKED on human review only**(连续64轮)。batch-case-642-661空目录仍存在(可选清理)。无新结构性问题。
+- **最后活跃: 2026-07-01T15:48Z（case-654 瞭望轮#95:清理orphan auto/optimization worktree+branch,BLOCKED连续71轮,pending_count=5不变）**
+- **活跃项目**: autonomous-studio-aone 维护——**audit-004 tests module 7 findings: 5 route-fix pending待merge(opt-tests-1782904286 @ b8cfba5)+2 structural-debt已记录**。audit-001/002/003 已 cycle-complete(全部merged)。**已审源码:hooks/+scripts/+runtime-listeners/+tests/**。未审候选(next audit):phases/planning/config/evals/engine-core。
+- **当前阶段**: case-654 完成→orphan cleanup(git worktree remove optimization + branch -d + push --delete);active case=1(654)。**pending_count=5不变**;**BLOCKED on human review only**(连续71轮)。无新结构性问题。Orphan auto/optimization已清理。已归档:batch-case-644-to-652/(8 cases)。
 - **GOAL_STATUS**: active
 - **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动；审计轮次事件驱动 audit-cycle-state + 敏感路径 audit-log 埋点）
-- **LAST_UPDATED**: 2026-07-01(case-647 瞭望轮#92,归档759case,pending_count=5不变,BLOCKED连续64轮)
-- **LAST_WORKTREE**: none(本轮仅scout+归档,无opt-worktree commit)。待merge列表: opt-tests-1782904286(MERGE)+opt-engine-shift-1782901796(MERGE)+opt-runtime-listeners-1782902553(REVIEW+MERGE) — 全部已push origin
+- **LAST_UPDATED**: 2026-07-01(case-654 瞭望轮#95,orphan cleanup,pending_count=5不变,BLOCKED连续71轮)
+- **LAST_WORKTREE**: none(本轮仅worktree cleanup,无opt-worktree commit)。待merge列表: opt-tests-1782904286(MERGE)+opt-engine-shift-1782901796(MERGE)+opt-runtime-listeners-1782902553(REVIEW+MERGE) — 全部已push origin。Orphan auto/optimization已清理✅
 - **LAST_OUTCOME**: done
-- **NEXT_SUGGESTION**: [1]【用户review必需·最高优先级】按优先级merge:①opt-tests-1782904286(b8cfba5,5 commits/case-579..583) ②opt-engine-shift-1782901796(8f2cc8b,judge_direction_kind别名修复) ③opt-runtime-listeners-1782902553(0056380,含M-003 direction-shift待确认public-interfaces.txt分类)。[2]3个worktree merged后→derived_fixes status→merged,pending_count→0,status→cycle-complete→触发audit-005(src/核心engine模块深度审计)。**⚠️ BLOCKED:仅等用户review,引擎侧无新工作单位可派生**。连续64轮无源码改动。[3]若用户想跳过剩余fix:在audit-cycle-state.json把5条derived_fixes status全改rejected→status变cycle-complete→下轮触发audit-005。[4]清理空目录batch-case-642-661(可选)。[5]归档已完成:active case从803降至2(644,645),759 cases已安全存档。
+- **NEXT_SUGGESTION**: [1]【用户review必需·最高优先级·71轮blocked】按优先级merge:①opt-tests-1782904286(b8cfba5,5 commits/case-579..583) ②opt-engine-shift-1782901796(8f2cc8b,judge_direction_kind别名修复) ③opt-runtime-listeners-1782902553(0056380,含M-003 direction-shift待确认public-interfaces.txt分类)。[2]3个worktree merged后→derived_fixes status→merged,pending_count→0,status→cycle-complete→触发audit-005。**推荐target:phases/(stage progression逻辑,跨模块耦合高,从未审过)**。[3]⚠️ BLOCKED:仅等用户review,引擎侧无新fix可派生。连续71轮无源码改动。[4]若用户想跳过剩余fix:在audit-cycle-state.json把5条derived_fixes status全改rejected→status变cycle-complete→下轮触发audit-005。[5]structural-debt SD-001(pytest未装)需用户决策测试策略;SD-002 blocked on SD-001。
 - **自主循环**: 🟢 活跃
   - L1 Inline: 每次回复末尾内联检查 (+ git status)
   - L2 Heartbeat: CronCreate 每7分钟（执行轨——推进 Studio 阶段或主动扫描）
@@ -74,10 +74,10 @@ metadata:
 <!-- GOAL_ID: G-2026-06-15-002 -->
 <!-- GOAL_STATUS: active -->
 <!-- ACTIVE_GOAL: ralph-wiggum-autonomous-loop (每轮一个小工作单位，scout-scan 排序选任务) -->
-<!-- LAST_UPDATED: 2026-07-01(case-647 瞭望轮#92,归档759case,pending_count=5不变,BLOCKED连续64轮) -->
-<!-- LAST_WORKTREE: none(scout+归档)。待merge:opt-tests(MERGE)+opt-engine-shift(MERGE)+opt-runtime-listeners(REVIEW+MERGE),全部pushed origin -->
+<!-- LAST_UPDATED: 2026-07-01(case-654 瞭望轮#95,orphan cleanup,pending_count=5不变,BLOCKED连续71轮) -->
+<!-- LAST_WORKTREE: none(orphan cleanup)。待merge:opt-tests(MERGE)+opt-engine-shift(MERGE)+opt-runtime-listeners(REVIEW+MERGE),全部pushed origin。Orphan auto/optimization已清理✅ -->
 <!-- LAST_OUTCOME: done -->
-<!-- NEXT_SUGGESTION: [1]用户review按优先级merge:opt-tests→opt-engine-shift→opt-runtime-listeners。[2]merged后→cycle-complete→audit-005(src/)。⚠️ BLOCKED仅等review,连续64轮。[3]清理空目录batch-case-642-661(可选)。[4]归档完成:active从803降至2。 -->
+<!-- NEXT_SUGGESTION: [1]用户review按优先级merge:opt-tests→opt-engine-shift→opt-runtime-listeners(71轮blocked)。[2]merged后→cycle-complete→audit-005(phases/)。⚠️ BLOCKED仅等review,连续71轮。[3]structural-debt SD-001需用户决策。 -->
 
 | 字段 | 内容 |
 |------|------|
