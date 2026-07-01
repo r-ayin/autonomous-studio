@@ -24,22 +24,10 @@ set -uo pipefail
 
 WORKSPACE="${1:-.}"
 ENGINE_DIR="${2:-$WORKSPACE/autonomous-studio}"
-BG_FLAG="${3:-}"
 WORKSPACE="$(cd "$WORKSPACE" && pwd)"
 ENGINE_DIR="$(cd "$ENGINE_DIR" && pwd)"
 STOP_MARKER="$ENGINE_DIR/.claude/.stop_autonomous"
 mkdir -p "$ENGINE_DIR/.claude"
-
-# --bg: nohup 后台跑，stdout/stderr 重定向到 engine-dir/.claude/loop.log
-if [[ "$BG_FLAG" == "--bg" ]]; then
-  LOOP_LOG="$ENGINE_DIR/.claude/loop.log"
-  echo "[bg] nohup → $LOOP_LOG (PID $$ will detach)"
-  # 用 exec 替换当前 shell 为 nohup 包裹的自己，去掉 --bg 防递归
-  exec nohup "$0" "$WORKSPACE" "$ENGINE_DIR" >>"$LOOP_LOG" 2>&1 &
-  disown
-  echo "[bg] detached, PID=$!"
-  exit 0
-fi
 
 # 清掉旧的停止标记（启动时）
 rm -f "$STOP_MARKER"
@@ -86,26 +74,14 @@ GLM_FAIL_STREAK=0
 PROBE_COUNTDOWN=0
 
 # 跑一轮；stdout 显示末 30 行，返回 0 成功 / 1 检测到限流信号
-# H-005 fix: 不再把 claude 全量输出捕获到 shell 变量（MB 级字符串膨胀 + 敏感信息驻留内存）。
-# 改为写临时文件，tail/grep 直接读文件；结束即 rm，减少驻留窗口。
 run_round() {
-  local model="$1"
-  local out_file
-  out_file=$(mktemp "${TMPDIR:-/tmp}/autonomous-loop.XXXXXX") || return 1
-  # 权限收窄：仅当前用户可读（防同主机他用户窥探敏感输出）
-  chmod 600 "$out_file"
-  if ! claude -p "$PROMPT" --model "$model" --permission-mode bypassPermissions >"$out_file" 2>&1; then
-    tail -30 "$out_file"
-    rm -f "$out_file"
+  local model="$1" out
+  out=$(claude -p "$PROMPT" --model "$model" --permission-mode bypassPermissions 2>&1)
+  echo "$out" | tail -30
+  if echo "$out" | grep -qiE '402|429|quota[ _]?exceed|rate[ _]?limit|overloaded|insufficient'; then
     return 1
   fi
-  tail -30 "$out_file"
-  local rc=0
-  if grep -qiE '402|429|quota[ _]?exceed|rate[ _]?limit|overloaded|insufficient' "$out_file"; then
-    rc=1
-  fi
-  rm -f "$out_file"
-  return $rc
+  return 0
 }
 
 ITER=0
