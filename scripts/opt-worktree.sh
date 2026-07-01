@@ -120,7 +120,9 @@ detect_main_branch() {
 MAIN_BRANCH="$(detect_main_branch "$PROJECT")"
 
 area_of() { echo "${1%%:*}"; }
-slug() { echo "$1" | tr ':' '-' | tr '/' '-'; }
+# M-001 fix (audit-2026-07-01-002): glob 元字符 * ? [ ] 也替换，避免 line 339
+# ls -d "$WT_BASE"/opt-$(slug "$new_area")-* 在 area 含通配符时误匹配非目标 worktree。
+slug() { echo "$1" | tr ':/*?[]' '------'; }
 
 # direction_kind 判定（用户 2026-07-01 定）：审计深度解绑后，原 area-字符串相等判定太粗，
 # 改用"是否触及项目公共接口文件"作为强信号——命中 = direction-shift（项目方向更新）→ 强制开新
