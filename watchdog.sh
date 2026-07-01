@@ -50,11 +50,14 @@ while true; do
         fi
     fi
 
-    # ── 2. Claude 进程检查 ────────────────────────
-    CLAUDE_PROCS=$(pgrep -c claude 2>/dev/null || echo 0)
+    # ── 2. Claude 进程检查（仅计本项目目录下的 claude 主进程）────
+    # 旧版 `pgrep -c claude` 会匹配任何名字含 "claude" 的进程（其他用户会话、
+    # claude-code-proxy、文件名带 claude 的脚本等），导致 watchdog 误判健康。
+    # 改为 pgrep -f 锚定 PROJECT_DIR，只统计在本项目下运行的 claude 进程。
+    CLAUDE_PROCS=$(pgrep -f "claude.*${PROJECT_DIR}" 2>/dev/null | wc -l | tr -d ' ')
     if [ "$CLAUDE_PROCS" -eq 0 ]; then
         touch "$RESUME_FLAG"
-        log "ALERT: No Claude processes running"
+        log "ALERT: No Claude processes running in $PROJECT_DIR"
     else
         rm -f "$RESUME_FLAG"
     fi
