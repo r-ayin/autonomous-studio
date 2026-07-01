@@ -18,6 +18,7 @@ import os
 import sys
 import json
 import subprocess
+import tempfile
 
 if sys.platform == "win32":
     try:
@@ -44,7 +45,13 @@ def _read_json(path):
 
 
 def _strike_count(inc=False, reset=False):
-    """连续阻断计数。reset=True 归零；inc=True 自增。返回当前值。"""
+    """连续阻断计数。reset=True 归零；inc=True 自增。返回当前值。
+
+    原子写：tempfile+os.replace。原 open("w")+json.dump 非原子写在并发 Stop hook
+    触发时（快速 stop→resume→stop）读端可能读到半写 JSON → _read_json 返回 None
+    → strike count 静默归零 → MAX_STRIKES 防死循环永远达不到阈值。与 discovery-gate.py
+    case-404、save-checkpoint.py _atomic_write_json 同一漏洞模式。audit-2026-07-02-001 H-001。
+    """
     data = _read_json(STRIKE_FILE) or {"count": 0}
     if reset:
         data["count"] = 0
@@ -52,8 +59,17 @@ def _strike_count(inc=False, reset=False):
         data["count"] = data.get("count", 0) + 1
     try:
         os.makedirs(os.path.dirname(STRIKE_FILE), exist_ok=True)
-        with open(STRIKE_FILE, "w", encoding="utf-8") as f:
-            json.dump(data, f)
+        fd, tmp = tempfile.mkstemp(dir=os.path.dirname(STRIKE_FILE), suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False)
+            os.replace(tmp, STRIKE_FILE)
+        except Exception:
+            try:
+                os.unlink(tmp)
+            except OSError:
+                pass
+            raise
     except Exception:
         pass
     return data.get("count", 0)
