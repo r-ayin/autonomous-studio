@@ -401,7 +401,14 @@ cmd_commit() {
     target="$WT_BASE/opt-$(slug "$new_area")-shift-$ts"
     new_wt_branch="auto/opt-$(slug "$new_area")-shift-$ts"
     mkdir -p "$target"
-    git -C "$PROJECT" worktree add -b "$new_wt_branch" "$target" "$MAIN_BRANCH" 2>/dev/null
+    # H-001 fix (audit-2026-07-01-002): direction-shift 路径原无 husk 清理，worktree add
+    # 失败时 mkdir 已建空 dir 残留 + 后续写 .opt-direction 到非 worktree 目录致假成功。
+    # 仿 route-fix 路径 (L425-428) 加 rmdir + return 1。
+    if ! git -C "$PROJECT" worktree add -b "$new_wt_branch" "$target" "$MAIN_BRANCH" 2>/dev/null; then
+      rmdir "$target" 2>/dev/null || true
+      echo "✗ direction-shift worktree add 失败（分支名撞？路径冲突？），已清空 husk: $(basename "$target")" >&2
+      return 1
+    fi
     echo "$direction" > "$target/.opt-direction"
     _ignore_opt_direction_marker "$target"
     created_new_wt=1
