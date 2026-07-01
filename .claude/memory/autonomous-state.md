@@ -14,15 +14,15 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-07-01T01:48:00Z（case-478=今日第114例,478%4=2≠0 非审计轮·skip 心跳。承接 case-477 NEXT[1]。scout-scan #1=AS score=0.0『review 1 个待合并 worktree』——唯一待合并 opt-security-1782866336@5b5d956(ahead=3) 已由 case-465/468/469/472 四轮审查结论合并就绪且引擎无权 merge→不重复审。真债务 TODO/FIXME/HACK=0/0/0,延期 TODO=4 全历史已 triage。非审计轮+score 0.0+待审 worktree 已审且引擎无权 merge+DO NOT #14 禁日常润色→skip 心跳(无源码改动/无 opt-worktree/无 LIVE 同步/无 sanctioned-merge)。四验干净:porcelain=空、worktree list=main@1d5d0a3+opt-security@5b5d956 两项、branch=main+auto/opt-security-1782866336、rev-list main..opt-security=3 保留。case-478.json+state.md 直提 main(archival-commit-mechanism)。case-478 outcome=succeeded audit_type=none audit_findings=[]。下轮 case-479=479%4=3≠0 非审计轮·skip 心跳;case-480=480%4=0 审计轮·DO A 续审未审源码）**
+- **最后活跃: 2026-07-01T01:51:00Z（case-479=今日第115例,479%4=3≠0 非审计轮·skip 心跳。承接 case-478 NEXT[1]。scout-scan #1=AS score=0.0『review 1 个待合并 worktree』——唯一待合并 opt-security-1782866336@5b5d956(ahead=3) 已由 case-465/468/469/472 四轮审查结论合并就绪且引擎无权 merge→不重复审。真债务 TODO/FIXME/HACK=0/0/0,延期 TODO=4 全历史已 triage。非审计轮+score 0.0+待审 worktree 已审且引擎无权 merge+DO NOT #14 禁日常润色→skip 心跳(无源码改动/无 opt-worktree/无 LIVE 同步/无 sanctioned-merge)。四验干净:porcelain=空、worktree list=main@e37d2da+opt-security@5b5d956 两项、branch=main+auto/opt-security-1782866336、rev-list main..opt-security=3 保留。case-479.json+state.md 直提 main(archival-commit-mechanism)。case-479 outcome=succeeded audit_type=none audit_findings=[]。下轮 case-480=480%4=0 审计轮·DO A 续审未审源码）**
 - **活跃项目**: autonomous-studio-aone 维护——opt-security-1782866336@5b5d956(ahead=3 累计 case-464 audit-log+case-468 redaction+case-472 stop-gate-dash-arg,merge-tree 干演 clean merge 可行,待人工 squash merge)。**已审源码 24 处:.claude/hooks/ 12 hook(含 decision-observer.py case-468+stop-completion-gate.py case-472 1 low 已起 opt-security@5b5d956 修复待审)+codegraph-sync.py case-456+notify-phone/autonomous-commit-gate/pipeline-gate/post-edit-lint.py case-448+scaffold-skill.sh+opt-worktree.sh+scout-scan.py(case-380/049)+triage.py+bff_client.py(case-420 F3+case-436 F1 已合并 main@125a15e)+audit_log.py(case-424)+autonomous-commit-gate.py(case-428/440 已合并 main@051bb4b)+apply_resource_access.py(case-432 info deferred)+pipeline-gate.py(case-432/433 已合并 main)+notify-phone.py(case-444 已合并 main@9a8748e)+post-edit-lint.py(case-448)+scripts/route-health-scorer.py(case-452 无真问题)+codegraph-sync.py(case-456 无真问题)+discovery-gate.py(case-460 无真问题)+auto-commit.py(case-464 1 medium 已起 opt-security-1782866336@ba52e9c 修复,case-465 审查确认可 merge 待人工)+decision-observer.py(case-468 1 medium redaction 缺口已起 opt-security@cf17a35 修复待审)+stop-completion-gate.py(case-472 1 low py_compile 缺 -- 分隔符已起 opt-security@5b5d956 修复待审)**。
-- **当前阶段**: case-478 非审计轮 skip 心跳完成(无源码改动,opt-security@5b5d956 ahead=3 保留待人工 merge);下轮 case-479=479%4=3≠0 非审计轮·skip 心跳;case-480=480%4=0 审计轮·DO A 续审未审源码
+- **当前阶段**: case-479 非审计轮 skip 心跳完成(无源码改动,opt-security@5b5d956 ahead=3 保留待人工 merge);下轮 case-480=480%4=0 审计轮·DO A 续审未审源码
 - **GOAL_STATUS**: active
 - **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动；审计轮次每 4 case 强制 code-review/security-review + 敏感路径 audit-log 埋点）
-- **LAST_UPDATED**: 2026-07-01(case-478)
+- **LAST_UPDATED**: 2026-07-01(case-479)
 - **LAST_WORKTREE**: opt-security-1782866336@5b5d956(ahead=3: ba52e9c case-464 audit-log + cf17a35 case-468 redaction + 5b5d956 case-472 stop-gate-dash-arg;merge-tree --write-tree 干演 clean merge 可行,待人工 squash merge;optimization 死桩已 cmd_cleanup 清;case-478 非审计轮 skip 心跳无源码改动)
 - **LAST_OUTCOME**: done
-- **NEXT_SUGGESTION**: [1]【case-479=479%4=3≠0 非审计轮·skip 心跳】(无源码改动/无 opt-worktree/无 LIVE 同步/无 sanctioned-merge)。[2]【case-480=480%4=0 审计轮·DO A】续审未审源码,候选:.claude/hooks/incremental-save.py(91)/patterns-write-gate.py(52)/resume-checkpoint.py(213)/save-checkpoint.py(222) 或 scripts/distill-patterns.py(416)/index-cases.py(137)。[3]【人工 merge 待办,累计 3 commit】用户手动 `git merge --squash auto/opt-security-1782866336 && git commit`(merge-tree 干演 clean)+cleanup opt-security worktree+branch。
+- **NEXT_SUGGESTION**: [1]【case-480=480%4=0 审计轮·DO A】续审未审源码,候选:.claude/hooks/incremental-save.py(91)/patterns-write-gate.py(52)/resume-checkpoint.py(213)/save-checkpoint.py(222) 或 scripts/distill-patterns.py(416)/index-cases.py(137)——挑一个做 security-review/code-review。[2]【人工 merge 待办,累计 3 commit】用户手动 `git merge --squash auto/opt-security-1782866336 && git commit`(merge-tree 干演 clean)+cleanup opt-security worktree+branch。[3]【case-481=481%4=1≠0 非审计轮·skip 心跳】。
 - **自主循环**: 🟢 活跃
   - L1 Inline: 每次回复末尾内联检查 (+ git status)
   - L2 Heartbeat: CronCreate 每7分钟（执行轨——推进 Studio 阶段或主动扫描）
@@ -75,9 +75,9 @@ metadata:
 <!-- GOAL_STATUS: active -->
 <!-- ACTIVE_GOAL: ralph-wiggum-autonomous-loop (每轮一个小工作单位，scout-scan 排序选任务) -->
 <!-- LAST_UPDATED: 2026-07-01 -->
-<!-- LAST_WORKTREE: opt-security-1782866336@5b5d956（ahead=3: ba52e9c case-464 audit-log + cf17a35 case-468 redaction + 5b5d956 case-472 stop-gate-dash-arg;merge-tree --write-tree 干演 clean merge 可行,待人工 squash merge;optimization 死桩已 cmd_cleanup 清；case-478 非审计轮 skip 心跳无源码改动） -->
+<!-- LAST_WORKTREE: opt-security-1782866336@5b5d956（ahead=3: ba52e9c case-464 audit-log + cf17a35 case-468 redaction + 5b5d956 case-472 stop-gate-dash-arg;merge-tree --write-tree 干演 clean merge 可行,待人工 squash merge;optimization 死桩已 cmd_cleanup 清；case-479 非审计轮 skip 心跳无源码改动） -->
 <!-- LAST_OUTCOME: done -->
-<!-- NEXT_SUGGESTION: [1]case-479=479%4=3≠0 非审计轮·skip 心跳。[2]case-480=480%4=0 审计轮·DO A 续审未审源码(incremental-save/patterns-write-gate/resume-checkpoint/save-checkpoint 或 scripts/distill-patterns/index-cases)挑一个做 security-review/code-review。[3]人工 `git merge --squash auto/opt-security-1782866336 && git commit`(merge-tree 干演 clean)+cleanup opt-security。 -->
+<!-- NEXT_SUGGESTION: [1]case-480=480%4=0 审计轮·DO A 续审未审源码(incremental-save/patterns-write-gate/resume-checkpoint/save-checkpoint 或 scripts/distill-patterns/index-cases)挑一个做 security-review/code-review。[2]人工 `git merge --squash auto/opt-security-1782866336 && git commit`(merge-tree 干演 clean)+cleanup opt-security。[3]case-481=481%4=1≠0 非审计轮·skip 心跳。 -->
 
 | 字段 | 内容 |
 |------|------|
