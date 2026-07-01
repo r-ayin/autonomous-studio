@@ -557,6 +557,20 @@ cmd_commit() {
     for s in "${skipped[@]}"; do [[ "$s" == "$x" ]] && return 0; done
     return 1
   }
+  # state-only 文件预检（瞭望轮#79）：引擎状态回写文件（autonomous-state.md / audit-cycle-state.json /
+  # decisions/case-*.json / audits/audit-*.md）按 MEMORY.md archival-commit-mechanism 应直提 main，
+  # 不走 opt-worktree。早期瞭望轮误把它们 cp 进 optimization worktree 造成历史污染 + cp-guard
+  # 累积跳过警告。命中此清单 → 跳过并提示调用方走直提路径；不 abort，让同批源码文件继续迁移。
+  _is_state_only_file() {
+    local p="$1"
+    case "$p" in
+      .claude/memory/autonomous-state.md) return 0 ;;
+      .claude/audit-cycle-state.json) return 0 ;;
+      .claude/decisions/case-*.json) return 0 ;;
+      .claude/audits/audit-*.md) return 0 ;;
+    esac
+    return 1
+  }
   local copied=0
   if [[ ${#files[@]} -gt 0 ]]; then
     local f
@@ -565,6 +579,7 @@ cmd_commit() {
       # 防 _cp_guard + rm -f 写/删 worktree 外文件。校验失败跳过该文件（不 abort），
       # 让合法文件继续迁移；报错已含 finding id 便于追溯。
       _validate_commit_file_path "$f" || { skipped+=("$f"); continue; }
+      _is_state_only_file "$f" && { echo "⏸ state-only skip: $f (按 archival-commit-mechanism 应直提 main，不进 worktree)" >&2; skipped+=("$f"); continue; }
       if [[ -e "$f" ]]; then
         _cp_guard "$f" "$target/$f" || { skipped+=("$f"); continue; }
       elif git ls-files --error-unmatch "$f" >/dev/null 2>&1; then
@@ -584,6 +599,7 @@ cmd_commit() {
     while IFS= read -r -d '' p; do
       p="${p#???}"               # 去掉前导 "XY "（status 2 字符 + 空格）
       case "$p" in *" -> "*) p="${p##* -> }";; esac   # rename 取新路径
+      _is_state_only_file "$p" && { echo "⏸ state-only skip: $p (直提 main)" >&2; skipped+=("$p"); continue; }
       if [[ -e "$p" ]]; then
         _cp_guard "$p" "$target/$p" || { skipped+=("$p"); continue; }
       elif git ls-files --error-unmatch "$p" >/dev/null 2>&1; then
