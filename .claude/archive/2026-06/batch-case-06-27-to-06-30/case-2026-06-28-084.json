@@ -1,0 +1,18 @@
+{
+  "case_id": "case-2026-06-28-084",
+  "agent_id": "ralph-loop",
+  "timestamp": "2026-06-28T15:05:00Z",
+  "project": "kaoqin + autonomous-studio-aone",
+  "work_unit": "双工作单位：①kaoqin 补 GATES.md；②修复 autonomous-loop.sh scout-scan workspace 参数",
+  "situation": "scout-scan 传 /home/admin/workspace/autonomous-studio 返回 0 项目（引擎自身目录下无子项目）；正确工作区应为父目录 /home/admin/workspace。同时 kaoqin 排 scout #1（score=5.0，缺 GATES.md）。",
+  "action": "①为 kaoqin（钉钉考勤导出工具）创建 GATES.md，涵盖 CRITICAL/IMPORTANT/NICE 三级门禁（数据完整性/配置安全/核心功能），提交到 opt-docs-1782641168。②在 autonomous-loop.sh 中增加 SCAN_WORKSPACE=$(dirname \"$WORKSPACE\") 变量，并将 scout-scan --workspace 参数从 \"$WORKSPACE\" 改为 \"$SCAN_WORKSPACE\"，提交到 auto/optimization worktree。",
+  "files_changed": [
+    "/home/admin/workspace/kaoqin/GATES.md",
+    "/home/admin/workspace/autonomous-studio-aone/scripts/autonomous-loop.sh"
+  ],
+  "worktree": "opt-docs-1782641168（kaoqin）; auto/optimization（autonomous-studio-aone）",
+  "direction": "docs:gates + engine:scout-workspace",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh commit 输出 '✓ 提交到 opt-docs-1782641168  方向=docs:gates'；grep 验证 optimization worktree 中 autonomous-loop.sh line 26 有 SCAN_WORKSPACE，line 40 有 '$SCAN_WORKSPACE'；scout-scan 以 /home/admin/workspace 重跑发现 8+ 子项目（对比 0 项目）",
+  "next_suggestion": "1) 人工批准合并 opt-docs-1782641168（kaoqin GATES.md）; 2) 人工批准合并 auto/optimization（autonomous-loop.sh scout-scan fix）; 3) x-tool 刷新 PROGRESS.md（stale 8.6天，scout #2）; 4) text-counter-extension 补 PROGRESS.md（待合并 opt-docs-1782640949）"
+}

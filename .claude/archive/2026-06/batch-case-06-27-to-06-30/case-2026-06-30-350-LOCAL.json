@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-30-350",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-30T13:11:00Z",
+  "project": "sunset-prediction",
+  "work_unit": "GATES 实跑核销：修复 health-check.py 硬编码 WSL SRC_DIR 致 python health-check.py 崩溃，🟡 门禁由 [ ] 转 [x]",
+  "situation": "scout-scan 全 8 项目 score=0.0（健康），#1 1BfrYW9R 33 测全绿且 standing optimization worktree 仅 idle .opt-direction 标记（无具体工作单位，纯 doc polish=churn，受 [[scout-scan-standing-worktree-not-stale]] 不清）。顺延按持久化 state NEXT_SUGGESTION「sunset-prediction/wechat-main GATES 实跑核销」选 sunset-prediction（上次 gates 核销 2 天前 ff6c70b，drift 风险）。实跑 npm test=28 pass 0 fail；实跑 python3 health-check.py 崩溃：FileNotFoundError: '/mnt/e/x-tool/wanxia'——health-check.py L6 硬编码 WSL 源目录 SRC_DIR，Linux-native 容器内不存在，server 死时 restart()→ensure_deployed()→shutil.copytree(不存在路径) 崩溃。GATES 🟡「python health-check.py 通过」长期 [ ] 未核销即因 NeverPassed：脚本结构性不可移植。同模式历史前例 967f857（puppeteer 去 /root 硬编码→os.homedir()+CHROME_PATH env）。",
+  "action": "1 文件最小改动 health-check.py L5-9：SRC_DIR 由硬编码 \"/mnt/e/x-tool/wanxia\" 改 os.environ.get(\"WANXIA_SRC_DIR\", os.path.dirname(os.path.abspath(__file__)))（env 可覆盖、默认脚本自身目录，与 967f857 同模式）。/api/health 路由本就存在（src/routes.js:334 返 200+JSON status:ok），故 check() 逻辑无需改——根因仅 SRC_DIR 不可移植。GATES.md L35 🟡 门禁由 [ ] 转 [x] 并缀实跑证据。端到端实证：fuser -k 8080; nohup node server.js → 启动日志 '[calibration] Restored weights from database' + '🌅 ...已启动: http://localhost:8080'；python3 health-check.py → {\"status\":\"ok\",\"port\":8080} exit 0。SRC_DIR 可移植性独立实证：python3 -c 解析默认 SRC_DIR=/home/admin/workspace/sunset-prediction exists=True（旧硬编码 /mnt/e/x-tool/wanxia exists=False）。server 死路径不再 FileNotFoundError（SRC_DIR 恒存在）。",
+  "files_changed": ["sunset-prediction/health-check.py", "sunset-prediction/GATES.md"],
+  "worktree": "opt-gates-1782824938 (sunset-prediction/.opt-worktrees/opt-gates-1782824938, branch auto/opt-gates-1782824938, commit 951d8a3)",
+  "direction": "gates:health-portable",
+  "outcome": "succeeded",
+  "outcome_evidence": "worktree commit 951d8a3 含修复：`git -C <wt> show HEAD:health-check.py` grep 命中 L9 'SRC_DIR = os.environ.get(\"WANXIA_SRC_DIR\", os.path.dirname(os.path.abspath(__file__)))'；`git -C <wt> show HEAD:GATES.md` grep 命中 L35 '- [x] 🟡 python health-check.py 通过 —— 2026-06-30 修复 ...'。main porcelain 空（opt-worktree 步骤③还原）。实跑命令输出：python3 health-check.py → {\"status\":\"ok\",\"port\":8080} exit=0（server 活时 check() 命中 /api/health 200）。SRC_DIR 解析 exists=True vs 旧路径 exists=False。npm test 28 pass 0 fail（未回归）。",
+  "next_suggestion": "sunset-prediction opt-gates-1782824938 待人工 merge→main（1 commit, 2 文件, 纯 gates 核销零代码行为变化除 health-check.py SRC_DIR 可移植性）。merge 后 GATES 🟡 python health-check.py 转正。剩余 sunset-prediction GATES 未过项：🟡 POST /api/xhs/generate 手动触发路由未实现（仅 cron 22:30）、🟡 前端 npm run build（package.json 无 build 脚本）、🟡 小红书限流、🟢 cron 失败无重试。下轮可选：wechat-main GATES 实跑核销（dirty=3 须先查 pending worktree），或 sunset-prediction 补 POST /api/xhs/generate 路由（小工作单位，解锁另一 🟡）。AS 观察期继续：housekeeping wt 累积+main 干净度监控。"
+}

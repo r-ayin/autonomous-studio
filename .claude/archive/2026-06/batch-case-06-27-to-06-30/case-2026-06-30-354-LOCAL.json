@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-06-30-354",
+  "agent_id": "ralph-loop",
+  "timestamp": "2026-06-30T13:40:00Z",
+  "project": "sunset-prediction",
+  "work_unit": "POST /api/xhs/generate 手动触发 XHS 日报素材包生成路由（核销 GATES 🟡）",
+  "situation": "scout-scan #1=1BfrYW9R(score=0.0,无明确小工作单位);autonomous-state.md NEXT_SUGGESTION 建议锁定 1BfrYW9R /readyz 503 + /readyz 200 + /healthz 200 的 Content-Type 头。先验源码发现 state 建议已 stale:⑪ 503 测已在 test/smoke.test.js:388-389 断言 application/json、⑩ 200 在 335-336、⑨ /healthz 在 286-287——三个 proposed gap 全已锁。dev-server.js 107 行逐分支审(405/healthz/readyz-503/readyz-200/404/静态200/端口守卫/listen-error/SIGTERM/SIGINT)均有回归锁覆盖,503 body 的 reason 字段是 operator debug 非稳定契约(作者故意用 parsed.status 非 deepEqual)。1BfrYW9R 真无小工作单位,不伪造冗余断言。顺延至 sunset-prediction(真有未核销 GATES):🟡 POST /api/xhs/generate 路由仅 README/GATES 头口承诺无实现,运维须干等 22:30 cron。",
+  "action": "src/routes.js 增 router.post('/xhs/generate',async(req,res))——execAsync('node scripts/publish-xhs.js',{cwd:PROJECT_ROOT,timeout:120000}) 与 server.js:55 22:30 cron 同入口同 timeout;成功返 {ok:true,generatedAt,stdout},失败返 500 {ok:false,error,stderr};手动路由只生成不发帖(Browser Use 发帖仍 cron+BROWSER_USE_AUTO_POST 开关独占,语义对齐 README「手动触发日报生成」)。PROJECT_ROOT=join(dirname(fileURLToPath(import.meta.url)),'..') 因 routes.js 在 src/ 父目录即项目根。补 exec/promisify/fileURLToPath/dirname/join imports。GATES 🟡 L16 勾选核销,PROGRESS 加变更历史条目。",
+  "files_changed": [
+    "sunset-prediction/src/routes.js",
+    "sunset-prediction/GATES.md",
+    "sunset-prediction/PROGRESS.md"
+  ],
+  "worktree": "opt-gates-1782827098 (sunset-prediction, commit 57b849d, 待审合并)",
+  "direction": "gates:xhs-generate-route",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "node --check src/routes.js → SYNTAX-OK",
+    "node --input-type=module -e \"import('./src/routes.js')\" → router loaded; layers: 15 (原14+1) | POST /xhs/generate registered: true",
+    "E2E: 起 server.js(PORT 8080),curl -X POST http://127.0.0.1:8080/api/xhs/generate → HTTP 500 {\"ok\":false,\"error\":\"Command failed: node scripts/publish-xhs.js...page.waitForFunction: Timeout 30000ms exceeded\",\"stderr\":\"...\"}(非 404=路由已 mount;dispatch 到同入口 publish-xhs.js,playwright 起到 page.waitForFunction 证同管道;失败返结构化 JSON)",
+    "server log: [xhs/generate] 日报素材包生成失败: Command failed... (路由 error 分支日志触发)",
+    "npm test → 28 pass 0 fail (routes.js import 不破现有套件)",
+    "opt-worktree commit → opt-gates-1782827098 HEAD 57b849d,git show --stat: src/routes.js +26 / GATES.md 2+/1- / PROGRESS.md 5+/2-,3 files changed 30 insertions 3 deletions",
+    "GATES.md L16 现 [x] 勾选(原 [ ] ⚠ 路由尚未实现)",
+    "1BfrYW9R 验源: test/smoke.test.js ⑪ L388-389 / ⑩ L335-336 / ⑨ L286-287 已断言 Content-Type,state 建议三 gap 全已锁(stale)"
+  ],
+  "next_suggestion": "下轮:审 sunset-prediction opt-gates-1782827098(57b849d) vs main(d515311)→git cherry/三点 diff 证真未合再 merge(注意 [[git-cherry-unreliable-for-squash-merge]]:main tip d515311 是上轮 opt-gates squash merge,base 本身是 squash 故 cherry 显+合理)。merge 前 worktree 内 npm test 复测。次选:sunset 🟢 cron 失败重试/告警(L23,当前只 console.error)——可加 cron wrapper 捕获失败写 data/cron-failures.log + console.error sentinel(grep-friendly,与 5d7cee0 cookie-alert 同模式)。1BfrYW9R 暂无小工作单位(state 旧 NEXT_SUGGESTION 已 stale,勿再据其伪造 Content-Type 断言)。"
+}

@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-27-036",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-27T13:35:07Z",
+  "project": "shizi",
+  "work_unit": "抽取 bbox2dToPixels 纯函数 + vitest 锁定 bbox_2d 千分比→像素坐标换算正确性（覆盖 GATES IMPORTANT 未勾门禁）",
+  "situation": "scout-scan #1=shizi(score=0.0,健康良好,推荐'无明确工作单位/文档润色')。GATES.md 列 IMPORTANT 门禁「bbox_2d 千分比(0-1000,[x1,y1,x2,y2])→像素换算正确」未勾[x]。该换算逻辑内嵌于 recognizeAllTextsWithVL(vision-adapter.ts:492-508),调 VL API,不可直测,故门禁长期无法证伪。预警:pending worktree opt-docs-1782566299 已查明 shizi 实有 3 个 vitest 文件/npm test 41 passed,GATES「0 个 vitest 用例」是误记——故'补 vitest'工作单位是假的,不能重做(印证 scout-scan 不感知 pending worktree);改选另一未勾 IMPORTANT 门禁(bbox 换算)做真工作单位。",
+  "action": "1) 在 vision-adapter.ts 抽取导出纯函数 bbox2dToPixels(bbox2d:number[], imageSize:[number,number]|null|undefined):[number,number,number,number],逐字迁出原内嵌逻辑(Math.max(0,Math.min(1,x/1000))*imgW + Math.round + 1000x1000 兜底 + 返回 [x,y,w,h]),行为不变;2) recognizeAllTextsWithVL 改调 bbox2dToPixels(item.bbox_2d, imageSize),删内联 6 行;3) 新增 tests/bbox-coord.test.ts 6 用例(正方形图/非正方形图 x乘宽y乘高/imageSize 缺失兜底/越界坐标 clamp[0,1]/四舍五入/满图框=整图)。刻意不碰 GATES.md/PROGRESS.md——那是 opt-docs-1782566299 待合并 worktree 的领地,避免方向纠缠。",
+  "files_changed": ["src/background/vision-adapter.ts", "tests/bbox-coord.test.ts"],
+  "worktree": "opt-shizi-1782567288 (branch auto/opt-shizi-1782567288, base main 75758f4)",
+  "direction": "shizi:bbox-coord",
+  "outcome": "succeeded",
+  "outcome_evidence": "worktree 提交 0982609 落地,diff --stat vs main: src/background/vision-adapter.ts +20/-8、tests/bbox-coord.test.ts +36(共 2 文件 +56/-8)。实测(npm run build 成功;./node_modules/.bin/vitest run: 4 文件 47 passed(原 41+6 新增),0 fail,Duration 888ms)。新测试 bbox-coord.test.ts 单跑 6/6 passed。行为不变性:bbox2dToPixels 逐字复制原 Math.round/clamp//1000/兜底逻辑,call site 仅替换内联块,无语义改动。",
+  "next_suggestion": "shizi 仍有 GATES「🔴 VL_KEY 8be079a2... 历史泄露(4 commit+7 tracked tests 已推 origin)」——明确标为独立高风险工作单位,需 history-rewrite + 平台侧 key 轮换,非小单位,留待人审/专项轮次。其次:pending opt-docs-1782566299(docs 求真)与 opt-shizi-1782566299(本次 bbox-coord)均待人审合并,下轮可转其他健康度良好项目(wechat-main/sunset-prediction)找小单位或对人审积压 worktree 做 merge/reject 决策。"
+}

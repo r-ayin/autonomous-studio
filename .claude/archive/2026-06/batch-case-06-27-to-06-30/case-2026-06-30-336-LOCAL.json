@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-30-336",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-30T04:25:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "review pending worktree opt-tests-1782793346 + merge/reject",
+  "situation": "scout-scan 推荐 #1 = 1BfrYW9R「review 1 个待合并 worktree」。git worktree list 实际有两个 worktree：(a) opt-tests-1782793346 tip=da8cfa9 父=e30d376(main tip)——真·单 commit 前置于 main；(b) auto/optimization tip=966a60f 落后 main（standing worktree，case-206 非废弃物，三点 diff 显 .opt-direction/GATES.md/PROGRESS.md/dev-server.js/test/smoke.test.js 为 case-219 发散伪影，非真 pending）。真 pending 仅 opt-tests-1782793346：改 PROGRESS.md 一行，把门禁核销行从非严格形「29/29 JSX 组件」改为严格形「30 个 JSX 组件」以落 npm test ⑧ 守卫，堵 PROGRESS.md 计数再漂移。",
+  "action": "在 worktree 实跑验证：`node build.js` 报「30 JSX components」；`npm test` = 31 pass 0 fail（含 ⑧ README/CLAUDE.md/PROGRESS.md 组件计数与 build.js 报告一致守卫）。claim 持平后 squash-merge：`opt-worktree.sh 1BfrYW9R merge opt-tests-1782793346` → fast-forward e30d376..da8cfa9，squash 落 onedaybot-dev=e4148d0，worktree 清理 + auto/opt-tests-1782793346 分支 ref 删除。",
+  "files_changed": ["1BfrYW9R/PROGRESS.md"],
+  "worktree": "opt-tests-1782793346 (已 merge 并清理)",
+  "direction": "tests:progress-sync",
+  "outcome": "succeeded",
+  "outcome_evidence": "onedaybot-dev tip=e4148d0「merge: 人工批准合并 optimization worktree 'opt-tests-1782793346'」；`git show e4148d0 --stat` = PROGRESS.md 1 file 1 insertion 1 deletion；`git worktree list` 仅剩 standing optimization worktree（966a60f，预期保留）；merge 前 worktree 实跑 build.js=30 components + npm test 31 pass 0 fail。",
+  "next_suggestion": "1BfrYW9R 真实 pending 已清零（剩余 standing optimization worktree 落后 main 属正常，勿当 stale 清理——case-206）。下轮 scout-scan #2=autonomous-studio（dirty=6 + 7 延期已 triage TODO），可审 AS 自身 1 个待合并 worktree 或处理 main dirty 残留；#3=moni-master 健康良好可跳。"
+}

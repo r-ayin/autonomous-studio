@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-187",
+  "agent_id": "ralph-wiggum-loop",
+  "timestamp": "2026-06-29T06:35:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "merge opt-cases + opt-tooling pending worktrees; fix cmd_merge dirty-tree blind spot",
+  "situation": "scout-scan #2 autonomous-studio (score=0.0, 待合并=2, 空=1)。main HEAD=b48991f。两个 FF-able worktree：opt-cases-1782713308 (case-184+186 归档) 和 opt-tooling-1782713441 (cli-defaults fail-fast)。case-186 复审结论已确认两者安全。但首次 merge opt-tooling 时报'❌ 合并冲突'——根因：main working tree 残留了与 opt-tooling 内容相同的 scripts/opt-worktree.sh 修改（上轮 commit 时不知何故也写到了 main），git merge --squash 把 dirty mod 当作 diverged，误报冲突。cmd_merge 缺 dirty guard，且失败后 git merge --abort 吞错无提示。还原 main dirty 文件后立即 merge 成功，证实是 false conflict。",
+  "action": "(1) git checkout -- scripts/opt-worktree.sh 还原 main 至 HEAD-clean；(2) 重跑 bash scripts/opt-worktree.sh autonomous-studio merge opt-tooling-1782713441 → squash 成功；(3) 在 AS main 的 scripts/opt-worktree.sh cmd_merge() 加 dirty guard：merge 前检查 git diff --quiet && git diff --cached --quiet，不干净则打印 status 并 exit 1，避免下次再误报；(4) 用 opt-worktree.sh commit tooling:merge-guard 提交到新建 opt-tooling-1782713874。opt-cases-1782713308 已先一步 merge 成功。optimization worktree 仍与 main 同步（空）。",
+  "files_changed": ["scripts/opt-worktree.sh"],
+  "worktree": "opt-tooling-1782713874 (新，host dirty guard fix)",
+  "direction": "tooling:merge-guard",
+  "outcome": "succeeded",
+  "outcome_evidence": "git log -1 main = 224ba80 'merge: 人工批准合并 optimization worktree opt-tooling-1782713441'; git worktree list 现只剩 main + optimization + opt-tooling-1782713874(opt-cases+opt-tooling-1782713441 均已清理); opt-tooling-1782713874 HEAD commit = 'opt(tooling:merge-guard): cmd_merge fail-fast on dirty main working tree'; dirty guard 代码块位于 cmd_merge() cd $PROJECT 之后、checkout 之前，含注释引用本次 case 作为证据。",
+  "next_suggestion": "(1) 下轮合并 opt-tooling-1782713874 (dirty guard) 入 main；(2) personal-assistant 仍有 opt-personal-assistant-1782711645 pending(case-176 产出)，复审并 merge/reject；(3) wechat-main scout-scan 报 1 pending+1 empty，核实 .opt-worktrees/wechat-main/ 实际状态并处理；(4) optimization worktree 长期空，可考虑 reject 清理或保留作 engine area 默认目标。"
+}

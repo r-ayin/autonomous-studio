@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-176",
+  "agent_id": "ralph-wiggum-loop",
+  "timestamp": "2026-06-29T05:42:00Z",
+  "project": "personal-assistant",
+  "work_unit": "triage dirty=2 (status.json unlock+activeWork+v06Design; android-app-design.md 465行 untracked)",
+  "situation": "scout-scan #1 autonomous-studio 待合并 worktree(opt-cases-1782711520)已被上轮 case-175 处理(main HEAD=83bfd46,该枝可清)。顺延到 next_suggestion: personal-assistant dirty=2。git status: M planning/status.json(解锁 locked=false、新增 activeWork+v06Design+lastUpdated)、?? planning/android-app-design.md(465行)。两文件均为前轮自治循环/用户直导留下的真实进度,非 WIP 残留,应入库。",
+  "action": "bash opt-worktree.sh . commit personal-assistant:triage ... planning/status.json planning/android-app-design.md → 因 area=personal-assistant ≠ optimization worktree 的 engine,自动开新枝 auto/opt-personal-assistant-1782711645 提交(HEAD=299e65f)。main 未动(dirty=0 after commit into worktree)。",
+  "files_changed": ["planning/status.json", "planning/android-app-design.md"],
+  "worktree": "opt-personal-assistant-1782711645",
+  "direction": "personal-assistant:triage",
+  "outcome": "succeeded",
+  "outcome_evidence": "git worktree list 显示新枝 auto/opt-personal-assistant-1782711645 @ 299e65f;git diff main..auto/opt-personal-assistant-1782711645 --stat = 3 files changed, 472 insertions(+), 4 deletions(-)(.opt-direction+android-app-design.md+status.json);main HEAD 仍 22d01c4 未污染。",
+  "next_suggestion": "(1) 人工审 opt-personal-assistant-1782711645 diff 后 merge/reject;(2) autonomous-studio opt-cases-1782711520 已 superseded by case-175,可 git worktree remove + branch -d 清理;(3) wechat-main 待合并 worktree 复审(同模式)。"
+}

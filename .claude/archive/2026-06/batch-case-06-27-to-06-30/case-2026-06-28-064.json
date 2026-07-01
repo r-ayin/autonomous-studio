@@ -1,0 +1,17 @@
+{
+  "case_id": "case-2026-06-28-064",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-06-28T10:34:00Z",
+  "project": "personal-assistant",
+  "work_unit": "reconcile GATES.md: 核销 9/11 门禁(e2e/pluggable/profile/pytest/.env/lazy-import/proactive-evidence/cli/api)",
+  "situation": "scout-scan 全项目 score=0.0（健康），但 personal-assistant GATES.md 全部未勾——实际 a8d000c(可插拔单测)/17cd52c(pytest)/00a2b6a(profile 版本化)等提交已关闭多个门禁。GATES.md 与真实状态脱节。autonomous-studio dirty=8 也需归档(8 orphan case files)。",
+  "action": "两步：(1) 归档 AS 8 个孤儿 case 文件(056-063)到 opt-cases-1782639135 worktree，AS dirty 8→0。(2) 逐条验证 personal-assistant 门禁——pytest 52 passed、cli test 全链路 PASS、profile.json 合法+_meta+version、.gitignore 含 .env、asr.py:73 lazy import、proactive 输出含 segment 溯源引用、CLI 14 子命令齐、API /health 存在——核销 9/11 门禁，更新 GATES.md。",
+  "files_changed": [
+    "GATES.md"
+  ],
+  "worktree": "opt-docs-1782642914",
+  "direction": "docs:gates-reconcile",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh 输出 '✓ 提交到 opt-docs-1782642914 方向=docs:gates-reconcile'；AS git status 空(dirty=0)；pytest 52 passed；cli test 输出 '✅ PASS — 全链路跑通'；profile.json 合法 JSON 含 _meta.version=1。",
+  "next_suggestion": "personal-assistant 剩余 2 门禁：CRITICAL '数据全本地'(审计外发调用)和 NICE 'DuckDB 习惯分析可读视图'。或切到 moni-master 合并 opt-moni-1782639719(TODO triage)。"
+}

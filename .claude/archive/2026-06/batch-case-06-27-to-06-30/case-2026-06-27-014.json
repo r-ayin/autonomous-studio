@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-06-27-014",
+  "agent_id": "autonomous-loop-ralph",
+  "timestamp": "2026-06-27T10:17:01Z",
+  "project": "autonomous-studio",
+  "work_unit": "同步 autonomous-studio/scripts/scout-scan.py（main 上陈旧副本）至 workspace 根权威副本，消除 repo/engine 双副本漂移与【TODO:】模板桩误计虚高",
+  "situation": "scout-scan 报 AS #1（score=1.06，推荐 'triage 前 1-2 个 TODO'）。按 state NEXT_SUGGESTION ⚠ 先查 pending worktree：4 个真实 TODO（bff_client.py:206 / apply_resource_access.py:85 / :90 / scaffold-skill.sh:136）已全部在 opt-skills-1782553243 triage（90aaeac/26833e9/f3efac0）；'无 planning/' 已在 opt-planning-1782554583 处理。即推荐工作单位被 pending worktree 全覆盖（case-012 已宣告 triage 穷尽），动手即覆辙。转查结构性债时定位到真缺口：存在两份 scout-scan.py——workspace 根 scripts/scout-scan.py（loop 实跑的权威副本，含 _STRIP_PLACEHOLDERS/_STRIP_HTML_COMMENTS/IGNORE_DIR_PREFIXES 三类 marker 修复，count→TODO=4）与 autonomous-studio/scripts/scout-scan.py（main 上 repo 副本，缺上述修复，count→TODO=17，其中 13 为 scaffold-skill.sh 的 【TODO:...】 模板占位符被误计为真债）。`diff -q` 根 vs opt-scanner-1782549922:scripts/scout-scan.py = IDENTICAL（修复已在那个 pending worktree）；opt-scanner-1782549922 vs main = differ。但 opt-scanner-1782549922 困于基线分歧（base b725eb4 落后 main，case-013 留据的 P0），`git merge-base --is-ancestor b725eb4 main`=NO，无法 ff-merge，修复到不了 main。case-013 的方案 A（rebase --onto）需人工改写历史、有丢工作风险，未执行。",
+  "action": "不走 case-013 方案 A 的 rebase（历史改写、需人工裁决、有丢工作风险），改用干净基线落地同一净变更：直接 `cp 根/scripts/scout-scan.py autonomous-studio/scripts/scout-scan.py`（机械 1 文件同步，非重新作者逻辑），经 opt-worktree.sh 提交到 area=scout-sync 的新 worktree（刻意避开 area=scanner 以免 `opt-worktree.sh` 复用被阻塞的 opt-scanner-1782549922——slug(scanner) 会命中 existing 复用）。新 worktree 从当前 main(34fe229) 分支，零分歧。同步后 repo 副本 == 根权威副本（diff -q IDENTICAL），+28/-4 行，恰为三类 marker 修复。fixed-scanner 对 autonomous-studio 重算 count→TODO=4（原 repo 副本 17）。main 工作区 stash 迁移后干净（scout-scan.py status --porcelain 空）。",
+  "files_changed": ["scripts/scout-scan.py"],
+  "worktree": "autonomous-studio opt-scout-sync-1782555344（方向 scout-sync:canonical-repo-copy，commit 6318723 off main 34fe229，1 文件，待人工 merge）",
+  "direction": "scout-sync:canonical-repo-copy",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "git -C autonomous-studio log --oneline -1 auto/opt-scout-sync-1782555344 → 6318723 opt(scout-sync:canonical-repo-copy): 同步 autonomous-studio/scripts/scout-scan.py 至 workspace 根权威副本...",
+    "git -C autonomous-studio merge-base --is-ancestor 34fe229 auto/opt-scout-sync-1782555344 → 是（worktree 直接 off main 34fe229，无 b725eb4 分歧包袱）",
+    "diff -q 根/scripts/scout-scan.py autonomous-studio/scripts/scout-scan.py（worktree HEAD 版）→ IDENTICAL（已通过 git show auto/opt-scout-sync-1782555344:scripts/scout-scan.py 导出后 count_markers('/home/admin/workspace/autonomous-studio') = {'TODO':4,'FIXME':0,'HACK':0}，原 repo 副本为 17）",
+    "grep -c '_STRIP_PLACEHOLDERS|IGNORE_DIR_PREFIXES' worktree 版 = 5（main 版 = 0），证实三类修复已落地",
+    "git -C autonomous-studio status --porcelain scripts/scout-scan.py → 空（改动已 stash 迁入 worktree，main 工作区干净）",
+    "git -C autonomous-studio show main:scripts/scout-scan.py | grep -c _STRIP_PLACEHOLDERS → 0（main 未被改写，仍陈旧，gate 通过）"
+  ],
+  "next_suggestion": [
+    "【待人工 merge·本轮主交付】autonomous-studio opt-scout-sync-1782555344（commit 6318723，1 文件 scripts/scout-scan.py，off main 34fe229 干净基线）：`bash scripts/opt-worktree.sh autonomous-studio show opt-scout-sync-1782555344` 审完 → `merge`。merge 后 main 的 repo 副本与根权威副本一致，AS TODO 17→4（repo 副本独立运行口径）。",
+    "【待人工 reject·superseded】opt-scanner-1782549922 的净效果（scripts/scout-scan.py 三类 marker 修复）已由 opt-scout-sync-1782555344 干净落地，且其 base b725eb4 分歧致无法 ff-merge。opt-scout-sync merge 后应 `bash scripts/opt-worktree.sh autonomous-studio reject opt-scanner-1782549922` 归档，避免两 worktree 同时携带同一 scout-scan.py 变更致 merge 时空 diff/混淆。",
+    "【降权·非阻塞】case-013 opt-planning-1782554583 的 '方案 A rebase opt-scanner' 对 scanner 修复而言不再必要（已被本路取代）；但 planning/divergence-rebase-vs-reset.md 文档对理解 b725eb4 vs main 历史分歧仍有独立价值，可保留 merge。",
+    "【下轮 #1 候选·若 AS 仍排前】AS triage 已穷尽（case-010/011/012）、scanner 漂移已修（本轮）、planning/ 已在 opt-planning 待合并——AS 结构性小工作单位趋尽。下轮若 AS 仍 #1 且上述 pending 已 merge，转 #2 x-tool（TODO=6 真实代码债：broker_qmt.py×4 + run_trader.py:102 + download_sw_industry.py:87，⚠ 动手前先查 x-tool pending worktree）。或推进 #5 shizi VL_KEY 历史重写 P0（安全债，独立工作单位）。",
+    "【P1 引擎 infra·根治双副本漂移】根 scripts/scout-scan.py 与 autonomous-studio/scripts/scout-scan.py 双副本是本轮漂移根因。建议下轮做结构性根治：repo 内 scripts/scout-scan.py 改为符号链接指向根权威副本，或加 drift 自检（启动时 `diff -q` 两副本不一致则告警），防再次陈旧。"
+  ]
+}

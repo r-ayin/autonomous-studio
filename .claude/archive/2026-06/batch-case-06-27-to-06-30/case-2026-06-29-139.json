@@ -1,0 +1,31 @@
+{
+  "case_id": "case-2026-06-29-139",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-29T03:31:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "cases:archive — clear main dirty=10 (untracked case files)",
+  "situation": "scout-scan 报 autonomous-studio dirty=10；git status 显示 10 个 untracked .claude/decisions/case-*.json（case-2026-06-29-001, 130-138）滞留在 main。上轮 NEXT_SUGGESTION 已明确建议归档这批文件。健康度排序所有项目 score=0.0，无紧迫修复任务，按 state 文件指引优先清 main 脏状态以保后续循环干净基线。",
+  "action": "用 opt-worktree.sh commit cases:archive 指定 10 个 case 文件提交到新开的 opt-cases-1782703893 worktree（方向分歧自动开新枝），main 未直接 git commit。",
+  "files_changed": [
+    ".claude/decisions/case-2026-06-29-001.json",
+    ".claude/decisions/case-2026-06-29-130.json",
+    ".claude/decisions/case-2026-06-29-131.json",
+    ".claude/decisions/case-2026-06-29-132.json",
+    ".claude/decisions/case-2026-06-29-133.json",
+    ".claude/decisions/case-2026-06-29-134.json",
+    ".claude/decisions/case-2026-06-29-135.json",
+    ".claude/decisions/case-2026-06-29-136.json",
+    ".claude/decisions/case-2026-06-29-137.json",
+    ".claude/decisions/case-2026-06-29-138.json"
+  ],
+  "worktree": "opt-cases-1782703893",
+  "direction": "cases:archive",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh 输出 '✓ 提交到 opt-cases-1782703893  方向=cases:archive'；opt-worktree list 显示该 worktree 1 提交 / 10 files changed / 173 insertions(+)；cd autonomous-studio && git status --short 返回空（main clean）。",
+  "next_suggestion": [
+    "人工审 opt-cases-1782703893（bash scripts/opt-worktree.sh autonomous-studio show opt-cases-1782703893），批准后 merge 入 main 完成归档闭环",
+    "sunset-prediction/wechat-main/x-tool: 巡检 GATES.md 门禁是否过时、PROGRESS.md stale 同步（scout-scan 标 0.3-0.8 天 stale）",
+    "moni-master: 后端/量化小任务（禁前端重构）",
+    "personal-assistant/shizi/1BfrYW9R: 健康度良好，留作后备"
+  ]
+}

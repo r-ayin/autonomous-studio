@@ -1,0 +1,17 @@
+{
+  "case_id": "case-2026-06-29-006",
+  "agent_id": "autonomous-loop-ralph",
+  "timestamp": "2026-06-29T08:40Z",
+  "project": "browser-use",
+  "work_unit": "triage skipped tests: replace 8 vague TODO:fix skip reasons with descriptive event-bus refactor context",
+  "situation": "scout-scan ranked browser-use #1 (score=2.68) due to GATES.md pending merge, no planning/, and 34 TODO/FIXME markers. The primary cluster was 8 skipped integration tests in tests/ci/infrastructure/test_registry_action_parameter_injection.py all using reason='TODO: fix' — an opaque marker that tells future developers nothing about why they were skipped or what to fix. One test (test_get_scroll_info) had a redundant second @pytest.mark.skip decorator on top of a descriptive one.",
+  "action": "Replaced all 8 generic 'TODO: fix' skip reasons with specific descriptions that identify the API surface to verify post event-bus refactor (SecurityWatchdog constructor, get_current_page_url/title, refresh, execute_javascript, take_screenshot, tab operations, Registry.execute_action). Removed the redundant @pytest.mark.skip(reason='TODO: fix') duplicate decorator from test_get_scroll_info — kept the descriptive 'get_scroll_info API changed' reason. Committed to opt-browser-use-1782664160 worktree via opt-worktree.sh.",
+  "files_changed": [
+    "tests/ci/infrastructure/test_registry_action_parameter_injection.py"
+  ],
+  "worktree": "opt-browser-use-1782664160",
+  "direction": "browser-use:test-triage",
+  "outcome": "succeeded",
+  "outcome_evidence": "git log in opt-browser-use-1782664160 shows commit 0b66a45 'opt(browser-use:test-triage): triage: replace 8 vague TODO:fix skip reasons...'; grep on worktree file shows all 8 skip markers now have descriptive reasons (no remaining 'TODO: fix'); duplicate @skip on test_get_scroll_info removed (was 2 decorators, now 1).",
+  "next_suggestion": "1) Human review + merge browser-use/opt-browser-use-1782664160 (test-triage changes); 2) Next loop: shizi (score=2.2, GATES.md pending merge opt-docs-1782657987, 1 TODO) — triage the 1 TODO; 3) skills (score=2.08, 5 TODOs) — triage 1-2 TODOs"
+}

@@ -1,0 +1,45 @@
+{
+  "case_id": "case-2026-06-30-356",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-06-30T14:28:00Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "code-audit:autonomous-studio-aone",
+  "situation": "审计轮次（356%4=0=DO A 强制 code-review，符合上轮 case-355 NEXT_SUGGESTION[2] 判定）。step0 读 constraints DO A/B/C 全文。step1 `python3 scripts/scout-scan.py --workspace .` #1=autonomous-studio-aone score=0.0（有源码项目✓，非纯文档/配置，符合 DO A.1「跳过纯文档/配置项目」要求）。DO A.2 审 main HEAD 最近 opt-worktree 改动——按 case-354/355 连续 NEXT_SUGGESTION 指定续审 scripts/opt-worktree.sh cmd_commit（line 209-430，git/subprocess/FS 写编排=敏感 plumbing）。逐行审计定位 1 真问题：cmd_commit 方向分歧分支（cur_area!=new_area 且无同 area worktree 可复用）在 line 231-233 `git worktree add -b auto/opt-<area>-<ts>` 建**新**分歧 worktree+分支，此副作用发生在 line 315 cp 循环**之前**；若随后全部指定文件被 cp-guard 跳过/不存在→copied=0→line 355 `exit 1` 中止，旧版**不回滚**该新建 wt+分支→成孤儿（git worktree list 残留 + scout-scan 待合并计数虚高）。此为 case-353 残留 optimization wt 漂移根因的「分歧-wt 面」（optimization 持久 wt 面由 ensure_main_wt 建、cmd_cleanup 可收；分歧 wt 无自动回收路径）。非 DO B 敏感路径（无 auth/PII/凭证/外部HTTP/部署/删除-many——opt-worktree.sh 为引擎内部 plumbing 编排，与 case-352 同判定「引擎内部plumbing硬化非敏感操作」），故不补 audit-log 埋点，audit_type=code-review。",
+  "action": "最小改动 1 文件 scripts/opt-worktree.sh（+17/-1）：①cmd_commit 头部（line 214 后）加 `local created_new_wt=0` + `local new_wt_branch=\"\"` 跟踪本调用是否新建分歧 wt；②分歧新建分支（line 235）把分支名存入 new_wt_branch、git worktree add 用此变量、置 created_new_wt=1（取代原内联字面量，语义不变）；③copied=0 bail 块（line 360）exit 1 前加回滚：`if (( created_new_wt )) && [[ -n \"$new_wt_branch\" ]]; then git worktree remove --force \"$target\" + git branch -D \"$new_wt_branch\"`（均 `|| true` 容错）。仅清本调用新建者——复用 wt（line 226 existing 分支 created_new_wt=0）与 optimization 持久 wt（line 219 同 area 分支 created_new_wt=0）不动。验证：bash -n OK；复现场景（/tmp 仓 + 分歧方向 data:exp + bogus-nonexistent-file.txt→文件不存在跳过→copied=0）实跑证实新建 opt-data-* wt 被 worktree remove、分支被 `Deleted branch auto/opt-data-1782829821`，post `git worktree list` 仅 main+optimization（孤儿消除✓）；diff stat opt-worktree.sh +17/-1。提交 `opt-worktree.sh . commit engine:audit` → optimization worktree commit 7c6196b（stack 于 case-355 .gitignore fix 9036e71 之上，同 area engine 复用 wt，cp-guard 通过因 opt-worktree.sh 未被 9036e71 触及）。main HEAD 未动（4dde0e4）。",
+  "files_changed": ["scripts/opt-worktree.sh"],
+  "worktree": "optimization（auto/optimization @ 7c6196b，2 commits ahead of main 4dde0e4：7c6196b audit fix + 9036e71 .gitignore，待人工 sanctioned merge）",
+  "direction": "engine:audit",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "scripts/opt-worktree.sh line 231-233 旧版 `git worktree add -b \"auto/opt-$(slug \"$new_area\")-$ts\"` 在 line 315 cp 循环前建分歧 wt，line 355 exit 1 无回滚——确证 leak 路径",
+    "bash -n scripts/opt-worktree.sh → SYNTAX_OK",
+    "复现场景实跑输出含 `↔ 方向分歧（engine → data），开新 worktree: opt-data-1782829821` + `Deleted branch auto/opt-data-1782829821 (was 4dde0e4)` + `已回滚本调用新建的分歧 worktree: opt-data-1782829821（避免孤儿）` + `[exit 1 expected non-zero]`",
+    "复现 post `git worktree list` = main @ 4dde0e4 + optimization @ 9036e71——新建分歧 wt 已不在（旧版会残留）",
+    "git diff --stat main -- scripts/opt-worktree.sh（optimization wt）= `1 file changed, 17 insertions(+), 1 deletion(-)`",
+    "opt-worktree commit 7c6196b `git log --oneline -3`（optimization wt）= 7c6196b audit + 9036e71 hygiene + d0e6776 case-354 archival",
+    "post-commit main HEAD=4dde0e4（未动）+ main `git status --short` 仅 `?? PROJECTS.md`（fix 隔离在 wt，未污染 main）"
+  ],
+  "next_suggestion": [
+    "【sanctioned merge 待办】optimization worktree @7c6196b 现 2 commits ahead（7c6196b audit fix + 9036e71 .gitignore）待人工审合并落 main——`bash scripts/opt-worktree.sh . merge`：审 diff（opt-worktree.sh +17/-1 纯 bail 路径回滚 + .gitignore +2，无敏感路径）→ squash 落 main → worktree 清理；merge 后 main `git status` 不再有 ?? PROJECTS.md",
+    "【次级发现·延后】git branch 残留 5 个 pre-fix 孤儿分支 auto/opt-dataworks-*（1782819568/2148/3706/5078/6672，无 linked worktree=本次修复所防 leak 的历史遗留物）。属 DO B「删除/批量操作」敏感类，本轮不批量删；下轮可用 `git branch -D` 逐个清或扩 cmd_cleanup 覆盖无 worktree 的 auto/opt-* 孤儿分支（cmd_cleanup 现 line 523-549 仅处理有 wt 的 ahead=0+dirty=0 死桩）",
+    "【case-357=357%4=3≠0=非审计普通路径】scout-scan 驱动选 #1 小工作单位；或先 merge 上轮 2 commits 再续",
+    "【审计盲区轮换】case-352 审 ensure_main_wt、case-356 审 cmd_commit bail 路径——下个审计轮（case-360=360%4=0）换审 .claude/hooks/autonomous-commit-gate.py（main 守卫本身）或 scripts/scout-scan.py 标记计数/排除逻辑，避单文件连续审盲区"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "scripts/opt-worktree.sh",
+      "line": 231,
+      "severity": "medium",
+      "finding": "cmd_commit 方向分歧分支（cur_area!=new_area 且无同 area wt 可复用）在 cp 循环（line 315）前 `git worktree add -b auto/opt-<area>-<ts>` 建新分歧 worktree+分支作为 target-selection 副作用；若随后 copied==0（全文件 cp-guard 跳过/不存在，line 352）exit 1（line 355）中止，旧版不回滚该新建 wt+分支→孤儿 worktree+分支残留，污染 git worktree list / scout-scan 待合并计数（case-353 残留 wt 漂移根因的分歧-wt 面）。",
+      "remediation": "加 created_new_wt/new_wt_branch 跟踪本调用新建的分歧 wt；copied=0 bail 块 exit 1 前 `git worktree remove --force \"$target\"` + `git branch -D \"$new_wt_branch\"` 回滚（仅清本调用新建者，不动复用 wt / optimization 持久 wt）。已实现于 commit 7c6196b。"
+    },
+    {
+      "file": "scripts/opt-worktree.sh",
+      "line": 402,
+      "severity": "low",
+      "finding": "cmd_commit 另一 exit 1 路径——④断言 head_before==head_after（line 402，worktree 无新 commit）与 leak 断言（line 424）失败时亦 exit 1，若此时 created_new_wt=1（分歧新建 wt + copied>0 但 commit 失败场景）同样不回滚新建 wt。本轮未修（scope 聚焦 copied=0 文档化根因路径，避免一轮内过度改敏感 plumbing）。",
+      "remediation": "下轮可将 created_new_wt 回滚抽成共用函数，在 cmd_commit 全部 exit 1 路径（line 355/404/427）统一调用；注意 line 404 时 cp 已迁内容进 target 但 ③main 还原（line 374-397）已先跑→回滚 wt 不丢 main 改动。"
+    }
+  ]
+}

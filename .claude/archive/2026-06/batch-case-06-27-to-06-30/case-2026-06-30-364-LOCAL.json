@@ -1,0 +1,27 @@
+{
+  "case_id": "case-2026-06-30-364",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-30T15:10:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "清理 45 个 stale auto/opt-* 旧 worktree 分支（pre-case-322 merge 未清残留 ref）",
+  "situation": "scout-scan 全 score=0.0（已常态），取 state NEXT_SUGGESTION #1 真缺口：AS 有 46 个 auto/opt-* 分枝（含 standing auto/optimization），为 pre-case-322 era 历次 squash-FF merge 后 cmd_merge 未做 branch -D（case-322 已修但旧残留未清）的遗留 ref。记忆 [[git-cherry-unreliable-for-squash-merge]] / [[diverged-base-two-dot-diff-misread]] 警示：squash 下 cherry 显 + 假阴性、两点 diff 把 main 后增文件误显为 worktree 侧删除——删枝前须内容级坐实每枝工作确已入 main，不可凭 cherry/-D 直删。",
+  "action": "6 步只读勘测 + 内容铁证后批量删除：(1) 逐枝测 merge-base --is-ancestor（全 N，squash 预期）+ 两点 exit-code + 三点 name-only；(2) 发现全 45 枝相对 main 唯一独有内容是 skills/dingtalk-sheet-pull-skill（mode=160000 gitlink 子模块指针），main 与分支均无 .gitmodules（幽灵 gitlink），所指 commit e2aedba0 本地 git cat-file 'could not get object info'（悬空），main 历史曾含（1d10da7 整合30个skill / ea2d477 merge opt-skills）后主动移除——即唯一独有内容是 main 已废的悬空指针。(3) numstat added>0 闸被发散 base 骗（全 45 UNSAFE，added 集中在 opt-worktree.sh/scout-scan.py 等核心引擎，deleted 远大于 added 如 30/392=分支持旧快照非未合并新工作）——识破后改查每枝 tip 提交本身。(4) tip 提交分两组：A 组 38 枝 tip 仅动 .claude/decisions/case-*.json（纯归档枝）；B 组 7 枝 tip 动引擎/文档（opt-worktree.sh×4/autonomous-loop.sh/scout-scan.py/PROGRESS.md）。(5) 对 B 组 7 tip 算 patch-id 在 main 全史搜匹配——7/7 精确命中（definitive content proof，patch-id 是内容哈希，cherry 显 - 方向可靠，不可靠仅 squash 改 diff 致显 + 的假阴性）。(6) 统一 patch-id 闸跑全 45：35 命中 + 10 case-only tip 未命中（case 经 loop-archive-cases.sh 批量归档提交入 main，diff 形状不同故 patch-id 不匹配）——对这 10 改用 git cat-file -e main:.claude/decisions/<case> + blob hash 逐字节比对，10/10 在 main 且 blob 一致。证毕全 45 无未合并工作。执行：git worktree list 确认仅 main+standing optimization 两 wt 无枝被占用；试删 1 枝验 gate 放行 auto/*（exit 0，gate 仅拦 main/master [[autonomous-commit-gate-reset-bypass]]）；批量 git branch -D 剩 44 枝，保留 auto/optimization standing。",
+  "files_changed": [],
+  "worktree": "无（纯 ref 清理，main 工作树 dirty=0，未改任何源文件；删除的是本地分支 ref，非提交）",
+  "direction": "housekeeping:stale-branch-cleanup",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "删除前 auto/opt-* 计数=46（含 auto/optimization standing）；删除后 git branch | grep -cE 'auto/' = 1（仅 auto/optimization）",
+    "deleted=44 failed=0（含先试删的 auto/opt-autonomous-studio-1782704965 共 45 枝非 standing 全删）",
+    "B 组 7 tip patch-id 主匹配: opt-loop→d4a7ba82 / opt-opt-tooling→8e28d910 / opt-progress→1acb14d0 / opt-scout-sync→d7ee5050 / opt-tooling-1782713441→f0e26c1a / opt-tooling-1782713874→d828fa4c / opt-tooling-1782741850→9a249b57（均 main 提交）",
+    "A 组 10 case-only tip blob 一致: case-141/163/169/186/004/276/280/293/307/309 均 git cat-file -e main:.claude/decisions/<case> 成功 + branch blob hash == main blob hash",
+    "幽灵 gitlink 证据: git ls-tree main:skills 无 dingtalk-sheet-pull-skill; main:.gitmodules 不存在(fatal path does not exist); git cat-file -t e2aedba0 → 'could not get object info'",
+    "git worktree list = 2 行(main a830d08 + .opt-worktrees/.../optimization 7f30f56 auto/optimization), 无其他 wt 占用被删枝",
+    "main HEAD 未动（仍 a830d08），main porcelain 空（删枝不动工作树）"
+  ],
+  "next_suggestion": [
+    "AS standing auto/optimization(7f30f56) 仍落后 main(a830d08) 1 提交——下轮首次 opt-worktree commit 应触发 ensure_main_wt ff-only 自愈（case-363 修复），无需手动；若未自愈则查 ensure_main_wt ff 分支",
+    "scout-scan 全 score=0.0 已常态——下轮仍取 state NEXT_SUGGESTION 真缺口。剩余候选：sunset-prediction standing auto/optimization 是否 stale（state 上轮提及 ff-fix 已修，可复验）；或转 personal-assistant ECS 部署已知问题 grounding（[[ecs-deploy-target]]）",
+    "本批 45 枝已清，case-322 的 cmd_merge branch -D 修复保证今后不再积压；可降低分支清理优先级"
+  ]
+}

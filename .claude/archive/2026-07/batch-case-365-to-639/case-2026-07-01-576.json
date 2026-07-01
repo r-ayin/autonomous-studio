@@ -1,0 +1,23 @@
+{
+  "case_id": "case-2026-07-01-576",
+  "agent_id": "ralph-wiggum-main-loop",
+  "timestamp": "2026-07-01T18:52:00Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "runtime-listeners:watchdog-log-hardening (audit-2026-07-01-003 M-001+M-002 derived fix bundle)",
+  "situation": "audit-2026-07-01-003 findings M-001 (watchdog.sh log truncation race: tail reads while concurrent cron-invoked instance could append; mv overwrites loses those lines) + M-002 (AGE var uninitialized when LATEST missing on first loop iteration; HEALTH log shows 'unknown' persistently). Both route-fix, same file, bundled per audit recommendation.",
+  "action": "watchdog.sh line 42 inserted `AGE=0` init before the LATEST if-block so each loop iteration resets AGE (fixes M-002 stale-unknown semantics under set -u). Lines 72-74 replaced `tail -100 $LOG_FILE > tmp && mv tmp $LOG_FILE` with cp→tail-from-bak→mv→rm-bak four-stage sequence; cp provides stable snapshot for tail to read, eliminating boundary-line loss during concurrent append window. flock already held but explicit cp hardens against tail incremental-read semantics noted in audit. Committed via opt-worktree.sh to existing opt-runtime-listeners-1782902553 worktree (route-fix reuse, judge_direction_kind confirmed no public-interface files touched).",
+  "files_changed": ["watchdog.sh"],
+  "worktree": "opt-runtime-listeners-1782902553",
+  "direction": "runtime-listeners:watchdog-log-hardening",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 3449e8d on auto/opt-runtime-listeners-1782902553 pushed to origin; diff +7/-1 lines in watchdog.sh; branch tip advanced 390d2f7..3449e8d",
+  "next_suggestion": [
+    "Next derived fix: L-001+L-002 bundle (audit-log instrumentation for termux-listener TCP accept + watchdog state transitions STALE/ALERT/HEALTH) — route-fix, same worktree",
+    "After L-001+L-002 merged/rejected: audit-cycle-state.status → cycle-complete, triggers next full deep-audit on a different module (candidates: scripts/* not yet audited beyond audit-002, or hooks module re-audit if significant drift since audit-001)",
+    "Human review pending: M-003 direction-shift classification vs mechanism route-fix judgment — decide if watchdog-boot.ps1 belongs in .claude/public-interfaces.txt"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-01-003",
+  "audit_depth": "shallow"
+}

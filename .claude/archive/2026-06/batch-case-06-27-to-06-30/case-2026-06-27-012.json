@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-06-27-012",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-27T10:05:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "triage autonomous-studio 最后 1 个真实 # TODO: scaffold-skill.sh:136（scout-scan 推荐 #1 的 TODO triage 收尾，case-011 移交项）——把 vhs demo.tape 模板里模糊的'用真实运行回放写这盘带子,不要摆拍'标注为可裁决的填充条件+验收标准",
+  "situation": "scout-scan 文本报告 autonomous-studio score=1.06 排 #1，推荐'triage 前 1-2 个 TODO'。autonomous-constraints.md 不排除 autonomous-studio。state(case-011)记录剩 scaffold-skill.sh:136 未 triage。动手前按 state/NEXT_SUGGESTION #3 的⚠提示先查 pending worktree opt-skills-1782553243 的 `git log main..HEAD`（90aaeac+26833e9 两 commit 均非 scaffold-skill.sh），并 `git show HEAD:...scaffold-skill.sh | sed -n '130,140p'` 确认 136 行仍为原'# TODO: 用真实运行回放写这盘带子,不要摆拍。'——确属未 triage 的新工作单位，非 case-010 重复（上轮撞过 apply_resource_access 重复项，本轮先查避免了）。",
+  "action": "Read scaffold-skill.sh:120-140 确认上下文（demo.tape 是 scaffold 给每个新生成 skill 产出的 vhs 录制脚本占位，目前只有 Set 配置无任何 Type/Enter 命令行）。按既有 triage 语义（case-010/011：标注=把模糊 TODO 变可裁决，保留 # TODO: 形式故 count_markers 不变、债务不隐藏）改写 136 行 TODO 为三段：填充条件（下方追加 Type \"<scaffolded-skill 真实首跑命令>\"+Enter 序列，如 CLI --help/首次调用真实输入→真实输出，禁虚构）+验收（本目录 `vhs demo.tape` 端到端跑通产出非空 demo.gif 且可复现后删 TODO）+保留录制提示。1 文件，bash -n 语法通过。opt-worktree.sh autonomous-studio commit skills:todo-triage 复用同 area worktree opt-skills-1782553243。",
+  "files_changed": ["skills/luban/tools/scaffold-skill.sh"],
+  "worktree": "autonomous-studio opt-skills-1782553243（方向 skills:todo-triage，新增 commit f3efac0 叠于 90aaeac/26833e9 之上，off main 34fe229，1 文件，待人工 merge）",
+  "direction": "skills:todo-triage",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "git -C opt-skills-1782553243 log --oneline main..HEAD 顶 = 'f3efac0 opt(skills:todo-triage): triage scaffold-skill.sh:136 vhs demo.tape TODO：...保留 # TODO: 形式仍被 scout-scan 跟踪,债务未隐藏'",
+    "git show HEAD:skills/luban/tools/scaffold-skill.sh | sed -n '136,140p' 含 '# TODO: 用真实运行回放填本盘带子，不要摆拍。' + '#   填充: ...Type \"<scaffolded-skill 的真实首跑命令>\" + Enter 序列...' + '#   验收: ...vhs demo.tape 端到端跑通、产出非空 demo.gif...后，删此 TODO'（可观察，非散文）",
+    "main 工作树 git status --porcelain skills/luban/tools/scaffold-skill.sh = 空（main 干净安全）",
+    "bash -n skills/luban/tools/scaffold-skill.sh 退出 0（语法通过）",
+    "grep -c '^# TODO:' skills/luban/tools/scaffold-skill.sh（WT）= 1 → # TODO: 形式保留，count_markers 不变 = TODO=4，标注后的 TODO 仍被计入，债务未隐藏（符合 triage=标注语义，非清掉）"
+  ],
+  "next_suggestion": "autonomous-studio 4 个真实 TODO 现已全部 triage（apply_resource_access.py:85/90 + bff_client.py:206 + scaffold-skill.sh:136），均保留 # TODO: 形式故 TODO=4 不降、score≈1.06 大概率仍 #1——但 triage 工作单位已穷尽，再标注属边际润色无新信息。下轮若 AS 仍 #1：转去做 AS 的结构性债而非 TODO triage——①【P0·阻塞】main/worktree 历史分歧（main=34fe229 vs 所有 pending worktree base b725eb4，同消息不同 hash，merge-base --is-ancestor=NO）需人工裁决 rebase/reset，有丢工作风险不可自动做，但可写一份裁决方案文档进 planning/（AS 现'无 planning/'，补 planning/ 既降 score 又为分歧解决留据）；②或顺延 #2 x-tool（TODO=6 真实代码债 triage）。③三个 pending AS worktree(opt-skills-1782553243/opt-scanner-1782549922/optimization)积压待人工 merge，分歧解决前无法 ff-merge。"
+}

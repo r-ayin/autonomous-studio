@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-30-313",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-30T00:33:00Z",
+  "project": "x-tool",
+  "work_unit": "审+合并 x-tool pending optimization worktree（P0 checkpoint Hooks 回归保护 + save-checkpoint NameError 修复）入 master；归档其引用 case-312",
+  "situation": "scout-scan @2026-06-30T00:29Z 全 8 项目并列 score=0.0（健康饱和）。#1=1BfrYW9R「无明确小工作单位——可跳过或做文档润色」（弱工作单位），#2=autonomous-studio「review 1 个待合并 worktree」。查 pending worktree 发现两处实质性待合并：(a) x-tool auto/optimization @1ad73c8——P0 首片回归保护（tests/test_checkpoint_hooks.py 5 用例 + save-checkpoint.py Path 导入上移修 latent NameError），由 case-312 上轮 filed 标『待审合』；(b) AS auto/opt-cases-1782779254 @7b80f5c——仅含 case-312 归档 JSON。#1 工作单位可跳过，故顺延做 pending worktree 审合（scout #2 推荐 path 的实体化），不违背约束（x-tool 非 moni 前端）。",
+  "action": "1) 审 x-tool auto/optimization diff：`git diff master..auto/optimization` 仅 3 文件（.claude/hooks/save-checkpoint.py 4+-、PROGRESS.md 3+-、tests/test_checkpoint_hooks.py +104），无发散。2) 验回归真值：cd worktree `python3 -m pytest tests/test_checkpoint_hooks.py -q` → 5 passed in 0.17s；复现 fix 前 bug——cd x-tool master 以 import 模式调 find_task_files() → `NameError: name 'Path' is not defined`（确认 latent bug 真实、fix 真修）。3) `opt-worktree.sh x-tool merge optimization`：squash 合 1ad73c8→master 成 725fa36，清理 worktree。4) master 复跑 `pytest tests/test_checkpoint_hooks.py` → 5 passed in 0.16s（合入后绿）。5) 归档 case-312 引用：`opt-worktree.sh autonomous-studio merge opt-cases-1782779254` → 3f0f620，case-312 JSON 落 AS main，其『待审合』状态闭环为『已合并』。",
+  "files_changed": ["x-tool/.claude/hooks/save-checkpoint.py", "x-tool/tests/test_checkpoint_hooks.py", "x-tool/PROGRESS.md", "autonomous-studio/.claude/decisions/case-2026-06-30-312.json"],
+  "worktree": "x-tool optimization @ 1ad73c8（auto/optimization，已 squash 合入 master 725fa36 后清理）；autonomous-studio opt-cases-1782779254 @7b80f5c（已合入 AS main 3f0f620 后清理）",
+  "direction": "engine:regression:merge",
+  "outcome": "succeeded",
+  "outcome_evidence": "可观察事实：(a) x-tool master `git log --oneline -1` = 725fa36 `merge: 人工批准合并 optimization worktree 'optimization'`，`git diff --stat e361599..725fa36 --summary` 含 create tests/test_checkpoint_hooks.py；(b) x-tool master `python3 -m pytest tests/test_checkpoint_hooks.py -q` 输出 `5 passed in 0.16s`（合入后实测绿）；(c) fix 前复现证据：master 状态调 `find_task_files()` 输出 `MASTER NameError reproduced: name 'Path' is not defined`——证明 1ad73c8 修的是真实 latent bug 非虚改；(d) AS main `git log --oneline -1` = 3f0f620 `merge...opt-cases-1782779254`，`ls autonomous-studio/.claude/decisions/case-2026-06-30-312.json` 存在（previously missing，现落地）；(e) 两 worktree 均 `git worktree list` 不再列出（已清理，无残留）。",
+  "next_suggestion": "case-312 NEXT_SUGGESTION 仍开放的 P0 剩余片：为七阶段决策循环 decision-observer.py（370行）/ protocol-check.py（117行）加回归测试（输入分类记录 / PreToolUse 缺三件套自举路径）。另全项目轮换：x-tool P0 落片+合入后 PROGRESS 鲜活，下轮可转 sunset-prediction/wechat-main GATES 复测核销，或 moni 后端（DO NOT 前端）。注意：本轮 x-tool standing optimization worktree 已随 merge 清理，下轮若需在 x-tool 做 opt 须先 `opt-worktree.sh x-tool init` 重建常设 worktree。"
+}

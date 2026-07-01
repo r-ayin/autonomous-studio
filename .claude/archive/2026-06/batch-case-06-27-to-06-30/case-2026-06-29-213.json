@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-213",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-29T12:38Z",
+  "project": "autonomous-studio",
+  "work_unit": "review + merge pending worktree opt-scout-sync-1782736129（AS git 跟踪副本 scout-scan.py 同步至根权威副本）",
+  "situation": "scout-scan 本轮 #1=1BfrYW9R『无明确工作单位（可跳过/文档润色）』，#2=autonomous-studio『review 2 个待合并 worktree』。1BfrYW9R 队列上轮已清空（case-212 已 fast-forward merge），无真实小工作单位；顺延 AS #2 的待合并 worktree review。autonomous-state.md NEXT_SUGGESTION 亦指向 opt-scout-sync-1782736129（1 文件 cp 机械同步，待审 diff 一致即 merge）。记忆 as-merge-reconciliation-2026-06-27 警告：divergent scout-scan.py worktree 须按文件对账勿整枝合，恐落后 main 回退——故 merge 前必须逐字节验证 worktree 副本 == 根权威副本，且 == live 实跑代码。",
+  "action": "1) cd opt-scout-sync-1782736129 worktree，git log 确认单 commit 6d13513（parent=main 5abc0e3，1 文件 +26/-9）。2) git diff main -- scripts/scout-scan.py 审 diff：补回 IGNORE_DIRS 缺失项 out/target/worktrees（case-078 嵌套 worktree 剪枝）+ count_pending_worktrees 跳过常设 optimization 0-ahead worktree（case-206 不计 stale）+ 嵌套 .opt-worktrees 伪目录 git rev-parse 过滤 + health_priority marker 抵消改密度精确抵消非 flat -1（case-049）。均为 live 已生效修复，git 副本补齐。3) diff -q worktree/scripts/scout-scan.py /home/admin/workspace/scripts/scout-scan.py → IDENTICAL ✓；diff -q main 副本 vs 根 → differ（main 落后，sync 需要）。4) worktree 内跑 scout-scan smoke 正常出报告。5) opt-worktree.sh merge 首次失败：cmd_merge fail-fast 拦截（main working tree 不干净，M scripts/autonomous-loop.sh 为上轮 adaptive-model-switch WIP 滞留 main）。6) git stash push 仅 autonomous-loop.sh 一文件（不触 opt-worktree.sh cmd_commit 内部 stash 路径，规避 case-033 静默失败）→ main clean → merge 成功 → git stash pop 还原 WIP（stash dropped，autonomous-loop.sh 仍 M 在 working tree）。7) post-merge 从 AS main 副本跑 scout-scan smoke 正常，无回归。",
+  "files_changed": ["scripts/scout-scan.py"],
+  "worktree": "opt-scout-sync-1782736129（已 squash merge → main 766d7e5，worktree 已清理）",
+  "direction": "engine:scout-sync",
+  "outcome": "succeeded",
+  "outcome_evidence": "git log --oneline -2 AS main: '766d7e5 merge: 人工批准合并 optimization worktree opt-scout-sync-1782736129' / '5abc0e3 ...'（HEAD 前进 1）。diff -q /home/admin/workspace/scripts/scout-scan.py AS/scripts/scout-scan.py → 无输出（MAIN IN SYNC，merge 前 differ）。git worktree list 仅余 main + optimization 常设枝，opt-scout-sync 已删。post-merge python3 AS/scripts/scout-scan.py --workspace 正常输出 8 项目报告（exit 0，无 traceback）。WIP autonomous-loop.sh 经 stash pop 还原，git status 仍 'M scripts/autonomous-loop.sh'，未丢失。",
+  "next_suggestion": "1) AS #2 剩余 optimization 常设枝（faffff0）含 scout-scan-stale-fix/case-203/206 等多修复，按 as-merge-reconciliation-2026-06-27 须按文件 cherry-pick 勿整枝合——下轮 opt-worktree.sh show 审 diff 后逐文件 merge。2) main 滞留 M scripts/autonomous-loop.sh（adaptive-model-switch WIP，记忆 autonomous-loop-model-switch）应择轮 review 后经 opt-worktree commit 入 optimization 枝，勿长留 main working tree（每次 merge 都要先 stash 解阻塞）。3) case-047 reset-bypass + case-207 空 file bogus commit 仍 OPEN。4) AS main ahead origin/main 40 commits，待 push（需 GitHub PAT）。"
+}

@@ -1,0 +1,17 @@
+{
+  "case_id": "case-2026-06-30-006",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-30T16:35:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "review-and-merge 待合并 worktree opt-cases-1782750600(单文件 case-005 跟踪记录)",
+  "situation": "scout-scan @2026-06-29T16:31Z:#1=1BfrYW9R score=0.0 明示「无明确小工作单位——可跳过」,顺延 #2=autonomous-studio score=0.0 推荐行「review 1 个待合并 worktree(人工审 diff + merge/reject)」。git worktree list 实测 AS main @14cc2df + 待合并 opt-cases-1782750600 @3ac97d7(1 commit,1 文件 case-2026-06-30-005.json +20 行)+常设 optimization @766d7e5([[scout-scan-standing-worktree-not-stale]] 不计 stale)。case-005 系上轮自跟踪记录(归档 opt-cases-1782749748 的 4-case 合并+解 case-001 撞号),内容已落但本 worktree 未合。审 diff:仅 1 个 JSON,python3 json.load 验证 VALID,main 工作区 clean(git status --short 空),case-005 未在 main(ls NotFound)——纯追加无冲突/无回归风险。case-005 outcome_evidence 自述 main=14cc2df 与 worktree list 一致,自洽。",
+  "action": "1) python3 -c json.load 验证 worktree 内 case-005 合法;2) git status --short 确认 AS main clean、ls 确认 case-005 未在 main(无 untracked-overwrite 风险);3) bash scripts/opt-worktree.sh autonomous-studio merge opt-cases-1782750600——squash 合并;4) 验证 main=26fe4d0、git status 空、worktree list 仅剩 optimization、git ls-files 确认 case-005 tracked。全程未直 git commit main(走脚本 merge 流),gate 无需豁免。",
+  "files_changed": [
+    ".claude/decisions/case-2026-06-30-005.json"
+  ],
+  "worktree": "opt-cases-1782750600 (已 squash 合并入 main 26fe4d0 + 清理;常设 optimization worktree 保留不动)",
+  "direction": "cases:track-0630",
+  "outcome": "succeeded",
+  "outcome_evidence": "git -C autonomous-studio log --oneline -2 → 26fe4d0 merge: 人工批准合并 optimization worktree 'opt-cases-1782750600' / 14cc2df merge opt-cases-1782749748;git status --short 空(main clean);git worktree list 仅剩 main @26fe4d0 + optimization @766d7e5(待合并 worktree 已清理);git ls-files .claude/decisions/case-2026-06-30-005.json → 已 tracked;AS 待合并 worktree 归零。",
+  "next_suggestion": "下轮 scout-scan AS 待合并 worktree 归零,推荐行将退化为「无明确小工作单位」。候选小工作单位:(1) 复查常设 auto/optimization @766d7e5——case-002/003/005 反复提其疑 [[diverged-base-two-dot-diff-misread]],须 git -C <wt> log --oneline main..auto/optimization 逐提交 git show --stat <c> 审(勿两点 diff),真分歧 triage/reject、伪发散标注;此为 AS 当前最大结构性债,优先。(2) case-047 reset-bypass WIP 续完 cherry-pick 入 main(见 [[autonomous-commit-gate-reset-bypass]])。(3) 6 triage TODO 核销。优先(1)。"
+}

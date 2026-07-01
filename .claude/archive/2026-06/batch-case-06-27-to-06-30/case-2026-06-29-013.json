@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-013",
+  "agent_id": "autonomous-loop",
+  "timestamp": "2026-06-29T17:20Z",
+  "project": "shizi",
+  "work_unit": "补 planning/roadmap.md（路线图文档）",
+  "situation": "scout-scan 排 #1（score=1.19）：无 planning/ 目录，TODO=1（已在 GATES.md/PROGRESS.md triage）。dirty=16 为本地重构暂存中，不触碰。实际缺口为缺 planning/ 结构文档。",
+  "action": "创建 shizi/planning/roadmap.md，覆盖：已发布 P0 能力表、P1 增强计划（含 handler.ts:108 设计备注说明）、P2 长期计划、技术约束（MV3/AK 管理/TypeScript/vitest）、质量门禁对齐 GATES.md。通过 opt-worktree.sh 提交到新 worktree opt-docs-1782666867（与 optimization worktree 方向分歧，auto 开新）。",
+  "files_changed": ["planning/roadmap.md"],
+  "worktree": "shizi/opt-docs-1782666867",
+  "direction": "docs:planning",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh 输出：'↔ 方向分歧（engine → docs），开新 worktree: opt-docs-1782666867 / ✓ 提交到 opt-docs-1782666867 方向=docs:planning'",
+  "next_suggestion": "1) 人工批准合并 shizi/opt-docs-1782666867（含 planning/roadmap.md）；2) skills (score=1.08) 排 #2：GATES.md 待合并 + 无 planning/，下轮可做 skills/planning/roadmap.md；3) x-tool (score=1.03) 排 #3：triage 前 1-2 个 TODO"
+}

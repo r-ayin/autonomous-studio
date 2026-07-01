@@ -1,0 +1,18 @@
+{
+  "case_id": "case-2026-06-29-007",
+  "agent_id": "autonomous-loop",
+  "timestamp": "2026-06-29T00:36:00Z",
+  "project": "shizi",
+  "work_unit": "triage TODO(src/agent/handler.ts:108) — docs:governance",
+  "situation": "scout-scan 排 #1 shizi(score=2.2)，理由：GATES.md 待合并(opt-docs-1782657987)、无 planning/、1 个 TODO 待 triage。TODO 位于未跟踪新文件 src/agent/handler.ts:108，内容为设计备注（引擎暂用单一 vision config，未来可支持每维度独立 config），非 bug。",
+  "action": "在 opt-docs-1782657987 worktree 中更新 GATES.md 将 TODO 条目标为 [x] 已 triage，并更新 PROGRESS.md 将 '1 个 TODO 标记待 triage' 改为具体 triage 结论（设计备注、非紧急）。直接在 worktree 提交 PROGRESS.md（首次 commit 通过 opt-worktree.sh 但被覆写，改直接 git commit 修正）。",
+  "files_changed": [
+    "/home/admin/workspace/.opt-worktrees/shizi/opt-docs-1782657987/GATES.md",
+    "/home/admin/workspace/.opt-worktrees/shizi/opt-docs-1782657987/PROGRESS.md"
+  ],
+  "worktree": "opt-docs-1782657987",
+  "direction": "docs:governance",
+  "outcome": "succeeded",
+  "outcome_evidence": "git log --oneline 显示 2 个新 commit: 1d15eb6(GATES.md triage) 和 81c3657(PROGRESS.md triage)；GATES.md TODO 条目从 '[ ]' 改为 '[x] 已 triage'；PROGRESS.md '待推进' 段已更新说明 TODO 位置及结论。",
+  "next_suggestion": "opt-docs-1782657987 worktree 现有 3 个 commits(GATES.md 质量门禁 + TODO triage GATES + TODO triage PROGRESS)，可请用户合并该 worktree 到 shizi main；下轮可关注 #2 skills(score=2.08，5 个 TODO)或 #3 stagehand-analysis(score=2.08，9 个 TODO)的 triage。"
+}

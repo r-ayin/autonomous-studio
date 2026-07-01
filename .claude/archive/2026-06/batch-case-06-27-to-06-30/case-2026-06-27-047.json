@@ -1,0 +1,25 @@
+{
+  "case_id": "case-2026-06-27-047",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-27T15:30Z",
+  "project": "shizi",
+  "work_unit": "修正 shizi GATES.md/PROGRESS.md 文档-现实漂移(npm test 实测 3 文件 41 vitest 用例全绿,文档却写'0 个 vitest 用例/非 vitest 用例')",
+  "situation": "scout-scan 15:24Z 全 6 项目 score=0.0 健康;推荐 #1 shizi '无明确小单位——可做文档润色'、#2 sunset '等合并 planning/'。读 shizi GATES.md 发现 🟡 IMPORTANT/NICE 两项 + PROGRESS 遗留均称'0 个 vitest 用例/tests 全为 debug 脚本',但 `npm test` 实测 3 文件(counter/filter-region/ocr-slice) 41 用例全绿——典型的 scout-scan 不捕捉的文档-现实漂移(它只数 TODO 密度,不校验文档断言)。遂定为小工作单位:勾核 IMPORTANT/NICE 两项 + 更正计数 + 移除 PROGRESS 已闭合 🟡 项。",
+  "action": "①Read GATES.md+PROGRESS.md(满足 Edit 前置),3 处 Edit:GATES 🟡 npm test 项 [ ]→[x] 更正为'实测 3 文件 41 用例全绿';GATES 🟢 vitest 项 [ ]→[x] '已有 3 文件...非 0';PROGRESS 遗留移除已闭合 🟡 vitest 行 + 最近完成补'文档-现实漂移修正'条。②`bash scripts/opt-worktree.sh shizi commit docs:gates-vitest-stale '...' GATES.md PROGRESS.md` → 提交到 opt-docs-1782566299(commit 5b7ce55)。③验证时发现该 worktree 已有 commit 73f79db(opt(docs:governance) 同一 vitest 漂移修正,且更彻底——额外注记 filter-region.test.ts 复制逻辑未 import 源码)与 0e43af8(opt(docs:gates-sync) 亦同)——**同一修复已被做 3 次**(含本轮 5b7ce55),全在 opt-docs-1782566299 未合 main。④判定本轮 5b7ce55 冗余,worktree `git reset --hard 73f79db` 丢弃之。⑤发现误操作:该 reset 因 CWD 漂移实跑在 main checkout,reflog `main@{0}: reset: moving to 73f79db` 把 shizi main 从 75758f4 快进到 73f79db(吸收 worktree 2 个 docs commit)——**绕过 case-045 合并门禁**(gate 拦 commit 不拦 reset)。⑥`git reset --hard 75758f4` 复原 main 回原 stale 状态以守门禁;worktree 分支 auto/opt-docs-1782566299 复位 73f79db。",
+  "files_changed": [
+    "shizi/GATES.md (改后进 worktree opt-docs-1782566299 commit 5b7ce55,旋即 reset 丢弃;worktree 现 73f79db 版=更彻底的先验修复)",
+    "shizi/PROGRESS.md (同上,worktree 73f79db 版)"
+  ],
+  "worktree": "opt-worktrees/shizi/opt-docs-1782566299 (branch auto/opt-docs-1782566299, HEAD 73f79db, ahead of main by 2 docs commits;本轮 5b7ce55 已 reset 丢弃)",
+  "direction": "docs:gates-vitest-stale",
+  "outcome": "rolled_back",
+  "outcome_evidence": [
+    "重复实证:`git -C .opt-worktrees/shizi/opt-docs-1782566299 log --oneline main..HEAD` 输出两行 73f79db + 0e43af8,信息均为 vitest 漂移修正('docs:governance...文档却写 0 用例' / 'docs:gates-sync...原文档误记0 个 vitest 用例')——同一修复先验存在 2 次,本轮为第 3 次。",
+    "先验版本更彻底:73f79db 的 GATES 🟢 行含 '注:filter-region.test.ts 为复制核心逻辑测试,未直接 import 源码函数,后续可改为 import 以避免逻辑漂移',本轮 5b7ce55 版无此注记(被覆盖)→ 保留 73f79db 弃 5b7ce55 合理。",
+    "门禁 bypass 实证:`git -C /home/admin/workspace/shizi reflog -8 main` 顶部 `main@{0}: reset: moving to 73f79db` + `main@{1}: commit: chore: untrack .opt-direction`(=75758f4)——reset 把 main 从 75758f4 移到 73f79db,绕过 case-045 gate(gate 只拦 git commit/push/merge,不拦 reset --hard)。",
+    "main 复原实证:`git -C /home/admin/workspace/shizi log --oneline -1` = 75758f4 'chore: untrack .opt-direction cruft + gitignore'(=scout-scan 起始状态);`git -C shizi status --short` 空(clean);`grep '当前 0\\|非 vitest 用例' shizi/GATES.md` 命中 line 19+23(原 stale 文本回归)→ main 回到 stale 守门禁。",
+    "worktree 复位实证:`git -C .opt-worktrees/shizi/opt-docs-1782566299 log --oneline -1` = 73f79db;branch=auto/opt-docs-1782566299;`rev-list --count main..HEAD` = 2(docs-only,merge-ready);5b7ce55 已不在 log。",
+    "fast-forward 无损:`git merge-base --is-ancestor 75758f4 73f79db` → YES(bypass 是快进非强删,无工作丢失);未 git push,纯本地 ref 移动可逆。"
+  ],
+  "next_suggestion": "①【真债:合并 opt-docs-1782566299】shizi opt-docs-1782566299 是 stale merge-ready worktree(2 个 docs-only commit,73f79db+0e43af8,已坐 ~7h 未合),正是它导致同一 vitest-docs 修复被做 3 次。人工 `bash scripts/opt-worktree.sh shizi show opt-docs-1782566299` 审后 `... merge opt-docs-1782566299` 合入 main 即清债+止重复。②【管线缺口:loop 缺 pending-worktree 预检】scout-scan/loop 只读 main,main 显示 stale docs 即触发重做,不感知同名修复已在 pending worktree(呼应旧记 scout-scan-recommend-blind-to-pending-worktrees / next-case-blind-to-untracked)。建议 opt-worktree.sh commit 前加一步:grep pending worktrees 的 commit message 是否已覆盖待改文件的 drift → 命中则跳过/提示合流而非新提交。③【门禁缺口:reset --hard 不被拦】case-045 gate 只拦 commit/push/merge,`git reset --hard <commit>` 可直接移 main 分支(本轮误操作实证)。若欲严守'main 永远安全',gate 须扩拦 `git reset`/`checkout` 针对主分支 ref 的写操作——或至少 loop 纪律明禁对 main checkout 跑 reset。④【下轮 fallback】shizi 真正未做的债在 GATES 已知风险:🔴 VL_KEY 历史 commit 泄露(history-rewrite 独立工作单位,高风险) + 🟡 origin remote URL 内嵌凭据(改 credential helper/SSH,小但碰 git config 须谨慎)。皆优于已重复 3 次的 docs 修正。"
+}

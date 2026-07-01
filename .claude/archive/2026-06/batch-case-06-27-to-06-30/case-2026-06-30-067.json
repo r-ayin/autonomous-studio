@@ -1,0 +1,26 @@
+{
+  "case_id": "case-2026-06-30-067",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-30T00:40Z",
+  "project": "autonomous-studio-aone (engine self)",
+  "work_unit": "pickaxe 审计收尾——逐个核实 case-066 NEXT 列出的 7 个剩余 opt(engine:*) 子修复在 optimization worktree HEAD(c0793cd) 仍存活、未被后续 commit 连带 revert（case-063/064 揭示的静默回退模式复发检查）。这是 read-only 验证工作单位：全部子项目 blocked 待人工合并、引擎结构性修复已尽，审计是当前唯一无副作用且能产出价值的 engine 侧工作。",
+  "situation": "scout-scan 报告全部项目 blocked（skills #1 等 opt-docs-1782736126 等 4 个 worktree 待人工合并），⚠️无可操作工作单位。autonomous-state.md(case-066 NEXT) 给出 engine 侧两条出路：①pickaxe 抽查剩余 opt(engine:*) 子修复(204bc93/b8458a6/0927e26/528ac01/b22245b/d237426/1b1f6b4) 但'大半已覆盖'；②装 core.hooksPath pre-commit 钩子（scope 大，建议单独 case 评估，本轮不实施）。取①为本轮工作单位——case-063/064 的教训是 b476c86/b8458a6/5d0ed82 三 commit 基于彼此旧基座构建、diff 连带 revert 已落地守卫，case-065/066 才补回。需确认这 7 个子修复在 c0793cd 未被同样静默回退，否则合并后会带回 main 的就是残缺守卫链。optimization worktree 现 16 ahead，待人工合并。",
+  "action": "read-only 审计，不改任何文件、不提交（无代码改动，case 记录即产物）。在 optimization worktree(/home/admin/workspace/.opt-worktrees/autonomous-studio-aone/optimization) 对 scripts/opt-worktree.sh 用 grep 定位 7 个子修复的特征标记并逐个核实存活：①204bc93 merge-branch-cleanup→cmd_merge/cmd_reject/cmd_cleanup 的 git branch -D 'auto/...' 删分支(L355/L385)；②b8458a6 files-array-quoting→local -a files=(\"${@:5}\") 数组化(L143)；③0927e26 files-assert-array→leak 断言 \"${kept[@]}\" 全展开(L262，已被 b22245b 重构为 kept 数组但全展开逻辑保留+注释确认)；④528ac01 cp-overwrite-guard→_cp_guard 中 cmp -s dst vs 'HEAD:main_rel' 不同即跳过警告(L151-161)；⑤b22245b cp-guard-preserve→skipped[] 收集+kept 过滤+还原/断言排除 skipped(L171-260)；⑥d237426 empty-commit-guard→copied=0 前置守卫 warn+exit(L202-203)；⑦1b1f6b4 merge-msg-ahead-only→cmd_show git log --oneline '$MAIN_BRANCH..HEAD'(L303)。另 bash -n 语法校验 + _assert_no_collateral_revert/precommit 接线核实(L79/102/218/430)。",
+  "files_changed": [],
+  "worktree": "optimization (branch auto/optimization, /home/admin/workspace/.opt-worktrees/autonomous-studio-aone/optimization) — read-only 审计，未修改",
+  "direction": "engine:pickaxe-audit-closure",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "grep 204bc93 branch cleanup: scripts/opt-worktree.sh:355 'git -C \"$PROJECT\" branch -D \"auto/$(basename \"$dir\")\"' + :385 'git -C \"$PROJECT\" branch -D \"auto/$name\"' — 存活",
+    "grep b8458a6 files array: :143 'local -a files=(\"${@:5}\")  # 数组保留含空格的文件名' — 存活",
+    "grep 0927e26 assert 全展开: :262 'leak=$(git status --porcelain -- \"${kept[@]}\")  # \"${kept[@]}\" 全展开（旧 -- $files ... 仅展开首元素→漏检）' — 存活（重构为 kept 但全展开逻辑+注释在）",
+    "grep 528ac01 cp-overwrite: :160 'elif ! cmp -s \"$dst\" <(git -C \"$PROJECT\" show \"HEAD:$main_rel\")' + :161 '⚠️ cp-guard: $main_rel 在 worktree 与 main HEAD 不同（前轮未合并改动），跳过' — 存活",
+    "grep b22245b skipped[]: :171 'local -a skipped=()' + :182 '_cp_guard ... || { skipped+=(\"$f\"); continue; }' + :260 'for ff in \"${files[@]}\"; do _is_skipped \"$ff\" || kept+=(\"$ff\"); done' — 存活",
+    "grep d237426 copied=0 guard: :202 'if (( copied == 0 )); then' + :203 '⚠️ 无文件被实际迁移...中止，不生成空提交' — 存活",
+    "grep 1b1f6b4 merge ahead-only: :303 'git -C \"$dir\" log --oneline \"$MAIN_BRANCH\"..HEAD' — 存活（只列 ahead 提交，不灌 main 史）",
+    "bash -n scripts/opt-worktree.sh → 语法 OK",
+    "_assert_no_collateral_revert 接线核实: 定义 L79、cmd_precommit L102 调用、cmd_commit L218 调用、分发器 L430 'precommit) cmd_precommit ;;' — case-066 共用函数+precommit 子命令完整在位",
+    "git rev-list --count main..HEAD = 16，HEAD=c0793cd — 审计基线确认"
+  ],
+  "next_suggestion": "【最高优先·人工】合并 optimization worktree → main（16 ahead，c0793cd）。本轮 pickaxe 审计已证 7 个子修复+守卫链在 HEAD 全存活、无连带 revert、语法干净——合并安全性已核，可放心人工 merge。合并后守卫链才在 main 生效。【守卫加固·下轮可选 A】precommit 仍依赖 agent 主动调用未强制——装 core.hooksPath pre-commit 钩子调 _assert_no_collateral_revert 覆盖直接 git commit（scope 大，对 main 仓/其他 worktree 有副作用，须单独 case 评估后再实施，本轮只评估未实施）。【可选 B】守卫命中即警告不中止——待实战误报率/命中样本积累后再决定是否升级 exit 1（无样本前不升级，维持 066 现状）。【解锁 scout】人工合并 opt-docs-1782736126/opt-agent-dashboard-1782738987/opt-browser-use-1782738573/opt-xtool-1782743518 任一→解锁对应 blocked 项目。引擎侧结构性修复已尽+审计收尾已清，下轮若无人工合并进展，可重复 pickaxe 对新提交或转入 hook 评估 case。"
+}

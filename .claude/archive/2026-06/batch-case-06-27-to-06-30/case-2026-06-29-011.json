@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-06-29-011",
+  "agent_id": "autonomous-loop/ralph-wiggum",
+  "timestamp": "2026-06-29T17:05Z",
+  "project": "open-design",
+  "work_unit": "合并 pending worktrees + 补 planning/roadmap.md",
+  "situation": "scout-scan 报告 open-design score=2.0（#1），原因：PROGRESS.md/GATES.md 待合并(opt-docs-1782637924)，无 planning/ 目录，1个 TODO 标记。autonomous-state.md NEXT_SUGGESTION 也指出 open-design opt-docs-1782637924 pending merge。",
+  "action": "1) 合并 opt-docs-1782637924 → main（PROGRESS.md + GATES.md + TODO deferred 标注）；2) 合并 opt-triage-1782662854 → main（OAuth deferred 标注），解决 .opt-direction 冲突后手动提交；3) 补 planning/roadmap.md（P0已完成/P1评估中/P2长期 + 技术约束），提交到新 worktree opt-docs-1782666250 待人工审批。",
+  "files_changed": [
+    "open-design/PROGRESS.md",
+    "open-design/GATES.md",
+    "open-design/apps/daemon/src/integrations/xai-oauth.ts",
+    "open-design/.opt-direction",
+    "open-design/.claude/skills/od-contribute/scripts/config.sh",
+    "open-design/planning/roadmap.md (pending in opt-docs-1782666250)"
+  ],
+  "worktree": "open-design/opt-docs-1782666250 (planning/roadmap.md, 待人工合并)",
+  "direction": "docs:planning",
+  "outcome": "succeeded",
+  "outcome_evidence": "git -C /home/admin/workspace/open-design show auto/opt-docs-1782666250 --stat 显示 planning/roadmap.md 37行新增，2 files changed；两个 pending worktrees 已 squash-merge 进 main（main 领先 origin 2 commits）",
+  "next_suggestion": "1) 人工批准合并 open-design/opt-docs-1782666250（planning/roadmap.md）；2) browser-use opt-browser-use-1782664160 pending merge（score=1.68，34个TODO待triage）；3) shizi score=1.19，有1个TODO待triage"
+}

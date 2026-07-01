@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-06-29-055",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-29T23:02Z",
+  "project": "autonomous-studio-aone (engine)",
+  "work_unit": "opt-worktree.sh cmd_commit 根因修复 .opt-direction 方向桩泄漏进提交",
+  "situation": "scout-scan 全项目 blocked：#1 skills(score=2.0 ⏳blocked) 等 opt-docs-1782736126 合并（别重做），#2/#3 无明确单位。深查发现 opt-docs-1782736126 worktree 的 diff vs main 含 .opt-direction（方向元数据桩），即 scout 报的 blocked worktree 是真实存在（非幽灵）——/home/admin/workspace/.opt-worktrees/skills/opt-docs-1782736126 实测有 3 提交、diff 含 .opt-direction。.opt-direction 由 cmd_new line 85 写入 worktree 作方向标记，但 cmd_commit line 128 git add -A 把它一并暂存提交，导致方向桩泄漏进提交。历史已 3 次：shizi/x-tool 各需 chore:移除泄漏的 .opt-direction 清理提交（git log 可见），opt-docs-1782736126 仍带泄漏未合并。",
+  "action": "cmd_commit 在 git add -A 之后插入一行：git rm -r --cached -q --ignore-unmatch -- .opt-direction 2>/dev/null || true。git rm --cached --ignore-unmatch 对未 tracked 桩 no-op、对已 tracked 桩 untrack（工作树文件保留供 cmd_show line 197 读取方向）；每次 cmd_commit 都重跑故自续。这同时修未来泄漏 + 自清 worktree 内 legacy 泄漏（下次提交即 untrack 历史泄漏桩）。",
+  "files_changed": ["scripts/opt-worktree.sh"],
+  "worktree": "optimization (auto/optimization @ 5d0ed82) — 引擎主 opt worktree，现 5 待合并提交",
+  "direction": "engine:direction-meta-exclusion",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "bash -n scripts/opt-worktree.sh → ✓ 语法通过",
+    "隔离测试（mktemp git repo 模拟 legacy tracked .opt-direction + 新提交）：经修复路径后 git show --name-only HEAD = [.opt-direction, feature.txt]（.opt-direction 为 deletion 条目=从树移除），git ls-files .opt-direction = 空（untrack 生效），test -f .opt-direction = yes（工作树文件保留）",
+    "opt-worktree.sh . commit engine:direction-meta-exclusion → '✓ 提交到 optimization 方向=engine:direction-meta-exclusion'",
+    "worktree log: 5d0ed82 opt(engine:direction-meta-exclusion)... 为新 HEAD",
+    "grep 'git rm -r --cached' $WT/scripts/opt-worktree.sh → line 132 命中（修复已在 worktree 提交内）",
+    "main 工作树 git status --porcelain scripts/opt-worktree.sh = 空（cmd_commit step③ 已还原 main 到 HEAD，main 干净）"
+  ],
+  "next_suggestion": "(1) 人工 opt-worktree.sh . show optimization 审 → merge 落地 main（worktree 现 5 提交：96c5d57 marker-md-exclusion + 204bc93 merge-branch-cleanup + 2978eaf self-index-guard + d3a1a8e merge-checkout-guard + 5d0ed82 direction-meta-exclusion，全是 scout/opt-worktree 结构性修复，建议一起审/合并）。(2) 修复落地后，下次 cmd_commit 即自动 untrack opt-docs-1782736126 等 legacy 泄漏桩——但那些 worktree 已有泄漏提交在历史里，cumulative diff vs main 仍会显 .opt-direction added；要彻底净需人工 merge 后在 main 单独 chore 清理，或 reject 重做。(3) scout 仍全 blocked，核心阻塞 4+ pending worktree(opt-agent-dashboard/opt-browser-use/opt-docs/opt-xtool)待人工合并，建议人工批量 merge 解锁项目侧轮转。(4) skills(#1) 等 opt-docs-1782736126 合并解锁，别重做。"
+}

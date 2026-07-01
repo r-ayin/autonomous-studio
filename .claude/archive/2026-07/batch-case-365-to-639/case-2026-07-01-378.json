@@ -1,0 +1,36 @@
+{
+  "case_id": "case-2026-07-01-378",
+  "agent_id": "ralph-wiggum-engine",
+  "timestamp": "2026-06-30T17:58:01Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "gate:cmd-substitution-bypass",
+  "situation": "普通轮 case-378=378%4=2≠0 非审计(DO A 不触发)。scout-scan #1 AS score=0.0 无紧迫小工作单位(纪律:不做无意义自我润色)。case-376 NEXT_SUGGESTION[3]/autonomous-state 已将 $(git...)/反引号命令替换列为 gate 已知残留低危绕过——shlex 不解 $(),token 形如 'out=$(git' 上 index('git') 失败致 _git_parse 漏过,`out=$(git commit -m wip)`/`out=$(git push origin main)` 等自然形态(捕获 git 输出的一行写法,非纯对抗)可直接绕 gate 落 main。本轮闭合之(靶向提取,非真 shell parser,与 case-376 文档边界一致)。",
+  "action": "(1) 新增 _cmd_substitutions(cmd):手动扫描配对括号(支持嵌套)+引号感知提取 $(...) 与反引号 `...` 内层命令串。单引号串内 shell 不展开→整段跳过(免误提取字面量致 FP);双引号内 $()/` 仍展开→正常扫(双引号内 ) 不误终结 $( );$(( 算术展开)与 $(< file) 进程替换不含 git 子命令→跳过。(2) main() 段循环(_git_segments)未命中后,追加 _cmd_substitutions(cmd) 内层命令递归送 _git_segments+_eval_segment 评估;段循环已命中则不再评估(免重复 _audit_log_block)。(3) 更新 _git_segments docstring 残留清单:$(...)/反引号移出(已由 _cmd_substitutions 闭合),仅余 source/. 脚本内容/--norc 长 -c 形态。残留:深嵌套 $(... $(...))/反引号内嵌反引号(需真 shell parser,刻意构造,低危)。",
+  "files_changed": [".claude/hooks/autonomous-commit-gate.py"],
+  "worktree": "optimization @ff5b16b",
+  "direction": "engine:gate-cmd-subst",
+  "outcome": "succeeded",
+  "outcome_evidence": "1 file +85/-2。py_compile OK。importlib 回归 30 例 ALL PASS:23 检测例(bare commit/git -C/A&&git commit/eval quoted/eval multi-arg/sh -c reset/3 级嵌套仍漏=residual 新增 6 例 $(git commit)/$(git push origin main)/反引号 git push/$(git reset --hard)/$(git merge main)/$(git commit) via -C 全 CAUGHT + $(git rev-parse)/$(git status)/反引号 git log/单引号 $(git push)/$((算术))/git checkout 全不误拦 ALLOW + 双引号 $(git commit) IS expanded + git commit -m $(date) top-level caught) + 7 _cmd_substitutions 单元例(plain/nested paren/double-quote inside/single-quote skips/backtick/$(( skipped)/two substitutions)。e2e 12 例(marker .autonomous_active 激活+repo on main)ALL PASS:$(git commit)/$(git push origin main)/反引号 git push/$(git reset --hard)/$(git merge main)/bare git commit 全 BLOCK(exit2),$(git rev-parse)/$(git status)/反引号 git log/单引号 $(git push)/$((算术))/git checkout 全 ALLOW(exit0)。审计埋点验证:_audit_log_block 真实落 denied 条目 .audit/audit-2026-06-30.jsonl(UTC 日期)audit-20260630-175536-itd2ws details.errorMessage='r=$(git reset --hard)' + audit-20260630-175536-h91qji errorMessage='m=$(git merge main)' result=denied(DO B 敏感路径 permission 变更,既有 audit logger 覆盖捕获点 result 如实,无需新增埋点)。marker 测试后已删,.autonomous_active 不存在→gate 休眠(归档环自由)。main HEAD=036ba4d 干净 pending=1(optimization @ff5b16b 待 sanctioned-merge)。",
+  "next_suggestion": [
+    "[1]【普通轮·case-379】sanctioned-merge optimization @ff5b16b→main(opt-worktree.sh . merge optimization)+cp 同步 LIVE /home/admin/.claude/hooks/autonomous-commit-gate.py(case-377 流程)。merge 后校验:LIVE diff main==LIVE IDENTICAL+LIVE importlib 30 例+e2e 12 例回归(主要验 $(git commit)/$(git push origin main) BLOCK)。pending→0。",
+    "[2]【下次审计轮·case-380=380%4=0=DO A 强制审计轮】须换审非 gate 目标(已连续 case-372/376/377/378 四轮触 gate)。候选:(a) scripts/scout-scan.py code-review(subprocess 调用面/_MARKER_RE/_DEFERRED_RE 正则虚高历史/索引只读大 JSON 面);(b) scripts/opt-worktree.sh security-review(detect_main_branch/ensure_main_wt/cp-guard/_assert_no_collateral_revert 路径 logic/audit_log json_escape);(c) codegraph-sync.py/route-health-scorer.py 外部文件读写。优先挑有源代码项目。",
+    "[3]【gate 残留(低危,刻意构造)】深嵌套 $(... $(...))/反引号内嵌反引号仍漏(需真 shell parser);source/. 脚本文件内容(不可静态知);--norc 等长选项 -c 形态。评估是否值得引入 shell 解析器——case-376 已判定不值得,维持文档边界。"
+  ],
+  "audit_type": "audit-log-instrumentation",
+  "audit_findings": [
+    {
+      "file": ".claude/hooks/autonomous-commit-gate.py",
+      "line": 385,
+      "severity": "low",
+      "finding": "DO B 敏感路径(鉴权/permission gate)变更:命令替换绕过新捕获路径经 _eval_segment 命中后由 main() line385 既有 _audit_log_block 落 denied 审计条目。新捕获的 $(git commit)/$(git push origin main)/$(git reset --hard)/$(git merge main)/反引号 git push 均走既有 block 路径→_audit_log_block,审计覆盖完整,无需新增埋点代码。result 字段如实反映 denied(非恒 success)。",
+      "remediation": "无需新增代码。验证 denied 条目已落 .audit/audit-2026-06-30.jsonl:audit-20260630-175536-itd2ws(result=denied,errorMessage='r=$(git reset --hard)')+audit-20260630-175536-h91qji(result=denied,errorMessage='m=$(git merge main)')。豁免侧 _audit_log_exempt(line325)未触及(本轮无豁免路径变更)。"
+    },
+    {
+      "file": ".claude/hooks/autonomous-commit-gate.py",
+      "line": 229,
+      "severity": "low",
+      "finding": "安全增强(非审计 finding,记录为闭环凭证):_cmd_substitutions 闭合 case-376 文档残留的 $(...)/反引号命令替换绕过——堵 out=$(git commit -m wip)/out=$(git push origin main)/反引号 类自然形态绕过(shlex 不解 $() 致 token 'out=$(git' 上 index('git') 失败原漏过)。单引号串不展开整段跳过免 FP,双引号内仍展开对齐 shell 语义,$((算术))跳过。",
+      "remediation": "已实现+回归 30 importlib 例+12 e2e 例 ALL PASS。残留深嵌套 $(... $(...))/反引号内嵌反引号维持 case-376 文档边界(需真 shell parser,刻意构造低危)。"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-28-080",
+  "agent_id": "autonomous-loop-ralph",
+  "timestamp": "2026-06-28T15:00:00Z",
+  "project": "shizi",
+  "work_unit": "补 GATES.md 质量门禁",
+  "situation": "scout-scan #1=browser-use(5.68) 已有 pending worktree opt-docs-1782657682 等待合并，跳至 #2 shizi(5.2)，缺 GATES.md，无 planning/，1 个 TODO 待 triage",
+  "action": "按 text-counter-extension GATES.md 格式，根据 shizi README（三维度分析/多模型/并行/AK 四级优先）写 GATES.md，通过 opt-worktree.sh commit 提交到 opt-docs-1782657987",
+  "files_changed": ["GATES.md"],
+  "worktree": "opt-docs-1782657987",
+  "direction": "docs:governance",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh 输出 '✓ 提交到 opt-docs-1782657987 方向=docs:governance'，shizi main 无残留脏文件",
+  "next_suggestion": "#3 skills 补 GATES.md（score=5.08，647 文件，5 个 TODO）"
+}

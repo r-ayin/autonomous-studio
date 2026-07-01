@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-043",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-29T13:05Z",
+  "project": "skills",
+  "work_unit": "补 planning/ROADMAP.md（scout #1 健康缺口：planning/ 真缺失且无 pending worktree）",
+  "situation": "scout-scan 排 skills 为 #1（score=3.0）：PROGRESS.md/GATES.md 均在 opt-docs-1782736126 待合并（各 +1 降权），唯独 planning/ 在 main 真缺失且不在任何 pending worktree（+1），故推荐工作单位=「补 planning/ 目录」。skills 实为兄弟仓 /home/admin/workspace/skills（文档型 skill 索引仓，非 aone 子目录），其 pending PROGRESS.md 第 25 行已显式列出「建立 planning/ 目录」TODO。校正上轮 case-042 的判断：上轮称 scout 有「漏检 root 仓 worktree」盲点，实为误判——pending_in_opt_worktrees 对兄弟仓 skills（wt_root=/home/admin/workspace/.opt-worktrees/skills）工作正常，GATES/PROGRESS 均正确标 ⏳待合并。",
+  "action": "在 skills 主仓建 planning/ROADMAP.md（路线图：仓库定位/当前覆盖/P0-P2 路线/scout 健康锚点/变更原则，对齐 PROGRESS+GATES 风格，零代码深读）。用 opt-worktree.sh commit docs:planning 提交：direction area=docs ≠ optimization area(engine) → 复用既有 opt-docs-1782736126 worktree，与 PROGRESS/GATES 同 worktree 待合并（一次合并带三件套）。",
+  "files_changed": ["planning/ROADMAP.md"],
+  "worktree": "opt-docs-1782736126 (/home/admin/workspace/.opt-worktrees/skills/opt-docs-1782736126, branch auto/opt-docs-1782736126)",
+  "direction": "docs:planning",
+  "outcome": "succeeded",
+  "outcome_evidence": "git log opt-docs-1782736126: 855bce8 opt(docs:planning): 补 planning/ROADMAP.md; git diff --name-only main..HEAD 含 planning/ROADMAP.md（与 .opt-direction/GATES.md/PROGRESS.md 同列）。main skills git status --short planning/ 空（干净）。scout 复跑：skills 行 planning/: 无（main 干净），且 actionable #1 转为 browser-use(score=0.68)——skills 因三件套全部 ⏳待合并(opt-docs-1782736126) 退为 blocked 不可操作，不再霸榜 actionable #1。",
+  "next_suggestion": "(1) 合并 opt-docs-1782736126（PROGRESS+GATES+planning/ROADMAP 三件套）到 skills main（人工批准 opt-worktree.sh /home/admin/workspace/skills merge opt-docs-1782736126）→ skills 彻底退榜。(2) 修 opt-worktree.sh 空父目录泄漏 bug：cmd_commit ③还原 main 时 rm -f <file> 只删文件不删空父目录，致新建目录（如 planning/）的 untracked 新文件提交后 main 残留空目录（本轮实测：planning/ROADMAP.md 已 cp 走并 rm，但 planning/ 空目录留存，git status 因空目录不追踪显示干净，却让 scout has_planning=os.path.isdir 误报 True）；修复=rm 文件后 rmdir 向上清空父目录（仅清本次新建且现为空的）。(3) 转 #1 browser-use（score=0.68, TODO=34, 密度0.068）triage 前 1-2 个 TODO。"
+}

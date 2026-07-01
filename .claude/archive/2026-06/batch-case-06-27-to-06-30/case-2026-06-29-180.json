@@ -1,0 +1,17 @@
+{
+  "case_id": "case-2026-06-29-180",
+  "agent_id": "ralph-wiggum-loop",
+  "timestamp": "2026-06-29T05:55:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "merge-pending: AS opt-cases-1782712200 (case-179) into main; sync optimization worktree; cleanup merged branch+worktree",
+  "situation": "scout-scan #2 autonomous-studio (score=0.0, 待合并=1, 空=1)。opt-cases-1782712200 vs main merge-base=04b834b(=main HEAD at scan time), 仅增 case-179.json(17行), FF-merge 安全。case-179 是上轮(case-179)收口动作本身的记录，本轮完成其落地并清理该枝。",
+  "action": "(1) cd autonomous-studio && git merge --ff-only auto/opt-cases-1782712200 → Updating 04b834b..1d28b3a;(2) cd optimization && git merge --ff-only main → Updating 04b834b..1d28b3a 同步;(3) git worktree remove ../.opt-worktrees/autonomous-studio/opt-cases-1782712200 + branch -d auto/opt-cases-1782712200。最终 AS 剩 main+optimization 两枝,均 HEAD=1d28b3a。",
+  "files_changed": [
+    "autonomous-studio/.claude/decisions/case-2026-06-29-179.json"
+  ],
+  "worktree": "opt-cases-1782712200 (merged+removed)",
+  "direction": "cases:merge-pending+worktree-sync",
+  "outcome": "succeeded",
+  "outcome_evidence": "git log -1 main: 1d28b3a; git worktree list: 2 行(main+optimization 均 1d28b3a); auto/opt-cases-1782712200 分支已删(git branch -d 输出 'Deleted branch auto/opt-cases-1782712200 (was 1d28b3a).'); FF merge 输出 'Updating 04b834b..1d28b3a' 确认同步。AS 现无 pending worktree。",
+  "next_suggestion": "(1) personal-assistant 仍有 opt-personal-assistant-1782711645 pending(case-176 产出),下轮复审并 merge/reject;(2) wechat-main 也有 1 pending+1 empty worktree,可接续处理;(3) opt-worktree.sh WT_BASE 路径拼接(line 29)在跨项目调用时仍可能产生非预期目录,属 engine:tooling 小工作单位,若无更紧迫 pending review 可转修此。"
+}

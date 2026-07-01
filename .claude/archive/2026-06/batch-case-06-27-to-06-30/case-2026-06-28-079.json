@@ -1,0 +1,17 @@
+{
+  "case_id": "case-2026-06-28-079",
+  "agent_id": "autonomous-loop-ralph",
+  "timestamp": "2026-06-28T14:38:30Z",
+  "project": "browser-use",
+  "work_unit": "补 GATES.md（参考项目门禁）",
+  "situation": "scout-scan --workspace /home/admin/workspace 显示 browser-use score=5.68 排 #1，原因：缺 GATES.md、无 planning/、TODO=34（密度0.068）。PROGRESS.md 明确说明这是上游参考项目，非自研，TODO 全来自上游源码。",
+  "action": "创建 /home/admin/workspace/browser-use/GATES.md，内容聚焦「不破坏本地定制 + 跟进上游」。CRITICAL 门控：本地新增文件无冲突、不在上游源码添加自研逻辑、README 本地增补章节不被 merge 覆盖、uv sync 可用。IMPORTANT 中注明 TODO=34 均为上游代码不计入本地债务。通过 opt-worktree.sh commit 提交到新 worktree opt-docs-1782657682。",
+  "files_changed": [
+    "/home/admin/workspace/browser-use/GATES.md"
+  ],
+  "worktree": "opt-docs-1782657682",
+  "direction": "docs:gates",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh 输出：'✓ 提交到 opt-docs-1782657682  方向=docs:gates'；GATES.md 文件已写入 worktree",
+  "next_suggestion": "1) 人工批准合并 browser-use/opt-docs-1782657682（含 GATES.md）; 2) shizi 补 GATES.md（score=5.2，#2，1 文件）; 3) skills 补 GATES.md（score=5.08，#3）; 4) scout-scan workspace 路径确认：传 /home/admin/workspace（非子目录）"
+}

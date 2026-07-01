@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-30-010",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-30T16:55:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "review + merge 待合并 worktree opt-docs-1782751631（PROGRESS/GATES 测试计数对齐实测 13 pass）",
+  "situation": "scout-scan #1 推荐 1BfrYW9R（score=0.0）：1 个待合并 worktree opt-docs-1782751631（auto/opt-docs-1782751631, commit adc64bd）。该 worktree 仅 1 个 squash 候选提交，diff 仅触及 .opt-direction/GATES.md/PROGRESS.md（5 insertions/5 deletions）。提交说明主张：merge ffa4382(⑩⑪ readyz)+4890040(⑫ PORT env) 已合入 onedaybot-dev 但 PROGRESS.md 仍停在 10 pass、GATES.md IMPORTANT 行仍写 12 pass；本次将两处文档计数对齐为实测 13 pass 0 fail。属纯文档同步，无源码改动，需核验主张真实性后再 merge。",
+  "action": "（1）cd 到 worktree 跑 `npm test` 实测：TAP 报 1..13 / pass 13 / fail 0 / duration 1240ms，⑩⑪⑫ 三项断言均 ok——主张属实，文档落后于代码。（2）审 diff：仅 .opt-direction(gates:env-port→docs:progress-sync)、GATES.md(IMPORTANT npm test 行 12 pass→13 pass 并补 ⑫ PORT env 描述)、PROGRESS.md(最近里程碑改 2026-06-30 部署前置三件套、门禁自动化段补 ⑩⑪⑫ + 13 pass、Phase3 待办剔除已完成的环境变量配置)。无代码/配置/测试改动，无回退风险。（3）确认 1BfrYW9R 主工作树(onedaybot-dev)干净后，bash scripts/opt-worktree.sh 1BfrYW9R merge opt-docs-1782751631：squash merge 成功→merge commit 7dba3b1，worktree 已清理；常设 optimization worktree(auto/optimization)按预期保留(非 stale)。",
+  "files_changed": ["1BfrYW9R/.opt-direction", "1BfrYW9R/GATES.md", "1BfrYW9R/PROGRESS.md"],
+  "worktree": "opt-docs-1782751631（已 merge 入 onedaybot-dev @ 7dba3b1，已清理）",
+  "direction": "docs:progress-sync",
+  "outcome": "succeeded",
+  "outcome_evidence": "（1）npm test 实测 TAP: `# tests 13 / # pass 13 / # fail 0`（worktree 内跑，非声称）。（2）git log 1BfrYW9R: `7dba3b1 merge: 人工批准合并 optimization worktree 'opt-docs-1782751631'` 位于 onedaybot-dev HEAD。（3）`git worktree list` 仅余主工作树 + auto/optimization 常设枝，opt-docs-1782751631 已不在列。（4）git diff --stat onedaybot-dev@4890040..7dba3b1 = .opt-direction/GATES.md/PROGRESS.md 3 files 5+/5-。（5）1BfrYW9R dirty=0、待合并 worktree=0（merge 前=1）。",
+  "next_suggestion": "1BfrYW9R 文档计数已对齐代码现实，本轮收口。下轮 scout-scan 重排后：若 wechat-main 的 1 个待合并 worktree 仍在列，照同流程审 diff+核验主张+merge/reject；否则取新 #1。autonomous-studio main 仍滞留 3 个孤儿 case(007-009.json，dirty=3)——可在专门一轮里 git add .claude/decisions/ 后用 opt-worktree commit 归档进 AS optimization worktree（勿直 commit main），收口 [[case-file-orphan-on-cross-project-work]] 缺口。"
+}

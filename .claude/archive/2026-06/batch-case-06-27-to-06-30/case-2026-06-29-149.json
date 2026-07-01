@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-149",
+  "agent_id": "ralph-wiggum-loop",
+  "timestamp": "2026-06-29T04:05:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "worktree-hygiene: remove phantom optimization worktree (same SHA as main, no diff)",
+  "situation": "scout-scan 报 autonomous-studio 待处理 worktree=3(待合并=1,空=1)。核查发现 optimization worktree HEAD f197264 与 main 祖先同 SHA、git diff main...auto/optimization 为空、工作区无 untracked/modified 文件——属上次 merge 后未删的幻影。opt-progress-1782705464 有真实 PROGRESS.md refresh 提交(fd640b3)，留待人工审。",
+  "action": "git worktree remove .opt-worktrees/autonomous-studio/optimization + git branch -D auto/optimization；不动 opt-progress-1782705464（有真内容）。",
+  "files_changed": [],
+  "worktree": "n/a (worktree removal, no opt-worktree commit needed)",
+  "direction": "worktree-hygiene",
+  "outcome": "succeeded",
+  "outcome_evidence": "git worktree list 现仅 main + opt-progress-1782705464 两条；auto/optimization 分支已删(Deleted branch auto/optimization (was f197264))；scout-scan 下轮应报 待处理 worktree=1(待合并=1,空=0)。",
+  "next_suggestion": "review opt-progress-1782705464 的 PROGRESS.md refresh 提交(fd640b3)：diff 仅 4 行，核对其反映当前状态后 merge 入 main；或若认为 PROGRESS.md 当前状态段已过时，可在该 worktree 内续写后再 merge。"
+}

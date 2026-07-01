@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-133",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-29T03:15:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "清理 1 个空 optimization worktree（0 ahead，内容已在 main）",
+  "situation": "scout-scan #1 推荐：1BfrYW9R 健康度 0.0，唯一待办是清理 auto/optimization worktree；该 worktree HEAD=67271cd 与 onedaybot-dev 同 commit，0 ahead，无未提交变更，属 opt-docs-1782702488 合并后遗留空壳",
+  "action": "git worktree remove /home/admin/workspace/.opt-worktrees/1BfrYW9R/optimization + git worktree prune；无需 commit（仅元数据清理，无源文件改动）",
+  "files_changed": [],
+  "worktree": "removed:/home/admin/workspace/.opt-worktrees/1BfrYW9R/optimization",
+  "direction": "worktree-hygiene",
+  "outcome": "succeeded",
+  "outcome_evidence": "git worktree list 仅剩主 worktree(onedaybot-dev)；remove/prune 退出码 0；无源文件改动故无需 commit",
+  "next_suggestion": "1BfrYW9R 已无待处理 worktree，下轮 scout-scan 应跳过此项目；可关注 autonomous-studio 6 条延期 TODO 中是否有可核销项，或 shizi 待合并 worktree"
+}

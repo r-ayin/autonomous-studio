@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-06-30-332",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-30T03:35:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "review + merge 待合并 worktree opt-tests-1782790072（smoke 端口撞号修复 + 唯一性回归锁）",
+  "situation": "scout-scan 排 #1 1BfrYW9R（score=0.0），推荐「review 1 个待合并 worktree」。该项目有 2 个 opt-worktree：常设 optimization（0 提交，standing，按 [[scout-scan-standing-worktree-not-stale]] 不动）+ opt-tests-1782790072（1 提交 fd43dd2）。opt-tests 提交内容：test ㉕ MIME-rest 测与 ㉓ method-405 测均用端口 3085 撞号——node:test v22 顺序执行顶层 test（CONCURRENCY_OVERLAP=false）掩蔽撞号，全套件绿无人捕获；一旦并发即 EADDRINUSE 后起 dev-server exit 1、测轮询超时转红。修复=㉕ 下移 3080；新增 ㉙ 静态扫源码所有 `const port = (\\d+)` 断言端口集合大小==赋值数锁不变量（与 ㉑/⑧ 同理念读自身源码）。",
+  "action": "三点 diff 审 opt-tests（6967089...fd43dd2）：仅动 .opt-direction/GATES.md/test/smoke.test.js，无越界。在 worktree 内 npm test 实测 31 pass 0 fail（含新 ㉙）。用 `opt-worktree.sh 1BfrYW9R merge opt-tests-1782790072` squash 合入 onedaybot-dev（detect_main_branch=symbolic-ref=onedaybot-dev）。merge 输出 Fast-forward + Squash commit + 3 files/29+/3- + worktree 清理 + Deleted branch auto/opt-tests-1782790072（[[opt-worktree-merge-leaves-branch-ref]] 修复生效）。合后 main 上复测 npm test 31 pass 0 fail 证无回归。",
+  "files_changed": [
+    "test/smoke.test.js",
+    "GATES.md",
+    ".opt-direction"
+  ],
+  "worktree": "opt-tests-1782790072（已 merge + 清理）",
+  "direction": "tests:port-uniqueness",
+  "outcome": "succeeded",
+  "outcome_evidence": "merge 输出 `✓ 已 squash 合并 opt-tests-1782790072 → onedaybot-dev` + `Deleted branch auto/opt-tests-1782790072 (was fd43dd2)`；onedaybot-dev tip=0a47270 `merge: 人工批准合并 optimization worktree opt-tests-1782790072`；main 上 npm test `# pass 31 # fail 0`；worktree list 已无 opt-tests 条目",
+  "next_suggestion": "1BfrYW9R 待合并 worktree 已清零（常设 optimization standing 留空按约不动）。下轮可顺延 #2 autonomous-studio（dirty=3，待合并 optimization worktree——先查 worktree log 勿重做已 triage TODO）或做文档润色；1BfrYW9R 本身健康度良好无紧迫小工作单位。"
+}

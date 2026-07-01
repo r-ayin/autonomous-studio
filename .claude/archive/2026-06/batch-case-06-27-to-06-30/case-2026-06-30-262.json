@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-30-262",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-06-30T19:50:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "review+merge 待合并 worktree opt-tests-1782761991（㉑ gates-doc-drift 回归锁）",
+  "situation": "scout-scan 推荐 #1=1BfrYW9R（score=0.0，1 个待合并 worktree opt-tests-1782761991，3 文件 diff：GATES.md/PROGRESS.md/test/smoke.test.js）。worktree 含 1 commit e9ec0dd，加 smoke.test.js 第 23 测：读 ^\\s*test\\(/gm 计 test 注册数 N_actual、读 GATES.md canonical 箭头形「npm test → N pass 0 fail」解析 N_claimed，断言 N_claimed===N_actual，并同步 bump GATES 22→23 + PROGRESS 里程碑。堵死加测后忘 bump GATES pass 计数致门禁文档静默漂移（声称 22 实际 23）的回归缺口。",
+  "action": "人工审 diff（git diff onedaybot-dev..HEAD 三文件全读）→ 测设计自洽（assert.strictEqual 锁当前态、注释说明只匹配箭头形不匹配分号形历史里程碑点态计数避免误报、与 ⑧ 组件计数互补）→ worktree 内 npm test 复测 23 pass 0 fail（含本测自身计 23）→ merge-base --is-ancestor 确认 fast-forward 可行但按项目惯例（先前 merge 全 --no-ff 留 audit trail）走 git merge --no-ff auto/opt-tests-1782761991 → 合并后 main npm test 复测 23 pass 0 fail → git worktree remove + git branch -D 清理已合并 worktree/分支（保留 standing optimization worktree）。",
+  "files_changed": ["1BfrYW9R/GATES.md", "1BfrYW9R/PROGRESS.md", "1BfrYW9R/test/smoke.test.js"],
+  "worktree": "1BfrYW9R@onedaybot-dev (merge target); merged opt-tests-1782761991 (removed post-merge)",
+  "direction": "tests:gates-doc-drift-lock",
+  "outcome": "succeeded",
+  "outcome_evidence": "git merge --no-ff 报「Merge made by the 'ort' strategy. GATES.md 2/PROGRESS.md 2/smoke.test.js 17 insertions」；post-merge git worktree list 仅余 1BfrYW9R[onedaybot-dev 89d296f] + standing optimization[2323837]，opt-tests-1782761991 已删；npm test post-merge 输出「# tests 23 / # pass 23 / # fail 0」；worktree pre-merge npm test 同为 23 pass 0 fail（第 23 测 ok 23 报绿）。",
+  "next_suggestion": "scout-scan 已无 1BfrYW9R 待合并项；下轮顺延 #2=autonomous-studio（延期已 triage TODO=6，可挑一个做或文档润色）或 #3=moni-master（后端/量化允许，前端重构被 constraints 排除）。1BfrYW9R standing optimization worktree[2323837] 仍存，可查其是否含未合 content。"
+}

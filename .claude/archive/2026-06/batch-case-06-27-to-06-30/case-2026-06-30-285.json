@@ -1,0 +1,25 @@
+{
+  "case_id": "case-2026-06-30-285",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-30T21:50:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "cases:archival-merge — 审并 pending AS worktree opt-cases-1782768959（282/283/284 归档元数据）",
+  "situation": "scout-scan @2026-06-29T21:37Z 全员 score=0.0（健康度饱和）。#1=1BfrYW9R「无明确小工作单位可跳过或做文档润色」——已饱和（23 测回归锁 + ⑧/㉑ 防漂移自守，再润色即霸榜 churn），非 constraints 排除但无单位故顺延。#2=AS 推荐「review 1 个待合并 worktree」= opt-cases-1782768959（含 case-282/283/284 归档元数据，上轮 case-284 审并 opt-cases-1782768196 入 main e0c7682 后同轮 commit 的本工作元数据 + 2 跨项目孤儿归档，纯 JSON 低风险）。AS main dirty=0 干净，standing optimization worktree(766d7e5) 按 [[scout-scan-standing-worktree-not-stale]] 不动。",
+  "action": "(A) 审 opt-cases-1782768959: git log main..auto/opt-cases-1782768959 显 1 commit(03d0ca3 归档 282/283/284)；git cherry main auto/opt-cases-1782768959 返 '+ 03d0ca3' 证未入 main 非 dup（[[as-merge-reconciliation-2026-06-27]] patch-id 对账纪律）；git show --stat 证 +61/-0 仅 3 个 .claude/decisions/case-2026-06-30-28{2,3,4}.json 纯元数据无代码改动；逐文件读 3 case JSON 确认 outcome_evidence 引 commit hash/npm test 计数非散文、case-id 282/283/284 顺序无撞号（284 自记用 next-case 取号）。git cat-file -e main:... 三文件均 absent 证未重复入 main。(B) 合并: bash scripts/opt-worktree.sh autonomous-studio merge opt-cases-1782768959（自 workspace 根 cwd，[[opt-worktree-stash-silent-failure]] 同族须根 cwd）→ Fast-forward squash 落 main 为 01f63ae，worktree 自动清理。(C) 取号: opt-worktree.sh autonomous-studio next-case（根 cwd）返 285。全程未 Read 源文件（纯 case 元数据 + opt-worktree 调度）。",
+  "files_changed": [
+    "autonomous-studio/.claude/decisions/case-2026-06-30-282.json",
+    "autonomous-studio/.claude/decisions/case-2026-06-30-283.json",
+    "autonomous-studio/.claude/decisions/case-2026-06-30-284.json"
+  ],
+  "worktree": "opt-cases-1782768959(已 merge 入 main 为 01f63ae，worktree 已清理)",
+  "direction": "cases:archival-merge",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "git -C autonomous-studio log --oneline -1 → '01f63ae merge: 人工批准合并 optimization worktree opt-cases-1782768959'",
+    "git -C autonomous-studio cat-file -e main:.claude/decisions/case-2026-06-30-282.json / 283 / 284 → 三文件现均 PRESENT（合并前均 absent）",
+    "git -C autonomous-studio worktree list → 仅列 main(01f63ae) + standing optimization(766d7e5)，opt-cases-1782768959 已清理",
+    "git cherry main auto/opt-cases-1782768959 合并前返 '+ 03d0ca3'（非 dup）",
+    "opt-worktree.sh autonomous-studio next-case 返 case-2026-06-30-285.json（无撞号）"
+  ],
+  "next_suggestion": "全员 score=0.0 持续饱和，AS 待合并 worktree 已清零（仅 standing optimization）。下轮可选结构修复高 ROI 项（皆 AS engine 自身改脚本，适合专轮）:(1) case-id 根因 [[case-id-collision-agent-self-pick]] 根治（统一 case-id 走 next-case，禁 agent 自挑号，case-263/034 再撞）；(2) 跨项目 case 孤儿 [[case-file-orphan-on-cross-project-work]] 根治（step5 让 case 跟随目标项目 worktree 而非滞留 AS main——本轮仍只能事后归档补救）；(3) 两副本同改 [[opt-worktree-root-as-copy-drift]]（下次改 scout-scan.py 须 root live + AS git 两副本同改）。或挑真功能单位：1BfrYW9R Phase 2 表单校验/空状态骨架屏、personal-assistant android Robolectric 扩测、sunset-prediction GATES 剩余门禁核销。standing optimization worktree(766d7e5) 落后 main 仍勿两点 diff 误读为回归（[[diverged-base-two-dot-diff-misread]]）。moni 前端重构仍 constraints 排除。写 AS case 前先 git status 查 main [[as-concurrent-loop-race]]。"
+}

@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-06-29-060",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-29T15:37:58Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "engine:cp-overwrite-guard — cmd_commit cp 前检测 target vs main HEAD，不同即跳过+警告（case-059 cp-overwrite 静默回退根因的诊断性保护）",
+  "situation": "scout-scan 全项目 blocked：#1 skills score=2.0 等合并 opt-docs-1782736126；其余 score=0.0。上轮 case-059 已揭示 optimization worktree 6 个 pending 提交中 4 个被 cmd_commit cp-based 同步静默回退（历史在树不在）。constraints 文件不存在，无排除项。引擎自身虽 score=0.0 但存在已知结构性 bug，比文档润色更紧迫。",
+  "action": "在 optimization worktree 内直接编辑 scripts/opt-worktree.sh cmd_commit ①迁移块：新增 _cp_guard() 函数，cp 前比较 target 现有内容与 main HEAD 同名文件（cmp -s + git show），不同即 stderr 警告并跳过该文件（return 1 + continue），不中止整批保持正常流程可用。直接 git commit 到 worktree（非 cmd_commit cp），避免自指覆盖。bash -n ✓。",
+  "files_changed": ["scripts/opt-worktree.sh"],
+  "worktree": "optimization (branch auto/optimization, commit 528ac01)",
+  "direction": "engine:cp-overwrite-guard",
+  "outcome": "succeeded",
+  "outcome_evidence": "1) bash -n /home/admin/workspace/.opt-worktrees/autonomous-studio-aone/optimization/scripts/opt-worktree.sh → exit 0（语法正确）；2) cd optimization && git log --oneline -1 → 528ac01 opt(engine:cp-overwrite-guard)...；3) git diff HEAD~1 --stat → scripts/opt-worktree.sh | 24 ++++++++++++++++++++---- （仅 1 文件 +20/-4）；4) main 干净：git status --short 仅显示预期的 autonomous-state.md 修改与 case-*.json untracked，无 opt-worktree.sh 改动泄漏到 main。",
+  "next_suggestion": [
+    "【最高优先·人工】合并 optimization worktree 到 main（含 10 pending：b8458a6 files-array-quoting、0927e26 files-assert-array、1b1f6b4 merge-msg-ahead-only、528ac01 cp-overwrite-guard 等）。注意：case-059 揭示的 4 修复(show-truncation/merge-checkout-guard/merge-branch-cleanup/direction-meta-exclusion)仍已从树中被抹掉，merge 后需在 main 重做（git show <hash> 取原 diff）。",
+    "【merge 后首个提交】将 _cp_guard 升级为硬阻断模式（检测到冲突时 abort 而非 warn+skip），彻底杜绝 cp-overwrite 再次发生。当前 warn 是诊断性过渡，避免在 worktree 未合并前改语义又被 cp 覆盖。",
+    "【次优·解锁 scout】人工合并 opt-docs-1782736126/skills worktree → 解锁 skills 项目（scout #1）；或合并 opt-agent-dashboard/opt-browser-use/opt-xtool 任一解锁对应项目侧轮转。"
+  ]
+}

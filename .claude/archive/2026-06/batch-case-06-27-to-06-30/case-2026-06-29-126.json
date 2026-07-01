@@ -1,0 +1,17 @@
+{
+  "case_id": "case-2026-06-29-126",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-29T02:35:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "merge-case-125-worktree-and-cleanup-empty",
+  "situation": "scout-scan #2 autonomous-studio：main dirty=1 (case-125.json untracked) + 待合并 worktree opt-state-1782700340 (含 case-125 orphan归档+state字段) + 空 worktree optimization (可清理)。推荐工作单位明确：review+merge 待合并枝 + 清空 worktree。",
+  "action": "用 opt-worktree.sh commit 将 main 上 untracked 的 case-125.json 追加提交到同 area worktree opt-state-1782700340（新 commit 6bc3574），使该枝完整包含本轮全部产物；随后 git worktree remove 清理空 optimization worktree。未直接 merge 入 main（需人工审）。",
+  "files_changed": [
+    ".claude/decisions/case-2026-06-29-125.json"
+  ],
+  "worktree": "opt-state-1782700340",
+  "direction": "state:merge-orphans",
+  "outcome": "succeeded",
+  "outcome_evidence": "git log --oneline main..HEAD = [6bc3574, 4ee3401] 两 commit; git show --stat HEAD 显示 1 file changed, 21 insertions(+) (case-125.json); git worktree list 仅剩 main + opt-state-1782700340 (optimization 已删); main 仍 dirty=1 因 case-126.json 新生成待下轮归档",
+  "next_suggestion": "[1] 人工审 opt-state-1782700340 (2 commits: case-125 orphans+state字段+case-125本身) 并 merge 入 main 以彻底清 dirty; [2] x-tool 9 本地提交待推 GitHub (PAT 见 memory:x-tool-push-ghproxy-no-creds); [3] wechat-main/shizi PROGRESS.md >0.5天 stale, 可同步更新; [4] moni-master 后端/量化小步 (WFO/因子回测)"
+}

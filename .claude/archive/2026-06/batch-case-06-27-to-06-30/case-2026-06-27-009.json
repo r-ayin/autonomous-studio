@@ -1,0 +1,23 @@
+{
+  "case_id": "case-2026-06-27-009",
+  "agent_id": "autonomous-loop-ralph",
+  "timestamp": "2026-06-27T09:25:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "scout-scan 第 4 类标记虚高修复：剥离 HTML 注释占位符 <!-- TODO --> + 【TODO】 模板桩，消除自举子项目 CLAUDE/PROGRESS 桩被计入真债",
+  "situation": "scout-scan 跑出 #1=x-tool(score=1.22)，推荐工作单位=triage TODO。grep 核实 x-tool TODO=44 的构成：38/44 来自 project-protocol 自举生成的子项目 CLAUDE.md/PROGRESS.md 三件套里的 <!-- TODO: ... --> / <!-- TODO --> HTML 注释占位符（decision-archive.md:511 明确约定：留空标记 `<!-- TODO -->` 待人工补充，非真债）。bare `<!-- TODO -->` 因 `-->` 起首的 `-` 命中 _MARKER_RE 的 `\\bTODO\\b\\s*[:-]` 也被计入。这使 x-tool 标记密度虚高霸榜 #1，与 case-008 发现并留下的第 4 类 scanner inflation 缺口一致。两份 scout-scan.py 副本 diverge：workspace 根 scripts/（实际运行，已含 .venv 前缀修复 + _STRIP_PLACEHOLDERS）vs autonomous-studio git 副本（main，两者皆缺）；pending worktree opt-scanner-1782549922（方向 scanner:ignore-dirs）已含 .venv 前缀修复但缺 _STRIP_PLACEHOLDERS / _STRIP_HTML_COMMENTS。",
+  "action": "1) scout-scan.py count_markers 剥离链新增 _STRIP_HTML_COMMENTS = re.compile(r\"<!--.*?-->\")，置 _STRIP_PLACEHOLDERS 之后、_MARKER_RE 匹配之前；HTML 注释非可执行代码且按项目约定属占位提示，真债务行内注释（井号/双斜杠后跟标记加冒号）不在 HTML 注释里不受影响。同时把已有但仅存于 root 副本的 _STRIP_PLACEHOLDERS（【TODO】 全角括号占位符剥离）一并落地到 git。2) 重写自身新注释里的 `# TODO:` 冒号形式为散文（避免 scripts/ 被扫时新自指）。3) 因两副本 diverge + opt-worktree stash 传输会在 .venv hunk 冲突，改用直接同步：把已验证的 root 副本 cp 进 opt-scanner-1782549922 worktree（该 worktree 已有 .venv 修复，diff 干净仅新增 placeholder+HTML 两段），在 worktree 自身 auto/ 分支提交（非 main，合规）—— consolidate 三类 marker-accuracy 修复于同一 worktree 待人工 merge。",
+  "files_changed": ["scripts/scout-scan.py"],
+  "worktree": "autonomous-studio opt-scanner-1782549922（方向 scanner:ignore-dirs，commit 135a67f，1 文件 scripts/scout-scan.py，+12/-0，承接 9f2967b 的 .venv 修复，待人工 merge）",
+  "direction": "scanner:placeholder-strip",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "x-tool markers: TODO 44→6（scout-scan --project x-tool 实测 `标记: TODO=6 FIXME=0 HACK=0`）",
+    "剩 6 个为真实代码债：x-tool/moni/factors/scripts/qlib_repo/trader/broker_qmt.py:70/79/86/96 + run_trader.py:102 + alpha_graph/tools/download_sw_industry.py:87，均为行内 `# TODO:` 形式（非 HTML 注释）",
+    "健康分重排：x-tool 1.22(#1)→1.03(#2)，autonomous-studio 1.06 升 #1——占位符虚高消除，不再霸榜",
+    "自指守卫未破：autonomous-studio markers 仍 TODO=4/FIXME=0/HACK=0（_STRIP_STRINGS 字典键自指保护 + 新 HTML 剥离不冲突）",
+    "scout-scan.py 自身无 marker 自指（剥离后 grep 干净）",
+    "worktree commit 135a67f 落在 auto/opt-scanner-1782549922 分支，承接 9f2967b，git log 可验",
+    "去重：cp root 副本进 opt-scanner 时连带带入了 _STRIP_PLACEHOLDERS（已存于 optimization worktree dd99b61），存在双 worktree 重复→双 merge 冲突风险；已 git reset --hard dd99b61^ 把 optimization worktree 还原到 b725eb4（grep 确认 _STRIP_PLACEHOLDERS=0），_STRIP_PLACEHOLDERS 现仅 opt-scanner-1782549922 一处，dedup 完成"
+  ],
+  "next_suggestion": "1) 【P0·阻塞 merge】autonomous-studio 存在 main/worktree 历史分歧：main=34fe229(step6) 与所有 pending worktree 的 base b725eb4(step6) 同消息不同 hash，b725eb4 非 main 祖先（git merge-base --is-ancestor b725eb4 main = NO）。致 opt-scanner-1782549922/optimization 等 worktree 均 8/6 commits ahead 且无法 fast-forward 合入 main，会带旧 merge commits 做复杂 merge。需人工裁决：要么 rebase 各 pending worktree 到 34fe229，要么 reset main 到 b725eb4 统一——有丢工作风险，需谨慎。2) 分歧解决后 merge opt-scanner-1782549922（现含 .venv 9f2967b + placeholder + HTML 135a67f 三类修复）→ main，AS git 副本与 root 副本收敛。3) 下轮 #1=autonomous-studio(score=1.06, TODO=4 密度0.006)：triage 这 4 个真实 # TODO: 注释。4) 待 merge 积压：x-tool opt-docs-1782551599(case-008)；shizi opt-shizi-1782541551 + P0 历史 VL key 轮换。5) .claude/ 双目录分裂仍存。"
+}

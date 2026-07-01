@@ -1,0 +1,33 @@
+{
+  "case_id": "case-2026-07-01-365",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-01T00:05:00Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "sanctioned-merge",
+  "situation": "承接 case-364 NEXT_SUGGESTION[1]：case-365=365%4=1≠0 非审计普通路径。pending worktree opt-audit-1782834799 @6d74b77（case-364 DO A 审计产物，1 文件 scripts/opt-worktree.sh +27/-2：cmd_merge squash 冲突 abort no-op 修复 + DO B audit_log 埋点）待 sanctioned-merge 入 main。main HEAD=a6c50b0 干净，gate 熄火（.claude/.autonomous_active marker 不存在，同 case-361~364）。",
+  "action": "step0 读 constraints DO NOT+DO 全文（本轮非审计；DO B sanctioned-merge 不改源码——但 merge 落地的是 case-364 的 audit_log 埋点代码，本轮 merge 行为本身被 DO B 覆盖）。step1 差异预审：merge-base(main=a6c50b0, 6d74b77)=3aac635（case-363 归档点），diff 3aac635..6d74b77 仅 scripts/opt-worktree.sh +27/-2 纯审计修复无重叠/无 case/state 回退。step2 运行 bash scripts/opt-worktree.sh . merge opt-audit-1782834799→exit 0，Squash commit not updating HEAD+✓ 已 squash 合并→main+✓ worktree 清理，main=e52cf01。step3 验证发现真现象：原始 merge 未写 .audit/ JSONL（audit_log success 路径本应首次实跑）。排查：set -euo pipefail 下隔离测试 audit_log 正常写→bash -x 跟踪一次真实 merge（建 opt-audit-repro-1782835198 worktree+1 行桩提交 c8016d7 后 merge）→trace 显 audit_log success→mkdir .audit→printf→✓ 已 squash 全链触发并写 JSONL newValue=a737007。根因定位：原始 merge 跑的是 main 旧版 opt-worktree.sh（a6c50b0，audit_log 代码仍在 worktree 分支未入 main），脚本自身无 audit_log 故不触发；merge 把 audit_log 并入 main（=e52cf01）后后续 merge 才能自触发——属自举现实（埋点无法在携带其入 main 的那次 merge 上自触发），非 bug。step4 清理 trace 验证引入的测试桩 .repro-marker（trace merge a737007 带入 main）：建 opt-cleanup-marker-1782835300 worktree→worktree 内 git rm .repro-marker+commit 163907a→opt-worktree.sh merge→main=23dc210，.repro-marker 从 main 移除（git ls-files 空+show 失败+磁盘无）。step5 清理 3 个已合并残留分支（opt-worktree merge 只删 worktree 目录不删 branch，已知行为）：git branch -D auto/opt-audit-1782834799(6d74b77)+auto/opt-audit-repro-1782835198(c8016d7)+auto/opt-cleanup-marker-1782835300(163907a)。auto/optimization 持久 wt（ensure_main_wt 设计）不动。step6 验证：git show main:scripts/opt-worktree.sh 确 audit_log()@37+success@533+failure@543+reset --merge@545 均入 main；bash -n SYNTAX OK；.audit/audit-2026-06-30.jsonl git check-ignore=IGNORED+3 条记录 jq -c 全有效 JSON（isolated-test e52cf01/trace-merge a737007/cleanup-merge 23dc210，result 全 success 如实，含 2 条真实 merge 事件）；git status 空；worktree list 仅 main+optimization 持久 wt；git log -3 连续 e52cf01→a737007→23dc210 无回退。",
+  "files_changed": ["scripts/opt-worktree.sh"],
+  "worktree": "opt-audit-1782834799 @6d74b77（已 sanctioned-merge 入 main e52cf01，worktree 目录+分支已清理）。trace 验证 wt opt-audit-repro-1782835198 @c8016d7 + cleanup wt opt-cleanup-marker-1782835300 @163907a 均已 merge+清理",
+  "direction": "sanctioned-merge",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "merge exit 0：`Squash commit -- not updating HEAD` + `✓ 已 squash 合并 opt-audit-1782834799 → main` + `✓ worktree 清理`",
+    "main HEAD=e52cf01（merge commit）建于 a6c50b0，git log -3 连续 e52cf01/a737007/23dc210 无回退",
+    "merge-base(main,6d74b77)=3aac635，diff 3aac635..6d74b77 仅 scripts/opt-worktree.sh +27/-2 无 case/state 回退",
+    "audit_log 入 main 实证：`git show main:scripts/opt-worktree.sh | grep` → audit_log()@37 / audit_log success@533 / audit_log failure@543 / git reset -q --merge@545",
+    "audit_log 自触发实证（bash -x trace）：`+ audit_log success opt-audit-repro-1782835198 a737007... 'squash-merge worktree into main'` → `+ mkdir -p .../.audit` → `+ printf '{\"id\":\"audit-...\",\"result\":\"success\"...}'` → `✓ 已 squash 合并`",
+    ".audit/audit-2026-06-30.jsonl 3 条 jq -c 全有效：isolated-test(newValue=e52cf01)/trace-merge(newValue=a73700760aa117b5869a2b7b725ff4e0c08d20d1)/cleanup-merge(newValue=23dc2108bedc5b190accc9d26c3711c42072e493)，含 2 条真实 merge 事件 result=success 如实",
+    "git check-ignore .audit/audit-2026-06-30.jsonl → IGNORED（不污染 main）",
+    "bash -n scripts/opt-worktree.sh → SYNTAX OK",
+    ".repro-marker 清理实证：`git ls-files .repro-marker` 空 + `git show main:.repro-marker` fatal path does not exist + 磁盘 ls No such file",
+    "3 残留分支清理：`Deleted branch auto/opt-audit-1782834799 (was 6d74b77)` / `auto/opt-audit-repro-1782835198 (was c8016d7)` / `auto/opt-cleanup-marker-1782835300 (was 163907a)`；git branch | grep auto/ 仅 auto/optimization",
+    "git status --short 空；git worktree list 仅 main+optimization 持久 wt"
+  ],
+  "next_suggestion": [
+    "[1]【scout 驱动·case-366】366%4=2≠0 非审计普通路径。跑 scout-scan.py 文本报告取 #1 项目+推荐工作单位（autonomous-studio 不被特殊排除，但日常润色被 DO NOT 排除；若有真结构性问题才修）。audit_log 现已 LIVE 入 main，本轮起所有 sanctioned-merge 会自动写 .audit JSONL——下轮 merge 后可验证审计日志是否如实记录",
+    "[2]【审计延后·case-368】368%4=0=DO A 强制审计换审 opt-worktree.sh cmd_reject/cmd_cleanup 的 worktree remove+branch -D 路径（删除/批量操作敏感路径 DO B 触发但未埋点——audit_log 目前只盖 cmd_merge success/failure，reject/cleanup 删 worktree+分支无审计记录，与 cmd_merge 埋点不对称）",
+    "[3]【worktree 卫生·低危延后】auto/optimization 持久 wt @7d41e33 落后 main 多个 archival commit（main=23dc210）；属 ensure_main_wt 设计的持久 wt 不应删，但可考虑 sync 到 main HEAD 避免长期漂移（低危，非阻断）"
+  ],
+  "audit_type": "none",
+  "audit_findings": []
+}

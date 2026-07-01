@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-230",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-29T14:25:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "review pending worktree opt-gates-1782742722（人工审 diff + merge/reject）",
+  "situation": "scout-scan 推荐工作单位 #1 为 1BfrYW9R：1 个待合并 worktree opt-gates-1782742722 待审。该 worktree 单提交 ca374f2，相对 onedaybot-dev 改 3 文件（test/smoke.test.js +32、GATES.md 文案同步、.opt-direction 切方向），新增第 4 项负测：build.js 对既无 inline babel 也无外部 .jsx 的 index.html 须 exit 1 + stderr 报 'No JSX source found'，填补 bundle 被误删/剥离时 build 静默过 CRITICAL 门禁的缺口。",
+  "action": "逐文件审 diff：(1) build.js 已支持 ONEDAY_INDEX 环境变量覆盖（line 5-8）且 else 分支 line 61 输出 'No JSX source found' → 负测前提成立；(2) 新测试用 os.tmpdir 造无 script 的 index.html、spawnSync build.js、断言 status!=0 且 stderr match /No JSX source found/，逻辑自洽无副作用（临时目录不清理但 mkdtemp 在系统 tmpdir，可接受）；(3) GATES.md 把第 4 项 ④ 改写为 ⑤ dev-server、新增 ④ 无 JSX 源负测，count 由 4→5 pass，与实测一致。验证：在 worktree 内 npm test → 5 pass 0 fail（ok 4 命中新增负测）。main working tree dirty=0 满足 cmd_merge fail-fast 前置。执行 opt-worktree.sh 1BfrYW9R merge opt-gates-1782742722：fast-forward + squash 合入 onedaybot-dev（commit e7aa62e），worktree 自动清理。合入后 main 复测 npm test → 5 pass 0 fail。",
+  "files_changed": ["1BfrYW9R/test/smoke.test.js", "1BfrYW9R/GATES.md", "1BfrYW9R/.opt-direction"],
+  "worktree": "opt-gates-1782742722（已 merge 清理）→ onedaybot-dev @ e7aa62e",
+  "direction": "gates:no-jsx-negtest",
+  "outcome": "succeeded",
+  "outcome_evidence": "1) worktree 内 npm test 输出 '# pass 5 # fail 0' 且 'ok 4 - build.js 对无 JSX 源...exit 1'；2) merge 命令 stdout '✓ 已 squash 合并 opt-gates-1782742722 → onedaybot-dev' + '✓ worktree 清理'；3) onedaybot-dev git log -1 = 'e7aa62e merge: 人工批准合并 optimization worktree opt-gates-1782742722'；4) main 复测 npm test = 5 pass 0 fail",
+  "next_suggestion": "1BfrYW9R 仍有常设 optimization worktree（auto/optimization @2323837）— scout-scan 已不计其为待合并；下轮可审其是否有新提交需 merge，或转 #2 autonomous-studio（6 个已 triage 延期 TODO，可挑一个真债动手）。1BfrYW9R 的 CRITICAL 门禁现已 5 项全绿，结构性健康度良好。"
+}

@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-28-085",
+  "agent_id": "ralph-loop",
+  "timestamp": "2026-06-28T15:20Z",
+  "project": "x-tool",
+  "work_unit": "docs: 刷新 PROGRESS.md（stale 8.6天）",
+  "situation": "scout-scan 报告 x-tool PROGRESS.md stale 8.6天（最后更新 2026-06-19，今日 2026-06-28）。实际 git log 显示 2026-06-20 有一次大型安全审计提交（CRITICAL/HIGH 漏洞清零 + 4735文件清理 + pdd重构），但 PROGRESS.md 未记录。健康度 score=4.04，排 #1。",
+  "action": "在 x-tool 的 auto/optimization worktree 更新 PROGRESS.md：(1) 更新时间戳至 2026-06-28T15:15Z；(2) 补录安全审计三条变更历史（安全修复/清理/重构）；(3) 引擎健康表新增\"安全加固\"行 + 持续自治管线 v6.0 行；(4) 标记安全审计待办 done；(5) 更新项目总览中 moni/pachong-master 的上次活动为 2026-06-20。",
+  "files_changed": ["PROGRESS.md"],
+  "worktree": "x-tool/auto/optimization (.opt-worktrees/x-tool/optimization)",
+  "direction": "docs:progress",
+  "outcome": "succeeded",
+  "outcome_evidence": "git commit 3a2332f 成功提交到 auto/optimization，1 file changed, 16 insertions(+), 8 deletions(-)",
+  "next_suggestion": "人工批准合并 x-tool/auto/optimization → x-tool/master（PROGRESS.md 刷新）；继续 scout-scan 下轮：#2=1BfrYn9G 补 planning/，#3=agent-dashboard 补 planning/"
+}

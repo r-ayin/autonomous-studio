@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-06-29-061",
+  "agent_id": "ralph-autonomous-studio",
+  "timestamp": "2026-06-29T23:50Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "engine:cp-guard-preserve — cmd_commit 在 cp-guard 跳过文件时保留 main 改动（不抹除）",
+  "situation": "scout-scan 报告全部项目 blocked（#1 skills score=2.0 等合并 opt-docs-1782736126，其余 score=0.0；末尾「⚠️ 无可操作工作单位」）。autonomous-studio 不被排除，转引擎自身。审 optimization worktree 的 _cp_guard（case-060 落地）发现静默抹掉漏洞：_cp_guard 对「target 文件与 main HEAD 不同」的文件 return 1（skip 不 cp），但随后的步骤③还原 main 时对该文件仍执行 git checkout HEAD（tracked）或 rm（untracked），把用户 main 工作区里待重做的编辑一并销毁——与 case-059/060 所治的静默抹掉同源。warn 文案虽写「请人工 merge 后重做」，但重做素材（main 里的编辑）已被 ③ 抹掉。",
+  "action": "在 optimization worktree 内直接编辑 scripts/opt-worktree.sh（非 cmd_commit cp——opt-worktree.sh 自身有未合并分歧，cp-guard 会跳过，且状态明示引擎侧勿 cp 该文件进 worktree）。（1）_cp_guard 定义后新增 local -a skipped=() + _is_skipped() 成员判定；（2）两处 cp 循环（显式 files 分支 + WIP 分支）把 `|| continue` 改为 `|| { skipped+=(\"$f\"); continue; }` 收集被跳过文件；（3）步骤③两处还原循环开头加 `_is_skipped && { echo ⏸保留...; continue; }` 跳过还原，原样保留 main 改动；（4）步骤④leak 断言改为排除 skipped：files 分支先建 kept=()（files 去掉 skipped）再 git status -- \"${kept[@]}\"，WIP 分支逐行读 git status --porcelain 过滤掉 skipped 路径，避免被保留的 main 改动误报为泄漏。",
+  "files_changed": ["scripts/opt-worktree.sh"],
+  "worktree": "optimization (branch auto/optimization, commit b22245b)",
+  "direction": "engine:cp-guard-preserve",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "bash -n scripts/opt-worktree.sh → OK（语法通过）",
+    "git diff vs worktree HEAD：scripts/opt-worktree.sh +27/-5，单文件",
+    "worktree commit b22245b 已落地：git log --oneline -1 → 'b22245b opt(engine:cp-guard-preserve): ...'",
+    "临时仓功能实测（/tmp/opttest/myproj）：optimization worktree 的 X.txt 提交为 a\\nb-from-worktree（与 main HEAD 'a\\n' 分歧）→ main 编辑 X.txt=a\\nb-from-main-user → 跑 `ow.sh . commit engine:test-skip ... X.txt` → stderr 打印 '⚠️ cp-guard: X.txt 在 worktree 与 main HEAD 不同…跳过' + '⏸ cp-guard 跳过 X.txt：保留 main 改动待人工 merge 后重做（不抹除）' → 提交后 cat main X.txt = 'a\\nb-from-main-user'（完整保留，未被 checkout HEAD 抹掉）→ git status main 显示 ' M X.txt'（改动仍在）→ cat worktree X.txt = 'a\\nb-from-worktree'（未被 main 编辑覆盖）",
+    "正常路径回归实测（/tmp/opttest2/mp，无分歧）：跑 commit engine:happy Y.txt → main Y.txt 还原为 'orig'（HEAD）、worktree Y.txt = 'orig\\nnew-edit'（编辑已落地），行为与修复前一致，无回归"
+  ],
+  "next_suggestion": "【1·人工】合并 optimization worktree → main（现 11 ahead：含本次 b22245b + 058-060 的 cp-guard/files-array/merge-msg/show-truncation/merge-checkout/direction-meta 等）。状态文件曾称 4 修复被「抹掉 from tree」——已用 git diff main...HEAD 证伪：b476c86/d3a1a8e/204bc93/5d0ed82 均在 worktree 树内，squash merge 可一次性获得。【2·merge 后】cp-guard 升级为硬阻断（abort 整批而非 warn+skip）——本轮保留下可考虑。【3·新小工作单位】skip 路径全文件被跳过时仍生成 .opt-direction-only 空提交（实测 de5728b commit 仅 '.opt-direction | 1 +'，断言因 head 前进而通过→误报成功）——可在 git add -A 前判 skipped 覆盖全部 files 则不提交、直接 warn 退出。【4·解锁 scout】人工合并 opt-docs-1782736126 → 解锁 skills（#1）；或 opt-agent-dashboard/opt-browser-use/opt-xtool 任一解锁侧轮转。"
+}

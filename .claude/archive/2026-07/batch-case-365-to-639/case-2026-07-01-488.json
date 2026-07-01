@@ -1,0 +1,39 @@
+{
+  "case_id": "case-2026-07-01-488",
+  "agent_id": "ralph-autonomous-engine",
+  "timestamp": "2026-07-01T02:49:28Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "code-audit:autonomous-studio-aone (.claude/hooks/save-checkpoint.py security-review)",
+  "situation": "审计轮 case-488=488%4=0(DO A 续审未审源码)。承接 case-487 NEXT[2]。scout-scan #1=AS score=0.0 但审计轮强制 DO A 选有源代码项目续审未审源码。盘点今日 31 轮审计 case 已审 hooks 文件:incremental-save(484)/autonomous-commit-gate(376,428,440)/codegraph-sync(384,456)/notify-phone(388,444)/pipeline-gate(392,432)/auto-commit(396,464)/decision-observer(400,468)/discovery-gate(404)/stop-completion-gate(472)/protocol-check(476)/patterns-write-gate(480)/post-edit-lint(448)。未审:save-checkpoint.py/resume-checkpoint.py/index-cases.py/distill-patterns.py。选最小且触及文件系统写(敏感路径候选)的 save-checkpoint.py(7645B,SSH 断开后恢复会话上下文的 checkpoint 保存 hook)。",
+  "action": "security-review 逐行:write_checkpoint L187 open('w')截断后 json.dump 非原子写 + L192 shutil.copy2 复制 latest.json 非原子——本 hook 全程为 SSH 断开/kill 后恢复会话而存在,非原子写在中途断开时留半写态,破坏的恰是恢复入口(与 case-484 incremental-save.py 同类 bug,但此文件更严重因 hook 存在意义即断开恢复)。prune_old_checkpoints L177 except:pass 静默吞删错(low,非关键)。find_task_files L137 用 Path 但 Path 仅在 __main__ L215 内导入且函数从未被 build_checkpoint 调用=死代码+潜在 NameError(low)。DO B 判定:.claude/checkpoints/ 在 PROJECT_DIR 内属 worktree 内部状态,非 auth/PII/凭证/外部调用/部署/批量删敏感路径→不触发 audit-log 埋点。修复:新增 _atomic_write_json(tempfile.mkstemp+os.fdopen 写+os.replace 原子替换,失败 os.unlink 清理后 raise 不静默吞错),checkpoint 与 latest.json 均走原子写;删除 shutil.copy2 旧路径。py_compile OK + 实测运行 latest.json 完整有效 JSON 无 .tmp 残留。起 opt-security-1782873915 worktree(方向 security≠主 optimization engine→开新 worktree)提交 1 commit 7b4189b。merge-tree --write-tree 干演 rc=0 clean。",
+  "files_changed": [".claude/hooks/save-checkpoint.py"],
+  "worktree": "auto/opt-security-1782873915@7b4189b",
+  "direction": "audit",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 7b4189b on auto/opt-security-1782873915(rev-list main..branch=1);git merge-tree --write-tree main..auto/opt-security-1782873915 rc=0 clean 无冲突;python3 -m py_compile .claude/hooks/save-checkpoint.py OK;实测 CLAUDE_SESSION_ID=test-488 运行后 latest.json 为完整有效 JSON(keys=cwd/git/hook_event/memory_files/platform/project/recent_activity/session_id/timestamp/version)且 .claude/checkpoints/*.tmp 无残留;git diff --stat main..branch=.claude/hooks/save-checkpoint.py 1 file +24-6;四验干净:porcelain=仅未跟踪(.claude/audit-cycle-state.json/.claude/audits//.claude/public-interfaces.txt 均非本轮产出)、worktree list=main@505fdcc+opt-security-1782873915@7b4189b+optimization@aaa88a8(空壳)、branch=main+auto/opt-security-1782866336(ahead4)+auto/opt-security-1782872471(ahead1)+auto/opt-security-1782873915(ahead1)+auto/optimization(空壳)。",
+  "next_suggestion": "下轮 case-489=489%4=1≠0 非审计轮·skip 心跳(承接本轮)。累计 3 待合并分支:auto/opt-security-1782866336@f7dda51(ahead=4 五轮审查就绪)+auto/opt-security-1782872471@05a6c62(ahead=1 case-484)+auto/opt-security-1782873915@7b4189b(ahead=1 本轮 save-checkpoint 原子写修复已验证)均待人工 merge 且引擎无权 merge→不重复审。case-492=492%4=0 审计轮·DO A 续审未审源码:剩 resume-checkpoint.py(9096B,与 save-checkpoint 配对的恢复端,可能同样有非原子读/竞态)/index-cases.py/distill-patterns.py 可审。",
+  "audit_type": "security-review",
+  "audit_findings": [
+    {
+      "file": ".claude/hooks/save-checkpoint.py",
+      "line": "187-188",
+      "severity": "medium",
+      "finding": "write_checkpoint 非原子写(open(filepath,'w') 截断后 json.dump)——SSH 断开/kill 中途留半写态 checkpoint 文件。本 hook 存在意义即断开后恢复会话,非原子写使恢复工件恰被其必须抵御的断开所破坏(与 case-484 incremental-save.py L88-89 同类 bug)。",
+      "remediation": "已修复:新增 _atomic_write_json(tempfile.mkstemp+os.fdopen 写+os.replace 原子替换,失败 os.unlink 清理后 raise),checkpoint 走原子写。commit 7b4189b。"
+    },
+    {
+      "file": ".claude/hooks/save-checkpoint.py",
+      "line": "192",
+      "severity": "medium",
+      "finding": "latest.json 用 shutil.copy2(filepath,LATEST_LINK) 复制非原子,中途断开留半写态破坏恢复入口(与 L187 同类,且 latest.json 是恢复端 resume-checkpoint.py 的读取入口,损坏直接致恢复失败)。",
+      "remediation": "已修复:latest.json 改走 _atomic_write_json(checkpoint dict 直写+os.replace 原子替换),删除 shutil.copy2 旧路径。commit 7b4189b。"
+    },
+    {
+      "file": ".claude/hooks/save-checkpoint.py",
+      "line": "137",
+      "severity": "low",
+      "finding": "find_task_files 用 Path(PROJECT_DIR) 但 Path 仅在 __main__ 块(L215 from pathlib import Path)内导入,且该函数从未被 build_checkpoint 调用=死代码+潜在 NameError(若被调用即崩)。",
+      "remediation": "deferred:死代码无运行时影响,本轮不修(保最小改动)。后续可删该函数或将 import 上提至模块顶部。"
+    }
+  ]
+}

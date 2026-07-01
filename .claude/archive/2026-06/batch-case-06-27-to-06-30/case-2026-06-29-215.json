@@ -1,0 +1,18 @@
+{
+  "case_id": "case-2026-06-29-215",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-29T21:05:00+08:00",
+  "project": "autonomous-studio",
+  "work_unit": "opt-tooling:cp-guard — opt-worktree.sh cmd_commit 加 cp 命中数=0 前置断言（堵 case-207 残留缺口）+ root↔AS 双副本再同步",
+  "situation": "scout-scan 全项目健康度 0.0、无明确单位（#1=1BfrYW9R『可跳过/润色』）。转 state NEXT_SUGGESTION 的 OPEN 项。记忆 [[opt-worktree-empty-files-silent-bogus-commit]] 标 case-207 OPEN：cmd_commit 在 file 参数全不存在（如误带项目前缀）时仍产仅 .opt-direction 的空 commit，且 ④ leak 断言因 $files 在 main 不存在而 porcelain 为空、误报成功；case-033 漏堵的平行路径，待加『cp 命中数=0 则 exit 1』前置断言。复核又发现副本漂移：AS git 副本 autonomous-studio/scripts/opt-worktree.sh 已含 PROJECT 非目录 fail-fast 守卫（line 27-33）+ merge 注释更新，但 root live 副本 scripts/opt-worktree.sh（`bash scripts/opt-worktree.sh` 实跑者）落后无守卫——本轮 `opt-worktree.sh list` 即踩此坑报 `cd: list: No such file`。两副本须同改（见 [[scout-scan-copy-provenance]] 纪律），过往合 main 后漏同步根副本致 live 缺修复。",
+  "action": "① Edit AS git 副本 cmd_commit：加 `local copied=0`，files 分支与 auto 分支各 `copied=$((copied+1))`，循环后前置断言 `if (( copied == 0 )); then echo 拒绝产空 commit >&2; exit 1; fi`（覆盖两分支，case-033 只堵 files 分支头部未堵全跳过态）。② `cp autonomous-studio/scripts/opt-worktree.sh scripts/opt-worktree.sh` 把 root live 副本同步到 AS 版（找回 fail-fast 守卫 + 新 cp-guard，方向 AS→root，因 AS git main 已含守卫而 root 落后）。③ `bash -n` 双副本语法 OK；`diff` 两副本逐字节一致。④ 活检 cp-guard：`opt-worktree.sh autonomous-studio commit engine:cp-guard-test ... nonexistent-file-xxx.txt` → `❌ 断言失败：无任何改动被 cp 到 worktree（命中 0），拒绝产空 commit` exit 1；optimization worktree HEAD 仍 766d7e5==main、`git log main..HEAD` 空——无 bogus commit。⑤ 活检 fail-fast：`opt-worktree.sh list`（省略 project）→ `错误: 'list' 不是目录...` exit 2（旧版 `cd: list: No such file` 已根治）。⑥ 真提交：`opt-worktree.sh autonomous-studio commit opt-tooling:cp-guard ... scripts/opt-worktree.sh`（area opt-tooling≠engine 开新 worktree）→ commit 5dfcadb +12 行 1 文件；AS main 工作树 scripts/opt-worktree.sh 经 ③ 还原为 clean（guard 入 worktree 待合，非滞留 main）。",
+  "files_changed": [
+    "autonomous-studio/scripts/opt-worktree.sh (+12, cmd_commit cp 命中数=0 前置断言，commit 5dfcadb 于 worktree opt-opt-tooling-1782738134 待人工合)",
+    "scripts/opt-worktree.sh (root live 副本，非 git：同步 AS 版，含 fail-fast 守卫 + cp-guard，实跑者)"
+  ],
+  "worktree": ".opt-worktrees/autonomous-studio/opt-opt-tooling-1782738134 (branch auto/opt-opt-tooling-1782738134, HEAD=5dfcadb, +12 1 file, ahead main=1)",
+  "direction": "opt-tooling:cp-guard",
+  "outcome": "succeeded",
+  "outcome_evidence": "(1) worktree 5dfcadb `git show --stat HEAD` = scripts/opt-worktree.sh | 12 ++++++++++++（实入 commit，非空）。(2) cp-guard 活检 exit=1 且 optimization worktree `git log main..HEAD` 空（HEAD 766d7e5==main，无 bogus commit 产出——case-207 缺口已堵）。(3) fail-fast 活检 `opt-worktree.sh list` exit=2 输出『错误: list 不是目录』（旧 `cd: list: No such file` 消失）。(4) `bash -n` 双副本语法 OK；`diff scripts/opt-worktree.sh autonomous-studio/scripts/opt-worktree.sh` 空输出（逐字节一致，漂移归零）。(5) `grep -c 'copied == 0' scripts/opt-worktree.sh`=1（root live 实跑副本确含守卫）。(6) AS main `git status --short scripts/opt-worktree.sh` 空（已还原干净，guard 在 worktree 待合不滞 main）。`opt-worktree.sh autonomous-studio list`：opt-opt-tooling-1782738134 | 1 提交 | 1 file changed 12 insertions(+)",
+  "next_suggestion": "人工审 opt-opt-tooling-1782738134 diff 后 squash 合并入 AS main（`opt-worktree.sh autonomous-studio merge opt-opt-tooling-1782738134`）。合并后 AS git main 即含 cp-guard；但须再 `cp autonomous-studio/scripts/opt-worktree.sh scripts/opt-worktree.sh` 保根 live 副本同步（merge 不触根副本）——否则将重蹈本轮发现的『合 main 漏同步根副本』漂移。另：case-047 reset-bypass（git reset --hard/branch -D/update-ref 绕 autonomous-commit-gate 移 main ref）仍 OPEN，可续做。scout-scan IGNORE_DIRS 拆 BUILD_ARTIFACT_DIRS 常量（OPEN 派生）未动。AS main 仍 dirty（孤儿 case 002-214 + M autonomous-loop.sh adaptive-model-switch WIP）待批量 triage 归档。"
+}

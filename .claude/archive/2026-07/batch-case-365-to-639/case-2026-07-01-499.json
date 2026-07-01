@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-01-499",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-01T04:30:00Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "scripts/autonomous-loop.sh --bg nohup 实现",
+  "situation": "audit-2026-07-01-002 finding M-004: autonomous-loop.sh line 18 文档声称支持 --bg 后台模式，但代码无任何 $3/--bg 处理。用户执行 `autonomous-loop.sh . . --bg` 时 --bg 被静默忽略，仍前台跑，与文档不符。",
+  "action": "在 WORKSPACE/SKILL_DIR 解析后、STOP_MARKER 前加 BG_FLAG=${3:-} 检测块：若 == '--bg' 则 nohup \"$0\" \"$WORKSPACE\" \"$SKILL_DIR\" </dev/null >/tmp/autonomous-loop-<ts>.log 2>&1 &，打印 PID + 日志路径，exit 0。父进程干净退出，子进程继承 WORKSPACE/SKILL_DIR 绝对路径继续循环。同步更新 line 18 注释补充日志位置说明。bash -n 通过。",
+  "files_changed": ["scripts/autonomous-loop.sh"],
+  "worktree": "opt-engine-shift-1782880189",
+  "direction": "engine:loop-bg",
+  "outcome": "succeeded",
+  "outcome_evidence": "bash -n syntax OK; opt-worktree.sh commit 成功落 opt-engine-shift-1782880189 (commit hash via push log); 已 push origin/auto/opt-engine-shift-1782880189; direction-shift 自动判定（触及公共接口文件）。待人工 sanctioned-merge 入 main。",
+  "next_suggestion": "派生 L-001 fix (trap INT TERM 清理孤儿 claude 子进程) → L-002 (files 转绝对路径) → L-003 (限流 grep 收窄)。三个都是 autonomous-loop.sh / opt-worktree.sh 小修，可连续派生。",
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-01-002",
+  "audit_depth": "shallow"
+}

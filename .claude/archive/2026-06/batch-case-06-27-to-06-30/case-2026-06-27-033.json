@@ -1,0 +1,23 @@
+{
+  "case_id": "case-2026-06-27-033",
+  "agent_id": "autonomous-studio-loop",
+  "timestamp": "2026-06-27T13:00:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "修 scripts/opt-worktree.sh cmd_commit 的 phantom-stash 静默失败：弃用 git stash，改显式 cp 指定文件→worktree add+commit→main 还原(checkout HEAD / rm)→断言 worktree 有新 commit 且本次文件已还原",
+  "situation": "scout-scan 2026-06-27T12:55:07Z 推荐 #1=shizi(score=0 健康，无明确小工作单位)、#2 sunset-prediction(等合并 planning)、#3 wechat-main(健康)——三推荐均无紧迫小工作单位。autonomous-state.md 的 NEXT_SUGGESTION #1 标记为最高优先：opt-worktree.sh phantom-stash 误报已跨 5 case 复现(case-028/029 docs + 030 triage + 032 distillation + 004 planning)，每轮 cmd_commit 用 `git stash push -u -- $files`+`git stash pop` 迁移改动，push 对『仅 untracked 新文件 pathspec』静默不产 stash 却 exit 0（git 报 'No local changes to save'），pop 无 stash 可弹 exit 1 → 被误报成『stash apply 冲突，改动留在 stash』——实则 stash list 为空、改动滞留 main、worktree 无 commit，每轮需手动 cp+commit 救回。根因诊断：autonomous-studio/.claude/decisions/case-*.json 与 x-tool/planning/ROADMAP.md 等均为 untracked 新文件，命中 git 2.43 的 stash pathspec+(-u) 不保存纯 untracked 改动的行为。动手前查 6 个 pending AS worktree(opt-planning/opt-ptriage/opt-scanner/opt-scout-sync/opt-skills/optimization) 均未触碰 scripts/opt-worktree.sh（diff name-only main..HEAD grep=0），安全编辑。",
+  "action": "1) 读 scripts/opt-worktree.sh cmd_commit(行 59-110，1 文件，守『Read≤2 源文件』)。2) 重写行 89-110 的 stash 块为四步显式 cp 流程：①cp 指定文件到 target worktree(mkdir -p 父目录) ②worktree git add -A + commit ③main 还原(tracked→git checkout HEAD -- / untracked 新文件→rm -f) ④断言 head_before!=head_after(有新 commit)+ 本次 $files 在 main 已还原(git status --porcelain -- $files 为空)。断言刻意 file-scoped 不要求整树干净——main 可能含本次未涉及的 WIP/未跟踪文件(如本轮 case-004 残留)。3) 发现 scripts/opt-worktree.sh 有两份：workspace-root/scripts/(loop 实际调用，不在任何 git repo)+ autonomous-studio/scripts/(git 跟踪的 source-of-truth)；编辑前者后 cp 同步后者。4) bash -n 语法核验。5) 用修复后的脚本提交自身(autonomous-studio commit engine:worktree-fix scripts/opt-worktree.sh)——tracked-modified 路径实测。6) 合成测 untracked-new 路径(phantom-stash 真触发点)：写 scripts/.scratch-untracked-test.md(untracked)→commit test:scratch 开 opt-test-1782565457 worktree→验证 main rm 还原+worktree 有 commit→reject 清理。7) 写本 case-033 并用修复后脚本提交(area=engine 复用 optimization worktree)——untracked-new 路径真实复测。",
+  "files_changed": ["scripts/opt-worktree.sh"],
+  "worktree": "optimization (branch auto/optimization, commit 6f0e99b)；合成测 scratch worktree opt-test-1782565457 已 reject 清理",
+  "direction": "engine:worktree-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "cmd_commit 实测 tracked-modified 路径：bash scripts/opt-worktree.sh autonomous-studio commit engine:worktree-fix ... scripts/opt-worktree.sh → exit 0、输出『✓ 提交到 optimization 方向=engine:worktree-fix』、无 phantom-stash 误报（旧脚本此场景必报『stash apply 冲突』）",
+    "optimization worktree git log --oneline main..HEAD 顶=6f0e99b opt(engine:worktree-fix)...；git show --stat HEAD=scripts/opt-worktree.sh | 93 +++++... 1 file changed 79 insertions(+) 14 deletions(-)",
+    "worktree HEAD 副本 grep -c 'git stash push'=1（仅注释里引用旧机制名，实际命令已删）；grep -c '显式 cp'=1（新机制在）；autonomous-studio main HEAD 副本 grep -c 'git stash push'=2（旧版两处命令，确认 main 仍 baseline 旧版、修复 pending merge 在 worktree）",
+    "diff scripts/opt-worktree.sh <(git -C optimization show HEAD:scripts/opt-worktree.sh) = IDENTICAL（workspace-root live 副本==worktree HEAD，两份均已修复）",
+    "合成 untracked-new 路径实测：写 .scratch-untracked-test.md(untracked)→commit test:scratch→exit 0、开 opt-test-1782565457 worktree、commit 0271437 含该文件、main grep scratch=空（rm 还原生效，正是旧脚本 phantom-stash 失败的同型场景）→reject 后 worktree dir 与 branch auto/opt-test-1782565457 均已删",
+    "autonomous-studio main git status --short=仅 '?? .claude/decisions/case-2026-06-27-004.json'（case-ID 碰撞的 stranded 文件，out-of-scope，未触碰）；scripts/opt-worktree.sh 已还原 baseline 不在 dirty 列",
+    "git -C autonomous-studio stash list=空（无 dangling stash）"
+  ],
+  "next_suggestion": "①【合并 optimization worktree】auto/optimization 现 3 commit 待人工审合并(6f0e99b 本轮 opt-worktree 修复 + 63e3d8d case-032 + ecd0dc6 29 cases)——merge 受『人工批准』gate，loop 仅 commit 不 merge；合并后 main 的 opt-worktree.sh 即获修复、case 闭环入 git。②【清 case-004 碰撞】case-2026-06-27-004.json 有两份内容：worktree HEAD 存 08:50 autonomous-studio/scout-scan marker 修复版（ecd0dc6 提交），main stranded 12:50 x-tool/planning 版（phantom-stash 滞留）——case-ID 碰撞需人工裁决保留哪份（或重命名其一），非小单位，建议人工处理。③【回归验证】下轮可用修复后脚本提交一个真实 untracked case 文件复测（本 case-033 提交即此复测）；若再撞误报则 case-033 断言机制有漏。④【下轮选项目】scout #1-#3 均 health(score=0)无紧迫单位——可取 shizi/wechat-main 文档润色，或待 pending worktree 合并后 scout 表刷新。"
+}

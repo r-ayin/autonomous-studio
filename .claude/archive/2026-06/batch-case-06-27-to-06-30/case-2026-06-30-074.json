@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-30-074",
+  "agent_id": "ralph-loop",
+  "timestamp": "2026-06-30T18:40Z",
+  "project": "autonomous-studio",
+  "work_unit": "engine:case-log-persist — case schema 完整性扫描（新 lens：必填字段 + outcome 枚举），修复 case-2026-06-27-001 outcome 枚举违规",
+  "situation": "scout-scan 全项目仍 blocked（pending 5 worktree 人工 merge），#1=skills score=2.0 blocked。state 记 fallback(a) $/quote JSON 损伤巡检已穷尽（全量 158 case）。本轮换新 lens：不只查 JSON 合法性（已穷尽），改查 schema 完整性——13 必填字段（case_id/agent_id/timestamp/project/work_unit/situation/action/files_changed/worktree/direction/outcome/outcome_evidence/next_suggestion）+ outcome 枚举 {succeeded,failed,rolled_back,superseded} + 类型校验。扫描命中 1 个真违规（非误报）：case-2026-06-27-001 outcome=\"done\" 不在枚举内。其余 BAD_TS 多为 :SSZ 格式（regex 误报）、THIN_EVIDENCE 多为 list 形式（结构化证据，非违规）；06-15~06-17 旧 case 缺字段/outcome 为 dict 属 pre-schema 历史遗产，不动。",
+  "action": "case-2026-06-27-001 evidence 显示该持久化层修复已成功提交 optimization worktree（1 提交 2 files 6 insertions, main clean, studio-precheck.sh 与 PROMPT step6 对齐），故正确 outcome=succeeded。最小 1 行改动：outcome \"done\"→\"succeeded\"。落地点选 optimization worktree 而非 main（gate 拦 main 直 commit）；case-001 在 main 与 worktree HEAD 完全 identical（diff 确认）、worktree clean 22 ahead，直接编辑 worktree 文件 + 直接 git commit（沿用 case-059/case-085 既定模式，避免 opt-worktree.sh cp 引擎脚本入 worktree 覆盖存活工作）。",
+  "files_changed": [".claude/decisions/case-2026-06-27-001.json"],
+  "worktree": "optimization (auto/optimization branch, /home/admin/workspace/.opt-worktrees/autonomous-studio-aone/optimization)",
+  "direction": "engine:case-log-persist",
+  "outcome": "succeeded",
+  "outcome_evidence": ["worktree git commit f64e1c2 成功（fix(engine:case-log-persist): 修 case-2026-06-27-001 outcome 枚举违规）", "worktree rev-list --left-right --count main...HEAD: 2 23（22→23 ahead）", "python3 json.load + d['outcome'] 验证修复后文件合法且 outcome=succeeded", "worktree 全量 schema 复扫：post-schema case 0 个 BAD_OUTCOME（case-001 已移出违规列表）；仅剩 06-15~06-17 pre-schema 历史遗产缺字段", "main 侧 case-001 仍 outcome=done、case-085 仍 INVALID_JSON——均待人工 merge optimization worktree 后落地（gate 拦 main 直 commit，引擎不自动 merge）"],
+  "next_suggestion": "【阻塞·需人工·最高优先】合并 optimization worktree 到 main 即同时落地 case-001 枚举修复 + case-085 JSON 修复 + 063-073 engine 守卫链/持久化 + 32 case(040-071) 持久化，闭环 main 侧 telemetry 完整性。merge 后 main 侧 schema 复扫应 0 post-schema 违规。【engine 代码自指状态】仍闭合——本轮是 telemetry schema 持久化（新 lens）非代码自润色，不重启自指。【下轮 fallback】(a) $/quote 损伤穷尽；本轮新增 schema lens 已清 post-schema 违规（case-001 修复，余 pre-schema 历史遗产不动）；下轮可查 case-085 main 侧是否随 merge 落地（若仍无人 merge 则诚实 blocked-noop，重新计连续 blocked 计数）。【根因待修·merge 后】case-059 cmd_commit cp-overwrite 静默回退 4 修复仍需 merge 后在 main 重做 + patch-cp 根因修复。"
+}

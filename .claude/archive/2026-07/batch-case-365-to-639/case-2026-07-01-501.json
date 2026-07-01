@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-07-01-501",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-01T04:40:00Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "L-002 fix: opt-worktree.sh files 相对路径 cd PROJECT 前转绝对路径",
+  "situation": "audit-2026-07-01-002 L-002 finding: scripts/opt-worktree.sh:364 处 cd $PROJECT 后,files 参数若为调用方 cwd 的相对路径会失效。route-fix,最小改动。",
+  "action": "在 cmd_commit 内 cd $PROJECT 之前新增循环,将每个 file 转绝对路径(已绝对则保持);原 local -a files=(\"${@:5}\") 改为从 _files_raw 派生。bash -n 语法校验通过。",
+  "files_changed": ["scripts/opt-worktree.sh"],
+  "worktree": "opt-scripts-shift-1782880738",
+  "direction": "scripts:opt-worktree",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh commit 返回 '✓ 提交到 opt-scripts-shift-1782880738' + '✓ 已 push auto/opt-scripts-shift-1782880738 → origin/auto/opt-scripts-shift-1782880738';bash -n 无错。",
+  "next_suggestion": [
+    "下轮派生 L-003 fix (autonomous-loop.sh:75 限流 grep 模式过宽)",
+    "L-002/L-003 均派生后,等 9 条 pending fix 人工 merge/reject 落定;全部 settled 后 audit-cycle-state.status→cycle-complete 触发下一轮全量审计"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-01-002",
+  "audit_depth": "shallow"
+}

@@ -1,0 +1,43 @@
+{
+  "case_id": "case-2026-07-01-381",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-01T17:55:00Z",
+  "project": "1BfrYW9R (oneday-design, branch onedaybot-dev)",
+  "work_unit": "清理 pre-case-322 merge 残留的 stale auto/opt-* 分支（patch-id 全史匹配法，case-364 范式）",
+  "situlation": [
+    "scout-scan #1=1BfrYW9R score=0.0 推荐语「无明确小工作单位——可跳过或做文档润色」（健康度良好）；state NEXT_SUGGESTION 顶项指 1BfrYW9R 45 stale auto/opt 分支清理（pre-case-322 merge 残留，live worktree 仅 2）。",
+    "git branch 显示 45 个 auto/* 分支（44 auto/opt-* + 1 standing auto/optimization）；git worktree list 仅 2 live（main onedaybot-dev + standing auto/optimization），即 44 个 opt-* 分支无 worktree 支撑、纯残留 ref。",
+    "case-322（2026-06-30）修了 cmd_merge 加 branch -D auto/<wt> 自清理，但该修复只对 post-322 的 merge 生效，pre-322 历次 merge 残留的 44 个分支未清理。"
+  ],
+  "action": [
+    "排除 standing auto/optimization（live worktree，非 stale，[[scout-scan-standing-worktree-not-stale]]）。",
+    "预计算 onedaybot-dev 全史 patch-id 集：git log onedaybot-dev --format=%H | 每提交 git diff c^..c | git patch-id --stable → 102 提交 / 85 unique patch-id 存 /tmp/odb_pids.txt。",
+    "对每个 auto/opt-* 分支 B：git log --no-merges --format=%H onedaybot-dev..B 取 B 独有非合并提交，逐提交算 patch-id，查是否 ∈ onedaybot-dev patch-id 集。全匹配=superseded（其工作已被 squash-merge 吸收进 onedaybot-dev 某 squash 提交，patch-id 等价）；任一不匹配=保留（含 onedaybot-dev 无对应 patch 的工作）。",
+    "选 patch-id 全史匹配而非 git cherry：squash-merge 下 cherry 误判 +（显未合并），[[git-cherry-unreliable-for-squash-merge]] 证 cherry 不可靠；patch-id 比对真实 diff 内容，squash 提交与原 opt 提交 diff 等价故 patch-id 相同。",
+    "结果：39 分支全 patch-id 匹配（superseded）→ 删除；5 分支含不匹配 patch-id → 保留（auto/opt-1BfrYW9R-1782640068 / auto/opt-gates-1782640593 / auto/opt-gates-1782734568 / auto/opt-routing-1782640895 / auto/opt-scaffold-1782639526）。",
+    "5 保留分支的不匹配提交经 git show --stat 核验为早期实验工作，其精确 patch 被后续重写取代（如 hash-routing 早期版 731c606 被 onedaybot-dev 24a16c3 最终版取代，patch 不同故不匹配）——保守保留不丢。",
+    "ghost gitlink 守卫：逐分支 git ls-tree -r 查 mode 160000，全 44 分支零 gitlink（无 .gitmodules 悬空风险）。",
+    "zsh 陷阱修正：首次 for B in $del 因 zsh 不对未引用 $del 词分割致整串当一个分支名失败；改 zsh 数组 del=(...) 后逐分支 git branch -D 成功。",
+    "执行 git branch -D 删 39 分支，gate 豁 auto/* 不拦（[[autonomous-commit-gate-reset-bypass]] 仅拦 main/master）。"
+  ],
+  "files_changed": [],
+  "files_changed_note": "纯 ref 清理，零源文件改动；本 case JSON 本身是记录，提交进 AS main（非 1BfrYW9R）",
+  "worktree": "1BfrYW9R 工作树（branch onedaybot-dev，HEAD 48b4577）原地操作；无 opt-worktree（ref 清理无需隔离提交，gate 豁 auto/* 分支删除）",
+  "direction": "chore:stale-branch-cleanup",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "git branch -D 39 分支全 exit 0（deleted: 39 | failed: 0）",
+    "post-delete auto/* 分支数 45→6：5 保留（不匹配 patch-id）+ 1 standing auto/optimization（live）",
+    "onedaybot-dev HEAD 未变 48b4577（ref 清理不动主干）",
+    "git status --porcelain 空（工作树 clean，无副作用）",
+    "npm test 36 tests 36 pass 0 fail（ref-only 零行为影响，[[scout-scan-standing-worktree-not-stale]] 验法复用）",
+    "git worktree list 仍 2 live（main + auto/optimization），无悬空 worktree",
+    "5 保留分支均含 git show --stat 可观察的真实提交（非空 patch-id 边界 case）：731c606 index.html+PROGRESS 26/-10、59066b6 dev-server.js+package.json 51/-3、2a998e03 smoke.test.js+53、b895a6b .opt-direction 1/-1、33efa30 planning/roadmap.md+31"
+  ],
+  "next_suggestion": [
+    "5 保留分支含被后续重写取代的早期实验工作（patch-id 不匹配但工作语义已在 onedaybot-dev）——可下轮逐分支 git show 核验其 patch 是否被某 later 提交语义覆盖后用 cherry-pick 法归档删除，或保留作历史（保守保留亦可，零成本）",
+    "wechat-main 仍 dirty=5 WIP + tracked .opt-direction=1（state 顶项）：先确认 WIP 归属再动，.opt-direction untrack 开独立 chore WT",
+    "personal-assistant ECS 已知问题 grounding[[ecs-deploy-target]]——动手前 grep 当前源验[[state-next-suggestion-stale-blind]]",
+    "AS 7 个延期(triage)TODO 复审（非纯 merge 轮可挑一个动手）"
+  ]
+}

@@ -1,0 +1,25 @@
+{
+  "case_id": "case-464",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-07-01T00:47:00Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "code-audit:autonomous-studio-aone/.claude/hooks/auto-commit.py",
+  "situation": "case-464=464%4=0 审计轮·DO A 代码审计。承接 case-463 NEXT『case-464=464%4=0 审计轮·DO A 代码审计 续审未审源码;剩余未审候选 decision-observer.py 776行/auto-commit.py 431行 选其一续审』。已审 21 处源码(case-460 discovery-gate.py 为最近一次)。本轮从未审候选中选 auto-commit.py(431行,Stop/SessionEnd hook,执行 git add+commit+push origin 子仓库,属 DO B 敏感路径:外部调用 subprocess + 远端推送 + 文件系统写)。scout-scan #1=AS score=0.0(无明确小工作单位),但审计轮不因 score 0.0 skip,仍走 DO A 审计路径挑有源代码项目。",
+  "action": "用 security-review 思路逐行审计 auto-commit.py。①grep 'subprocess|os.system|eval|exec|shell=True' 命中 import subprocess + git() 用 subprocess.run(列表参数,无 shell=True)→无命令注入向量;②staging 已由 case-396 硬化(显式 stage_paths 替代 git add -A,EXCLUDED_PREFIXES 过滤 .claude/.env 等,fail-safe 路径异常 return False 不退回 git add -A);③audit埋点 _audit_log_commit(L65-98)已存在,写 WORKSPACE_ROOT/.audit/audit-YYYY-MM-DD.jsonl,字段对齐 schema(id/timestamp/userId/userRole/action/resource/result/ip/sensitive/sensitiveLevel/details);④ReDoS 检查:re.sub(r'^\\w+\\([^)]+\\):\\s*',..) / ^##\\s*变更历史\\s*$ / ^[\\|\\s\\-:]+$ 全有界量词无灾难回溯;⑤并发/超时:git() timeout=15s(push 60s);⑥发现真问题:push 块(L388-402)执行 git push origin <branch> 敏感出站 subprocess 调用却无 _audit_log_commit 埋点——docstring(L67)自称覆盖『commit + push origin 属敏感外部调用』但实现只记 commit 成功(L381)/失败(L367/L378),push 成功/失败被 except Exception: pass(L401)吞掉不可审计,违反 DO B『敏感路径须 audit-log 且 result 如实反映成功/失败不恒 success』。按 DO A step 3 真问题→起 opt-worktree 修复:补 3 处埋点(push success→_audit_log_commit('success',..)、push rc!=0→'failure'、except 异常路径→'failure'),fail-safe 不变(日志写失败仍吞异常不影响主流程)。py_compile OK + AST OK。",
+  "files_changed": [".claude/hooks/auto-commit.py"],
+  "worktree": "opt-security-1782866336 (auto/opt-security-1782866336 @ ba52e9c, /home/admin/workspace/.opt-worktrees/autonomous-studio-aone/opt-security-1782866336)",
+  "direction": "audit",
+  "outcome": "succeeded",
+  "outcome_evidence": "1) opt-worktree 提交落定:git -C opt-security-1782866336 log --oneline -1 = 'ba52e9c opt(security:audit-log): fix(hooks/auto-commit): DO B case-464 补 push origin 审计埋点';2) 修复内容可验证:push 块现含 3 处 _audit_log_commit 调用(success L395-397/failure L401-402/except L405),result 字段分别为 'success'/'failure'/'failure' 如实反映成功/失败不恒 success;3) 语法验证:python3 -m py_compile .claude/hooks/auto-commit.py → OK,python3 -c 'import ast; ast.parse(...)' → AST OK;4) 四验干净:git status --porcelain=空(main 未污染)、git worktree list=main@5ed9a52 + opt-security-1782866336@ba52e9c + optimization@5ed9a52、git branch -a 含 auto/opt-security-1782866336;5) 无源码改动落 main(改在 opt-worktree 待人工 sanctioned-merge)。",
+  "next_suggestion": "[1]【case-465=465%4=1≠0 非审计轮·sanctioned-merge】opt-security-1782866336 待审 worktree(ba52e9c,auto-commit.py push 审计埋点补全)可走 sanctioned-merge squash 落 main + 清理,或 skip 心跳。若 skip 则留待后续审计轮前合并。[2]【审计轮续审候选】剩余未审源码:decision-observer.py 776行(决策观察者 hook,最大未审单体)— 留待下次审计轮(case-468=468%4=0)续审。",
+  "audit_type": "security-review",
+  "audit_findings": [
+    {
+      "file": ".claude/hooks/auto-commit.py",
+      "line": "388-402",
+      "severity": "medium",
+      "finding": "push 块执行 git push origin <branch> 属敏感出站 subprocess 调用(远端推送),却无 _audit_log_commit 审计埋点。_audit_log_commit 的 docstring(L67)自称覆盖『commit + push origin 属敏感外部调用』,但实现仅记 commit 成功(L381)/失败(L367/L378),push 成功/失败结果被 except Exception: pass(L401)吞掉、仅 stderr 打印,不可审计。违反 DO B 节『敏感路径(外部调用 subprocess)必须补 audit-log 埋点且 result 字段如实反映成功/失败(不要恒 success)』。",
+      "remediation": "在 push 块补 3 处 _audit_log_commit 调用:rc_push==0(成功)→result='success' detail=f'push origin/{branch}: {len(changes)} 文件';rc_push!=0(失败)→result='failure' detail=f'push origin/{branch} 失败: {push_err[:160]}';except 异常路径→result='failure' detail=f'push 异常: {str(push_exc)[:160]}'。fail-safe 语义不变(日志写失败仍吞异常不影响主流程)。已落 opt-security-1782866336@ba52e9c 待 sanctioned-merge。"
+    }
+  ]
+}

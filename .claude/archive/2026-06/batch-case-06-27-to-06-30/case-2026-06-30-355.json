@@ -1,0 +1,31 @@
+{
+  "case_id": "case-2026-06-30-355",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-06-30T14:22:00Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "gitignore-scout-artifact:engine",
+  "situation": "普通路径轮次（355%4=3≠0=非审计轮次，符合上轮 case-354 NEXT_SUGGESTION[1] 判定）。step0 读 constraints DO A/B/C 全文（本轮非审计不触发 A；本轮改 .gitignore 非敏感路径——非 auth/PII/凭证/外部调用/部署/删除，不触发 B）。step1 `python3 scripts/scout-scan.py --workspace .` #1=AS score=0.0 无明确新工作单位（延期 triage TODO=4 不计推荐），与近轮一致。step2 不接受「无单位即跳过」亦不为润色而润色（DO NOT 禁日常自我润色），改为核 git 实态找真结构性问题：`git status --short` 持续显示 `?? PROJECTS.md`。追溯：scout-scan.py:563-580 write_projects_md() 每次 full scan（line 593 `if not args.project and projects: write_projects_md(ws, projects)`）向 workspace 根写 PROJECTS.md；其 frontmatter 自述「由 scout-scan.py 自动刷新」=纯生成物；`git log -- PROJECTS.md` 与 `git ls-files PROJECTS.md` 均空=从未 tracked；但 .gitignore 未列 PROJECTS.md。结论：引擎 step1 每轮 scout 都在 main 工作树留一个 untracked 生成文件——扫描器污染其扫描的工作树，且该 untracked 文件进 git status/可能被 commit-gate 的 WIP 扫描误扫。这是 AS 自身真结构性卫生缺陷（非散文润色），符合 DO NOT「仅当真有结构性问题才修」的修条件。",
+  "action": "最小改动 1 文件：.gitignore 在 `.codebase-index/` 行后追加 `# scout-scan.py 每轮自动刷新的 workspace 项目清单（生成物，never tracked）` + `PROJECTS.md`（与 .codebase-index/ 同属生成物/索引类，归位运行时状态段）。不删已存在的 PROJECTS.md（下次 scout 会刷新它，ignore 后不再进 git status）。不触 scout-scan.py 源码——写入逻辑无害（生成物该写就写），问题在版本控制未排除。验证：`git check-ignore PROJECTS.md` 返回 PROJECTS.md + IGNORED ✓；`git status --short` 仅 ` M .gitignore`（PROJECTS.md 不再出现）。提交：`bash scripts/opt-worktree.sh . commit engine:hygiene \"...\" .gitignore` → 建 optimization worktree + commit 9036e71（diff stat: .gitignore +2/0，1 file changed, 2 insertions）。main HEAD 未动（d0e6776），fix 存 optimization worktree 待 sanctioned merge（合并前 main 仍显示 ?? PROJECTS.md，符合预期——main .gitignore 尚未含此行）。",
+  "files_changed": [".gitignore"],
+  "worktree": "optimization（auto/optimization @ 9036e71，1 commit ahead of main d0e6776，diff=.gitignore +2/-0，待人工 sanctioned merge）",
+  "direction": "engine:hygiene",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "scout-scan.py:593 `if not args.project and projects: write_projects_md(ws, projects)` 证实每轮 full scan 写 PROJECTS.md",
+    "scout-scan.py:564 `md = os.path.join(workspace, \"PROJECTS.md\")` 证实写入 workspace 根（非 .codebase-index/ 已 ignore 区）",
+    "`git log --oneline -- PROJECTS.md` 空 + `git ls-files PROJECTS.md` 空 = 从未 tracked，确证为生成物非源文件",
+    "PROJECTS.md frontmatter `description: workspace 项目清单（由 scout-scan.py 自动刷新）` 自述为生成物",
+    "改前 `git status --short` 含 `?? PROJECTS.md`；改后 `git check-ignore PROJECTS.md` 输出 PROJECTS.md（IGNORED ✓）",
+    "改后 main `git status --short` 仅 ` M .gitignore`，PROJECTS.md 不再出现",
+    "opt-worktree commit 9036e71 `git show --stat` = `.gitignore | 2 ++` / 1 file changed, 2 insertions(+)，方向 engine:hygiene",
+    "post-commit `git worktree list`：main @ d0e6776 + optimization @ 9036e71（auto/optimization），main HEAD 未动"
+  ],
+  "next_suggestion": [
+    "【sanctioned merge 待办】optimization worktree 9036e71（.gitignore +2 忽略 PROJECTS.md）待人工审合并落 main；下轮可先 merge 再续——`bash scripts/opt-worktree.sh . merge`：审 diff（2 行纯 .gitignore 追加，无源码/无敏感路径）→ squash 落 main → worktree 清理；merge 后 main `git status` 将不再有 ?? PROJECTS.md",
+    "【case-356=356%4=0=下次审计轮次】DO A 强制 code-review/security-review：续审 opt-worktree.sh cmd_commit（line 209-430）——case-354 已指 latent 残留漏洞：line 212 ensure_main_wt（副作用建 wt）在 line 315 cp 循环之前，若全文件被 cp-guard 跳过（copied=0，line 352 exit 1）已建空 wt 不清（case-353 死桩根因）。审计评估 copied=0 exit 分支补 cleanup 或前置 ensure_main_wt 时机",
+    "【DO A 审计盲区轮换】case-352 已审 ensure_main_wt；case-356 续审 cmd_commit 或换审 .claude/hooks/autonomous-commit-gate.py（main 守卫本身）+ scripts/scout-scan.py，避单文件连续审盲区；scout-scan.py 本轮已浅触（仅核其 write_projects_md 行为未改源码），下轮可正式 code-review 其标记计数/排除逻辑",
+    "【本轮 case-355.json+state.md 须落 archival commit】按 [[archival-commit-mechanism]] 直提 main 指定两文件（不走 opt-worktree——cp-guard 跳 state.md）；.gitignore fix 已在 optimization worktree 9036e71，勿与 archival 混入同一 opt-worktree commit"
+  ],
+  "audit_type": "none",
+  "audit_findings": []
+}

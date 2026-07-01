@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-099",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-06-29T04:40:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "merge 2 pending worktrees + archive 3 orphan cases",
+  "situation": "scout-scan reports all 8 projects at score=0.0 (healthy). autonomous-studio had 2 pending worktrees (opt-cases-1782639135 with 43 case files, optimization with 6 engine commits) and 3 orphan case files on main (dirty=3). Both worktrees were directly ahead of main (0 divergence).",
+  "action": "1) Merged opt-cases-1782639135 via opt-worktree.sh merge (43 case JSON files, fast-forward squash). 2) optimization worktree merge script failed spuriously; manual git merge --squash succeeded cleanly — committed directly. 3) Cleaned up both worktree dirs and branches. 4) Archived orphan cases 096-098 to new cases worktree via opt-worktree.sh commit.",
+  "files_changed": [".claude/decisions/case-2026-06-28-054..095.json (43 files merged)", "scripts/scout-scan.py", "GATES.md", ".claude/decisions/calibration.json"],
+  "worktree": "main (merge target) + opt-cases-1782679213 (new, for orphan 096-098)",
+  "direction": "cases:merge + engine:merge",
+  "outcome": "succeeded",
+  "outcome_evidence": "git status clean (dirty=0); git worktree list shows only main + 2 new worktrees; git log shows 2 merge commits (3a6761d cases, 7d4b997 optimization); scout-scan.py 554→612 lines (worktree stats feature landed)",
+  "next_suggestion": "Review other projects with pending worktrees: personal-assistant (3 pending), sunset-prediction (3 pending), shizi (2 pending), moni-master (2 pending), x-tool (2 pending). Also clean empty worktrees across projects."
+}

@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-234",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-29T14:50:00Z",
+  "project": "1BfrYW9R (oneday-design)",
+  "work_unit": "为 dev-server.js 的 EADDRINUSE/listen-error 处理器补可证伪负测（smoke ⑥）",
+  "situation": "scout-scan 8 项目全 score=0.0，#1 1BfrYW9R 健康度良好、推荐'文档润色或跳过'。读 dev-server.js 发现其含 server.on('error') 处理器（EADDRINUSE → console.error + process.exit(1)），但 test/smoke.test.js 仅 ⑤ 覆盖 GET / 200 成功路径——listen-error 处理器无任何自动化测试。若该处理器被误删/回归，⑤ 仍会绿，处理器即沦为死代码。这正是该项目此前系统性填补的'服务端可证伪负测'缺口（对照 ③ ref-res 负测、④ 无 JSX 源负测）。注：pending worktree auto/optimization 的 .opt-direction 残留 engine:general（未提交脏标记），主 worktree .opt-direction 为 gates:dev-server-listen-error——方向标记已指向本工作单位，但代码层面未落实。",
+  "action": "在 test/smoke.test.js 末尾追加第 6 项负测：spawn server A 占住偏端口 3097（轮询 GET / 直到 200 确认 listening），再 spawnSync server B 同端口（timeout 5000 防卡死），断言 B status≠0 且 stderr 匹配 /already in use|EADDRINUSE/i。同步 GATES.md（CRITICAL dev-server 行追加 ⑥ 指引、IMPORTANT npm test 行追加 ⑥ 描述 + 6 pass 0 fail）与 PROGRESS.md（已完成·门禁自动化行重列 ①-⑥ + 6 pass 0 fail）。3 文件最小改动，未碰 index.html/build.js 源码。",
+  "files_changed": ["test/smoke.test.js", "GATES.md", "PROGRESS.md"],
+  "worktree": "opt-gates-1782744585 (1BfrYW9R, branch auto/opt-gates-1782744585, commit dc03ebf)",
+  "direction": "gates:dev-server-listen-error",
+  "outcome": "succeeded",
+  "outcome_evidence": "主 worktree `npm test` 6 pass 0 fail（含新增 ⑥ duration 149ms）；committed worktree opt-gates-1782744585 内复跑 `npm test` 6 pass 0 fail（独立验证提交产物，非脏工作树）；`opt-worktree.sh show` diff 确认 dc03ebf 含 3 文件：smoke.test.js +50/-0、GATES.md +4/-4、PROGRESS.md +2/-2。负测可证伪性：若 server.on('error') 处理器被删，server B 会以 uncaughtException 退出——status 仍非 0 但 stderr 为 Node 堆栈不匹配 /already in use|EADDRINUSE/，断言二失败，证明非侥幸过门。",
+  "next_suggestion": "1BfrYW9R 健康度仍良好，listen-error 已闭环。下轮可：(a) 待人工审合并 opt-gates-1782744585 后清 pending auto/optimization worktree 的残留 engine:general 脏 .opt-direction（case-219 误拒恢复枝的尾巴）；(b) scout-scan #2 autonomous-studio 有 6 条已 triage 延期 TODO，可挑一条结构性真债（非自我润色）；(c) 1BfrYW9R PROGRESS 待办首项'接入真实后端 API'属 Phase 1 较大工作单位，不宜在本小单位循环中启动。"
+}

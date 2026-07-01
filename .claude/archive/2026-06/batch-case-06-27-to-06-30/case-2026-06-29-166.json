@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-166",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-29T05:20:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "merge pending worktree opt-cases-1782709632 + sync optimization worktree to main tip",
+  "situation": "scout-scan #2 AS：1 个待合并 worktree(opt-cases-1782709632, 单 commit case-165 归档)+1 个空 optimization worktree(stale at 1a4c856，落后 main 1 commit)。case-165 内容已在上轮 review 过（纯 case JSON 增），风险低；optimization 是常驻基底 worktree，diff 显示仅缺刚合入的 case-165.json（15 deletions），需 reset --hard 同步。",
+  "action": "1) bash scripts/opt-worktree.sh . merge opt-cases-1782709632 squash → fast-forward 合入 main(6c7f2cb)并自动清理 worktree 目录；2) cd optimization && git reset --hard main 将 auto/optimization ref 从 1a4c856 推进到 6c7f2cb；3) git diff main..HEAD --stat 验证零差异；4) git worktree list 确认仅剩 main+optimization 两个条目、均指向 6c7f2cb；5) 写本 case 记录本次双动作",
+  "files_changed": [".claude/decisions/case-2026-06-29-166.json"],
+  "worktree": "opt-cases-1782709632 (merged and removed); optimization (synced to 6c7f2cb)",
+  "direction": "cases:merge-pending+worktree-sync",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh 输出 '✓ 已 squash 合并 opt-cases-1782709632 → main' + '✓ worktree 清理'；git log -1 = '6c7f2cb merge: 人工批准合并 optimization worktree opt-cases-1782709632'；git worktree list 仅剩 main(6c7f2cb)+optimization(6c7f2cb)，pending worktree 数从 1→0；optimization reset --hard 后 git diff main..HEAD --stat 输出为空（零差异）；main ahead of origin/main by 17 commits（含本轮合入的 case-165）",
+  "next_suggestion": "下轮 scout-scan 重排——AS 待合并清零+健康度应下降，可能让位给 personal-assistant/shizi/sunset-prediction(PROGRESS 均 0.1天)之一做文档刷新；若 AS 仍居前列则处理 6 条 triage TODO 之一（distillation pipeline 输入契约 / case schema validator / autonomous-constraints.md 自身校验）"
+}

@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-06-29-003",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-29T06:45:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "docs:readme-component-list — README 架构说明组件列表对齐实际 bundle(29 个真实名称),修正不存在的 Chips/MockData.jsx 引用",
+  "situation": "scout-scan #1 推荐 1BfrYW9R(score=0.0, dirty=1 仅 .claude/ untracked);上轮 case-002 已修 README 结构段。本轮核查发现 README.md line 40 列出的组件名含 'Chips'、'MockData' 两个不存在符号(grep index.html 无 Chips/MockData 定义;实际为 TimeChip/SourceChip/VerifyBadge/DeterministicBadge/GenerativeBadge 等独立组件,及 const DATA = {...} 内联对象)。line 67 待办仍引用 'MockData.jsx',但仓库已迁 single-file bundle 无外部 .jsx。属文档与代码事实不一致的小缺口,符合小工作单位纪律。",
+  "action": "Edit README.md 两处:(1) line 40 架构说明组件列表替换为 build.js 正则实测的 29 个真实组件名(含 TimeChip/SourceChip/VerifyBadge/DeterministicBadge/GenerativeBadge/Tag/SectionHeader/MemoryCard/Stat/Empty/TweaksPanel/RelBlock/Avatar/Sum/Row/Field/App 等),并补注 MockData 已重构为内联 const DATA;(2) line 67 待办 '替换 MockData.jsx' 改为 '替换内联 const DATA mock 数据对象'。未深读 index.html/build.js 大块代码,靠 node -e 跑 build.js 同款正则验证 29 计数。通过 opt-worktree.sh commit 提交到新 worktree opt-docs-1782715546(方向 docs:readme-component-list,因 optimization worktree area=engine:general 分歧自动开新枝)。",
+  "files_changed": ["README.md"],
+  "worktree": "opt-docs-1782715546",
+  "direction": "docs:readme-component-list",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh list 显示 'opt-docs-1782715546 | 方向=docs:readme-component-list | 1 提交 | 2 files changed, 3 insertions(+), 3 deletions(-)'(2 files 含自动写入的 .opt-direction);opt-worktree.sh show 确认 README.md diff 仅两处目标行变更;next-case 返回 case-2026-06-29-003.json(确认 001/002 已存在、003 可用);main branch 未受触碰(worktree 隔离);node build.js 仍 exit 0 输出 'Build OK — 29 JSX components (single-file bundle)'(改动纯文档不影响构建)。",
+  "next_suggestion": [
+    "1BfrYW9R: GATES.md line 19/20 仍写 '15 JSX 语法/引用正确;15/15 组件 HTTP 200',与当前 29 组件事实不一致——下轮可同步核销该数字(需重跑 dev-server 验证)",
+    "1BfrYW9R: PROGRESS.md 待办 '构建产物部署配置(Aone Pages 或静态托管)' 属 NICE gate 未勾选项,可与 aone-pages-skill 联动低成本完成",
+    "wechat-main: scout-scan 标记 2 pending worktree 其中 1 空可清理;case-164 刚 rehome 后 decisions/ 可能还有孤儿 case 文件待核查"
+  ]
+}

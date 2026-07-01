@@ -1,0 +1,43 @@
+{
+  "case_id": "case-2026-07-01-412",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-01T04:57:00+08:00",
+  "project": "autonomous-studio-aone",
+  "work_unit": "code-audit:autonomous-studio-aone (security-review opt-worktree.sh cmd_cleanup audit_log)",
+  "situation": "审计轮 case-412=412%4=0 DO A 强制。承接 case-411 NEXT[1]:case-412 审计轮 续审 scout-scan.py/opt-worktree.sh/triage.py。scout-scan #1=AS score=0.0 无明确小工作单位但审计轮不 skip。选 opt-worktree.sh(719L,引擎提交门+worktree/git/分支操作,攻击面最大)做 security-review,聚焦 DO A 注入/权限/凭证/错误处理/资源泄漏 + DO B audit_log result 如实反映。",
+  "action": "通读 opt-worktree.sh 全文做 security-review。①注入假设:cmd_commit L450 / cmd_merge L576 的 git commit -m \"...$msg...$(...)}\" 含命令替换,假设 $msg 含 $(cmd)→命令注入、含 \"→参数注入(--no-verify 绕 pre-commit 门)。②实证复现(/tmp/injtest):msg='$(touch PWNED)'→commit msg 字面保留 $(touch PWNED),PWNED 未创建;msg='a\" --no-verify \"b'→commit msg='opt(x): a\" --no-verify \"b' 单条消息,--no-verify 未被解析为独立 arg。结论:shell 变量展开后不重求值 $(...) 不重 parse \",双引号 -m 串对 $msg 安全——注入假设**推翻**,记入 outcome_evidence 防后人重犯。③继续审 DO B,发现真问题:cmd_cleanup 的 audit_log 无条件 success——L647 worktree 删除(audit_log success $name ... 无论 rm -rf 是否成功)、L678 孤儿分支删除(audit_log success $branch ... 无论 branch -D 是否成功),违反 autonomous-constraints.md DO B 明令'确保 result 字段如实反映成功/失败(不要恒 success)',与 cmd_reject L610-614(按 [[ ! -d $dir ]] 判)不对称。④修复 1file scripts/opt-worktree.sh +24/-8:worktree 块改为 if [[ ! -d $d ]];then success+removed++ else failure+skipped++;孤儿分支块改为 if git branch -D $branch;then success+orphan_removed++ else failure+orphan_skipped++,均与 cmd_reject 对称。⑤bash -n OK。⑥功能实测(/tmp/cleanup-test):auto/opt-checkedout 当前 checkout→branch -D 失败→audit failure;auto/opt-deadarea 孤儿可删→audit success。两 result 如实区分(修复前均 success)。worktree success 路径无回归(/tmp/cleanup-wt-test:删 1 空 worktree→success,目录已消失)。",
+  "files_changed": ["scripts/opt-worktree.sh"],
+  "worktree": "optimization @ 93a581b (auto/optimization, pending=1 待 sanctioned-merge)",
+  "direction": "audit",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "注入推翻实证:/tmp/injtest git log -1 --pretty=%s = 'opt(engine): $(touch /tmp/injtest/PWNED)' 字面,$msg 含 $(...) 未执行(PWNED 不存在);msg='a\" --no-verify \"b' 生成单条 commit 4e6070f msg='opt(x): a\" --no-verify \"b',--no-verify 未被 git 解析为独立 arg(exit 0 单 commit)——shell 变量展开后不重求值命令替换/不重 parse 引号",
+    "DO B 违规实证(修复前):grep 'audit_log success' scripts/opt-worktree.sh 命中 cmd_cleanup L647(worktree)+L680(孤儿分支)两处无条件 success,对比 cmd_reject L611 `if [[ ! -d \"$dir\" ]]; then audit_log success` 按实际判定——cleanup 路径不对称",
+    "修复落地:grep -n 'case-412 审计修复' = L647 + L678 两处;git diff --stat scripts/opt-worktree.sh = 1 file +24/-8",
+    "语法:bash -n scripts/opt-worktree.sh exit 0",
+    "功能 success 路径:/tmp/cleanup-wt-test cleanup 删 1 空 optimization worktree→audit result=success|optimization,worktree 目录 ls 不存在(No such file),removed=1",
+    "功能 failure 路径:/tmp/cleanup-test auto/opt-checkedout 当前 checkout→cleanup 输出 '⚠️ 孤儿分支删除失败: auto/opt-checkedout（refs/heads 仍在）'+audit result=failure|auto/opt-checkedout;auto/opt-deadarea 可删→result=success|auto/opt-deadarea——修复前两路径均 success",
+    "提交:opt-worktree.sh . commit engine:audit → worktree optimization @93a581b 1提交;main git status --short=空 clean;git worktree list=main @13f5144 + optimization @93a581b;git branch=* main + auto/optimization(pending=1)"
+  ],
+  "next_suggestion": [
+    "case-413=413%4=1≠0 非审计轮·sanctioned-merge:审合并 optimization @93a581b→main(opt-worktree.sh cmd_cleanup audit_log result 如实反映修复,1file +24/-8,预审 git show 93a581b --stat + merge-tree 冲突预检 + opt-worktree.sh . merge optimization)",
+    "case-416=416%4=0 下次审计轮:续审 scout-scan.py(677L,scanner 排序逻辑)与 triage.py(136L,TODO triage),本轮未审(预算聚焦 opt-worktree.sh 攻击面最大者)"
+  ],
+  "audit_type": "security-review",
+  "audit_findings": [
+    {
+      "file": "scripts/opt-worktree.sh",
+      "line": 647,
+      "severity": "low",
+      "finding": "cmd_cleanup worktree 删除路径无条件 audit_log success:git worktree remove --force || rm -rf 失败(权限/挂载占用)致目录仍在时仍记 success,违反 autonomous-constraints.md DO B 'result 如实反映不要恒 success',与 cmd_reject L610 按实际 [[ ! -d ]] 判定不对称。审计日志失真(失败记成成功)削弱删除敏感路径可观测性。",
+      "remediation": "改为 if [[ ! -d \"$d\" ]]; then audit_log success+removed++ else audit_log failure+skipped++,与 cmd_reject 对称。已落地(case-412)。"
+    },
+    {
+      "file": "scripts/opt-worktree.sh",
+      "line": 678,
+      "severity": "low",
+      "finding": "孤儿分支删除路径无条件 audit_log success:git branch -D 失败(分支被 checkout / refs/heads 仍在)仍记 success,违反 DO B,与 cmd_reject 不对称。",
+      "remediation": "改为 if git branch -D \"$branch\"; then success+orphan_removed++ else failure+orphan_skipped++,用 branch -D 退出码直判(if-conditional 不触发 set -e)。已落地(case-412)。"
+    }
+  ]
+}

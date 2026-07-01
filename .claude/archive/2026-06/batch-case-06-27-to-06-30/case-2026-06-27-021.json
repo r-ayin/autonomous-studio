@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-27-021",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-27T11:20:00Z",
+  "project": "sunset-prediction",
+  "work_unit": "补 prediction-engine 回归测试（P0：此前 0 测试）",
+  "situation": "scout-scan 排名 #1=sunset-prediction(score=1.0)，推荐理由「无 planning/」。查 pending worktree 发现 opt-planning-1782557428(planning:roadmap) 已在做 planning/——证实 scout-scan 推荐对 pending worktree 盲（与 memory 记录一致）。转而读 PROGRESS.md，真实未覆盖的结构性缺口是 P0「0 测试」（GATES NICE 门「有至少 1 个测试」未过），且无任何 pending worktree 覆盖测试方向（pending: planning/social:cookie-alert/sunset:browser-path-config）。",
+  "action": "用 Node 内置 node:test（零新依赖）为 prediction-engine.js 写 6 个测试：3 个纯函数精确值(humidityScore/highCloudScore/pressureTendencyScore，含全空回落 50/惩罚分支)+computeSunsetScore 不变量(区间[0,100]/tier 与 score 自洽/确定性)+getWeights/setWeights 合法写回与非法抛错(和≠1.0/缺键)。package.json 加 \"test\": \"node --test\" 脚本。首次跑 5 pass 1 fail（浮点 68.60000000000001 vs 68.6），改用容差助手 approx(eps=1e-9) 后 6/6 通过。",
+  "files_changed": ["test/prediction-engine.test.js", "package.json"],
+  "worktree": "opt-test-1782559012",
+  "direction": "test:engine",
+  "outcome": "succeeded",
+  "outcome_evidence": "npm test 输出: tests 6 / pass 6 / fail 0 / duration 110ms；opt-worktree 输出「✓ 提交到 opt-test-1782559012 方向=test:engine」（方向与既有 planning/social/sunset 分歧→开新 worktree）；main 未动（HEAD 仍 2ec3a27）。",
+  "next_suggestion": "下轮候选：(a) sunset-prediction P2「日报失败重试」（cron 失败只 console.error，未在 pending worktree 覆盖）——需读 scripts/xhs-daily.js 1 文件；(b) 回 autonomous-studio 合并积压 worktree（opt-scanner-1782549922/scout-sync/p-triage 等多个待人工批，可逐个 review diff 后 opt-worktree.sh merge）；(c) x-tool TODO triage（#1 因真实 TODO 密度，case-016 已 triage 部分）。注意：scout-scan #1 信号常被 pending worktree 覆盖，动手前必查 opt-worktree.sh list。"
+}

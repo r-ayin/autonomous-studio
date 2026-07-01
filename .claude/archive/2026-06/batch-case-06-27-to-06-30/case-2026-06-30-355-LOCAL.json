@@ -1,0 +1,18 @@
+{
+  "case_id": "case-2026-06-30-355",
+  "agent_id": "ralph-loop",
+  "timestamp": "2026-06-30T13:55:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "tests:default-port-3015-fallback — 增 dev-server.js 默认端口 3015 回退回归锁（㉜）",
+  "situation": "scout-scan 推 1BfrYW9R 为 #1 但仅注「健康度良好，无明确小工作单位」。深查 dev-server.js 端口优先级链 line 8 `argv > PORT env > 默认 3015`：⑫ 锁 env 回退分支（无 argv+PORT env）、㉚ 锁 argv 优先首位、⑭ 锁 npm start+注入 PORT env——三者均注入端口，`|| 3015` 默认末位（无 argv 且无 PORT env→3015）零测覆盖。npm start=node dev-server.js（无 argv），PaaS 未注 PORT env 时落默认 3015；改成 || 3000 或删 || 3015（NaN→㉒守卫 exit 1）致默认端口静默偏移/启动失败而 ⑫/⑭ 仍全绿。HEAD（line 1527）、EACCES else 分支（1682）等曾疑缺口实均已锁，唯默认 3015 是真未锁不变量。",
+  "action": "追加 smoke.test.js ㉜ 测：throwaway net.createServer 绑 3015 探外部占用则 return skip（仿 ㉛ root-skip 防误红门禁）；显式从 env 删 PORT（const {PORT:_drop,...envNoPort}=process.env，防 shell/CI 残留 PORT 误走 env 分支）；spawn node dev-server.js 无 argv 起服务，轮询 GET 127.0.0.1:3015/→200 + 断言 stdout listen 日志含 http://localhost:3015。端口命名 `const defaultPort = 3015` 避开 ㉙ `const port = (\\d+)` 唯一性正则（regex 须 `const port =` 字面，defaultPort 不匹配），是全套件唯一绑 3015 的测。同步 bump GATES.md canonical `npm test → 33→34 pass 0 fail` + 测试清单/历史日志加 ㉜ 描述（㉑ gates-doc-drift 要求）。",
+  "files_changed": [
+    "test/smoke.test.js",
+    "GATES.md"
+  ],
+  "worktree": "opt-tests-1782828284 (auto/opt-tests-1782828284, commit cd3e580)",
+  "direction": "tests:default-port-3015-fallback",
+  "outcome": "succeeded",
+  "outcome_evidence": "worktree `npm test` → 34 pass 0 fail（含新 ㉜ ok 34 + ㉑ gates-doc-drift 复绿，canonical 已 34）；main 干净（改动 cp 入 worktree 提交 cd3e580）；突变复测二连证锁真咬：(a) dev-server.js `|| 3015`→`|| 3000` 后跑 ㉜ → not ok 1，报 connect ECONNREFUSED 127.0.0.1:3015 + stdout「Dev server: http://localhost:3000」；(b) 删 `|| 3015`（`parseInt(argv[2]) || parseInt(process.env.PORT)`）后跑 ㉜ → not ok 1，报子进程提前 exit code=1 + stderr「ERROR: invalid port \"NaN\" — must be an integer in [1, 65536)」；两突变还原后 34 pass 0 fail。dev-server.js 未改（仅测+文档），还原备份已删。",
+  "next_suggestion": "1BfrYW9R dev-server.js 端口优先级链三级（argv/PORT env/默认3015）现已全集锁定（⑫/㉚/㉜）。该项目 test 套件已极度饱和（34 测覆盖启动/服务/方法/关闭/端口/MIME/穿越/探针/文档漂移全维度），scout-scan 长期报「健康度良好无明确单位」——下轮可顺延 scout-scan #2（autonomous-studio，7 延期已 triage TODO）或 #3（moni-master 后端/量化允许，前端重构受 constraints 排除）。1BfrYW9R 若再入选，真缺口须在 PROGRESS.md 待办（真实后端 API 接入依赖 personal-assistant / Phase 2 表单校验+骨架屏 UI 工作），非再加边际回归锁——防 case-354 式冗余守卫。"
+}

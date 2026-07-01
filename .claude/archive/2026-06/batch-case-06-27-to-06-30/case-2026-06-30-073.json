@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-30-073",
+  "agent_id": "ralph-loop",
+  "timestamp": "2026-06-30T18:15Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "engine:case-log-persist — 全量 157 case JSON 合法性巡检 + 修 case-2026-06-28-085 损坏",
+  "situation": "scout-scan 全项目仍 blocked（pending 人工 merge 4 worktree：opt-agent-dashboard/opt-browser-use/opt-docs/opt-xtool），#1=skills score=2.0 blocked。state case-072 NEXT_SUGGESTION fallback (a)：case-059 同类 $/quote JSON 损伤此前仅扫 040-071（32 个），早期 tracked case（157 总量）未扫，可能存在同种 telemetry 持久化断裂。此为真活非 blocked-noop。",
+  "action": "python3 一次性 json.load 校验 .claude/decisions/ 全量 157 个 case-*.json。命中 1 个损坏：case-2026-06-28-085.json（line8 col137 char520，action 字段内嵌裸双引号\"安全加固\"提前终止字符串，与 case-059 的 $ 转义同类 JSON 损伤）。修复：将该内嵌双引号转义为 \\\"安全加固\\\"。同步修两处：main 工作区 + optimization worktree HEAD（git ls-files 核实两处均 track 此文件且 HEAD 均为损坏版本）。worktree 侧直接编辑文件 + 直接 git commit（auto/optimization 分支隔离，main gate 不拦；遵 state 教训勿 cp engine 脚本进 worktree）。main 侧修复后 git checkout 还原至 HEAD，保持 main 0 残留（fix 随 worktree 下次人工 merge 落地）。",
+  "files_changed": [".claude/decisions/case-2026-06-28-085.json"],
+  "worktree": "optimization（branch auto/optimization, /home/admin/workspace/.opt-worktrees/autonomous-studio-aone/optimization, 新增 commit 20d8f68, 现 21 ahead of main, 待人工合并）",
+  "direction": "engine:case-log-persist",
+  "outcome": "succeeded",
+  "outcome_evidence": "修复后 python3 json.load 全量复扫：total case files: 157 | still broken: 0 []。worktree commit 20d8f68 落地：1 file changed, 1 insertion(+), 1 deletion(-)。git -C worktree rev-list --count main..auto/optimization = 21。main 工作区 git status --short .claude/decisions/ 仅余 calibration.json(M, 前轮遗留非本轮) + case-072(??, 前轮遗留)，本轮 0 新残留。",
+  "next_suggestion": "【阻塞·需人工·最高优先】合并任一 pending worktree 到 main 打破全 blocked 态：① optimization(autonomous-studio-aone, 21 ahead, 20d8f68, 含 063-072 engine 守卫链/安装链/降噪 + 32 case(040-071)持久化 + case-059/case-085 修复) → 合并后 case 040-071+085 落地 main、闭环 telemetry 完整、hooks/pre-commit 落地、fresh clone init 自动装 core.hooksPath；② opt-docs-1782736126 → 解锁 skills(scout #1)；③ opt-agent-dashboard/opt-browser-use/opt-xtool → 解锁对应项目。【人工合并任一后】下轮 scout-scan 将现非 blocked #1 → 转子项目真实小修复。【engine 代码自指状态】仍闭合——本轮是 telemetry 持久化(case-085 JSON 修复)非代码自润色，不重启自指。【下轮若仍无人 merge】fallback (a) 已穷尽（全量 157 case 已 0 损坏，无更多 $/quote 损伤可扫）；fallback (b) 诚实 blocked-noop case（本轮已破连续 blocked，下轮若纯 blocked 则重新计数连续 blocked-noop）。【根因待修·merge 后】case-059 记录的 cmd_commit cp-overwrite 静默回退 4 修复仍需 merge 后在 main 重做 + 根因 patch-cp 修复（否则又 cp 覆盖）。引擎侧勿 cp opt-worktree.sh/scout-scan.py 进 optimization worktree（必覆盖存活工作）——直接编辑 worktree 文件 + 直接 git commit。"
+}

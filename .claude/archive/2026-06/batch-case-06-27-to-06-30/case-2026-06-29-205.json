@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-06-29-205",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-29T11:28:51Z",
+  "project": "1BfrYW9R",
+  "work_unit": "review-and-merge opt-gates-1782732267 + cleanup empty optimization worktree",
+  "situation": "scout-scan #1 推荐：1BfrYW9R 有 1 个待合并 worktree(opt-gates-1782732267, build.js JSX 引用解析检查) + 1 个空 optimization worktree。onedaybot-dev 领先 origin 12 commits，working tree clean。",
+  "action": "1) 审查 diff(build.js +18 行引用解析检查、GATES.md CRITICAL 同步、.opt-direction 切换)；2) 在 main worktree 执行 git merge --no-ff auto/opt-gates-1782732267；3) npm run build 验证 exit 0 + 29 组件计数不变；4) git worktree remove + branch -d 清理已合并 worktree；5) 检查残留 optimization worktree，发现 .opt-direction 被改为 engine:general(无对应提交)，git restore 复位。",
+  "files_changed": [
+    "1BfrYW9R/build.js",
+    "1BfrYW9R/GATES.md",
+    "1BfrYW9R/.opt-direction"
+  ],
+  "worktree": "/home/admin/workspace/.opt-worktrees/1BfrYW9R/opt-gates-1782732267 (merged+removed); /home/admin/workspace/.opt-worktrees/1BfrYW9R/optimization (restored to clean)",
+  "direction": "gates:ref-resolution → merged to onedaybot-dev",
+  "outcome": "succeeded",
+  "outcome_evidence": "merge commit eeb68c9 on onedaybot-dev; npm run build output 'Build OK — 29 JSX components (single-file bundle)'; git worktree list shows only main + optimization(clean); auto/opt-gates-1782732267 branch deleted",
+  "next_suggestion": "autonomous-studio(#2) 也有 1 个待合并 worktree，下轮可 review+merge；或处理 autonomous-studio 6 条延期 TODO 中任一；personal-assistant/wechat-main 各有 1 个空 worktree 可清理"
+}

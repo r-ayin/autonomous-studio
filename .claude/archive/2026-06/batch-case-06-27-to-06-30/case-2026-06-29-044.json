@@ -1,0 +1,20 @@
+{
+  "case_id": "case-2026-06-29-044",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-06-29T13:30Z",
+  "project": "browser-use",
+  "work_unit": "triage 前 1-2 个上游 TODO（标注 deferred 移出 scout triage 推荐）",
+  "situation": "scout-scan 健康度排序 #1=browser-use(score=0.68)，标记 TODO=34 密度0.068，无延期(triage)债、无待合并 worktree 持有这些 marker 文件 → 真未 triage。browser-use 为上游 github.com/browser-use/browser-use 的本地跟踪仓（origin 指向 ghp-ro 镜像），含 PROGRESS.md/GATES.md/planning/roadmap.md 三件套，属自治管线管理项目。TODO 全部为上游代码既存债务（类型注解、未完成功能、hacky 实现）。constraints 文件(.claude/autonomous-constraints.md)不存在→无 DO NOT 排除项。",
+  "action": "取 scout 推荐 work unit「triage 前 1-2 个 TODO（标注或清掉）」。选 browser_use/browser/profile.py 两处纯注释型上游 TODO（非 skip 测试、非运行时字符串），按 scout 既定延期约定（scripts/scout-scan.py:63-70 _DEFERRED_RE: 标记后接 (deferred) 后缀）标注延期并附理由：(1) L512 StorageState 类型替换——纯类型 nicety，无行为缺口，等上游 StorageState 形态稳定；(2) L722 extension 预装支持——上游功能缺口，preinstall API 未接线，等上游推进。两处均未触碰运行时逻辑/字段定义，仅注释行。",
+  "files_changed": ["browser_use/browser/profile.py"],
+  "worktree": "opt-browser-use-1782738573 (/home/admin/workspace/browser-use — browser-use:triage)",
+  "direction": "browser-use:triage",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "python3 ast.parse(profile.py) → 'syntax OK'（语法未破坏）",
+    "grep 'TODO (deferred)' browser_use/browser/profile.py → 命中 L512 + L722 两行（延期标注已落地）",
+    "opt-worktree.sh commit → '✓ 提交到 opt-browser-use-1782738573 方向=browser-use:triage'（worktree 隔离提交成功，main 未动）",
+    "scout _DEFERRED_RE 匹配 \\bTODO\\b\\s*\\(\\s*deferred\\b → 两处将计入 markers_deferred 而非 triage 推荐分子，TODO 计数 34→32"
+  ],
+  "next_suggestion": "(1) 续 triage browser-use 剩余 TODO（仍有 ~32 个，优先纯注释型：browser_use/browser/events.py 多处、dom/views.py、tools/service.py），每轮 1-2 个标注 deferred，渐进降 browser-use 健康分；(2) browser-use dirty 状态需关注——本轮 main 工作树 profile.py 被改（worktree 提交后 main 仍 dirty，opt-worktree 还原 main 机制应清理，与 case-043 发现的空父目录泄漏 bug 同源，下轮可一并修 opt-worktree.sh)；(3) 合并 opt-docs-1782736126 到 skills main（仍 pending，skills 仍 blocked 占榜）。"
+}

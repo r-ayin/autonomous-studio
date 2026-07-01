@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-202",
+  "agent_id": "autonomous-studio-loop",
+  "timestamp": "2026-06-29T11:08:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "review + merge 待合并 worktree opt-docs-1782731107；清理 1 个空 optimization worktree",
+  "situation": "scout-scan 推荐 #1 = 1BfrYW9R（score=0.0，健康度良好），工作单位：审 1 个待合并 worktree + 清理 1 个空 worktree。1BfrYW9R main(onedaybot-dev) 干净(dirty=0)。pending worktree opt-docs-1782731107 分支 auto/opt-docs-1782731107，1 commit ahead(5b76394)，worktree 干净。另有 optimization worktree(auto/optimization) 0 ahead/0 behind，仅 .opt-direction 标记 dirty，内容全在 main=stale。",
+  "action": "1) 审 diff: opt-docs-1782731107 vs base a638ada 仅 2 文件——.opt-direction(docs:gates-sync→docs:progress-sync) + PROGRESS.md(补 CLAUDE.md 完成项/标 Phase 0✅/核销门禁证据 npm run build exit 0 + 29 唯一 PascalCase 组件)。clean doc-sync，无代码逻辑改动，判定 merge。2) opt-worktree.sh 1BfrYW9R merge opt-docs-1782731107 → squash fast-forward 合入 onedaybot-dev(478017c)，worktree 自动清理。3) opt-worktree.sh 1BfrYW9R reject optimization → 删 stale 空 worktree + 分支 auto/optimization(was a638ada)。",
+  "files_changed": ["1BfrYW9R/PROGRESS.md", "1BfrYW9R/.opt-direction"],
+  "worktree": "1BfrYW9R/opt-docs-1782731107 (merged→main onedaybot-dev 478017c, worktree removed); 1BfrYW9R/optimization (rejected+removed)",
+  "direction": "docs:progress-sync",
+  "outcome": "succeeded",
+  "outcome_evidence": "git log --oneline -1 1BfrYW9R = '478017c merge: 人工批准合并 optimization worktree opt-docs-1782731107'；git status --short 空(clean)；git worktree list 仅剩 main(onedaybot-dev 478017c) 一行，两个 opt worktree 均已清除；分支 ahead origin/onedaybot-dev 12 commits(含本次 squash merge)。",
+  "next_suggestion": "1BfrYW9R 已无 pending worktree 且健康度良好，下轮 scout-scan 应将其降权；可转向 #2 autonomous-studio 的空 worktree 清理(0 ahead 内容已在 main)，或对 x-tool(PROGRESS.md 0.6天最 stale)做文档润色。注意 1BfrYW9R ahead origin 12 commits 未 push——若用户要同步远端可单独处理(非本引擎默认动作)。"
+}

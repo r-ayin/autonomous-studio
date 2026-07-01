@@ -1,0 +1,18 @@
+{
+  "case_id": "case-2026-06-28-056",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-06-28T09:40:00Z",
+  "project": "moni-master",
+  "work_unit": "triage: 清除 broker_qmt.py + run_trader.py 共 5 个冗余 TODO",
+  "situation": "scout-scan #1 moni-master score=0.06，11 TODO 标记密度 0.006。5 个在 main 项目代码（broker_qmt.py 4 个 + run_trader.py 1 个），6 个为 worktree 副本或文档提及。broker_qmt.py 的 4 个 '# TODO: 实现/验证连接状态' 与紧邻的 raise NotImplementedError(...) 语义完全重复——Python 标准做法是用 NotImplementedError 标识 stub，TODO 注释多余。run_trader.py 1 个 '# TODO: 盘中可能需要额外逻辑（如盘中异动检测）' 是无时间线的愿景注释，函数当前逻辑(委托 generate_signals_premarket)功能完整。",
+  "action": "删除 5 个冗余 TODO 注释。broker_qmt.py: connect() L70(验证连接状态)、get_account() L79(实现)、get_price() L86(实现)、submit_order() L96(实现)。run_trader.py: generate_signals_intraday() L102(盘中异动检测)。保留 NotImplementedError raise 和注释掉的参考实现代码（那些是有用的 API 示例）。",
+  "files_changed": [
+    "factors/scripts/qlib_repo/trader/broker_qmt.py",
+    "factors/scripts/qlib_repo/trader/run_trader.py"
+  ],
+  "worktree": "opt-moni-1782639719",
+  "direction": "moni:todo-triage",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh 输出 '✓ 提交到 opt-moni-1782639719 方向=moni:todo-triage'；方向分歧(engine→moni)正确触发新 worktree 隔离。grep -c TODO broker_qmt.py 从 4 降至 0；grep -c TODO run_trader.py 从 1 降至 0。scout-scan 下轮 moni-master TODO 应从 11 降至 6(worktree 副本仍含 1 download_sw_industry.py TODO + 文档提及不变)。",
+  "next_suggestion": "moni-master 剩余 TODO 多为 worktree 副本（rust-rewrite 内的 broker_qmt 镜像会随 main 合并消失），下轮可切到 #2 1BfrYW9R 或检查 personal-assistant GATES CRITICAL 门禁勾核。"
+}

@@ -1,0 +1,18 @@
+{
+  "case_id": "case-2026-06-30-370",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-30T16:05:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "dev-server.js /readyz 503 body reason 字段回归锁——锁 line 59 reason 字段存在且引用 index.html（运维摘流诊断）",
+  "situation": "scout-scan 全 score=0.0 常态,#1=1BfrYW9R '无明确小工作单位'。取 state NEXT_SUGGESTION (e) 候选:/readyz 503 reason 字段锁。grep 当前源验(防 stale state 伪造冗余守卫[[state-next-suggestion-stale-blind]]):dev-server.js line 59 503 body 已含 reason:'index.html missing or unreadable' 字段,但 test ⑪(line 386-393)只断言 status 503 + Content-Type application/json + parsed.status==='not ready'——reason 字段零覆盖,删掉它 ⑪ 仍全绿。standing optimization worktree 落后 main 10 commit(0 ahead)非 bug:ensure_main_wt(line 78-101)在 cmd_commit/cmd_init 触发 ff-only 快进自愈,被动未触发而已,下次提交即同步[[opt-worktree-standing-wt-staleness]]。",
+  "action": "仿 ㉓ 强化先例(不新增 test() 注册数,㉑ gates-doc-drift 计数不变 35)给 ⑪ 加一行 assert.match(parsed.reason || '', /index\\.html/, msg)——子串 match 非全等防文案微调脆断,但咬住'reason 存在且指向 index.html'不变量;parsed.reason||'' 防字段缺失致 assert.match 抛 TypeError。同步 GATES.md ⑪ 行补强化注记(唯一子串 '负载均衡应摘流)' 定位,1 处)。突变复测三步:(1)baseline 35 pass 0 fail;(2)cp dev-server.js /tmp 备份+sed 删 reason 字段→JSON.stringify({status:'not ready'})→npm test ⑪ 转红 not ok 10 报'须含 reason 字段…实际:{\"status\":\"not ready\"}' pass34/fail1;(3)cp 还原→35 pass 0 fail。证锁真咬非冗余。",
+  "files_changed": [
+    "1BfrYW9R/test/smoke.test.js",
+    "1BfrYW9R/GATES.md"
+  ],
+  "worktree": "1BfrYW9R opt-tests-1782835008 (方向 tests:readyz-503-reason-lock,与 standing engine:general 分歧故开新枝)",
+  "direction": "tests:readyz-503-reason-lock",
+  "outcome": "succeeded",
+  "outcome_evidence": "git: bash scripts/opt-worktree.sh 1BfrYW9R commit tests:readyz-503-reason-lock ... test/smoke.test.js GATES.md → '✓ 提交到 opt-tests-1782835008 方向=tests:readyz-503-reason-lock'(worktree 新建,1 commit)。npm test:baseline '# pass 35 # fail 0';突变删 line 59 reason 字段后 'not ok 10 - dev-server.js GET /readyz...503' + error '/readyz 503 body 须含 reason 字段且引用 index.html（运维摘流诊断），实际：{\"status\":\"not ready\"}' '# pass 34 # fail 1';还原后 '# tests 35 # pass 35 # fail 0'。㉑ gates-doc-drift 锁仍绿(未新增 test() 注册,N_actual=35=N_claimed,GATES canonical 计数未 bump)。GATES.md ⑪ 行 grep -c '负载均衡应摘流）'=1 唯一定位,强化注记已插入。",
+  "next_suggestion": "1BfrYW9R opt-tests-1782835008 待人工 merge 入 onedaybot-dev(1-commit,squash)。下轮候选:(1)1BfrYW9R HEAD×静态 MIME 余集——HEAD /style.js Content-Type application/javascript charset 锁(test ㉔ 只锁 HEAD / 与 HEAD /healthz,静态文件 HEAD Content-Type 未覆盖,grep 'HEAD' test 仅㉔);(2)复验 sunset-prediction standing auto/optimization ff 自愈(git merge-base main auto/optimization==main tip 则非 stale 不动)[[opt-worktree-standing-wt-staleness]];(3)personal-assistant ECS 已知问题 grounding[[ecs-deploy-target]] 动手前 grep 当前源验。纪律:case-id 走 cmd_next_case[[case-id-collision-agent-self-pick]](本轮 370=脚本返);case 写 AS main .claude/decisions/ + json.dump/parse 校验[[loop-case-json-recurrent-breakage]];opt-worktree 命令从 /home/admin/workspace 根跑 arg order=project command;审非 stale 用三点 name-only+两点 exit-code[[git-cherry-unreliable-for-squash-merge]]。"
+}

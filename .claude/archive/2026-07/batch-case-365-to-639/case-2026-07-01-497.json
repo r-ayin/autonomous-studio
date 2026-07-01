@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-01-497",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-01T04:25:00Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "M-001 fix: slug() glob 元字符过滤",
+  "situation": "audit-2026-07-01-002 finding M-001: scripts/opt-worktree.sh:339 的 ls -d \"$WT_BASE\"/opt-$(slug \"$new_area\")-* 在 area 含 * ? [ ] 时 glob 展开误匹配非目标 worktree。slug() 仅替换 : / 未处理 glob 元字符。派生 fix priority=4（H-001/H-005/M-002 已派生待 merge）。",
+  "action": "修改 slug() 函数：tr ':/*?[]' '------' 一步替换所有 shell glob 元字符 + 原有 : / 分隔符。单文件 route-fix，bash -n 语法检查通过，手动测试 slug 'foo*bar?baz[qux]a/b:c' → 'foo-bar-baz-qux-a-b-c' 验证正确。",
+  "files_changed": ["scripts/opt-worktree.sh"],
+  "worktree": "opt-security-shift-1782879595",
+  "direction": "security:slug-glob-sanitize",
+  "outcome": "succeeded",
+  "outcome_evidence": "worktree commit 06496f7 包含修复后 slug()；bash -n 通过；slug 函数对含 *?[] 输入输出无 glob 元字符；已 push origin/auto/opt-security-shift-1782879595",
+  "next_suggestion": "继续派生 audit-2026-07-01-002 剩余 pending findings: M-003 (cmd_merge basename 分支名错) → M-004 (--bg 文档与实现不一致) → L-001 (trap 清理) → L-002 (files 相对路径) → L-003 (限流 grep 过宽)",
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-01-002",
+  "audit_depth": "shallow"
+}

@@ -1,0 +1,20 @@
+{
+  "case_id": "case-2026-06-27-023",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-27T11:30:00Z",
+  "project": "sunset-prediction",
+  "work_unit": "补 prediction-engine 首个回归测试（GATES P0「0测试」）",
+  "situation": "scout-scan 排 sunset-prediction #1（score=1.0），推荐工作单位=文档润色/无 planning/。读 PROGRESS/GATES 发现真实结构性缺口是 P0「0测试覆盖」，遂改为补回归测试（更实于文档润色）。prediction-engine.js 是纯 ESM 模块无 I/O，适合 node:test 冒烟测试。",
+  "action": "写 test/prediction-engine.test.js（6 例：全空数据回退50/经典极佳场景冲Great档+绯红主色/北方重污染aod>0.5折扣/子分空值兜底/高原低气溶胶55/setWeights和值门禁）+ package.json 加 test 脚本 + 更新 PROGRESS/GATES 记录。本地 npm test 6/6 全过。提交走 opt-worktree，撞 stash apply 冲突误报（改动滞留 main）。排查时发现 opt-test-1782559012 worktree 早已含 commit 501ecfb「opt(test:engine): 补 prediction-engine 回归测试」(99行,精确值+不变量,更严谨)，同路径 test/prediction-engine.test.js——我的版本是部分重复，合并必冲突。",
+  "files_changed": [],
+  "worktree": "opt-test-1782559012（既有 pending，未由本轮新建）",
+  "direction": "test:engine",
+  "outcome": "superseded",
+  "outcome_evidence": [
+    "main git status --short 清空（git restore GATES.md PROGRESS.md package.json + rm -rf test/ 后无输出）",
+    "opt-test-1782559012 worktree log 含 501ecfb 提交，git show --stat 显示改 package.json+test/prediction-engine.test.js(99行)",
+    "既有测试覆盖同函数集(humidity/highCloud/pressureTendency/computeSunsetScore/setWeights)且用精确值断言，本轮 6 例为其子集",
+    "两测试文件同路径 test/prediction-engine.test.js，并存会在合并该 worktree 时冲突"
+  ],
+  "next_suggestion": "下轮跳过 sunset-prediction 测试工作（已被 pending opt-test-1782559012 覆盖，待人审合并）。scout-scan 不感知 pending worktree 是根因——可考虑给 scout-scan 加 pending worktree log 探测（见 memory scout-scan-recommend-blind-to-pending-worktrees）。若仍要在 sunset-prediction 推进，取 #2 顺延 moni-master 的 triage TODO（约束允许后端/数据任务），或补 opt-test worktree 缺失的 PROGRESS/GATES 文档回写（pending commit 501ecfb 只动 2 文件未记文档）。"
+}

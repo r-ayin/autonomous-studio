@@ -1,0 +1,35 @@
+{
+  "case_id": "case-2026-06-30-341",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-06-30T11:40Z",
+  "project": "dataworks-dev-assistant",
+  "work_unit": "code-audit:dataworks-dev-assistant",
+  "situation": "审计轮次判定：step0 读 autonomous-constraints.md DO A/B/C 全文。审计边界判定——今日 decisions 目录 case 文件数=140（case-001..340 含编号跳跃，实际文件数 140），140%4=0 命中审计边界（上轮 case-340 NEXT_SUGGESTION 用'自 337 起局部计数'得 case 5 非审计，与本轮按约束字面'今日 case 数/4 取模=140%4=0'冲突；取字面计数规则→审计轮次，且审计轮次避免 no-op 浪费、有真源码可审）。step1 scout-scan #1=autonomous-studio-aone(score=0.0 TODO=0 deferred=4)推荐'可跳过'；DO A 要求审计轮次挑有源码项目，AS #1 无可行非审计小工作单位(deferred 4 全真实系统/人工 blocked、DO NOT 禁自我润色)→按上轮 NEXT_SUGGESTION 预案转审 dataworks-dev-assistant(有 .py 源码、含 deferred 未实测项、上轮已预指向 bff_client.py HTTP 调用/apply_resource_access.py 权限校验)。pending worktree 队列=0、工作树净→code-review/security-review skill 走 current diff 无对象，按 DO A fallback 手动 security-review 源码(限 2 源文件：apply_resource_access.py + bff_client.py)。",
+  "action": "手动 security-review 两源文件，套 DO A 清单(注入/鉴权/PII凭证/错误处理/并发资源泄漏)。\napply_resource_access.py：两阶段写(client.write 预览→--confirm 提交)、access 类型白名单校验(_TABLE_ACCESSES)、无 shell/SQL 注入(值入 JSON body 经 HTTP；诊断命令为 print 文本不 exec)、grantee 验证 non-blocking 为设计决策(docstring 注明)→无真实 bug。\nbff_client.py：两阶段写门禁稳健(write 暂存 pending→confirm_write 强制 ≥10s 间隔→_call(confirmed=True)→未确认 raise WriteOperationError)；Bearer token 不入日志(_log 只记 params/data/response，不记 headers)；TLS verify 默认 ON(未传 verify=False；disable_warnings 仅抑制 NotOpenSSLWarning 非 InsecureRequestWarning)；endpoint 来自 env/profile/api-index 受信元数据、无外部输入入 URL path→无 SSRF。\n发现 1 条 medium 真实 finding：call_raw(line 710)直接调 _do_request 无 confirmed 门禁→绕过两阶段写确认。实证非理论：api-index.json 标 runRules is_write_operation=True，而 dgc_check_nodes.py:107/164 经 client.call_raw('runRules',**body) 执行——即写操作经 call_raw 静默绕过确认。硬 gate 会破坏 dgc_check_nodes(其依赖 call_raw 即时执行 runRules)→取 DO B 路径：在 _do_request 唯一 HTTP chokepoint 对写操作落 audit-log，sanctioned confirm 路径与 call_raw 绕过路径统一可审计(bypassed_two_phase_confirm 字段区分)，audit 失败永不阻断业务写(except 吞)。新增 core/audit_log.py(append-only JSONL 对齐 audit-log.schema.json，id=audit-YYYYMMDD-HHmmss-rand6/timestamp ISO8601/userId/userRole=engine/action 枚举映射 permission_change|compliance_check|create|delete|.../resource=api_name/result=success|failure/ip=local)。自测：record() 两场景(permission_change/success/bypass=False、compliance_check/failure/bypass=True)均正确落 JSONL、id pattern 匹配 schema 正则。py_compile 两文件通过。",
+  "files_changed": [
+    "skills/dataworks-dev-assistant/core/audit_log.py (新增, +83)",
+    "skills/dataworks-dev-assistant/core/bff_client.py (+14: import audit_log + _do_request 写操作 audit 埋点)"
+  ],
+  "worktree": "opt-dataworks-1782819568 (方向 dataworks:audit-instrumentation，commit dc3d201，待人工审合并)",
+  "direction": "audit",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "git -C opt-dataworks-1782819568 show --stat dc3d201 → audit_log.py +83、bff_client.py +14，2 files changed 97 insertions",
+    "grep bff_client.py(worktree) → line53 'from audit_log import record as _audit_write'、line537-545 _do_request 内 'if api_meta.get(\"is_write_operation\"): _audit_write(self._work_dir, api_name, params_summary=\",\".join(kwargs.keys()), result_code=..., user_id=getattr(self,\"_cached_base_id\",None) or os.getenv(\"DW_USER_BASE_ID\") or \"unknown\", bypass=write_confirmed is None)'",
+    "python3 -m py_compile core/audit_log.py core/bff_client.py → OK 两文件编译通过",
+    "audit_log 自测：record(d,'applyResourceAccessPermission','reason,applyContent',0,user_id='12345',bypass=False) → audit-20260630-190643-b688b6 | permission_change | applyResourceAccessPermission | success | bypass=False | user=12345；record(d,'runRules','projectId,body',-1,user_id='unknown',bypass=True) → audit-20260630-190643-b3d8b3 | compliance_check | runRules | failure | bypass=True | user=unknown；id 正则 ^audit-\\d{8}-\\d{6}-[a-zA-Z0-9]{6}$ 匹配",
+    "api-index.json 核验：runRules is_write_operation=True(method=POST)；call_raw 调用方 grep → dgc_check_nodes.py:107/164 client.call_raw('runRules',**body) 实证绕过",
+    "main 工作树净：git status skills/dataworks-dev-assistant/core/ 无输出(改动已进 worktree，main 安全)"
+  ],
+  "next_suggestion": "【待人工审合并·低阻力】(1) opt-worktree.sh . show opt-dataworks-1782819568 看 diff → 满意则 opt-worktree.sh . merge opt-dataworks-1782819568 合入 main。合入后 bff_client 所有写操作(含 call_raw 路径)即获 audit-log 可审计性。(2) 后续可强化(非本轮)：在 call_raw 对写操作加显式 _caller_confirmed 形参或警告 stderr，把'静默绕过'升级为'显式声明绕过'——但需同步改 dgc_check_nodes.py 传参，属功能改动需单独 case。(3) 下轮非审计轮次(今日 case 141，141%4=1)：scout #1 AS score=0.0 仍'可跳过'，deferred 4 全 blocked→无可行小工作单位时记 no-op case 或等下个审计边界(今日 case 144，144%4=0)。(4) audit-log ip 字段：本轮 dataworks audit_log.py 已按 case-340 remediation 写 ip='local'(纯本地引擎上下文)。",
+  "audit_type": "security-review",
+  "audit_findings": [
+    {
+      "file": "skills/dataworks-dev-assistant/core/bff_client.py",
+      "line": 710,
+      "severity": "medium",
+      "finding": "call_raw() 直接调用 _do_request(api_name, api_meta, **kwargs) 未传 write_confirmed/confirmed，绕过两阶段写确认门禁(confirm_write 的 ≥10s 间隔防护与 _call 的 confirmed 校验均被旁路)。任何 is_write_operation=True 的 API 可经 call_raw 静默执行。实证：api-index.json 标 runRules is_write_operation=True，dgc_check_nodes.py:107/164 经 client.call_raw('runRules',**body) 执行写操作未经确认。对 AI agent 驱动的 skill 构成安全风险(agent 可发现并利用 call_raw 跳过写确认)。",
+      "remediation": "本轮已落地 DO B audit-log 埋点(非硬 gate，避免破坏 dgc_check_nodes 现有依赖)：在 _do_request 唯一 HTTP chokepoint 对 is_write_operation 落 audit-log，confirm_write sanctioned 路径(write_confirmed 非空)与 call_raw 绕过路径(write_confirmed 为空,bypassed_two_phase_confirm=True)统一可审计，使绕过不再 silent。后续强化建议(另起 case)：call_raw 对写操作加显式 _caller_confirmed 形参或 stderr 警告，把静默绕过升级为显式声明，并同步改 dgc_check_nodes.py 传参。"
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "case_id": "case-2026-07-01-370",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-01T00:37:00Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "audit-log-instrumentation:cmd-commit-rollback",
+  "situation": "承接 case-369 NEXT_SUGGESTION[3]：370%4=2≠0 非审计普通路径轮次。step0 读 constraints DO NOT+DO 全文，370%4=2≠0 非审计轮（不强制 DO A code-review/security-review）。step1 scout-scan #1=autonomous-studio-aone score=0.0「无明确小工作单位——可跳过或做文档润色」——AS 待合并=0、TODO/FIXME=0、无结构性 bug。按 instructions：#1 无明确单位则取 NEXT_SUGGESTION[3] 闭合 cmd_commit copied=0 回滚路径 audit_log 缺口。该路径是 DO B delete 敏感路径（worktree remove --force + branch -D），370%4=2≠0 非审计但 DO B 触发 audit-log-instrumentation 强制埋点。审计目标=scripts/opt-worktree.sh cmd_commit line~408-414 copied=0 中止回滚块——case-356 已加回滚逻辑（删新建分歧 wt+branch -D 防孤儿）但漏埋 audit_log，与 cmd_reject(line594)/cmd_cleanup(line630,653) 删除路径不对称，全删除路径中唯独 commit-rollback 无审计可观测。",
+  "action": "step2 审计 diff：main HEAD=3a73708（case-369 archival），opt-worktree.sh cmd_commit copied=0 回滚块（line408-412 旧）仅 git worktree remove --force + branch -D + echo，无 audit_log 调用——对照 cmd_reject/cmd_cleanup 均有 audit_log delete artifact，确认缺口。step3 最小改动（1 文件 +9 行）：在 copied=0 回滚块 worktree remove+branch -D 之后补 audit_log 调用，result 如实反映——worktree 目录已消失=success（branch -D best-effort，失败仅 reason 标注），仍在=failure。action=delete resource=artifact 与 cmd_reject/cmd_cleanup 对称。审计不阻断主流程（|| true，与既有调用点一致）。step4 隔离测（驱动真实 copied=0 abort 路径触发新埋点）：main 建临时 untracked 文件 _probe_dirty_marker.tmp 绕过 line300「无未提交改动」早退→cmd_commit 方向 probeaudit:rollback-test（area=probeaudit≠engine 强制建新分歧 wt）+ 文件参数 ./__bogus_nonexistent_file__（不存在且非 tracked→走 line384 else continue→copied 留 0）→copied==0 中止→回滚块 fire→worktree remove+branch -D+audit_log。step5 验证：bash -n OK；.audit/audit-2026-06-30.jsonl 新增条目 audit-20260630-163635-845484 action=delete resource.type=artifact identifier=opt-probeaudit-1782837392 result=success reason='rollback divergent worktree on copied=0 abort...; branch auto/opt-probeaudit-1782837392 -D (best-effort)' jq -c 解析有效；probe wt/branch/临时文件全清（git worktree list 无 probe、git branch --list auto/opt-* 无 probe、ls 无 _probe）；git status 仅 scripts/opt-worktree.sh M。step6 commit→optimization @3e3302f，main 还原干净。grep audit_log scripts/opt-worktree.sh 显 4 删除路径全 LIVE：commit-rollback(416/418)+merge(567/577)+reject(594/596)+cleanup(630/653)。",
+  "files_changed": [
+    "scripts/opt-worktree.sh"
+  ],
+  "worktree": "optimization @3e3302f（pending merge，方向 engine:audit-log-rollback，+9/-0）",
+  "direction": "engine:audit-log-rollback",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "bash -n scripts/opt-worktree.sh = OK 无语法错",
+    "grep -n 'audit_log ' scripts/opt-worktree.sh = commit-rollback 调用点 line416(success)/418(failure) 新增入 optimization @3e3302f；既有 delete 路径 reject line594/596、cleanup line630/653、merge line567/577 不变→四删除路径 audit_log 全 LIVE 对称",
+    "隔离测触发：.audit/audit-2026-06-30.jsonl tail-1 = audit-20260630-163635-845484 action=delete resource.type=artifact identifier=opt-probeaudit-1782837392 result=success reason 含 'rollback divergent worktree on copied=0 abort' → jq -c '{id,action,rtype,identifier,result,reason}' 解析有效（非自举首跑，新埋点真实触发）",
+    "隔离测清理：git worktree list | grep probeaudit = 空；git branch --list 'auto/opt-*' | grep probe = 空；ls _probe_dirty_marker.tmp = 不存在→probe wt/branch/文件全清",
+    "git -C optimization diff --stat main...HEAD = scripts/opt-worktree.sh | 9 +++++++++ 1 file changed 9 insertions(+)（仅 1 文件 +9/-0）",
+    "git status --porcelain main = 空（main 干净，改动全在 optimization worktree）",
+    "git log -1 --oneline optimization = 3e3302f opt(engine:audit-log-rollback): case-370 闭合 cmd_commit copied=0 回滚路径 audit_log 缺口..."
+  ],
+  "next_suggestion": [
+    "【普通路径·case-371】371%4=3≠0 非审计 sanctioned-merge 轮。承接本轮 pending optimization @3e3302f（engine:audit-log-rollback +9/-0）。step1 scout 重排（AS 待合并=1，scout #1 将推荐 review 待合并 worktree merge/reject）。step2 差异预审 merge-base(main,auto/optimization)=3a73708（main 自 base 仅可能 +archival；optimization 自 base 仅 scripts/opt-worktree.sh +9/-0，文件无重叠→clean merge）。step3 人工审 diff：audit_log 调用 result 分支正确（! -d $target→success / else→failure），reason 含 $new_wt_branch（auto/opt-... 含 /，json_escape 不转义 / 合法 JSON），不阻断（|| true）。step4 merge optimization→main squash+commit，worktree 清理，删 auto/optimization 残留分支。step5 验证 grep audit_log 4 删除路径入 main + .audit 非自举首跑 + git status 空。case-371 outcome=succeeded audit_type=none findings=[]。",
+    "【DO A 审计·case-372】372%4=0=强制审计轮次。audit_log 四删除路径全 LIVE 入 main 后换审非 audit_log 目标。候选：(a) hooks/pre-commit + autonomous-commit-gate.py 门禁代码 security-review（外部输入/命令注入面）；(b) scout-scan.py 自身代码 review（.codebase-index JSON 只读、subprocess 调用面）；(c) detect_main_branch/ensure_main_wt worktree 建路径 code-review。scout-scan 届时重排选有源码项目。",
+    "【剩余低危延后】audit_log instrumentation 主体已闭合（merge/reject/cleanup/commit-rollback 四路径）。后续若新增 cmd_* 删除/批量子命令须同步埋点——已在 opt-worktree.sh audit_log() 注释标 DO B 约束。"
+  ],
+  "audit_type": "audit-log-instrumentation",
+  "audit_findings": [
+    {
+      "file": "scripts/opt-worktree.sh",
+      "line": 408,
+      "severity": "low",
+      "finding": "cmd_commit copied=0 中止回滚块（worktree remove --force + branch -D 删新建分歧 worktree+分支）是 DO B delete 敏感路径，但 case-356 加回滚逻辑时漏埋 audit_log——与 cmd_reject(line594)/cmd_cleanup(line630,653) 删除路径不对称，全删除路径中唯独 commit-rollback 无审计可观测，内部回滚 delete 无记录",
+      "remediation": "在回滚块 worktree remove+branch -D 之后补 audit_log delete/artifact 调用（@3e3302f line416/418），result 如实反映 worktree 目录是否已删（success/failure），|| true 不阻断主流程。隔离测验证触发 audit-20260630-163635-845484 action=delete result=success。四删除路径 audit_log 全 LIVE 对称。"
+    }
+  ]
+}

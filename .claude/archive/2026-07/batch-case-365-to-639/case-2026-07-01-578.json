@@ -1,0 +1,35 @@
+{
+  "case_id": "case-2026-07-01-578",
+  "agent_id": "ralph-wiggum-loop",
+  "timestamp": "2026-07-01T20:30:00Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "deep audit tests/ module (test_scout_scan.py vs scout-scan.py)",
+  "situation": "audit-cycle-state was cycle-complete after audit-2026-07-01-003 (runtime-listeners) fixes all merged. Per autonomous-constraints.md A节, triggers new full deep-audit on unaudited module. Previously audited: hooks (001), scripts (002), runtime-listeners (003). tests/ was first deep audit target — test suite quality never examined despite being the only automated verification layer for scout-scan.py (the engine's deterministic project discovery + health ranking core).",
+  "action": "Deep-read test_scout_scan.py (84 lines) against scout-scan.py (731 lines) source. Cross-referenced documented invariants vs actual test coverage. Ran scout-scan.py --json to verify runtime behavior under current workspace topology (autonomous-studio-aone as workspace root). Checked pytest availability. Identified 7 findings (1H/3M/2L/1I) covering integration gap, environment coupling, weak assertions, missing boundary cases, subprocess overhead. Wrote audit report audit-2026-07-01-004.md. Logged 2 structural debts (SD-001 pytest missing, SD-002 missing boundary tests) to new .claude/structural-debt.md. Queued 5 route-fix derived_fixes in audit-cycle-state.json (case IDs TBD next rounds).",
+  "files_changed": [
+    ".claude/audits/audit-2026-07-01-004.md",
+    ".claude/audit-cycle-state.json",
+    ".claude/structural-debt.md"
+  ],
+  "worktree": null,
+  "direction": "audit-only (no code commit; findings queued for derived fix dispatch next rounds)",
+  "outcome": "succeeded",
+  "outcome_evidence": "audit-2026-07-01-004.md written with 7 findings cross-referenced to scout-scan.py line numbers and historical case-IDs (049/327/219/373). Runtime verification confirmed M-001: scout-scan.py --workspace /home/admin/workspace/autonomous-studio-aone --json returns projects=['autonomous-studio-aone'], proving hardcoded 'autonomous-studio' assertion fails in loop's normal topology. pytest absence confirmed via `python3 -m pytest` → No module named pytest. audit-cycle-state.json updated: status=fix-in-progress, pending_count=5, history entry added. structural-debt.md created with SD-001 + SD-002.",
+  "next_suggestion": [
+    "Dispatch H-001 fix: add scan_project→health_priority integration test with tmpdir fixture (priority 1 derived_fix)",
+    "User decision needed on SD-001: install pytest + add CI/hook gate OR delete tests/ and acknowledge no automated testing",
+    "After all 5 derived fixes merged/rejected, audit-cycle-state will flip to cycle-complete → triggers audit-2026-07-01-005 on next unaudited module (candidates: config/, evals/, phases/, planning/, root .md docs)"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {"file": "tests/test_scout_scan.py", "line": 26, "severity": "high", "finding": "_rep() synthetic rep bypasses scan_project integration path; missing 7+ fields (progress_pending_wts/gates_pending_wts/triage_pending_wts/planning_pending_wts/pending_worktrees/markers_deferred/marker_files). Tests only validate health_priority unit behavior, not scan_project→health_priority field mapping correctness.", "remediation": "Add integration test: create minimal project in tmpdir with PROGRESS.md/GATES.md/planning/ + code files with TODO, run scan_project(), assert returned rep contains all expected keys and health_priority(rep) score is reasonable.", "kind": "route-fix"},
+    {"file": "tests/test_scout_scan.py", "line": 60, "severity": "medium", "finding": "Hardcoded 'autonomous-studio' project name assertion fails when workspace is autonomous-studio-aone itself (loop's normal topology). Verified: scout-scan.py --workspace /home/admin/workspace/autonomous-studio-aone --json returns projects=['autonomous-studio-aone']. Test only passes when run from /home/admin/workspace parent dir.", "remediation": "Replace with structural completeness assertion: len(recs) >= 1 and all('name' in r and 'score' in r for r in recs). If 'autonomous-studio not excluded' semantics needed, make it conditional on workspace actually containing that subproject.", "kind": "route-fix"},
+    {"file": "(environment)", "line": null, "severity": "medium", "finding": "pytest not installed (No module named pytest). tests/test_scout_scan.py has never been executed. tests/ is a false safety net — looks like test coverage but provides zero actual verification. opt-worktree.sh commit gate also doesn't run pytest.", "remediation": "Structural debt SD-001: decide test strategy (install pytest + CI/hook gate vs delete tests/). Not dispatchable as single-round fix.", "kind": "structural"},
+    {"file": "tests/test_scout_scan.py", "line": 48, "severity": "medium", "finding": "test_score_independent_of_commit_recency asserts only isinstance(score, float) and work_unit non-empty. Degenerate implementation returning constant {score:0.0, work_unit:'x'} would pass. Invariant 'score independent of last_commit' not numerically verified.", "remediation": "Add numeric assertions: construct two reps differing only in progress_stale_days (0.1 vs 100), assert score difference > 0; or construct known-score rep and assert exact value to lock formula.", "kind": "route-fix"},
+    {"file": "tests/test_scout_scan.py", "line": 74, "severity": "low", "finding": "test_text_output_has_recommendation_section only checks string presence ('推荐工作单位' and '#1' in stdout). Doesn't validate #N line format, sort order correctness, or empty-recommendations fallback behavior.", "remediation": "Parse stdout to extract #N lines; validate format regex or switch to --json mode for structured output validation.", "kind": "route-fix"},
+    {"file": "tests/test_scout_scan.py", "line": null, "severity": "low", "finding": "Missing regression tests for 5 critical boundary behaviors documented in scout-scan.py comments: (1) marker density cap min(density*10,5); (2) pending_triage precise offset (line 547-549, case-049); (3) case_only worktree downgrade (line 582-588, case-373); (4) superseded worktree content-equivalence detection (line 416-434, case-327/219); (5) deferred marker exclusion from triage recommendation (line 538-541).", "remediation": "Structural debt SD-002: requires synthetic fixtures (tmpdir + git init + worktree creation), exceeds single-round minimal fix scope.", "kind": "structural"},
+    {"file": "tests/test_scout_scan.py", "line": 62, "severity": "info", "finding": "Two subprocess tests spawn full scout-scan.py process (timeout=180s each). Slow, environment-coupled, CI-unfriendly. scout-scan.py is already modular (health_priority/scan_project/discover_projects are pure or isolatable functions).", "remediation": "Refactor to importlib loading + direct function calls + io.StringIO stdout capture. Keep 1 subprocess smoke test for polyglot shim verification.", "kind": "route-fix"}
+  ],
+  "audit_id": "audit-2026-07-01-004",
+  "audit_depth": "deep"
+}

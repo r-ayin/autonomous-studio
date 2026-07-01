@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-30-312",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-30T00:26:07Z",
+  "project": "x-tool",
+  "work_unit": "P0 首片回归保护：为 checkpoint Hooks 加最小回归测试 + 修 save-checkpoint.py 潜在 NameError",
+  "situation": "scout-scan @2026-06-30T00:21Z 全 8 项目并列 0.0（健康饱和），#1=1BfrYW9R「无明确小工作单位」顺延。依 autonomous-state.md NEXT_SUGGESTION (a) 选 x-tool（PROGRESS 1.1天最久未更）。读 x-tool/PROGRESS.md 见 P0 明文缺口：『引擎自身无回归测试套件——find 仅命中 .venv-sidecar 内 pytest，非决策循环/Hook 回归；七阶段循环 + checkpoint Hooks 应有最小回归保护』。读 .claude/hooks/save-checkpoint.py（222行）审查时发现真实 latent bug：find_task_files()（L137）引用 Path，但 `from pathlib import Path` 仅在 `if __name__=='__main__'` 块（L215）内导入——脚本直跑时 __main__ 块执行把 Path 注入模块全局可用，但模块被 import（如测试或被其他模块调用）时 __main__ 不执行、Path 未定义，find_task_files 一调即 NameError。build_checkpoint() 当前未调 find_task_files 故线上未爆，但属定时炸弹+P0 缺口同源。",
+  "action": "1) 修 save-checkpoint.py：将 `from pathlib import Path` 上移至模块顶层 import 区（L17），删 __main__ 块内冗余本地导入（L215）——模块被 import 时 Path 立即可用，find_task_files 不再 NameError；diff 4 +/-3。2) 新增 tests/test_checkpoint_hooks.py（104行，5 用例，hermetic 用 tmp_path 作 CLAUDE_PROJECT_DIR 不污染真实 .claude/checkpoints）：test_all_hooks_compile（全 6 Hook py_compile 拦截语法/导入期错）、test_find_task_files_runs（直击回归点，断言 scheduled_tasks.json 被命中）、test_build_checkpoint_shape（断言 version/timestamp/session_id/git/memory_files 字段齐全+session_id 绑定）、test_write_checkpoint_persists_latest（落盘+latest.json 更新+json.load 回读）、test_decision_log_is_valid_jsonl_and_appendable（每行合法 JSON+可追加写权限回归）。用 importlib.util.spec_from_file_location 加载（文件名含连字符非合法模块名）。3) 更新 PROGRESS.md P0 条目标注首片落地+剩余（七阶段决策循环 decision-observer/protocol-check 回归尚缺）+变更历史加 2026-06-30 条。",
+  "files_changed": ["x-tool/.claude/hooks/save-checkpoint.py", "x-tool/tests/test_checkpoint_hooks.py", "x-tool/PROGRESS.md"],
+  "worktree": "x-tool optimization @ 1ad73c8（auto/optimization 分支，待人工审合并；live 根 /home/admin/workspace/x-tool 已恢复 HEAD e361599 干净）",
+  "direction": "engine:regression",
+  "outcome": "succeeded",
+  "outcome_evidence": "可观察事实：(a) worktree commit 1ad73c8 `git show --stat` 显示 .claude/hooks/save-checkpoint.py | 4 +-、PROGRESS.md | 3 +-、tests/test_checkpoint_hooks.py | 104 ++ 三文件 107 insertions 4 deletions；(b) worktree 内 `sed -n '17p'` 确认 save-checkpoint.py 顶层 `from pathlib import Path`，`sed -n '213,215p'` 确认 __main__ 块已无冗余 import；(c) worktree 内 `python3 -m pytest tests/test_checkpoint_hooks.py -q` 输出 `5 passed in 0.21s`（全绿，含直击回归点的 test_find_task_files_runs）；(d) fix 前若以 import 模式调 find_task_files 必 NameError（Path 未在模块全局），fix 后 test 证明可调通——回归点被测试真正覆盖；(e) live 根 `git status --short` 空确认改动隔离在 worktree，main e361599 未被触碰。",
+  "next_suggestion": "P0 剩余片：为七阶段决策循环的 decision-observer.py（370行）/protocol-check.py（117行）加回归测试——前者测输入分类记录、后者测 PreToolUse Write/Edit 缺三件套时自举生成路径。另：worktree 1ad73c8 待人工审合并入 x-tool main（merge 前查 pending worktree log 防撞号，见 [[scout-scan-recommend-blind-to-pending-worktrees]]）。全项目轮换：x-tool P0 落片后 PROGRESS 已鲜活，下轮可转 sunset-prediction/wechat-main GATES 复测核销或 moni 后端（DO NOT 前端）。"
+}

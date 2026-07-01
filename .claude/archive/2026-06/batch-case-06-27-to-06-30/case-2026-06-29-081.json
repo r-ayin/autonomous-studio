@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-081",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-06-29T02:20Z",
+  "project": "autonomous-studio",
+  "work_unit": "commit orphan case files 078-080 from AS main to opt-cases worktree",
+  "situation": "All 8 projects scored 0.0 (healthy) in scout-scan. autonomous-studio had dirty=3 from 3 untracked case JSON files (078, 079, 080) written by previous autonomous cycles directly to main instead of a worktree. These orphans cluttered main's working tree and risked being lost on cleanup.",
+  "action": "Used opt-worktree.sh commit with direction cases:case-archive to copy the 3 case files to the existing opt-cases-1782639135 worktree and remove them from main. Script routed correctly to the existing cases-area worktree.",
+  "files_changed": [".claude/decisions/case-2026-06-29-078.json", ".claude/decisions/case-2026-06-29-079.json", ".claude/decisions/case-2026-06-29-080.json"],
+  "worktree": "opt-cases-1782639135",
+  "direction": "cases:case-archive",
+  "outcome": "succeeded",
+  "outcome_evidence": "git status in AS main returns empty (dirty 3→0). opt-cases worktree shows commit b740c29 with all 3 files.",
+  "next_suggestion": "Merge pending worktrees: moni opt-moni-1782639719 has TODO triage ready; AS optimization has scout-scan drift sync. Or find new structural work in sunset-prediction (test gate now fulfilled per case-079, update GATES.md after merge)."
+}

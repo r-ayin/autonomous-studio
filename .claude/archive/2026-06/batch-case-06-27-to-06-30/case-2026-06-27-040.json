@@ -1,0 +1,24 @@
+{
+  "case_id": "case-2026-06-27-040",
+  "agent_id": "autonomous-loop:ralph-wiggum",
+  "timestamp": "2026-06-27T14:05Z",
+  "project": "shizi",
+  "work_unit": "验证 shizi 🔴 CRITICAL `npm run build` 门禁 + 判定/清理 main dist 漂移（上轮 case-039 NEXT_SUGGESTION ② 队列的独立工作单位）",
+  "situation": "shizi main dirty=2（dist/background.js + dist/sidepanel.js modified）；GATES 标 dist 为入库构建产物且警告「source 改动后必须 rebuild 否则 source/dist 不一致」；🔴 CRITICAL `npm run build` 门禁未勾。上轮 case-039 明确将该 dist 漂移留作本轮独立单位，指示：跑 npm run build 比对——若重建=committed 则 git checkout 还原 dirty；若重建=工作区则提交 stale；勿混入 doc 提交。scout-scan 14:00:03Z 全项目 score=0.0 健康，#1=shizi「无明确小工作单位」，三甲（shizi/sunset/wechat）皆空单位。",
+  "action": "①`git checkout -- dist/` 将 dist 恢复至 HEAD（清掉幻影 dirty 基线）。②`npm run build`（=node build.mjs：esbuild 打包 sidepanel/popup/background + 拷贝 manifest/icons/ort-wasm）。③复查 `git diff --stat HEAD -- dist/` 判定 rebuild 是否=committed。④不碰 GATES.md（opt-docs-1782566299 待合并领地，双写冲突）。",
+  "files_changed": [],
+  "worktree": "无——纯验证/判定单元，无文件改动需提交，未开 opt-worktree（遵上轮「勿混入 doc 提交」；rebuild 与 HEAD 一致故无净改动）",
+  "direction": "shizi:build-gate-verify",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "`npm run build` exit code 0；stdout 含「📦 Building CSS... / sidepanel JS / popup JS / background service worker」「📦 Copying ONNX Runtime WASM files」「✅ Extension built to dist/」→ 🔴 CRITICAL build 门禁绿，dist/ 含 manifest.json+background.js+sidepanel.js",
+    "恢复+rebuild 后 `git diff --stat HEAD -- dist/` 空输出（background.js/sidepanel.js 均无差异）→ clean rebuild == committed，先前 dirty 为幻影（部分/历史 rebuild 残留），非真实 source/dist drift",
+    "`git status --short`（shizi main）无输出 → main 干净，幻影 dirty 已还原",
+    "判定结论：dist 无需重新提交；build 门禁可标绿（GATES 勾选留待 opt-docs-1782566299 合并后由 docs 单元处理，避免 GATES.md 双写冲突）"
+  ],
+  "next_suggestion": [
+    "①【shizi 人审合并】opt-shizi-1782567288(bbox2dToPixels+6 vitest 用例)+opt-docs-1782566299(GATES/PROGRESS vitest 事实) 均与 build 门禁无冲突，可人工 `opt-worktree.sh shizi show <wt>` 审后 merge；任一合并后 dist 需再 rebuild（本门已验证 build 绿）",
+    "②【全项目饱和·下轮选型】scout-scan 14:00:03Z 全 score=0.0；真小单位均被 pending worktree 覆盖：x-tool opt-docs-1782551599(填 CLAUDE.md 模板占位)+opt-x-tool-1782563095(triage broker_qmt/run_trader TODO 为 deferred)；moni opt-moni-1782561370(from_akshare 已实现+triage)；sunset 5 worktree(opt-cron/opt-planning/opt-social/opt-sunset/opt-test) 待合并。下轮若无新真债，转「人工合并 pending worktree」或挖深单元（非 .venv/out 第三方、非 AS 自指注释、非需平台实测）",
+    "③【AS 竞争观察·下轮慎写】本会话期间 AS 落 f0da511(opt-scanner 合并)+0fdd192(036/037/039 case 归档)，起始见 UU/AA 中间态合并冲突（opt-worktree.sh/scout-scan.py/PROGRESS.md both modified/added）→ 疑有并发轮次或自动归档在跑；`git update-index --refresh` 清掉幻影冲突态后 main 干净。下轮写 AS case 前先 `git status` 确认无 in-progress merge 避撞；可考虑加 lockfile 防双循环同写"
+  ]
+}

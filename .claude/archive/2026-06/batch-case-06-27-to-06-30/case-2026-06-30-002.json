@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-30-002",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-30T16:19:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "smoke ② 去硬编码 29：改从 build.js stdout 解析真实计数 N 并断言 N>0",
+  "situation": "scout-scan @2026-06-29T16:09Z 报 8 项目全 score=0.0 无紧迫小工作单位；#1=1BfrYW9R（健康度良好，dirty=0），推荐行明示「无明确小工作单位——可跳过或做文档润色」。autonomous-state.md NEXT_SUGGESTION 给 1BfrYW9R 的真小单位之一即「消除 smoke ② 硬编码 29 改从 build.js stdout 解析」。实测 test/smoke.test.js ②（line 34/45）正则 /29 JSX components/ 硬编码 29——新增/删除组件会令 ② 失败需手改测试，而 ⑧（line 436）已从 stdout 解析 N 校验文档漂移，② 硬编码属冗余维护负担且与 ⑧ 模式不一致。",
+  "action": "改 test/smoke.test.js ②：用 r.stdout.match(/(\\d+)\\s+JSX components/) 解析 N，assert.ok(m) + assert.ok(n>0)（零组件触发 ② 失败，与负测⑤「零组件定义 exit 1」呼应），保留 single-file bundle 断言；同步更新文件头注释 line 4、负测⑤注释 line 122（原「仅靠 smoke ② 硬编码 29 兜底」改「现 ② 改从 stdout 解析 N 并断言 N>0」）。同步 GATES.md IMPORTANT ② 描述去 29 改 N（N 从 stdout 解析、断言 N>0，不硬编码）。共改 2 文件。",
+  "files_changed": ["test/smoke.test.js", "GATES.md"],
+  "worktree": "/home/admin/workspace/.opt-worktrees/1BfrYW9R/opt-tests-1782749552 (commit 4907402, 方向 tests:smoke-no-hardcode; main b04d6dd 保持 clean)",
+  "direction": "tests:smoke-no-hardcode",
+  "outcome": "succeeded",
+  "outcome_evidence": "worktree 内 npm test → 12 pass 0 fail（duration_ms 1120）；worktree commit 4907402 含改动（grep worktree 副本：line 35 'test(...N JSX components（N 从 stdout 解析，不硬编码）'、line 47 assert.ok(m,...N JSX components)、line 124 注释更新）；main 工作树 git status --short 空（clean，未直动 main）；⑧ 仍从 stdout 解析 N 校验文档计数（line 440 未动），② 与 ⑧ 现同模式无冗余硬编码",
+  "next_suggestion": "1BfrYW9R GATES NICE 仍剩 2 项 [ ]（真实后端 API 替换 mock、Aone Pages 部署配置）均非小单位；下轮若 1BfrYW9R 仍 #1 可跳过或做骨架屏 loading/empty-state（Phase 2）。否则回 AS 结构性债：复查 AS pending optimization worktree（auto/optimization @766d7e5，53 文件/960 删除疑 diverged-base two-dot-diff misread）——git -C <wt> log --oneline main..auto/optimization 列提交逐 git show --stat <c> 审（勿两点 diff），真分歧 triage/reject、伪发散标注；另 case-047 reset-bypass WIP 续完 cherry-pick 入 main 仍待。opt-tests-1782749552 待人工 merge/reject。"
+}

@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-242",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-29T15:27:00Z",
+  "project": "1BfrYW9R (oneday-design)",
+  "work_unit": "gates:pending-review — 审 opt-gates-1782746627 待合并 worktree + squash merge 入 onedaybot-dev + post-merge 回归验证",
+  "situation": "scout-scan #1=1BfrYW9R(score=0.0)，推荐工作单位即「review 1 个待合并 worktree（人工审 diff + merge/reject）」。该 worktree opt-gates-1782746627 即上一轮 case-241 所产 build.js fail-fast 修复，当时 outcome=succeeded 但尚未合并。本轮职责：人工审 diff 真伪 + 验证测试 + squash merge + 回归确认。merge-base = onedaybot-dev HEAD(632cc51)，即 worktree 从当前 tip 干净分出，无 diverge。",
+  "action": "1) 审 diff: git diff onedaybot-dev..auto/opt-gates-1782746627 → 仅 build.js(+11)/test/smoke.test.js(+36)/.opt-direction(+2/-2)，改动与 case-241 描述一致（去 defer 字符串回退、零组件定义 exit 1、新负测⑨）。2) worktree 内跑 node --test test/smoke.test.js → 9/9 pass（含新负测），无回归。3) 确认 main 工作树 clean(dirty=0) 满足 cmd_merge fast-fast 前置。4) bash scripts/opt-worktree.sh 1BfrYW9R merge opt-gates-1782746627 → squash 合并成功 + worktree 清理。5) post-merge on main 工作树复跑 node --test → 9/9 pass。",
+  "files_changed": ["build.js", "test/smoke.test.js", ".opt-direction"],
+  "worktree": "opt-gates-1782746627 (已 squash→onedaybot-dev 51263cb, worktree 已清理) — 合并目标为 1BfrYW9R main 工作树(branch=onedaybot-dev)",
+  "direction": "gates:pending-review",
+  "outcome": "succeeded",
+  "outcome_evidence": "merge 产物: 1BfrYW9R git log --oneline -2 → '51263cb merge: 人工批准合并 optimization worktree opt-gates-1782746627' + 父 632cc51。合并方式 git merge --squash → Fast-forward Squash commit, stat 报 3 文件 47+/2- 与 diff 一致。post-merge main 工作树 node --test test/smoke.test.js → '# tests 9 # pass 9 # fail 0'（fail-fast gate 及其负测⑨ 在 main 已生效）。worktree 列表 opt-gates-1782746627 已不在 git worktree list(opt-worktree.sh merge 末尾✓ worktree 清理)。无新 dirty。",
+  "next_suggestion": "1BfrYW9R 现无待合并 worktree（仅剩 optimization 常设枝非 stale）。可接 case-241 next_suggestion 末尾的真小工作单位：1BfrYW9R 待办 Phase 2 骨架屏（index.html 86KB 单文件，须小步拆——先拆 loading/empty-state 两骨架壳再扩）；或先消除 smoke ② 硬编码 /29/ 改从 build.js stdout 解析真实计数。两皆小步独立可做。另 autonomous-studio dirty=7 为已 triage 的 case 归档滞留(非债)，下轮若 AS 排 #1 可做 case-orphan rehome 收尾。"
+}

@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-27-022",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-27T11:24:00Z",
+  "project": "sunset-prediction",
+  "work_unit": "18:00 XHS 日报 cron 失败重试 + 告警 sentinel（P2：此前 cron 失败只 console.error 静默降级）",
+  "situation": "scout-scan #1=sunset-prediction(score=1.0)，理由「无 planning/」。查 opt-worktree list 发现 5 个 pending worktree：opt-planning-1782557428(planning:roadmap, 已闭 planning/ 缺口)、opt-sunset-1782557745(sunset:browser-path-config+puppeteer 测试)、opt-social-1782558628(social:cookie-alert)、opt-test-1782559012(test:engine)、optimization(engine:general 空)。scout-scan 对 pending 盲再现：#1 推荐的 planning 缺口已被 opt-planning 覆盖。读上轮 state 的 NEXT_SUGGESTION 指出两条未覆盖新鲜缺口：P2 日报失败重试 / calibration 回归测试。读 server.js + xhs-daily.js 确认：18:00 cron 调 runXHSDaily()，catch 仅 console.error('[cron] XHS generation failed')，无重试无告警——GATES NICE「cron 失败有重试或告警」门未过（opt-sunset 的 GATES 编辑也仍留此行 unchecked）。xhs-daily.js 内部截图失败已是 non-fatal，真缺口在 cron 层静默降级。",
+  "action": "server.js 单文件非破坏改动：新增 runWithRetry(fn,{retries=2,delayMs=10000,label}) 辅助——for attempt 1..retries+1，try/catch 累积 lastErr，未达上限则 console.warn 重试日志 + setTimeout 间隔，耗尽抛 lastErr。18:00 cron 把 runXHSDaily() 包成 () => runWithRetry(()=>runXHSDaily(),{retries:2,delayMs:10000,label:'XHS'})，catch 末尾加 console.log('[ALERT][xhs] daily generation failed after 3 attempts: <msg>') grep-friendly sentinel（与 opt-social 的 [ALERT][social] 模式一致，便于 cron 日志聚合告警）。返回值/路由不变。",
+  "files_changed": ["server.js"],
+  "worktree": "opt-cron-1782559442",
+  "direction": "cron:xhs-retry",
+  "outcome": "succeeded",
+  "outcome_evidence": "node --check server.js → SYNTAX OK。opt-worktree commit 因 area cron≠engine 自动开新 worktree opt-cron-1782559442（branch auto/opt-cron-1782559442 off main 2ec3a27）；但脚本 stash push -u+pathspec 静默失败致「⚠️ stash apply 冲突，改动留在 stash」误报——实测 stash list 空、改动仍留 main 工作树。手动收尾：cp server.js 入 worktree + git -C commit，得提交 8948bfe，diff --stat main..HEAD = server.js 1 file 20 insertions 1 deletion（仅新增 runWithRetry+sentinel，未动其余 cron/路由）。main 经 git checkout -- server.js 恢复，git status --porcelain 为空（main clean: YES）。",
+  "next_suggestion": "下轮候选：(a) sunset-prediction 现 6 个 pending worktree（opt-planning/opt-sunset/opt-social/opt-test/opt-cron/optimization）全部待人工 merge，merge opt-planning 后 score=1.0「无 planning/」缺口消失、scout #1 易主——优先让人 merge 而非再开新方向；(b) 若仍选 sunset 未覆盖缺口：calibration.js 回归测试（P0 双信号校准管线仍 0 测试保护，方向 test:calibration 会复用 opt-test worktree 同 area，注意 opt-sunset 的 909bd65 与 opt-test 的 501ecfb 已重复加了 prediction-engine 测试=scout 盲区撞车，下轮 test 方向需先查避免再加第三份）；(c) opt-worktree.sh 的 stash push -u+pathspec 静默失败是新发现的脚本 bug（line 95 git stash push -u -m -- $files 失败被 >/dev/null 2>&1 吞、line 101 pop 无 stash 误报「冲突」），值得回 autonomous-studio 修脚本：stash push 后检 exit code、无 stash 则直接 cp 文件入 worktree。动手前必查 opt-worktree.sh list。"
+}

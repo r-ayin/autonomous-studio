@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-06-29-093",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-06-29T03:45:00+08:00",
+  "project": "autonomous-studio",
+  "work_unit": "archive 5 orphan case files (088-092) from cross-project work",
+  "situation": "5 untracked case files on autonomous-studio main (dirty=5), all from cross-project autonomous rounds targeting wechat-main/sunset-prediction/moni-master. Scout-scan showed all 8 projects at health score 0.0, so housekeeping was the top actionable work.",
+  "action": "Committed case-088 through case-092 to opt-cases-1782639135 worktree using opt-worktree.sh commit cases:case-archive",
+  "files_changed": [
+    ".claude/decisions/case-2026-06-29-088.json",
+    ".claude/decisions/case-2026-06-29-089.json",
+    ".claude/decisions/case-2026-06-29-090.json",
+    ".claude/decisions/case-2026-06-29-091.json",
+    ".claude/decisions/case-2026-06-29-092.json"
+  ],
+  "worktree": "opt-cases-1782639135",
+  "direction": "cases:case-archive",
+  "outcome": "succeeded",
+  "outcome_evidence": "git status on AS main returns empty (dirty=5→0); opt-cases worktree has the 5 files committed",
+  "next_suggestion": "Check optimization worktree (4 unmerged commits: gates-audit, calibration-cleanup, scanner-worktree-exclude, scanner-drift-sync) — per memory, cherry-pick by file not full merge to avoid scout-scan.py regression"
+}

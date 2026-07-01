@@ -1,0 +1,18 @@
+{
+  "case_id": "case-2026-06-29-035",
+  "agent_id": "claude-sonnet-4-6",
+  "timestamp": "2026-06-29T06:30:00Z",
+  "project": "skills",
+  "work_unit": "gitignore ClawHub-installed stub directories",
+  "situation": "scout-scan --workspace /home/admin/workspace 返回 3 条推荐均为 blocked（等待人工合并）。skills 项目 PROGRESS.md 列有待办项：oneday-capability-register、oneday-open-cli 两个 untracked 目录需决定跟踪策略。检查后发现两者均为 ClawHub 自动安装的 stub（只有 .clawhub/origin.json，无 SKILL.md 等 authored 内容），repo 中所有其他技能均为本地 authored（无 .clawhub/）。",
+  "action": "在 skills/.gitignore 中添加 oneday-capability-register/ 和 oneday-open-cli/ 的忽略规则（带注释说明原因）；更新 PROGRESS.md 状态描述和待办列表（标记该项为 [x]）；通过 opt-worktree 提交到已有同 area worktree opt-skills-1782670300；发现 PROGRESS.md 中「当前状态」段描述被回退，随即 amend 修正。",
+  "files_changed": [
+    "skills/.gitignore",
+    "skills/PROGRESS.md"
+  ],
+  "worktree": "opt-skills-1782670300",
+  "direction": "skills:gitignore-stubs",
+  "outcome": "succeeded",
+  "outcome_evidence": "git diff HEAD~1 HEAD 显示 .gitignore 新增两条规则；git status 不再显示两个目录为 untracked；worktree commit 3674afd 成功；PROGRESS.md 待办项标记为 [x]，当前状态描述更新为 2026-06-29 已完成。",
+  "next_suggestion": "1) 人工批准合并 opt-skills-1782670300（.gitignore + PROGRESS.md 更新，低风险）；2) 为 skills 项目添加 GATES.md（PROGRESS.md 待办第二项，需 opt-docs-1782658244 合并后再叠加或新建 worktree）；3) 人工批准合并 opt-gate-1782679188（autonomous-studio-aone commit-gate 扩拦）；4) 处理 scout-scan blocked 推荐：批准 opt-docs-1782638147/opt-agent-dashboard-1782638553/opt-docs-1782638790"
+}

@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-06-28-068",
+  "agent_id": "ralph-loop",
+  "timestamp": "2026-06-28T10:16:00Z",
+  "project": "stagehand-analysis + autonomous-studio",
+  "work_unit": "merge stagehand-analysis PROGRESS.md worktree + fix .opt-direction leak bug in opt-worktree.sh",
+  "situation": "scout-scan #1 = stagehand-analysis (score 6.08), PROGRESS.md pending in worktree opt-docs-1782637586. During merge, discovered .opt-direction metadata file leaking into main — a systemic bug in cmd_merge() that never excluded this internal worktree file.",
+  "action": "1) Merged stagehand-analysis opt-docs-1782637586 worktree (PROGRESS.md → main). 2) Removed leaked .opt-direction from stagehand-analysis main. 3) Fixed opt-worktree.sh cmd_merge() to git rm .opt-direction before committing squash merge. 4) Committed fix to autonomous-studio optimization worktree.",
+  "files_changed": [
+    "stagehand-analysis/PROGRESS.md (merged)",
+    "stagehand-analysis/.opt-direction (removed from main)",
+    "autonomous-studio/scripts/opt-worktree.sh (bug fix)"
+  ],
+  "worktree": "optimization (autonomous-studio), main (stagehand-analysis)",
+  "direction": "engine:merge-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "stagehand-analysis: PROGRESS.md present on main (commit 6ec0c85), .opt-direction removed. opt-worktree.sh: lines 214-215 now run `git rm -f --cached .opt-direction` before merge commit. No other projects have tracked .opt-direction leaks.",
+  "next_suggestion": "继续合并其余待合并 PROGRESS.md worktree (1BfrYn9G score=6.0, agent-dashboard score=6.0); x-tool PROGRESS.md stale 8.4天需刷新; skills 有 5 个 TODO 可清理"
+}

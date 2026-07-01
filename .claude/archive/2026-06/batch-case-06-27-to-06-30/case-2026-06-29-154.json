@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-154",
+  "agent_id": "ralph-wiggum-loop",
+  "timestamp": "2026-06-29T04:29:05Z",
+  "project": "1BfrYW9R",
+  "work_unit": "清理 1 个空 optimization worktree（内容已在 main）",
+  "situation": "scout-scan #1 推荐：1BfrYW9R 有 1 个待处理 worktree，标记为空(可清理)。检查发现 auto/optimization HEAD=5710dd5 已被 onedaybot-dev 包含（merge-base=HEAD），无 ahead 提交、工作树干净。属于历史合并后残留。",
+  "action": "git worktree remove /home/admin/workspace/.opt-worktrees/1BfrYW9R/optimization；rmdir 空父目录 .opt-worktrees/1BfrYW9R。无需代码改动，纯 git 状态清理。",
+  "files_changed": [],
+  "worktree": "none (cleanup of .opt-worktrees/1BfrYW9R/optimization)",
+  "direction": "maintenance:worktree-cleanup",
+  "outcome": "succeeded",
+  "outcome_evidence": "git worktree list 输出仅保留主 worktree '/home/admin/workspace/1BfrYW9R 32dd3d9 [onedaybot-dev]'；.opt-worktrees/1BfrYW9R 目录已删除；ls .opt-worktrees 不再含 1BfrYW9R 条目。",
+  "next_suggestion": "autonomous-studio dirty=4（main 上有未提交文件），下轮可检查这些 dirty 文件是否为遗留 case/orphan 并归档或清理；若为有效 WIP 则用 opt-worktree commit 收口。"
+}

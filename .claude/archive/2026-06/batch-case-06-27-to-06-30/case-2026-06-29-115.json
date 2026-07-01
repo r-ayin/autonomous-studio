@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-115",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-06-29T21:51:00Z",
+  "project": "autonomous-studio + personal-assistant",
+  "work_unit": "worktree merge+cleanup (AS: case-114 ff-merged + 2 worktrees removed; PA: PROGRESS.md sync ff-merged + .opt-direction artifact removed + 2 worktrees removed) + opt-worktree.sh bugfix (.opt-direction leak via git add -A)",
+  "situation": "scout-scan: all 8 projects score=0.0. #1 1BfrYW9R no actionable. #2 AS had 1 pending worktree (opt-cases-1782683259: case-114) + 1 empty (optimization). PA had 1 pending worktree (opt-progress-1782683222: PROGRESS.md sync) + 1 empty. Noticed .opt-direction artifact leaking into PA commit — traced root cause to opt-worktree.sh using bare `git add -A` in worktree without excluding .opt-direction.",
+  "action": "1) FF-merged AS opt-cases-1782683259 (case-114.json), removed both AS worktrees. 2) FF-merged PA opt-progress-1782683222 (PROGRESS.md v0.3/v0.4/test sync), then committed chore removal of leaked .opt-direction. Removed both PA worktrees. 3) Fixed root cause in opt-worktree.sh: added `git rev-parse --git-dir` + `mkdir -p $gitdir/info` + `echo .opt-direction >> $gitdir/info/exclude` before `git add -A`. First attempt used bare `.git/info/exclude` which failed (worktree .git is a file not a directory). 4) Committed fix via opt-worktree, merged into AS main, synced live copy.",
+  "files_changed": ["scripts/opt-worktree.sh"],
+  "worktree": "opt-infra-1782683658 (merged+cleaned)",
+  "direction": "infra:bugfix",
+  "outcome": "succeeded",
+  "outcome_evidence": "AS git worktree list: only main (ec76853). PA git worktree list: only main (c8a0da1). grep confirms `git rev-parse --git-dir` + exclude pattern at line 128-130 in both AS and workspace copies. .opt-direction no longer in PA tracked files (git rm'd).",
+  "next_suggestion": "1) Reconcile opt-worktree.sh next-case divergence between AS copy and workspace copy (AS has newer on-disk-ls version, now synced to workspace). 2) shizi/wechat-main PROGRESS.md 0.5d stale. 3) All projects healthy — deeper structural work (test coverage, edge-case hardening)."
+}

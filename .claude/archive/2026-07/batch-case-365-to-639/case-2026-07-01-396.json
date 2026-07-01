@@ -1,0 +1,32 @@
+{
+  "case_id": "case-2026-07-01-396",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-01T03:27Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "code-audit:autonomous-studio-aone (auto-commit.py security-review · git add -A 绕过 EXCLUDED_PREFIXES 过滤 → 修复 + DO B audit-log 埋点)",
+  "direction": "audit",
+  "situation": "DO A 强制审计轮 case-396=396%4=0=0。承接 case-395 NEXT 审 .claude/hooks/ 未审 hook。scout-scan #1=AS score=0.0 无紧迫单位,审计轮挑有源码项目。已审 hook 集={autonomous-commit-gate.py(376/377/378)·codegraph-sync.py(384)·notify-phone.py(388)·pipeline-gate.py(392)},从未审集 {discovery-gate.py(387L)/decision-observer.py(688L)/auto-commit.py(377L)} 中挑 auto-commit.py——subprocess git commit + push origin 子仓库到远端,属敏感外部调用面,且涉及排除规则/凭证暴露风险,审计价值高于其余二者。",
+  "action": "人工 security-review auto-commit.py 五维(注入/权限/PII-凭证/错误处理/资源)。权限/PII 无真问题;subprocess 全用 list 形式无 shell=True 无注入;错误处理 do_commit 包 try+merge 冲突门控;资源无泄漏。凭证/排除维度发现 1 medium:L313 `git add -A` 绕过 EXCLUDED_PREFIXES 过滤——get_project_changes 用 is_excluded 过滤构建 changes 列表但仅用于 commit 消息生成,实际暂存 git add -A 把全部变更(含 .claude/ 内部文件、非 gitignore 的 .env/凭证)一并暂存并 commit+push 到 origin,违背 L6 文档意图『跳过 .claude/ 等内部文件』。起 opt-worktree engine:security @e0b9b8b 修 1 file +56/-2:①git add -A → git add -- <filtered changes + PROGRESS.md> 显式列路径暂存,fail-safe(路径含特殊字符致 add 失败则 return False 不退回 -A 泄漏);②补 DO B _audit_log_commit 埋点(action=file_write/resource=repository/result=success|failure 落 <WORKSPACE_ROOT>/.audit/audit-YYYY-MM-DD.jsonl,写到引擎仓免子仓 .audit/ 反馈环,fail-safe 吞异常),使原仅 stderr 静默打印的 commit+push 可观测。残留 1 low:.env* 文件未纳入 EXCLUDED_PREFIXES,依赖各子仓 .gitignore;若 .env 被跟踪修改仍会被暂存——防御纵深,本轮不修(加 .env 前缀会误伤 .env.example 合法配置且不解 .env.local,需 quote-aware pathspec 方案,超小工作单位范围)。",
+  "files_changed": [".claude/hooks/auto-commit.py"],
+  "worktree": "optimization @ e0b9b8b (方向 engine:security, pending sanctioned-merge)",
+  "outcome": "succeeded",
+  "outcome_evidence": "py_compile .claude/hooks/auto-commit.py OK(无语法错)。staging 行为回归(mock git status --porcelain=' M src/app.py\\n M .claude/config.json\\nA  PROGRESS.md' + fake git)→ git add 调用 args=['add','--','src/app.py','PROGRESS.md']:.claude/config.json 被排除未暂存、src/app.py 正常暂存、'-A' 不再出现(REGRESSION PASS)。audit helper 单测:_audit_log_commit('moni','success',...) 写出 JSONL,id 匹配 ^audit-\\d{8}-\\d{6}-[a-zA-Z0-9]{6}$,required fields[id/timestamp/userId/action/resource/result/ip]齐全,action=file_write result=success resource.type=repository resource.identifier=moni userRole=engine ip=local(AUDIT HELPER OK)。worktree commit e0b9b8b diffstat=.claude/hooks/auto-commit.py 1file +56/-2。main 干净(git status --porcelain 空)。LIVE 副本 ~/.claude/hooks/auto-commit.py(377L 旧版)未在 ~/.claude/settings.json 注册(grep auto-commit.py 无命中,settings 仅引 studio-auto-commit-remind.sh)→休眠副本无需 LIVE 同步。",
+  "next_suggestion": "sanctioned-merge opt-worktree engine:security @e0b9b8b(auto-commit.py 闭合 git add -A 绕过 + DO B audit 埋点)——预审 diff 仅 .claude/hooks/auto-commit.py 1file 与归档环无源码重叠。下轮 case-397=397%4=3≠0 非审计轮合规 skip;case-400=400%4=0 下次审计轮审剩余未审 hook discovery-gate.py(387L)/decision-observer.py(688L)。",
+  "audit_type": "security-review",
+  "audit_findings": [
+    {
+      "file": ".claude/hooks/auto-commit.py",
+      "line": 313,
+      "severity": "medium",
+      "finding": "do_commit L313 `git add -A` 暂存全部变更,绕过 EXCLUDED_PREFIXES 过滤机制。get_project_changes 用 is_excluded 过滤(.claude/node_modules/.venv/__pycache__/.git/.pytest_cache 等)构建 changes 列表,但该列表仅用于 generate_commit_message 生成 commit 消息;实际暂存走 git add -A 把仓库内全部 modified/untracked 文件一并 stage——包括 .claude/ 内部文件(违背 L6 文档规则『跳过 .claude/ 等内部文件』)及任何非 .gitignore 的 .env/凭证文件。随后 commit + push origin 将这些敏感/内部文件推送到子仓库远端,造成内部文件泄漏与潜在凭证暴露。威胁模型:子仓库(moni/wanxia/pachong-master)内若有被跟踪的 .env 或 .claude/ 改动即被自动推送,无需刻意构造。",
+      "remediation": "已修(worktree e0b9b8b 待 sanctioned-merge):git add -A → `git add -- <stage_paths>` 显式列路径暂存,stage_paths=[c['path'] for c in changes](已过滤)+ PROGRESS.md(若未在 changes)。fail-safe:若 git status --porcelain 带引号路径致 git add 失败则 return False 放弃本次提交,绝不退回 git add -A 泄漏。回归 mock 验证 .claude/config.json 不再被暂存、src/app.py 正常暂存。"
+    },
+    {
+      "file": ".claude/hooks/auto-commit.py",
+      "line": 38,
+      "severity": "low",
+      "finding": "EXCLUDED_PREFIXES 未纳入 .env* 类凭证文件,凭证保护完全依赖各子仓库 .gitignore。若某子仓的 .env 被跟踪(git status 显示为 modified)则经 changes 列表(未被 is_excluded 命中)→ 仍被暂存+commit+push。属防御纵深缺口,非 git add -A 绕过类(本轮主修复后残留)。",
+      "remediation": "本轮不修(超小工作单位范围):直接加 \".env\" 到 EXCLUDED_PREFIXES 会因前缀匹配误伤 .env.example(classify_change_type config_exts 明确视 .env.example 为合法配置)且不解 .env.local/.env.production;正确方案需 quote-aware pathspec 或 gitignore-based staging,改动面与回归风险大。记入 triage 待后续轮次评估。"
+    }
+  ]
+}

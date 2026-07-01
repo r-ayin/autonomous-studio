@@ -1,0 +1,23 @@
+{
+  "case_id": "case-2026-06-30-322",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-30T01:30:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "根治 standing optimization worktree 自指循环——cmd_merge 成功后不删 auto/optimization 分支 ref",
+  "situation": "scout-scan 2026-06-30T01:29:32Z 推 AS #2『review 1 个待合并 worktree』。查 AS standing optimization worktree(auto/optimization @883cfbf) cherry 对账：case-313/314/315/317/318 经 merge commit 已在 main(cat-file 证 PRESENT)，仅 case-321.json 真未合(ABSENT from main)；cherry 对 5886519/649ca3c 显 `+` 系假阳性(内容经 squash-merge 入 main 而 opt 侧单提交本身未 cherry-pick)。case-321 自陈属 [[autonomous-engine-self-selection-fix]] 类自指循环：每轮重审同 standing worktree、写新 case 称已合、case 文件本身滞留 worktree 成下轮唯一未合内容。根因定位到 scripts/opt-worktree.sh cmd_merge(行229-260)：squash+`worktree remove` 后**不删 auto/<wt> 分支 ref**(cmd_reject 行268 才 branch -D)，致下轮 cmd_init 的 `worktree add -b auto/optimization`(行54)因 ref 已在而失败、fallback `worktree add \"$dir\" auto/optimization`(行55)检出陈旧 tip，新提交堆旧 tip 上 → cherry 永显伪 +/两点 diff 永显伪删/循环。即记忆 [[opt-worktree-merge-leaves-branch-ref]] 记录的待根治缺口。",
+  "action": "最小改动(1 文件 1 处)：cmd_merge 成功分支内 `worktree 清理` echo 后加 `git -C \"$PROJECT\" branch -D \"auto/$(basename \"$dir\")\" 2>/dev/null || true`(同 cmd_reject 行268) + 4 行注释说明根因/gate 豁免。两副本同改防漂移([[opt-worktree-root-as-copy-drift]])：root live(/home/admin/workspace/scripts/opt-worktree.sh,非 git 实跑) + AS git(autonomous-studio/scripts/opt-worktree.sh,跟踪)——md5 同施前后均逐字节一致(9ad95d69...)。gate 安全核验：autonomous-commit-gate.py 行160-163 branch 子命令仅拦 `-D main/master`(MAIN_BRANCHES={main,master})，auto/* 放行；cmd_reject 已长期用同句无事(precedent)。验证流程：(1)用已修复 root live 提交 AS git 副本进 standing worktree→tip 1998d34(883cfbf+fix)；(2)merge optimization→squash 合 case-321+fix 入 main；(3)新 branch -D 行触发清 auto/optimization ref。",
+  "files_changed": ["scripts/opt-worktree.sh"],
+  "worktree": "auto/optimization (standing, fix 提交于 1998d34 后 squash-merge 入 main cf58222, worktree+ref 均清)",
+  "direction": "engine:merge-ref-cleanup",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "merge 输出实含 `Deleted branch auto/optimization (was 1998d34).` + `✓ 分支 ref auto/optimization 清理` —— 新增 branch -D 行确实触发(修复前 cmd_merge 无此行)",
+    "post-merge `git -C autonomous-studio cat-file -e main:.claude/decisions/case-2026-06-30-321.json` = PRESENT(pre-merge ABSENT) —— 真未合内容已落 main",
+    "post-merge `grep -c '根治 standing worktree 自指循环' autonomous-studio/scripts/opt-worktree.sh` = 1 —— 修复已落 AS main",
+    "post-merge `git -C autonomous-studio worktree list` 仅 main 一行(standing optimization 已清,pending 1→0)",
+    "post-merge `git -C autonomous-studio branch --list 'auto/optimization'` 空(ref 已删,下轮 cmd_init 将 -b 自 fresh main 成功而非 fallback 陈旧 tip —— 循环根除)",
+    "root live 与 AS main 两副本 md5 均 9ad95d69533bd215a16697f122e3e51e(同施无漂移,符合 [[opt-worktree-root-as-copy-drift]] 纪律)",
+    "bash -n 两副本均 OK(语法未破)"
+  ],
+  "next_suggestion": "本工作单位为引擎根因修复,无新代码债。下轮可选(独立):(a) 清理 AS 仓库 46 个陈旧 auto/opt-* orphan 分支 ref(历轮 pre-fix cmd_merge 残留,均无 worktree 目录,非循环根因但属噪声——`git branch -D` 批量,须先确认无对应 worktree dir);(b) 归档 main 上 untracked 孤儿 case-319/320(1BfrYW9R 跨项目 case,合法 succeeded,可并入下轮 case 提交);(c) scout-scan 下轮 #1=1BfrYW9R『可跳过』弱单位,可顺延做 AS 延期 TODO=6 或转 personal-assistant/sunset-prediction 健康项目文档润色。推荐先 (b) 清孤儿。"
+}

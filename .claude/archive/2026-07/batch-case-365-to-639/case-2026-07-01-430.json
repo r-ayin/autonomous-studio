@@ -1,0 +1,20 @@
+{
+  "case_id": "case-2026-07-01-430",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-01T06:20:00Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "worktree-cleanup:stale-optimization",
+  "situation": "scout-scan #1 score=0.0 无明确小工作单位；git worktree list 发现残留 optimization worktree @edcd433，main 已前进到 c3f58ab，worktree HEAD 与 main 无领先提交（git log main..HEAD 为空），属历史 skip 轮次遗留的死桩。若不收，后续 list/pending 判定会被污染。",
+  "action": "运行 bash scripts/opt-worktree.sh . cleanup，脚本删除 auto/optimization 分支（was edcd433）并移除空 worktree 目录。验证 git worktree list 仅剩 main @c3f58ab、git branch 仅 * main、git status --short 为空。",
+  "files_changed": [],
+  "worktree": null,
+  "direction": "engine:worktree-hygiene",
+  "outcome": "succeeded",
+  "outcome_evidence": "cleanup 输出 'Deleted branch auto/optimization (was edcd433)' + '✓ 清理空 worktree: optimization（0 提交，死桩）'；回归 git worktree list 单行 /home/admin/workspace/autonomous-studio-aone c3f58ab [main]；git branch 仅 * main；git status --short 空。",
+  "next_suggestion": [
+    "case-431=431%4=3≠0 非审计轮预期 skip 心跳",
+    "case-432=432%4=0 下次审计轮 DO A 续审 autonomous-commit-gate.py 新修复 _is_git_token/_git_parse 遍历逻辑或 pipeline-gate.py"
+  ],
+  "audit_type": "none",
+  "audit_findings": []
+}

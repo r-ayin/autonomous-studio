@@ -1,0 +1,34 @@
+{
+  "case_id": "case-2026-07-01-366",
+  "agent_id": "ralph-wiggum-engine",
+  "timestamp": "2026-07-01T00:13:47Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "audit-log-instrumentation:opt-worktree-reject-cleanup",
+  "situation": "case-365 NEXT_SUGGESTION[2] 标记的真结构性缺口：audit_log() 仅在 cmd_merge（line 533 success/543 failure）埋点，而 cmd_reject（删 worktree + branch -D）与 cmd_cleanup（批量删空 worktree + 孤儿分支 branch -D）是 DO B 明列的「删除/批量操作」敏感路径却无任何审计埋点——三条 delete 路径与 merge 的 deploy 路径不对称。本轮 366%4=2≠0 非审计轮次，但 DO B 规定「触及敏感路径时强制补埋点」，故选此 instrumentation 作为小工作单位（非日常润色：闭合引擎自标注的安全审计缺口）。",
+  "action": "1 文件 scripts/opt-worktree.sh +19/-2。(a) 参数化 audit_log()：签名增 action=${5:-deploy} rtype=${6:-deployment} 两默认参数，printf 把硬编码 \"deploy\"/\"deployment\" 改 %s 占位——默认值保证既有 cmd_merge 两处调用（4 参数）行为完全不变（diff 显 @@ -43,8 +47,8 仅 printf 行+新 local 行）。(b) cmd_reject 增 audit_log 调用：worktree 目录消失→success，仍在→failure（result 如实反映，非恒 success；branch -D best-effort 失败仅 reason 标注）。(c) cmd_cleanup 主循环每删一条空 worktree 记一条 delete/artifact/success。(d) cmd_cleanup 孤儿分支循环每删一条 auto/opt-* 记一条。附：commit 前 cp-guard 阻塞（持久 optimization wt @7d41e33 落后 main 8 commit 致其 opt-worktree.sh 旧版与 main HEAD 不同被跳过）——ff-only 同步 auto/optimization 7d41e33→a1ae39b（已验证 ancestor-of-main+worktree-clean，安全可逆），收口 NEXT_SUGGESTION[3] 漂移，cp-guard 放行后 commit 成功 @19f41ab。",
+  "files_changed": ["scripts/opt-worktree.sh"],
+  "worktree": "optimization @19f41ab（pending sanctioned-merge；方向 engine:audit-reject-cleanup）",
+  "direction": "engine:audit-reject-cleanup",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "bash -n scripts/opt-worktree.sh → OK（语法）",
+    "隔离函数测试 4 路径 JSONL 全 jq -c . 有效：cmd_merge 默认 deploy/deployment/success（行为不变）+ reject success/failure delete/artifact + cleanup delete/artifact/success；id 模式 audit-20260630-161133-af2b67 匹配 ^audit-\\d{8}-\\d{6}-[a-zA-Z0-9]{6}$；action deploy|delete 入 schema enum；resource.type deployment|artifact 入 enum；sensitiveLevel=high 符合 sensitiveActionRules delete→high 规则",
+    "E2E 真实代码路径测试（temp repo 跑 19f41ab 版 opt-worktree.sh）：cmd_cleanup 删 0-commit dead-stub → 写 delete/artifact/success reason='cleanup empty worktree (0 commits, dead stub); branch auto/optimization -D'；cmd_reject 删 worktree → 写 delete/artifact/success reason='rejected worktree; branch auto/optimization -D (best-effort)'。两路径 audit_log 真实触发，非仅隔离函数",
+    "git diff HEAD~1 -- scripts/opt-worktree.sh（optimization wt 19f41ab）显 +19/-2 三处调用点+参数化 printf 全落地；main status 空（cmd_commit 还原 main 至 HEAD，改动隔离在 wt）"
+  ],
+  "next_suggestion": [
+    "[1]【sanctioned-merge·case-367】opt-worktree.sh . merge optimization @19f41ab → main。audit_log 现 LIVE 覆盖 merge/reject/cleanup 三路径；本次 merge 自身将触发 deploy/deployment/success JSONL（main 旧版已有 audit_log，非自举首跑，应正常触发）。差异预审 merge-base(main=a1ae39b,19f41ab)=a1ae39b diff 仅 scripts/opt-worktree.sh +19/-2 无重叠回退",
+    "[2]【DO A 强制审计·case-368】368%4=0=审计轮次。换审 audit_log instrumentation 本身（case-364..366 累积）：重点 reason 字段经 printf %s 未 JSON 转义——reason 含 worktree 名/分支名/路径（git refname 禁 \" \\ 控制符故实践不可注入，但 defense-in-depth 应 python json.dumps 或 sed 转义；audit_findings 已记此 low 项）",
+    "[3]【剩余不对称·低危延后】cmd_commit line 384-385 copied=0 回滚路径删新建分歧 wt+branch -D 仍无 audit_log（内部回滚非用户发起 delete，未在本轮 scope）——可后续补 audit_log success ... rollback-divergent-wt 保持全路径对称"
+  ],
+  "audit_type": "audit-log-instrumentation",
+  "audit_findings": [
+    {
+      "file": "scripts/opt-worktree.sh",
+      "line": 51,
+      "severity": "low",
+      "finding": "audit_log() printf 用 %s 拼 reason 字段进 JSONL 字符串，未做 JSON 转义。reason 含 worktree 名/分支名/路径（如 auto/$(basename \"$dir\")）。若未来 reason 拼入用户可控且含 \" 或 \\ 的字符串会破坏 JSONL 有效性。当前安全因 git refname 语法禁 \" \\ 控制符（reason 的动态部分皆 refname 派生），实践不可注入，但属 defense-in-depth 缺口。",
+      "remediation": "case-368 审计轮处理：reason 写入前 sed 转义 \" 与 \\（或改 python json.dumps）。低危非阻断，不阻断本轮 merge。"
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-06-30-298",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-30T00:00:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "review + merge pending worktree opt-gates-1782773566（HTTP 方法守卫 405）",
+  "situation": "scout-scan 推荐 #1 = 1BfrYW9R，工作单位=review 1 个待合并 worktree（人工审 diff + merge/reject）。该 worktree 单提交 c8c15f7 领先 base onedaybot-dev，diff 5 文件 +83/-3：dev-server.js 在 createServer 首行加方法守卫（非 GET/HEAD → 405 + Allow: GET, HEAD），test/smoke.test.js 加 69 行回归锁，GATES.md 24→25，PROGRESS/.opt-direction 同步。",
+  "action": "逐文件审 diff：(1) 守卫落在所有路由之前（探针 /healthz 亦受法），HEAD 放行交 Node 协议层——语义正确；(2) 回归锁覆盖控制组 GET / 200 + 三负向 POST/ / DELETE /index.html / PUT /healthz→405，并明示突变复测路径（if(false) 转红证锁真咬），方法维度此前零测覆盖，锁非死代码。在 worktree 内跑 node --test test/smoke.test.js 实测 25 pass 0 fail（test 25 = 新方法守卫测 pass，167ms）。判定真咬、合。用 opt-worktree.sh 1BfrYW9R merge opt-gates-1782773566 走 sanctioned squash-merge 路径（auto/opt-gates-1782773566 → onedaybot-dev），worktree 自动清理。",
+  "files_changed": [
+    "1BfrYW9R/dev-server.js",
+    "1BfrYW9R/test/smoke.test.js",
+    "1BfrYW9R/GATES.md",
+    "1BfrYW9R/PROGRESS.md",
+    "1BfrYW9R/.opt-direction"
+  ],
+  "worktree": "opt-gates-1782773566（合并后已清理）",
+  "direction": "gates:method-guard",
+  "outcome": "succeeded",
+  "outcome_evidence": "merge 提交 11e3354 落 onedaybot-dev（git log --oneline -1 确认）；main working tree 复跑 node --test test/smoke.test.js = tests 25 / pass 25 / fail 0（非散文，实测输出）；worktree 目录已删（opt-worktree.sh merge 末行 ✓ worktree 清理）。",
+  "next_suggestion": "scout-scan 当前所有项目健康度良好、无紧迫小工作单位；下轮可审 autonomous-studio 延期已 triage 的 6 条 TODO 是否有可清掉的，或对 sunset-predict/wechat-main 做 GATES 复测式文档润色。1BfrYW9R 仍有 60+ commits 未推 origin/onedaybot-dev（公司内网不通 GitHub，按既有约定不推）。"
+}

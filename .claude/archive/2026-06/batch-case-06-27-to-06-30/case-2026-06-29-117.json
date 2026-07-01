@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-117",
+  "agent_id": "autonomous-loop",
+  "timestamp": "2026-06-29T22:05Z",
+  "project": "sunset-prediction",
+  "work_unit": "GATES.md 7 门禁核销 + pending worktree 合并清理",
+  "situation": "上轮 case-116 修复 .env 崩溃并核销 4 CRITICAL 门禁，遗留 opt-startup-1782684015 待合并 + optimization 空 worktree。剩余 12 门禁未验证。",
+  "action": "1) 合并 opt-startup-1782684015 到 main（fast-forward），清理两个 worktree。2) 启动 server.js 实测 3 条剩余 CRITICAL 门禁：GET / 200、/api/predictions 200+JSON、5 cron 全注册（修正 GATES 原描述 4→5）。3) 顺带验证 IMPORTANT/NICE/GitHub-sync 4 条：xhs/latest 404(非500)、xhs-posts/ 有 5 条 JSON、无硬编码密钥（grep 零命中）、README+PROGRESS 已存在。4) 更新 GATES.md 核销 7 条。",
+  "files_changed": ["GATES.md"],
+  "worktree": "opt-gates-1782684343",
+  "direction": "gates:verify",
+  "outcome": "succeeded",
+  "outcome_evidence": "curl GET / → 200; /api/predictions → 200; /api/predictions/beijing → 完整 JSON; 5 cron 在 server.js L37-122; /api/xhs/latest → 404; data/xhs-posts/ ls 5 files; grep hardcoded secrets → 0 hits; GATES 已核 11/15",
+  "next_suggestion": "①【sunset-prediction】核销剩余 4 门禁: health-check.py、npm run build、POST /api/xhs/generate(需实现路由)、cron 重试告警。②【shizi】PROGRESS.md 0.5d stale — date sync。③【wechat-main】PROGRESS.md 0.5d stale。"
+}

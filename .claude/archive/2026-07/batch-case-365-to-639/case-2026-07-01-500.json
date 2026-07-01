@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-01-500",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-01T04:35:00Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "scripts/autonomous-loop.sh L-001 trap cleanup",
+  "situation": "audit-2026-07-01-002 finding L-001 (LOW): autonomous-loop.sh 无 INT/TERM trap，Ctrl-C 后 claude -p 子进程可能成孤儿。derived_fixes priority=7，前 6 条 H/M 已派生待 merge，本轮派 L-001。",
+  "action": "在 set -uo pipefail 后、WORKSPACE 赋值前插入 trap 'kill 0; exit 130' INT TERM，确保信号到达时终止整个进程组（含 run_round 内 claude -p）。bash -n 语法检查通过。opt-worktree.sh commit 自动判 direction-shift（触及 engine area），开新 worktree opt-engine-shift-1782880465 并 push origin。",
+  "files_changed": ["scripts/autonomous-loop.sh"],
+  "worktree": "opt-engine-shift-1782880465",
+  "direction": "engine:trap-cleanup",
+  "outcome": "succeeded",
+  "outcome_evidence": "bash -n 通过；commit hash 在 opt-engine-shift-1782880465；push 输出 'new branch HEAD -> auto/opt-engine-shift-1782880465'；grep -n 'trap' scripts/autonomous-loop.sh 应显示新增行（main 上未合入，待 sanctioned-merge）",
+  "next_suggestion": "下轮派 L-002（opt-worktree.sh:364 files 相对路径 cd 后失效 → cd 前转绝对路径）；之后 L-003（限流 grep 过宽）。三条 L 派完后 audit-cycle-state.status→cycle-complete，触发下一轮全量审计。",
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-01-002",
+  "audit_depth": "shallow"
+}

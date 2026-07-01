@@ -1,0 +1,37 @@
+{
+  "case_id": "case-2026-07-01-480",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-01T01:56:00Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "code-audit:autonomous-studio-aone",
+  "direction": "audit",
+  "situation": "case-480=480%4=0 审计轮·DO A。scout-scan #1=AS score=0.0『review 1 个待合并 worktree』——opt-security-1782866336@5b5d956(ahead=3) 已由 case-465/468/469/472 四轮审查结论合并就绪且引擎 autonomous-commit-gate.py 无权 merge→不重复审。按 DO A 改走源码审计，从未审源码候选中挑 .claude/hooks/patterns-write-gate.py(52行 PreToolUse:Edit|Write|MultiEdit hook,保护 memory/decision-patterns.md 禁止 LLM 直写,强制走 distill-patterns.py 蒸馏管线)做 security-review。",
+  "action": "security-review 全文件逐行。PROTECTED='memory/decision-patterns.md',原匹配逻辑 L35-36: norm=fp.replace('\\\\','/') + str.endswith(PROTECTED) or endswith('/'+PROTECTED)。发现路径归一化缺口:未折叠 ./、//、../,LLM 子 agent 可用 'memory/./decision-patterns.md' 或 'memory//decision-patterns.md' 绕过 endswith 字符串匹配直写蒸馏产物 decision-patterns.md——违背 hook 存在目的(文件头注释明记'提示词不是护栏',期望 bash/python 不可协商阻断;研究前提即对抗确定性绕过)。实测确认 bypass:python3 模拟 cur(norm.endswith) 对 'memory/./decision-patterns.md'=False、'memory//decision-patterns.md'=False 即放行,而两路径在文件系统均解析到真实保护文件。修复:改 os.path.normpath 归一化后比较(norm==prot or norm.endswith('/'+prot)),normpath 折叠 ./ 与 // 为 'memory/decision-patterns.md' 命中 == prot 被阻断。os 已 import(L9)无需新依赖。其余审查:L22 json.loads 无 eval/exec;L11-15 win32 stdin reconfigure 限 errors=replace 无注入面;L26-29 tool_name 白名单 4 项;无 subprocess/shell/exec;无凭证/PII;print+sys.exit(2) 标准 hook 协议。唯一发现即路径归一化,medium 级(对抗性绕过 write-gate,但需 agent 主动构造混淆路径)。起 opt-security-1782866336 worktree 提交修复(同 area security,复用既有 worktree,第 4 commit f7dda51,非新开 worktree)。",
+  "files_changed": [".claude/hooks/patterns-write-gate.py"],
+  "worktree": "opt-security-1782866336@f7dda51(ahead=4: ba52e9c case-464 audit-log + cf17a35 case-468 redaction + 5b5d956 case-472 stop-gate-dash-arg + f7dda51 case-480 patterns-write-gate-normpath;merge-tree --write-tree 干演 rc=0 clean merge 可行,待人工 squash merge)",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "bypass 实测:python3 -c '...cur(fp)...' 对 'memory/./decision-patterns.md'=False 且 'memory//decision-patterns.md'=False(原逻辑放行);fixed(normpath)=True(修复后阻断)",
+    "py_compile.compile('.claude/hooks/patterns-write-gate.py', doraise=True) OK",
+    "子进程实测 5 路径:'memory/decision-patterns.md' rc=2 BLOCK、'memory/./decision-patterns.md' rc=2 BLOCK(修复后)、'memory//decision-patterns.md' rc=2 BLOCK(修复后)、'scripts/foo.py' rc=0 pass、'memory/other.md' rc=0 pass",
+    "git rev-list --count main..auto/opt-security-1782866336=4(ahead 累计)",
+    "git -C opt-security log --oneline -4 顶 commit=f7dda51 opt(security:patterns-write-gate-normpath): fix(hooks): patterns-write-gate 路径归一化硬化（case-480 security-review）",
+    "git merge-tree --write-tree --no-messages main auto/opt-security-1782866336 rc=0(4 commit 累积后仍 clean merge,无冲突)",
+    "git status --porcelain=空(main 干净,修复隔离在 worktree)"
+  ],
+  "next_suggestion": [
+    "[1]【人工 merge 待办,累计 4 commit】用户手动 git merge --squash auto/opt-security-1782866336 && git commit(merge-tree 干演 rc=0 clean)+cleanup opt-security worktree+branch。4 commit 分属 auto-commit.py/decision-observer.py/stop-completion-gate.py/patterns-write-gate.py 4 不同文件无冲突。",
+    "[2]【case-481=481%4=1≠0 非审计轮·skip 心跳】opt-security@f7dda51 ahead=4 待人工 merge,引擎无权 merge→不重复审;DO NOT #14 禁日常润色→skip 心跳。",
+    "[3]【case-484=484%4=0 审计轮·DO A】续审未审源码,候选:.claude/hooks/incremental-save.py(91)/resume-checkpoint.py(213)/save-checkpoint.py(222) 或 scripts/distill-patterns.py(416)/index-cases.py(137)——挑一个做 security-review/code-review。"
+  ],
+  "audit_type": "security-review",
+  "audit_findings": [
+    {
+      "file": ".claude/hooks/patterns-write-gate.py",
+      "line": "35-36",
+      "severity": "medium",
+      "finding": "PROTECTED 路径匹配用 fp.replace('\\\\','/') + str.endswith 字符串比较,未折叠 ./、//、../。LLM 子 agent 可用 'memory/./decision-patterns.md' 或 'memory//decision-patterns.md' 绕过 write-gate 直写蒸馏产物 decision-patterns.md,违背 hook 存在目的('提示词不是护栏')。实测 cur(norm.endswith) 对两 bypass 路径均返回 False 即放行。",
+      "remediation": "改 os.path.normpath 归一化后比较: norm=os.path.normpath(fp.replace('\\\\','/')); prot=os.path.normpath(PROTECTED); if norm==prot or norm.endswith('/'+prot)。normpath 折叠 ./ 与 // 为 'memory/decision-patterns.md' 命中 == prot 被阻断。py_compile OK + 子进程实测 5 路径行为正确(2 bypass 现阻断+1 legit 保护阻断+2 非保护放行)。已提交 opt-security-1782866336@f7dda51。"
+    }
+  ]
+}

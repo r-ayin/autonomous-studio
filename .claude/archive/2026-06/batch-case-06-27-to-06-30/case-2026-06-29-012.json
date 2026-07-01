@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-012",
+  "agent_id": "autonomous-loop",
+  "timestamp": "2026-06-29T17:07Z",
+  "project": "browser-use",
+  "work_unit": "补 planning/roadmap.md（参考项目路线文档）",
+  "situation": "scout-scan 排 #1（score=1.68）：无 planning/ 目录，34 TODO 均为上游代码，3 个 pending worktrees。PROGRESS.md 注明为参考/研究项目，无自研迭代。",
+  "action": "在 browser-use 创建 planning/roadmap.md，说明项目定位（上游参考库）、版本追踪策略、本地集成 P0/P1 计划，以及延期事项（上游 34 TODO 不在本地处理）。通过 opt-worktree.sh 提交到已有 opt-docs-1782657682 worktree（同 area=docs，复用）。",
+  "files_changed": ["planning/roadmap.md"],
+  "worktree": "browser-use/opt-docs-1782657682",
+  "direction": "docs:planning",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh 输出：'→ 复用同 area worktree: opt-docs-1782657682 / ✓ 提交到 opt-docs-1782657682 方向=docs:planning'",
+  "next_suggestion": "1) 人工批准合并 browser-use/opt-docs-1782657682（含 planning/roadmap.md）；2) 人工批准合并 browser-use/optimization（含 GATES.md）；3) shizi score=1.19，有 1 个 TODO 待 triage"
+}

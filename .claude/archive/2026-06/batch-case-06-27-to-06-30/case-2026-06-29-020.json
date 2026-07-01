@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-06-29-020",
+  "agent_id": "autonomous-loop",
+  "timestamp": "2026-06-29T10:30Z",
+  "project": "skills",
+  "work_unit": "跟踪 untracked 目录 oneday-capability-register + oneday-open-cli",
+  "situation": "scout-scan 报告 skills 项目 TODO=5（实为模板占位）且 PROGRESS.md 记录两个未跟踪目录需决策（提交或 gitignore）。top-3 推荐均被 blocked（等待人工合并），skills 是下一个有实质工作可做的项目。",
+  "action": "1) 识别 skills/oneday-capability-register/ 和 skills/oneday-open-cli/ 为真实技能定义文件，非废弃内容；2) opt-worktree.sh commit 创建 opt-skills-1782670300 worktree（内置 cp 不支持目录，脚本报错但 worktree 创建成功）；3) 手动 cp -rp 两个目录到 worktree 并 git add + commit；4) 更新 worktree 内 PROGRESS.md 标记任务完成并追加第二次 commit",
+  "files_changed": [
+    "oneday-capability-register/SKILL.md",
+    "oneday-capability-register/references/data-model.md",
+    "oneday-capability-register/references/extraction-guide.md",
+    "oneday-open-cli/SKILL.md",
+    "PROGRESS.md"
+  ],
+  "worktree": "opt-skills-1782670300",
+  "direction": "skills:track-new-skills",
+  "outcome": "succeeded",
+  "outcome_evidence": "git log --oneline in opt-skills-1782670300 shows 2 commits: 5c2ae12 (feat: 跟踪两个新技能目录) + 47832a0 (chore: 更新 PROGRESS.md)。worktree 存在于 /home/admin/workspace/.opt-worktrees/skills/opt-skills-1782670300。",
+  "next_suggestion": "1) 人工审批合并 opt-skills-1782670300（skills 两个新技能目录 + PROGRESS.md）；2) 下轮考虑为 skills 补 GATES.md（优先等 opt-docs-1782658244 合并后再操作）；3) x-tool CLAUDE.md 模板 TODO 占位可逐子目录填写（dongxiao/claude/api额度监测）"
+}

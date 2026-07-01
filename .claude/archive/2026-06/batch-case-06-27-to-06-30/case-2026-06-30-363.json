@@ -1,0 +1,29 @@
+{
+  "case_id": "case-2026-06-30-363",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-30T15:42Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "sanctioned-merge",
+  "situation": "承接 case-362 NEXT_SUGGESTION[1]。case-362 在隔离 worktree opt-scout-scan-1782833675 @5695a05 完成 scout-scan.py sh/python3 polyglot 修复（+4 行 1 文件），pending 人工批准合并。main HEAD=aaa45f5（case-362 archival 提交），worktree 5695a05 父提交=7d41e33（archival 前的 main）。本轮 case-363=363%4=3≠0 非审计普通路径，执行 sanctioned-merge。",
+  "action": "step0 读 autonomous-constraints.md DO NOT+DO 全文（本轮非审计轮次，DO A 不触发；DO B 敏感路径埋点——sanctioned-merge 不改源码不触发）。step1 差异预审：merge-base(main,5695a05)=7d41e33，git diff --stat 7d41e33..5695a05 仅 scripts/scout-scan.py 4 insertions（纯新增头无重叠，比 case-357/359 superset 路径更干净，无 .gitignore/commit-gate.py 重叠风险）。git diff main..5695a05 显示 3 文件（含 case-362.json 删除+autonomous-state.md 回退）仅因 worktree 落后 main 一个 archival commit——squash 只取 merge-base..tip diff 故不引入回退。运行 bash scripts/opt-worktree.sh . merge opt-scout-scan-1782833675 → 'Squash commit -- not updating HEAD' + '✓ 已 squash 合并 opt-scout-scan-1782833675 → main' + '✓ worktree 清理'。合并 commit=c15672f。worktree 目录已移除但 branch auto/opt-scout-scan-1782833675 残留→git branch -D 清理（was 5695a05）。",
+  "files_changed": ["scripts/scout-scan.py"],
+  "worktree": "opt-scout-scan-1782833675 @5695a05（已合并入 main c15672f 并清理 worktree+branch）",
+  "direction": "sanctioned-merge",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "git log --oneline -4: c15672f merge: 人工批准合并 optimization worktree 'opt-scout-scan-1782833675' / aaa45f5 case-362 archival / 7d41e33 case-361 archival / 13c324e merge optimization —— c15672f 连续建于 aaa45f5 之上无回退",
+    "git status --short 空（main 干净）",
+    "git worktree list: 仅 main c15672f + 残留 optimization @7d41e33（auto/optimization，见 next_suggestion[3]）",
+    "git branch | grep opt-scout-scan 无输出（orphan branch 已删）",
+    "bash scripts/scout-scan.py（post-merge 原生调用，无手工改 python3）exit=0 产出完整报告：'瞭望扫描 @ 2026-06-30T15:42:06Z' + '发现 1 个项目' + '#1 autonomous-studio-aone (score=0.0)' —— case-362 修复目标达成，消除每轮 syntax-error 重试",
+    "python3 -c ast.parse scripts/scout-scan.py OK（无回归）",
+    "head -8 scripts/scout-scan.py 确认 polyglot 头已入 main：#!/usr/bin/env python3 + ''''exec python3 -- \"$0\" \"$@\" # ''' 行"
+  ],
+  "next_suggestion": [
+    "[1]【审计盲区轮换·case-364】364%4=0=DO A 强制审计。换审 scripts/opt-worktree.sh cmd_merge：case-361 暴露真缺口——squash 无 MERGE_HEAD 致 line520 `git merge --abort` no-op，已 resolve+stage 的 merge 无法落地需手工复刻 commit（cmd_merge line499-520 区间）。可审+补 resume 分支：检测 index 已 staged 且无 MERGE_HEAD→跳过 re-merge 直接走 commit 路径。优先选此（有源码、属敏感路径 subprocess/git exec）",
+    "[2]【审计备选·case-364】若不想动 opt-worktree.sh，审 scripts/scout-scan.py 索引路径 FS 写敏感性（.codebase-index/ 大 JSON 写入、路径拼接注入风险）——同样有源码",
+    "[3]【worktree 卫生·低危延后】main 外残留 optimization worktree @7d41e33 [auto/optimization]（clean，落后 main 2 commit，case-361 声称清理但实际残留）。非本轮创建未删，下轮可 git worktree remove + branch -D auto/optimization 收尾"
+  ],
+  "audit_type": "none",
+  "audit_findings": []
+}

@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-092",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-06-29T03:40:00Z",
+  "project": "moni-master",
+  "work_unit": "gitignore: add .claude/ and .opt-direction to exclusions (dirty=1 fix)",
+  "situation": "moni-master dirty=1 from untracked .claude/ directory containing git worktree metadata (rust-rewrite). No gitignore coverage for .claude/ or .opt-direction. No pending worktree fix existed for moni-master (opt-worktrees/moni-master/ was empty).",
+  "action": "Added .claude/ and .opt-direction patterns to .gitignore under new 'Claude Code / 引擎 worktree 元数据' section. Committed via opt-worktree.sh to new worktree opt-moni-1782675680.",
+  "files_changed": [".gitignore"],
+  "worktree": "opt-moni-1782675680",
+  "direction": "moni:gitignore-gaps",
+  "outcome": "succeeded",
+  "outcome_evidence": "git log opt-moni-1782675680 shows cc8c160; worktree .gitignore contains .claude/ and .opt-direction patterns; main remains unmodified (dirty=1 persists until merge as designed).",
+  "next_suggestion": "Merge pending worktrees across projects (wechat-main has 5 unmerged commits, sunset-prediction 3 worktrees, personal-assistant gates audit, autonomous-studio 4 engine fixes). Or: archive 4 orphan case files (088-091) in autonomous-studio."
+}

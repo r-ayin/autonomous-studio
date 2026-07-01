@@ -1,0 +1,24 @@
+{
+  "case_id": "case-2026-06-30-335",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-30T04:38Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "scout #2 autonomous-studio 推荐 'triage 前 1-2 个 TODO' 的根因修复——3 个 active TODO 全是 .claude/decisions/decision-archive.md 的历史案例标题散文（第 5 类标记虚高），无可 triage 之物；修扫描器而非篡改历史标题",
+  "situation": "scout-scan --workspace /home/admin/workspace 报 #1=huiyis(score=2.0, 标'等合并 PROGRESS.md opt-docs-1782793013, 别重做'——pending 人工 merge 不可自治重做), 顺延 #2=autonomous-studio(score=0.03, 推 'triage 前 1-2 个 TODO')。autonomous-constraints.md 不存在→无排除项。AS 仓自身 scout 仍 0 项目失明(opt-scout-1782792420 待人工 merge), 故走父级扫描取 AS 为项目。grep + count_markers 核实 AS 3 个 active TODO 的真实落点: 全在 decision-archive.md:856/864/872 三条 markdown ATX 标题 `## Case 37/38/39: triage ... # TODO: 标记`——_MARKER_RE 正则 `\\bTODO\\b\\s*[:-]` 匹配了标题里的 `TODO:`(TODO 后跟冒号)。case-2026-06-29-046 已判定此 3 条'非反引号、非扫描器可解, 按纪律未动', 但留下假阳性致 AS 永远霸榜 #2、每轮推幽灵 triage TODO 却无可 triage 之物=循环陷阱。这是继(1)字符串字面量(2)【TODO】全角占位符(3)<!-- TODO --> HTML 注释 之后的第 5 类标记虚高: 归档标题散文。",
+  "action": "最小改动 1 文件 scripts/scout-scan.py: IGNORE_DIRS 集合 +'decisions' 并附 9 行注释说明第 5 类虚高根因(.claude/decisions/ 是引擎决策归档=元数据非项目源码; case-*.json 本就不在扩展名白名单不扫, 仅 decision-archive.md 受影响)。首次写注释时踩自指陷阱——注释里字面写出 `# TODO: 标记`(反引号包裹但 _STRIP_STRINGS 只剥双/单引号不剥反引号)→ 被自指误算为 1 个 active TODO, 立即改为 `真 TODO 标记`(TODO 后无冒号, 正则不匹配)消除。验证后提交。未篡改任何历史案例标题(历史记录完整性保留)。",
+  "files_changed": ["scripts/scout-scan.py"],
+  "worktree": "opt-scanner-1782794236 (commit eac2099, +9/-1, area=scanner:marker-archive-exclusion; main 工作树还原干净)",
+  "direction": "scanner:marker-archive-exclusion",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "git -C opt-scanner-1782794236 log --oneline main..HEAD 顶 = 'eac2099 opt(scanner:marker-archive-exclusion): scout 第5类标记虚高修复...IGNORE_DIRS +decisions...'",
+    "git diff --stat main..HEAD = 'scripts/scout-scan.py | 10 +++++++++-' (1 file +9/-1)",
+    "grep -c '\"decisions\"' opt-scanner-1782794236/scripts/scout-scan.py = 1 (修复在 worktree 内可观察)",
+    "count_markers('.') 修复前 AS active TODO=3 / 修复后 = {'TODO':0,'FIXME':0,'HACK':0} (3→0, 三条归档标题假阳性全消)",
+    "deferred={'TODO':7,...} 修复前后不变 = 7(合法 TODO(deferred) 延期债, 非假阳性, 正确保留)",
+    "父级 scout 重跑排名: AS 由 #2(score=0.03, 推 triage TODO) 跌出 top-3(0 marker + 文档齐全→score=0 无推荐), 幽灵 triage TODO 推荐消除; 新 #2=1BfrYn9G(review 2 worktree) / #3=agent-dashboard",
+    "python3 -c ast.parse(scout-scan.py) 退出 0 (语法通过)",
+    "main 工作树 git status --porcelain scripts/scout-scan.py = 空 (main 安全, 改动隔离在 worktree)"
+  ],
+  "next_suggestion": "【需人工·低阻力】(1) opt-worktree.sh . merge opt-scanner-1782794236 落地扫描器第 5 类虚高修复(1 文件 +9/-1 零冲突); merge 后 AS active TODO=0 永久, 不再霸榜 #2。(2) 仍 pending: huiyis/opt-docs-1782793013(3 文件 +102 行 PROGRESS+GATES+planning/status) + AS 仓 opt-scout-1782792420(解引擎 0 项目失明) 均待人工 merge——这俩是当前 #1/#2 阻塞源, 自治端无法 merge main(gate 拦)。(3) 下轮自治: 父级 scout 新 #2=1BfrYn9G(review 2 待合并 worktree, 人工审 diff+merge/reject) 或 #3=agent-dashboard(marker 文件待合并 optimization, 先查 worktree log 别重做); 均偏人工 review, 若全 blocked 则继续顺延扫父级取真可自治 #1。"
+}

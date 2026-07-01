@@ -1,0 +1,18 @@
+{
+  "case_id": "case-2026-06-29-024",
+  "agent_id": "autonomous-loop",
+  "timestamp": "2026-06-29T18:50Z",
+  "project": "autonomous-studio",
+  "work_unit": "decisions:gap-fill — 归档 case-022 到 opt-decisions-1782670914 + 本轮 case-024",
+  "situation": "scout-scan #1-3 全部 blocked（待人工合并 1BfrYn9G/agent-dashboard/agentfw docs worktrees）。全面扫描其余项目：shizi dirty=16（大重构未提交）、open-design dirty=2（本地测试配置）、stagehand-analysis TODO=9（upstream 不可动）、x-tool TODO=7（已在 opt-moni worktree 处理）、skills/browser-use 全部 blocked。发现 decisions worktree（opt-decisions-1782670914）缺 case-022（已有 case-023），而 main 有 case-022 untracked。",
+  "action": "1) 扫描所有项目找可做工作单位；2) 发现 opt-decisions-1782670914 缺 case-022（gap between 021 和 023）；3) 将 main 的 case-022.json 直接 cp 到 worktree 并在 worktree 内 git commit（非 main 提交，合法）；4) 写 case-024（本轮），通过 opt-worktree.sh 提交到新 decisions worktree；5) 回写 autonomous-state.md。",
+  "files_changed": [
+    ".claude/decisions/case-2026-06-29-022.json (added to opt-decisions-1782670914)",
+    ".claude/decisions/case-2026-06-29-024.json (new)"
+  ],
+  "worktree": "autonomous-studio/opt-decisions-1782670914 (gap-fill: case-022) + autonomous-studio/opt-decisions-new (case-024)",
+  "direction": "decisions:gap-fill",
+  "outcome": "succeeded",
+  "outcome_evidence": "git -C .opt-worktrees/autonomous-studio/opt-decisions-1782670914 log --oneline -1 → 'bfb23ac opt(decisions:gap-fill): 归档 case-022'; decisions worktree 现包含 case-001 ~ case-023 全集（含 case-022）",
+  "next_suggestion": "1) 人工批准合并积压 blocked docs worktrees（1BfrYn9G/agent-dashboard/agentfw 各有 PROGRESS+GATES+planning）；2) 人工合并 autonomous-studio/optimization（cp-dir-fix + scout-workspace 修复），合并后 shizi 大重构（dirty=16）可用 opt-worktree.sh 正确提交目录；3) 合并 autonomous-studio/opt-decisions-1782670914（含 case-001~023）到 main；4) shizi 重构（agent/config/engine 模块拆分）可在 cp-dir-fix 合并后成为下轮主工作单位。"
+}

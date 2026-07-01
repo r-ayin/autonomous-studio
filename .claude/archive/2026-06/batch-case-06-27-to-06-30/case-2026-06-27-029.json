@@ -1,0 +1,23 @@
+{
+  "case_id": "case-2026-06-27-029",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-27T12:16:00Z",
+  "project": "x-tool",
+  "work_unit": "补全 ota美团运营 子项目 CLAUDE.md 的 4 个脚手架占位符（目的/技术栈/入口/规则），清掉 project-protocol 自举遗留的 <!-- TODO --> 标记——与 opt-docs-1782551599 worktree 已累积的 api额度监测(eecce6e)/pdd监测(b719f3f) 同型续填",
+  "situation": "scout-scan 2026-06-27T12:15:12Z 排 #1 = x-tool (score=1.02, TODO=5)，推荐工作单位=「triage 前 1-2 个 TODO（标注或清掉）」。约束文件仅排 moni 前端重构，x-tool 不受限。状态文件 NEXT_SUGGESTION 给出 4 条路径：①合并 opt-docs-1782551599（2 pending commit）；②续清同型脚手架（ota美团运营/CLAUDE.md 4 占位 + 聚合ai客服开发/PROGRESS.md 1 占位）；③scanner self-inflation 修复；④pending worktree 盲区重申。路径①受 opt-worktree 设计哲学「等人工回复才合并」gate 约束（cmd_merge 注释「人工批准后」），autonomous loop step4 仅授权 commit 不授权 merge——故本轮不自主合并。取路径② fair-game 目标 ota美团运营/CLAUDE.md：同型、1 文件、复用 opt-docs-1782551599 worktree（同 area:docs:claude-meta），且未在任何 pending worktree 触碰。动手前已查 `git worktree list` 确认 opt-docs-1782551599 顶 commit=b719f3f（pdd监测，pending 未合并），ota美团运营 仍 4 占位未触。",
+  "action": "读 worktree 内已填的 pdd监测/CLAUDE.md（case-028 产物）作既定模板；读 ota美团运营/README.md（3741B，实测内容）+ 现有占位 CLAUDE.md 确认结构。据 README 实测填入：目的=`Discord/CLI/HTTP → 任务预览 → 人工确认 → 美团酒店商家后台改价 → 截图回传` 的 OTA 改价自动化骨架（现版本 change_price，接口按 CLI/HTTP API/Discord bot/Workflow Registry/Platform Adapter 可扩展拆分）；技术栈=Python（Playwright+Chrome DevTools Protocol 操控美团后台页面）+ Discord bot + FastAPI HTTP API + CLI；入口=`python -m ota_workflow preview|execute|api|discord`，需先 `start_meituan_debug_browser.ps1` 启动调试浏览器并登录美团酒店商家后台；规则 5 条（仅 Windows/PowerShell、依赖已登录会话不硬编码账密、Discord token 经 config/app.json 或 DISCORD_BOT_TOKEN、data/tasks+artifacts 勿入仓、页面定位依赖 meituan.json+meituan_change_price.js 美团改版需重调 DOM）。清 4 占位。经 `opt-worktree.sh x-tool commit docs:claude-meta` 提交——脚本判 area=docs 与 opt-docs-1782551599 同 area 复用该 worktree，但 stash 迁移机制再次误报「stash apply 冲突，改动留在 stash，人工处理」。",
+  "files_changed": [
+    "x-tool/ota美团运营/CLAUDE.md"
+  ],
+  "worktree": "opt-docs-1782551599（commit 20ac2c3，pending 未合并；分支 auto/opt-docs-1782551599；累积 3 同型 commit：eecce6e api额度监测 + b719f3f pdd监测 + 20ac2c3 ota美团运营）",
+  "direction": "docs:claude-meta",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "opt-worktree commit 误报冲突后诊断：`git stash list`=空（无 stash 实际产生），`git status -s x-tool ota美团运营/CLAUDE.md`= M（改动滞留 main 未迁入 worktree），worktree opt-docs-1782551599 status=clean 且其 ota美团运营/CLAUDE.md `grep -c TODO`=4（未触）——确证为记忆 opt-worktree-stash-silent-failure 记录的 phantom-stash 误报模式（本工作区第 2 次复现，case-028 同型）",
+    "按记忆既定恢复路径手动处理：`cp x-tool/ota美团运营/CLAUDE.md → worktree 同路径` → worktree 内 `git add`+`git commit` 产出 commit 20ac2c3，随后 `git -C x-tool checkout -- ota美团运营/CLAUDE.md` 还原 main",
+    "worktree opt-docs-1782551599 ota美团运营/CLAUDE.md `grep -c TODO`=0（4 占位已清，目的/技术栈/入口/规则均已填）",
+    "`git -C x-tool status -s`=空（main 干净，worktree 隔离成立）",
+    "`git -C opt-docs-1782551599 log --oneline -3` 顶部=20ac2c3 docs(ota): 补 ota美团运营/CLAUDE.md...（其下接 b719f3f pdd监测 + eecce6e api额度监测，3 同型 commit 链）"
+  ],
+  "next_suggestion": "①【合并 opt-docs-1782551599】该 worktree 现累积 3 个同型 commit（eecce6e api额度监测 + b719f3f pdd监测 + 20ac2c3 ota美团运营），均 pending 未合并。建议人工审 `bash scripts/opt-worktree.sh x-tool show opt-docs-1782551599` 后 merge 入 master（squash），一次性清掉 3 处脚手架 TODO，x-tool 标记密度从 5 降至更低。注：merge 受「人工批准」gate，autonomous loop 不自主执行。②【续清同型脚手架】x-tool 仍剩 聚合ai客服开发/CLAUDE.md（2 占位：目的+规则）与 聚合ai客服开发/PROGRESS.md（1 占位）同型未填，可在同一 opt-docs worktree 续做（同 area，复用 worktree，注意 opt-worktree stash 误报→走手动 cp+commit；本轮已验证该恢复路径稳定可用）。③【scanner self-inflation 根因仍开】记忆 scout-scan-marker-self-inflation 记录的 .venv-sidecar/out 产物 TODO 虚高（opt-scanner-1782549922 待合并）未修，下轮 x-tool 若因密度再上榜可推进。④【phantom-stash 已稳定复现 2 次】opt-worktree.sh commit 对 area=docs 复用既有 opt-* worktree 时 stash 迁移路径稳定误报；建议下轮或人工考虑修 opt-worktree.sh 的 stash 迁移逻辑（记忆 opt-worktree-stash-silent-failure），或在 case 库积累足够样本后提修。⑤【pending worktree 盲区重申】下轮 x-tool 若再列 #1，动手前必查 `git worktree list` + 各 worktree log，避免重做 opt-docs-1782551599 已覆盖的 api额度监测/pdd监测/ota美团运营。"
+}

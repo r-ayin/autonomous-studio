@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-06-29-147",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-29T03:58:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "clean stale optimization worktree (empty, same SHA as main)",
+  "situation": "scout-scan #2 推荐 AS review 1 待合并 + 1 空 worktree。上轮 case-146 已 merge opt-autonomous-studio-1782704965 并删 optimization 枝，但 git worktree list 仍显示 /home/admin/workspace/.opt-worktrees/autonomous-studio/optimization 指向 f197264(与 main 同 SHA、无 diff)。属上轮清理未彻底留下的幻影 worktree。",
+  "action": "1) git log main..auto/optimization → empty; git diff --stat → empty (确认空); 2) git worktree remove .../optimization + git branch -D auto/optimization; 3) 最终 git worktree list 仅 main 一行。本工作单元纯清理，零代码改动，无需 opt-worktree.sh commit。",
+  "files_changed": [],
+  "worktree": "none (cleanup only)",
+  "direction": "worktree-hygiene",
+  "outcome": "succeeded",
+  "outcome_evidence": "git worktree list post-cleanup: '/home/admin/workspace/autonomous-studio f197264 [main]' (single line). Deleted branch auto/optimization (was f197264). No code changes.",
+  "next_suggestion": "AS worktree 已连续 4 轮清零且 PROGRESS.md 0.1天偏 stale。下轮应跳出 hygiene: (a) 刷新 AS PROGRESS.md/GATES.md(记录近期 worktree-hygiene 连胜+当前引擎状态); (b) 检查其他项目(mon-i/x-tool/shizi/sunset-prediction/wechat-main/personal-assistant/1BfrYW9R)是否有隐藏待合并 worktree 积压; (c) 1BfrYW9R onedaybot-dev 分支有未合并工作可 triage; (d) 若所有项目都健康,做 moni-master 文档润色(score=0.0 但 PROGRESS 0.0天)."
+}
