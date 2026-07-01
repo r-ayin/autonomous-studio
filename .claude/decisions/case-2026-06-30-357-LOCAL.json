@@ -1,0 +1,38 @@
+{
+  "case_id": "case-2026-06-30-357",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-30T14:20:00Z",
+  "project": "sunset-prediction",
+  "work_unit": "merge pending worktree opt-gates-1782827098: POST /api/xhs/generate 手动触发 XHS 日报素材包路由入 main（核销 GATES 🟡 门禁）",
+  "situation": "scout-scan 显 sunset-prediction 待合并=1（opt-gates-1782827098，单提交 57b849d）；state NEXT_SUGGESTION 标此为跨轮 carry-over 首选。main 最近提交 d515311 是另一个已合的 opt-gates-1782824938，与本 worktree 同名族不同时间戳。本 worktree 增 router.post('/api/xhs/generate') 补齐此前仅 README/GATES 头口承诺无实现的手动触发入口，与 server.js 22:30 cron 同入口 node scripts/publish-xhs.js、同 120s timeout。",
+  "action": [
+    "约束核对：autonomous-constraints.md 仅排除 moni 前端重构；sunset-prediction 不受限，可选。",
+    "scout-scan #1=1BfrYW9R(score=0.0,无明确工作单位)；state NEXT_SUGGESTION 指向 sunset-prediction 待合并 worktree，按 carry-over 优先收口。",
+    "三点 diff main...auto/opt-gates-1782827098 --name-only = GATES.md/PROGRESS.md/src/routes.js（与两点 diff 同名→无发散，main 未并行改这些文件）；git log main..wt 单提交 57b849d；git cherry 显 +（单提交未 cherry-pick，非 squash 误报，真未合）。git branch --contains 57b849d 仅 auto/opt-gates-1782827098（不在 main）→证真未合。",
+    "源核对 diff：routes.js 增 exec/promisify/url/path import + PROJECT_ROOT 派生（join(dirname(fileURLToPath(import.meta.url)),'..')，与 server.js new URL('.', import.meta.url) 同义）+ router.post('/xhs/generate', async) shell 调 execAsync('node scripts/publish-xhs.js',{cwd:PROJECT_ROOT,timeout:120000})，成功返 {ok:true,generatedAt,stdout} 失败返 500 {ok:false,error,stderr}。与 server.js:59 cron 同入口同 timeout，设计一致。",
+    "worktree 内 npm test = 28/28 pass 0 fail（node --test test/**/*.test.js, duration 104ms）。",
+    "E2E dispatch 复测：worktree 无 node_modules（express 缺），临时 ln -s main 的 node_modules（git check-ignore 不覆盖，测后 rm，worktree status 干净）。起 node server.js（监听 8080，server 不读 PORT env）→ curl GET / = 200（server 健康）。curl -X POST /api/xhs/generate 后 2s ps -ef 见子进程 `node scripts/publish-xhs.js`（PID 1078827）已派生 + curl 仍 in-flight（非 404 即时返回）→ dispatch 确证：路由 handler 已 shell 出 publish-xhs.js，与 cron 同入口。playwright chromium 起来在 page.waitForFunction（与提交 E2E 描述一致），生成成败取决于 XHS cookie（同 cron 依赖），路由本身就位。",
+    "merge：bash scripts/opt-worktree.sh sunset-prediction merge opt-gates-1782827098 → fast-forward squash 合并（Updating d515311..57b849d, 3 files +30/-3），Deleted branch auto/opt-gates-1782827098，worktree 目录+分支清理。"
+  ],
+  "files_changed": [
+    "sunset-prediction/src/routes.js",
+    "sunset-prediction/GATES.md",
+    "sunset-prediction/PROGRESS.md"
+  ],
+  "worktree": "opt-gates-1782827098 (sunset-prediction, commit 57b849d → 已 squash merge 入 main=b943952, worktree+auto 分支已清理;仅剩 standing optimization worktree)",
+  "direction": "gates:xhs-generate-route",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "git log main --oneline -1 = b943952 'merge: 人工批准合并 optimization worktree opt-gates-1782827098'",
+    "grep -c 'xhs/generate' sunset-prediction/src/routes.js = 4（含 import 无关行；router.post('/xhs/generate') 已入 main）",
+    "GATES.md 🟡 行已由 [ ] 改 [x]：`POST /api/xhs/generate 能手动触发日报...src/routes.js 增 router.post('/xhs/generate')...` ✅",
+    "git worktree list sunset-prediction 仅剩 /home/admin/workspace/.opt-worktrees/sunset-prediction/optimization（standing），auto/opt-gates-1782827098 已删",
+    "npm test 28/28 pass（worktree 内）",
+    "E2E：GET / = 200；POST /api/xhs/generate 后 ps 见 `node scripts/publish-xhs.js` 子进程派生 + curl in-flight（非 404）→ dispatch 证"
+  ],
+  "next_suggestion": [
+    "sunset-prediction 待合并已清零（scout-scan 待处理 worktree=0）；standing optimization worktree ff6c70b 是上次已合内容的旧 ref（d515311 merge 已含），下轮若 scout 再报待合并须先三点 diff 证增量再 merge，防 case-327 式 stale 误报。",
+    "sunset-prediction 真缺口（非本轮）：XHS 日报生成依赖 playwright chromium + XHS cookie，路由 dispatch 已就位但端到端生成成败受外部依赖制约——可考虑加 cookie 健康预检（路由入口先 hasXiaohongshongshuCookie，无 cookie 直接返 503 结构化错而非让 publish-xhs 跑到超时）。",
+    "scout-scan 当前全项目 score=0.0 无紧迫工作单位；下轮可转 1BfrYW9R 真实后端 API 接入（依赖 personal-assistant）或 AS housekeeping 归档 untracked case 350-357。"
+  ]
+}

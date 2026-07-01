@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-07-01-370",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-07-01T00:05:00+08:00",
+  "project": "1BfrYW9R",
+  "work_unit": "review 待合并 worktree opt-tests-1782835008（人工审 diff + merge/reject）",
+  "situation": "scout-scan 推荐 #1=1BfrYW9R，1 个待合并 worktree（auto/opt-tests-1782835008，tip 107aec0 领先 onedaybot-dev bd7b537 一个提交，worktree 干净）。记忆预警待合并计数常误报（standing ref 未清），故先做内容等价核验非盲信计数：三点 name-only（base...wt）与两点（wt..base）均返回 GATES.md+test/smoke.test.js，且 tip≠base，证为真·待合并非误报。提交 ⑪ 在 test/smoke.test.js:394 增 assert.match(parsed.reason||'', /index\\.html/)，锁 /readyz 503 body 的 reason 字段须引用 index.html，堵删 reason 字段致 503 body 仅剩 {status:'not ready'} 而 status/Content-Type 断言仍全绿的缺口。",
+  "action": "源核验：grep dev-server.js line 59 实有 reason:'index.html missing or unreadable' 字段，断言非冗余（既有断言只锁 status:'not ready' 与 Content-Type，删 reason 不触发）。回归：node --test test/smoke.test.js → 35 pass 0 fail。突变复测：sed 删 line 59 reason 字段→⑪ 转红报 '/readyz 503 body 须含 reason 字段...'（pass 34 fail 1），cp 还原后 35/0 复绿，证锁真咬。遂 opt-worktree.sh 1BfrYW9R merge opt-tests-1782835008（squash→onedaybot-dev，ff 76ab524，删 auto 分支+清 worktree 目录）。",
+  "files_changed": ["test/smoke.test.js", "GATES.md"],
+  "worktree": "opt-tests-1782835008（已 merge+清理）",
+  "direction": "tests:readyz-503-reason-lock",
+  "outcome": "succeeded",
+  "outcome_evidence": "main 1BfrYW9R git log -2 顶 76ab524 'merge:...opt-tests-1782835008'；grep -c 'reason: .index.html missing' dev-server.js=1；grep -c '须含 reason 字段' test/smoke.test.js=1；node --test test/smoke.test.js on main → '# pass 35' '# fail 0'；突变删 reason 实测 pass 34 fail 1 复现锁咬。worktree list 已无 opt-tests-1782835008（auto 分支 Deleted was 107aec0）。",
+  "next_suggestion": "1BfrYW9R standing optimization worktree 仍在（auto/optimization, 966a60f）——下轮可核其是否落后 onedaybot-dev（历次他枝 merge 后从不 reset 的已知缺口，case-363 类模式），若落后则 ensure ff-only 快进或 reject 清理。或转 autonomous-studio #2 的 7 个延期(triage)TODO 复审。"
+}

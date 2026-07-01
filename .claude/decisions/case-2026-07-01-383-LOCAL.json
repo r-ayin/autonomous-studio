@@ -1,0 +1,18 @@
+{
+  "case_id": "case-2026-07-01-383",
+  "agent_id": "ralph-wiggum-loop",
+  "timestamp": "2026-07-01T17:58:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "review pending worktree opt-test-1782842091 (gates-doc-drift PROGRESS extension) + merge/reject decision",
+  "situation": "scout-scan 推荐 #1 = 1BfrYW9R，理由「review 1 个待合并 worktree（人工审 diff + merge/reject）」。该 worktree auto/opt-test-1782842091 (tip 7045725) git cherry onedaybot-dev 显 + 未在主干，genuinely pending 非 superseded（非 case-327 那类 standing-ref 残留误报）。worktree 内容：扩展 ㉑ gates-doc-drift 回归锁——此前只扫 GATES.md canonical 箭头形「npm test → N pass 0 fail」，PROGRESS.md pass 计数零守卫（PROGRESS↔test 漂移缺口）；现增 PROGRESS.md「当前状态」section canonical 行 + ㉑ 断言三方对账（GATES↔PROGRESS↔test 注册数）。改 2 文件：PROGRESS.md +1 行、test/smoke.test.js +16/-1。",
+  "action": "独立复审 diff + 实跑验证 + 突变复测确认锁真咬，然后 opt-worktree.sh merge。\n(1) git show --stat 7045725 + git diff onedaybot-dev..auto/opt-test-1782842091 审 diff——纯回归锁扩展，无行为变更，无 main 上副作用。\n(2) 在 worktree 目录实跑 npm test → 36 pass 0 fail（与 commit 声称一致）。\n(3) 突变复测：perl 改 PROGRESS canonical 36→35，跑 ㉑ → not ok 1 报「PROGRESS.md 声称 35 pass 但 smoke.test.js 实际 36 个 test 注册」；git checkout -- 还原后 ㉑ pass1/fail0。证 PROGRESS 新断言真咬（非空守卫）。\n(4) opt-worktree.sh /home/admin/workspace/1BfrYW9R merge opt-test-1782842091 → squash 合并入 onedaybot-dev（2ee25c3），auto/opt-test-1782842091 分支 + worktree 目录已自动清理。\n(5) 合并后在 main checkout 复跑 npm test → 36 pass 0 fail，证 merge 无回归。",
+  "files_changed": [
+    "1BfrYW9R/PROGRESS.md",
+    "1BfrYW9R/test/smoke.test.js"
+  ],
+  "worktree": "opt-test-1782842091 (已 merge + 清理，branch deleted)",
+  "direction": "test:gates-doc-drift-progress",
+  "outcome": "succeeded",
+  "outcome_evidence": "git log --oneline -1 onedaybot-dev → 2ee25c3 merge: 人工批准合并 optimization worktree 'opt-test-1782842091'；git cherry onedaybot-dev auto/opt-test-1782842091 merge 前显 +（genuinely pending）；worktree 实跑 npm test → '# pass 36' '# fail 0'；突变（PROGRESS 36→35）后 ㉑ 报 'not ok 1 ... PROGRESS.md 声称 35 pass 但 smoke.test.js 实际 36' 还原后 pass1/fail0；merge 后 main checkout npm test → '# tests 36 # pass 36 # fail 0'；auto/opt-test-1782842091 分支 Deleted (was 7045725) + worktree 目录清理（merge 输出证实）。",
+  "next_suggestion": "scout-scan 现 #2 = autonomous-studio（score=0.0，1 个 case 记录 worktree 为 merge-round 簿记滞后，随下轮真实工作合并勿独占纯 merge）。下轮可：审 autonomous-studio 的 1 个待合并 worktree（先 git cherry 验 genuinely pending 非 superseded，再 show diff + 实跑验证 + merge/reject），或对 sunset-prediction（最近 3h 前活跃，PROGRESS 0.2天）做小结构性补强。优先沿用本轮模式：scout-scan 排 #1 → 若是 pending-worktree-review 类则 git cherry 防误报 → 实跑/突变验证 → merge。"
+}

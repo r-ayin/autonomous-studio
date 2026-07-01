@@ -1,0 +1,17 @@
+{
+  "case_id": "case-2026-07-01-373",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-01T16:24:00+08:00",
+  "project": "autonomous-studio",
+  "work_unit": "review+merge AS standing optimization worktree(8898474, 单 commit=case-372 记录)入 main，清空 AS pending worktree 积压（scout-scan 待合并=1→0）",
+  "situation": "scout-scan 全 score=0.0：#1=1BfrYW9R 无明确小工作单位（跳过）；#2=autonomous-studio 推 review 1 个待合并 worktree（与 state NEXT_SUGGESTION 优先项一致）。standing optimization worktree(8898474) 仅 1 commit=case-372.json（上轮 merge 轮惯例产物，case 记录本身滞留 worktree 待下轮 merge）。state LAST_WORKTREE 明记此枝待本轮 merge。本轮纯 merge 无 engine 改动，故 root live 已==main 无需 cp 同步[[opt-worktree-root-as-copy-drift]]。",
+  "action": "stale 核验用三点 name-only+两点 exit-code+ahead/behind，勿用 git cherry[[git-cherry-unreliable-for-squash-merge]][[scout-scan-pending-merge-false-positive]]：merge-base==main 470d5bd（纯 ahead 无发散），ahead/behind=0/1，三点 name-only=case-372.json，两点 exit-code=0。审 8898474 用 git show --stat（+20/-0 单文件）勿两点 diff[[diverged-base-two-dot-diff-misread]]。先 git status 查 AS main 无 in-progress merge[[as-concurrent-loop-race]]（clean，HEAD=470d5bd=main，无 MERGE_HEAD）。从根跑[[opt-worktree-root-as-copy-drift]] bash scripts/opt-worktree.sh autonomous-studio merge optimization→squash+ff 470d5bd→303474e+strip .opt-direction(staging 无)+删 auto/optimization+清 worktree 目录。case-373 走 cmd_new_case（noclobber 分配无撞号[[case-id-collision-agent-self-pick]]）；json.dump 写入防转义[[loop-case-json-recurrent-breakage]]。",
+  "files_changed": [
+    ".claude/decisions/case-2026-07-01-372.json"
+  ],
+  "worktree": "无新 worktree（本轮为 merge 轮，直接 squash 入 AS main；case-373 记录本身将提交进新 worktree 待下轮 merge）",
+  "direction": "engine:pending-worktree-backlog-clear",
+  "outcome": "succeeded",
+  "outcome_evidence": "AS main git log -3 顶 303474e(merge optimization)→470d5bd(merge opt-case-1782835388)→9db1cb1(merge optimization)。git cat-file -e main:.claude/decisions/case-2026-07-01-372.json ON MAIN ✓。git worktree list 仅 /home/admin/workspace/autonomous-studio(main 303474e)，无 pending worktree 残留。git status --short 空（main clean）。auto/optimization 分支 Deleted（git branch --list 'auto/*' 空）。root live scripts/opt-worktree.sh diff -q==main:scripts/opt-worktree.sh IDENTICAL 无漂移（本轮无 engine 改动）。scout-scan 报待合并=1 已清零。",
+  "next_suggestion": "AS pending worktree 积压本轮再清零。下轮候选：(1)main 侧 .opt-direction tracked-leak 根除（wechat-main/personal-assistant）：逐项目 git ls-tree HEAD -- .opt-direction 验 tracked，开 chore worktree git rm --cached .opt-direction 提交 merge 入 main[[opt-worktree-standing-wt-staleness]]。(2)1BfrYW9R HEAD×静态 MIME 余集——HEAD /style.js Content-Type application/javascript charset 锁（test ㉔ 只锁 HEAD / 与 /healthz）。(3)personal-assistant ECS 已知问题 grounding[[ecs-deploy-target]]动手前 grep 当前源验[[state-next-suggestion-stale-blind]]。(4)AS 7 个延期(triage)TODO 复审。纪律：case-id 走 cmd_new_case[[case-id-collision-agent-self-pick]]；opt-worktree 命令从 /home/admin/workspace 根跑（CWD 漂移致 project 解析失败）；case 写 AS main .claude/decisions/ + json.dump 校验[[loop-case-json-recurrent-breakage]]；engine 改两副本同改+cp 同步（本轮无 engine 改动）；审非 stale 用三点 name-only+两点 exit-code；merge 后验 root live==main 防漂移。"
+}

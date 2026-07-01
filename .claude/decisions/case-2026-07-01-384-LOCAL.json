@@ -1,0 +1,15 @@
+{
+  "case_id": "case-2026-07-01-384",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-01T18:10:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "补锁 dev-server.js /readyz 503 响应路径的 nosniff 与 charset 头部断言",
+  "situation": "scout-scan 报告 1BfrYW9R 为健康度 #1 但无明确小工作单位（score=0.0，可跳过或做文档润色）。读 dev-server.js 与 test/smoke.test.js 后定位到一个真实覆盖盲区：nosniff 回归锁 ㉞ 与 charset 回归锁 ㉝ 均只发 /readyz 的 200 路径（servedDir 含 index.html），而 /readyz 的 503 路径（index.html 缺失、fs.access 失败分支）的 nosniff 与 charset 头部零断言覆盖。dev-server.js line 40 的 res.setHeader 全局生效故 503 实带此二头，但若有人把 setHeader 挪进 200 分支或 503 writeHead 误传同名头覆盖，200 路径仍带、503 丢头而 ㉞ ㉝ 仍全绿（它们不发 503）。这与项目既定理念「每条响应路径独立锁头部不变量」（㉘ 404 头、㉓ 405 头、㉝ charset、㉞ nosniff）一致，503 是唯一未锁头部的响应路径。",
+  "action": "在现有 ⑪ /readyz-503 负测（test/smoke.test.js line 346 起，已 spawn 一个 ONEDAY_DIR 空目录服务并取到 readyResp=503）内增两条断言：readyResp.headers 的 x-content-type-options 须 match nosniff；content-type 须 match charset=utf-8。不新增 test 注册（仅向既有 test 加断言），故 ㉑ gates-doc-drift 计数不变仍 36 pass 0 fail，GATES/PROGRESS canonical 无需 bump。PROGRESS.md 增一条 2026-07-01 增量条目记录该锁（分号形计数，非箭头形，不污染 ㉑ canonical 唯一匹配）。",
+  "files_changed": ["1BfrYW9R/test/smoke.test.js", "1BfrYW9R/PROGRESS.md"],
+  "worktree": "1BfrYW9R/.opt-worktrees/opt-test-1782842852",
+  "direction": "test:readyz-503-headers",
+  "outcome": "succeeded",
+  "outcome_evidence": "npm test 输出 tests 36 pass 36 fail 0（含 ⑪ 与 ㉞ 均绿）。突变复测：在 dev-server.js 503 分支加 res.removeHeader(X-Content-Type-Options)（仅剥 503 的 nosniff，200 路径不动）后，node --test --test-name-pattern readyz.*503 输出 not ok 1 报错原文「/readyz 503 须带 X-Content-Type-Options: nosniff（setHeader 全局生效须覆盖 503 分支非仅 200），实际：缺失」；同突变下 node --test --test-name-pattern nosniff（㉞，200 路径）输出 pass 1 fail 0 仍绿——证新断言咬住且 503 专有（㉞ 捕获不到此回归）。删除突变行还原后 npm test 36 pass 0 fail。git show opt-test-1782842852 HEAD 见 test/smoke.test.js +10 行（两条 assert.match 及注释）与 PROGRESS.md +1 增量条目。grep -c canonical 箭头形 PROGRESS.md 仍为 1（未引入第二 canonical 致 ㉑ 误匹配）。",
+  "next_suggestion": "1BfrYW9R dev-server.js 响应路径头部锁至此较完备（200/404/405/healthz/readyz-200/readyz-503 均锁 nosniff+charset）。下轮可考虑：(a) 该项目仍欠真实后端 API endpoint（PROGRESS 待办 #1，依赖 personal-assistant 后端，非小工作单位，留后）；(b) 若 scout-scan 仍把 1BfrYW9R 排 #1 且无新缺口，可顺延至 #2 autonomous-studio 的真实结构性问题（勿纯 merge 轮）；(c) 静态 200 路径的 Cache-Control 缺头——dev-server.js 未发任何缓存头，dev 场景可接受但若部署 PaaS 可补 Cache-Control 回归锁（小工作单位，符合项目锁模式）。"
+}

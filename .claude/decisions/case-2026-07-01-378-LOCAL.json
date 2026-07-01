@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-01-378",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-07-01T17:25:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "review 待合并 worktree opt-server-1782839648（nosniff 安全头）→ merge/reject 决策",
+  "situation": "scout-scan 推荐工作单位 #1 = 1BfrYW9R，理由 review 1 个待合并 worktree（人工审 diff + merge/reject）。待合并枝 auto/opt-server-1782839648 tip 00bb09b，方向 server:nosniff-security-header，相对 main e3b78e1 改 3 文件 +89/-1：dev-server.js +8 行（请求处理器首行 res.setHeader X-Content-Type-Options nosniff）、test/smoke.test.js +80 行（nosniff 回归锁 #36）、GATES.md 文案更新。",
+  "action": "人工审 diff + 验证缺口真实性 + 跑测试 + squash merge。验证三步：(1) 缺口真实性：git show e3b78e1:dev-server.js | grep nosniff —— main 仅 line 76 注释引用 X-Content-Type-Options: nosniff 作为 404 须带 Content-Type 的论据，但全文件零 setHeader/writeHead 实际发送该头，'声称依赖 nosniff 实则零发送' 缺口为真。(2) 测试绿：在 worktree 内 npm test —— 36/36 pass 含新 #36 nosniff 回归锁（168ms，覆盖静态 200/404/405/healthz/readyz 五路径全带 nosniff，删首行 setHeader 即全红负向可证伪）。(3) 合并：opt-worktree.sh . merge opt-server-1782839648 —— squash fast-forward 入 onedaybot-dev tip d08ad83，auto/opt-server-1782839648 分支与 worktree 目录自动清理。",
+  "files_changed": [
+    "1BfrYW9R/dev-server.js",
+    "1BfrYW9R/test/smoke.test.js",
+    "1BfrYW9R/GATES.md"
+  ],
+  "worktree": "opt-server-1782839648（已 merge 入 onedaybot-dev 后清理）",
+  "direction": "server:nosniff-security-header",
+  "outcome": "succeeded",
+  "outcome_evidence": "git show onedaybot-dev:dev-server.js line 40 含 res.setHeader('X-Content-Type-Options','nosniff')（合并前 line 76 仅注释引用零发送）；git branch 无 auto/opt-server-1782839648（输出 none clean）；git worktree list 无 opt-server 条目（clean）；git log -1 tip=d08ad83 'merge: 人工批准合并 optimization worktree opt-server-1782839648'；npm test 36 pass 0 fail（#36 nosniff 锁 168ms pass）。",
+  "next_suggestion": "1BfrYW9R standing optimization worktree 仍存（e3b78e1 基，现落后 main d08ad83 12 提交）——下轮若 1BfrYW9R 再排 #1，可触发 ensure_main_wt ff-only 自愈或做新方向；否则顺延 #2 autonomous-studio（7 延期 triage TODO，非纯 merge 轮可挑一个动手）。1BfrYW9R 现仅剩 standing optimization worktree（0 提交 0 diff），无紧迫债。"
+}

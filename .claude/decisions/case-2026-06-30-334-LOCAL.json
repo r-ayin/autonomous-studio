@@ -1,0 +1,23 @@
+{
+  "case_id": "case-2026-06-30-334",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-06-30T04:14:19Z",
+  "project": "autonomous-studio",
+  "work_unit": "scout-scan 剥离 .claude/decisions/ 案例归档 markdown 的伪 TODO 标记计数",
+  "situation": "scout #1=1BfrYW9R 推荐为'可跳过'(31 个 mutation-tested 回归锁全绿,saturated,做第 32 锁=churn)。顺延 audit AS(#2):scout 报 AS active TODO=3 且推荐'等合并 optimization worktree,可能已 triage TODO,别重做——先查 worktree log'。用 scout 自身 count_markers 精确定位 3 个 active TODO:全部落在 .claude/decisions/decision-archive.md 的案例标题行(如 'Case 37: triage autonomous-studio 前 2 个真实 # TODO: 标记'),是引擎元日志非代码债——属 marker 正则 \\bTODO\\b\\s*[:-] 误匹配案例标题的 false-positive 类,与已修的 <!-- TODO -->/【TODO】 占位符剥离同源。另审计 standing optimization worktree:三三点 main...auto/optimization name-only diff 仅 case-332.json(已 completed case log),case-327 main↔opt 内容 IDENTICAL,worktree 无代码 diff 即未 triage 那 3 TODO——证伪 scout #2 的'可能已 triage'猜想。",
+  "action": "在 scripts/scout-scan.py count_markers 的 per-file 循环,rel=os.path.relpath 之后加 `if rel.startswith('.claude/decisions/'): continue`,剥离案例归档 md(同 <!-- TODO --> /【TODO】 占位符剥离理念)。改根 live 副本(/home/admin/workspace/scripts/scout-scan.py,非 git 实跑权威)后 cp 同步 AS git 副本(autonomous-studio/scripts/scout-scan.py)保逐字节一致(遵 [[scout-scan-copy-provenance]]),经 opt-worktree commit 提交到 standing optimization worktree(branch auto/optimization)待人工 merge。",
+  "files_changed": [
+    "scripts/scout-scan.py"
+  ],
+  "worktree": "optimization (auto/optimization, commit 47d1228)",
+  "direction": "engine:scanner-accuracy",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "git -C .opt-worktrees/autonomous-studio/optimization show --stat 47d1228: 'opt(engine:scanner-accuracy): scout-scan 剥离 .claude/decisions/...' scripts/scout-scan.py | 33 ++++ (1 file changed)'",
+    "count_markers('.') 修复前 counts={'TODO':3} mfiles 含 .claude/decisions/decision-archive.md;修复后 counts={'TODO':0},mfiles 不再含 decision-archive.md,deferred={'TODO':7}(已 triage 在 PROGRESS/README/bff_client.py 等非 decisions 文件)不动",
+    "全量 scout-scan 重跑 AS 块: 标记: TODO=0 FIXME=0 HACK=0(原 TODO=3);推荐从'等合并 optimization worktree...别重做'变为'review 1 个待合并 worktree(人工审 diff + merge/reject)'——伪 TODO 不再驱动推荐",
+    "x-tool/.claude/decisions/*.md 用同 marker 逻辑扫 active TODO=0,证剥离 .claude/decisions/ 不误藏他项目真实债",
+    "diff -q scripts/scout-scan.py autonomous-studio/scripts/scout-scan.py = IDENTICAL(根 live ↔ AS git 副本同步,遵 provenance)"
+  ],
+  "next_suggestion": "下轮 AS standing optimization worktree(auto/optimization @ 47d1228)待人工审 diff + squash merge:仅净增本 6 行 decisions 剥离 + 滞留 case-332.json(case-327 内容已 IDENTICAL 不动)。merge 后按 [[opt-worktree-root-as-copy-drift]] 须 cp AS-git→root live 再核逐字节。另 AS main 残留 4 个 untracked case(329/330/331/333)待批量 opt-worktree commit 归档。"
+}
