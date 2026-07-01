@@ -57,12 +57,13 @@ echo "workspace: $WORKSPACE"
 echo "停止: touch $STOP_MARKER  或  kill $$"
 echo ""
 
-# 模型策略（用户 2026-06-29 定）：优先 GLM-5.2；遇限流(402/429/quota/overloaded)回退 qwen3.7-max。
+# 模型策略（用户 2026-07-01 改）：自动决策引擎只跑 qwen3.7-max，不再 GLM-5.2/fallback 切换。
+# 原因：用户指示自动模式只跑 qwen3.7-max，避免 GLM 限流波动 + 简化模型策略。
 # 代理层：env ANTHROPIC_MODEL 经重映射，settings.json 的 model 字段对 claude -p 无效，必须 --model。
-PRIMARY_MODEL="GLM-5.2"          # 用户刚设的默认；有独立额度（见 memory glm52-budget-setup）
-FALLBACK_MODEL="qwen3.7-max"     # 代理层已验证 200，独立额度，限流时兜底
-STICKY_FAIL_THRESHOLD=3          # GLM-5.2 连续限流 N 轮后粘到 fallback，省调用
-PROBE_EVERY=10                   # 粘到 fallback 后每 N 轮探一次 GLM-5.2 是否恢复
+PRIMARY_MODEL="qwen3.7-max"        # 自动模式唯一模型，独立额度已验证 200
+FALLBACK_MODEL="qwen3.7-max"      # 同模型，不切换；保留变量名供下方逻辑兼容
+STICKY_FAIL_THRESHOLD=9999        # 极大值，永不粘性切换（同模型无意义切换）
+PROBE_EVERY=9999                  # 同上
 STICKY_FALLBACK=0
 GLM_FAIL_STREAK=0
 PROBE_COUNTDOWN=0
