@@ -22,12 +22,6 @@
 # 不在 workspace 根目录跑——case/state/audit 都落 engine-dir/.claude/。
 set -uo pipefail
 
-# L-001 fix (audit-2026-07-01-002): Ctrl-C / SIGTERM 时清理 claude -p 子进程，防孤儿
-# AS-EC-007 fix (audit-2026-07-02-002): trap 同时清理 run_round 中 mktemp 的临时文件，
-#   避免 SIGINT 落在 mktemp→shred 窗口内导致敏感输出泄漏到 /tmp。
-CURRENT_OUT_FILE=""
-trap 'echo "[trap] 收到信号，终止子进程组..."; if [ -n "$CURRENT_OUT_FILE" ] && [ -e "$CURRENT_OUT_FILE" ]; then shred -u "$CURRENT_OUT_FILE" 2>/dev/null || rm -f "$CURRENT_OUT_FILE"; fi; kill 0 2>/dev/null; exit 130' INT TERM
-
 WORKSPACE="${1:-.}"
 ENGINE_DIR="${2:-$WORKSPACE/autonomous-studio}"
 BG_FLAG="${3:-}"
@@ -38,14 +32,28 @@ mkdir -p "$ENGINE_DIR/.claude"
 
 # --bg: 自举为后台进程（nohup + 日志重定向），父进程退出。
 # M-004 fix (audit-2026-07-01-002): 文档声称支持但原代码未实现。
+# EC-017 fix: setsid 隔离进程组，防止 --bg 子进程树泄漏到启动终端的进程组。
+#   setsid 让 re-exec 的子进程成为新 session leader（新进程组），这样：
+#   1. 终端关闭（SIGHUP）不传播给后台循环——nohup 挡 HUP，setsid 断父进程组关联
+#   2. kill $BG_PID 或 kill -TERM -$BG_PID 能杀掉整个后台进程树（同组）
+#   3. trap `kill 0` 只杀后台自己的进程组，不误杀启动终端的其他进程
+#   trap 延迟到 --bg 出口之后安装（launcher 进程不需要也不应该 kill 0）。
 if [[ "$BG_FLAG" == "--bg" ]]; then
   LOG_FILE="/tmp/autonomous-loop-$(date +%Y%m%d-%H%M%S).log"
-  nohup "$0" "$WORKSPACE" "$ENGINE_DIR" </dev/null >"$LOG_FILE" 2>&1 &
+  setsid nohup "$0" "$WORKSPACE" "$ENGINE_DIR" </dev/null >"$LOG_FILE" 2>&1 &
   BG_PID=$!
   echo "[autonomous-loop] 已后台启动 PID=$BG_PID 日志=$LOG_FILE"
   echo "[autonomous-loop] 停: touch $STOP_MARKER  或 kill $BG_PID"
   exit 0
 fi
+
+# L-001 fix (audit-2026-07-01-002): Ctrl-C / SIGTERM 时清理 claude -p 子进程，防孤儿
+# AS-EC-007 fix (audit-2026-07-02-002): trap 同时清理 run_round 中 mktemp 的临时文件，
+#   避免 SIGINT 落在 mktemp→shred 窗口内导致敏感输出泄漏到 /tmp。
+# EC-017: trap 放在 --bg exit 之后，只在实际长跑工作进程中安装。
+#   launcher 进程（--bg 分支）不安装 trap——它 exit 0 即走，无需 kill 0。
+CURRENT_OUT_FILE=""
+trap 'echo "[trap] 收到信号，终止子进程组..."; if [ -n "$CURRENT_OUT_FILE" ] && [ -e "$CURRENT_OUT_FILE" ]; then shred -u "$CURRENT_OUT_FILE" 2>/dev/null || rm -f "$CURRENT_OUT_FILE"; fi; kill 0 2>/dev/null; exit 130' INT TERM
 
 # 清掉旧的停止标记（启动时）
 rm -f "$STOP_MARKER"
