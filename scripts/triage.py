@@ -90,7 +90,9 @@ def main() -> None:
         n = len(list(hist.glob("*.json"))) + 1
         (hist / f"{n:04d}-{d.get('kind', 'x')}.json").write_text(
             json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
-        current_path(root).unlink()
+        # missing_ok=True: 防御 load→unlink 间竞态——另一进程已先行归档并删除
+        # current.json 时，本进程正常路径已过 L81-84 前置检查，到此缺失不应致崩溃。
+        current_path(root).unlink(missing_ok=True)
         print(f"change done, archived → .pipeline/history/{n:04d}-{d.get('kind')}.json")
         return
 

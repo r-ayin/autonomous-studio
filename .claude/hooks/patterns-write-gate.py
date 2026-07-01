@@ -31,9 +31,12 @@ def main():
     if not fp:
         print("{}")
         return
-    # 归一化比较末尾路径
-    norm = fp.replace("\\", "/")
-    if norm.endswith(PROTECTED) or norm.endswith("/" + PROTECTED):
+    # 归一化比较末尾路径：os.path.normpath 折叠 ./、//、../，防 LLM 用
+    # "memory/./decision-patterns.md" / "memory//decision-patterns.md" 等路径混淆
+    # 绕过 endswith 字符串匹配（case-480 security-review finding）。
+    norm = os.path.normpath(fp.replace("\\", "/"))
+    prot = os.path.normpath(PROTECTED)
+    if norm == prot or norm.endswith("/" + prot):
         print(json.dumps({
             "decision": "block",
             "reason": (

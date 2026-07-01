@@ -1,0 +1,32 @@
+{
+  "case_id": "case-2026-07-01-417",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-01T05:17:00+08:00",
+  "project": "autonomous-studio-aone",
+  "work_unit": "sanctioned-merge: auto/optimization @0a5e4fa → main（case-416 审计轮 scout-scan.py+triage.py 2 处 low 修复 squash 合并）",
+  "situation": "case-417=417%4=1≠0 非审计轮·sanctioned-merge 路径。承接 case-416 NEXT_SUGGESTION[1]：pending=1 opt-worktree auto/optimization @0a5e4fa（2file scout-scan.py 删 L567 idx_dir 死赋值 + triage.py L93 unlink 补 missing_ok=True，+4/-4 无源码逻辑变更）待合并→main。case-416 审计轮已完成 AST+功能回归，本轮为机械合并操作。",
+  "action": "四步 sanctioned-merge（同 case-413 范式）：①预审 git show 0a5e4fa --stat=2file +4/-4，diff 核实=scout-scan.py 删 L565-566 idx_dir 死赋值行（被 L569 无条件覆盖，早期 .opt-worktrees/_indexes 方案残留）+注释更新；triage.py L93 unlink→L95 unlink(missing_ok=True)+2 行竞态注释，无注入面/无逻辑变更；②冲突预检 git merge-tree --write-tree main auto/optimization=tree 517bcbe exit 0 无冲突，merge-base 无源码路径碰撞（main 仅 +ef32dc7 归档未碰源码）；③opt-worktree.sh . merge optimization→squash 038ac1e + worktree 清理（git worktree list 仅 main）；④git branch -D auto/optimization 强删 was 0a5e4fa。回归：python3 ast.parse 两文件=AST OK；grep missing_ok 命中 triage.py:95 ✓；grep 死行 'idx_dir = os.path.join(os.path.dirname(path), \".opt-worktrees' exit=1=已移除 ✓；triage --done 功能 smoke（/tmp/triage-smoke）正常归档 current.json→.pipeline/history/0001-small.json + unlink current.json 成功（missing_ok 路径覆盖）。pending=0 clean，git status --short=空，git branch=仅 * main。",
+  "files_changed": ["scripts/scout-scan.py", "scripts/triage.py"],
+  "worktree": "auto/optimization @0a5e4fa → squash merged to main @038ac1e（worktree 已清理，branch 已删）",
+  "direction": "merge",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "git log -1 --oneline main = '038ac1e merge: 人工批准合并 optimization worktree optimization'",
+    "git show 038ac1e --stat = 2 files changed, 4 insertions(+), 4 deletions(-)（scout-scan.py + triage.py）",
+    "git show 038ac1e -p scripts/triage.py L93 区段 = unlink() → unlink(missing_ok=True) 落地",
+    "git branch = '* main'（auto/optimization 已 git branch -D 删除，was 0a5e4fa）",
+    "git worktree list = 仅 /home/admin/workspace/autonomous-studio-aone 038ac1e [main]（worktree 已清理）",
+    "git status --short = 空（clean）",
+    "python3 -c 'ast.parse(...)' 两文件 = AST OK",
+    "grep -n missing_ok scripts/triage.py = 95:        current_path(root).unlink(missing_ok=True)",
+    "grep 死行 scripts/scout-scan.py exit=1（已移除）",
+    "triage --root /tmp/triage-smoke --done = 'change done, archived → .pipeline/history/0001-small.json' EXIT=0 + current.json 已 unlink"
+  ],
+  "next_suggestion": [
+    "【case-418=418%4=2≠0 非审计轮】预期 skip 心跳：跑 scout-scan.py 拿健康快照，若 #1 推荐无明确小工作单位（AS score=0.0）则 skip 心跳——核实 git status clean + worktree 仅 main + branch 仅 main + grep TODO(deferred) 4 命中全已 triage（apply_resource_access.py:85,90·bff_client.py:207·scaffold-skill.sh:159）。",
+    "【case-419=419%4=3≠0 非审计轮】预期 skip 心跳或承接新推荐。",
+    "【case-420=420%4=0 下次审计轮 DO A 强制 code-audit】续审其他敏感引擎脚本——候选 scripts/pipeline-gate.py（hook 拦截逻辑）、scripts/autonomous-commit-gate.py（提交门），或审 autonomous-studio 子项目 bff_client.py 鉴权路径（apply_resource_access.py:85,90·bff_client.py:207 有 TODO(deferred) 需真实环境实测/人工裁决）。"
+  ],
+  "audit_type": "none",
+  "audit_findings": []
+}

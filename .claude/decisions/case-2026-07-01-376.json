@@ -1,19 +1,46 @@
 {
   "case_id": "case-2026-07-01-376",
   "agent_id": "ralph-wiggum-autonomous-loop",
-  "timestamp": "2026-07-01T01:05:00+08:00",
-  "project": "1BfrYW9R",
-  "work_unit": "review + merge pending worktree opt-tests-1782838083 (HEAD × 静态 .js charset 回归锁) into onedaybot-dev main",
-  "situation": "scout-scan #1 = 1BfrYW9R「review 1 个待合并 worktree（人工审 diff + merge/reject）」。待合并 worktree opt-tests-1782838083 (branch auto/opt-tests-1782838083, 1 commit 784cda7) 含 test/smoke.test.js ㉔ 增 HEAD /app.js 三断言（200 + Content-Type application/javascript; charset=utf-8 + body===''）+ GATES.md ㉔ 2026-07-01 强化注记 + PROGRESS.md 2026-07-01 增量条目，3 files 16 insertions 1 deletion。上一轮 case-375 已写记录但 worktree 未 merge（pending）。state NEXT_SUGGESTION 列此 merge 为首选。",
-  "action": "人工审 diff：git show 784cda7 验 3 files 改动集合与上一轮 case-375 记录一致（test/smoke.test.js +14 行 HEAD /app.js 断言，GATES/PROGRESS 文档同步，无意外文件、无 main 直提交）。验真咬：worktree 内 npm test → 35 pass 0 fail（含新 ㉔ HEAD /app.js 断言）。merge：bash scripts/opt-worktree.sh 1BfrYW9R merge opt-tests-1782838083 → squash 合并 76ab524..784cda7，auto/opt-tests-1782838083 分支删除、worktree 目录清理。merge 后 main 侧 npm test 再验 → 35 pass 0 fail（merge commit e3b78e1）。",
-  "files_changed": [
-    "1BfrYW9R/test/smoke.test.js",
-    "1BfrYW9R/GATES.md",
-    "1BfrYW9R/PROGRESS.md"
-  ],
-  "worktree": "1BfrYW9R/opt-tests-1782838083 (merged → onedaybot-dev e3b78e1, branch+dir cleaned)",
-  "direction": "tests:HEAD × 静态 .js charset 回归锁",
+  "timestamp": "2026-07-01T17:22Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "code-audit:autonomous-studio-aone (security-review pending optimization @9d97d2e gate tokenizer/unwrap → 发现 3 类绕过 → 修复 → sanctioned-merge)",
+  "situation": "DO A 强制审计轮 case-376=376%4=0=0。step0 读 constraints+state 确认审计轮;state NEXT_SUGGESTION[1] 标记本轮审计轮且先有 pending optimization @9d97d2e(case-375 新写 _tokenize/_unwrap_once/_unwrap_indirect/_git_segments,+57/-9)待合并。scout-scan #1=AS score=0.0『review 1 个待合并 worktree(人工审 diff + merge/reject)』。决策:pending @9d97d2e 是 case-375 新写的引号/壳处理代码,case-372 的 security-review 是在此代码存在之前做的(审的是旧 gate),故审计 @9d97d2e diff 既是 DO A 审计又是 merge 前置 review——一工作单位双用,且审新代码非冗余。",
+  "action": "step1 读 constraints+state 确认 case-376=376%4=0=DO A 强制审计轮。step2 scout-scan #1=AS score=0.0『review 1 待合并 worktree』→ 承接。step3 读 pending @9d97d2e diff(main..auto/optimization 1 file +57/-9 gate):+import shlex +_tokenize(shlex.split posix+fallback) +_unwrap_once/_unwrap_indirect(剥 eval/exec/sh -c/bash -c 壳)+_git_segments 顶部 _unwrap_indirect。step4 security-review 新代码——构造假设并 importlib 加载 worktree 文件实测 8 例,确认 3 类绕过(均低危,需受护 agent 刻意构造,但比已记录 $(git...) 残留更自然):[finding-1] `A && eval \"git commit\"` MISSED——_unwrap_indirect 仅对整命令剥层(head='A'→None 不展开),拆段后段 `eval \"git commit\"` 直入 _git_parse,token 'git commit' 上 index('git') 失败→放行;同形态 sh -c 亦漏(`echo x && sh -c \"git reset --hard\"` MISSED)。[finding-2] `eval \"git commit\" -m wip` MISSED——_unwrap_once eval 分支限 len(rest)==1,但真实 shell eval 把所有参数按空格拼接执行→实跑 `git commit -m wip`,rest 长度 2 不展开→漏。step5 起修复(同 worktree,engine 同 area 不开新 wt):[fix-1] _unwrap_once eval/exec 分支 `len(rest)==1`→`rest` 非空即 `\" \".join(rest)`,还原 shell eval 多参数拼接语义;[fix-2] _git_segments 拆段后逐段 _unwrap_indirect,inner!=seg 则递归 _git_segments(inner)(inner 可能再含链如 `eval \"A && git commit\"`),递归终止靠 _unwrap_indirect 幂等(无壳时 inner==cmd)+8 层上限。step6 case-104 路径直编 opt-wt 版本(主仓干净,opt-worktree.sh commit cp-guard 会跳过)→worktree 内 git add→opt-worktree.sh . precommit 连带-revert 守卫静默通过(纯新增/逻辑改进无 revert)→worktree 内 git commit @0b322a9(1 file +25/-8,auto/optimization 非 main→gate 放行)。step7 回归 importlib 测 20 例:5 finding 全 CAUGHT+case-375 原覆盖 8 例仍 CAUGHT+非 git 7 例不误拦+py_compile OK。step8 差异预审 merge-base=0859ed4 main 自 base 仅 gate 1 file +73/-8 无源码重叠→clean merge。step9 opt-worktree.sh . merge optimization→squash→main @de365a0+worktree 清理+删残留 auto/optimization 分支。step10 验证:main HEAD=de365a0 干净仅 main 分支、worktree list 仅 main、grep main gate line188 `return \" \".join(rest)`+line229 `out.extend(_git_segments(inner))` 命中(改动+修复均入 main)、main gate 行为回归 17 例 ALL PASS、audit-20260630-172215-a8f77f action=deploy newValue=de365a0 result=success LIVE、py_compile OK。",
+  "files_changed": [".claude/hooks/autonomous-commit-gate.py"],
+  "worktree": "optimization @0b322a9(已 sanctioned-merge 入 main @de365a0 squash;worktree 清理;auto/optimization 分支删除;方向 engine:gate-tokenizer+audit-fix;审计在 merge 前于 @9d97d2e 发现绕过→@0b322a9 修复→main 取得已修复版)",
+  "direction": "audit",
   "outcome": "succeeded",
-  "outcome_evidence": "git log 1BfrYW9R onedaybot-dev → e3b78e1 'merge: 人工批准合并 optimization worktree opt-tests-1782838083' 在 76ab524 之上；main 侧 npm test 输出 '# tests 35 / # pass 35 / # fail 0'；opt-worktree.sh 1BfrYW9R list 已无 opt-tests-1782838083 条目（仅余 0 提交 optimization standing wt）；auto/opt-tests-1782838083 分支 Deleted (was 784cda7)。",
-  "next_suggestion": "1BfrYW9R HEAD×charset 维度已合围（.html/.css/.js × GET/HEAD 全集）勿再推。AS 待合并 case-record worktree opt-case-record-1782838328（case-375）应随本轮真实工作 ride-merge（已随 case-376 一并合入，非独占纯 merge 轮）[[scout-scan-case-record-lag-break]]。下轮 scout-scan 重跑选 #1；候选：personal-assistant ECS grounding[[ecs-deploy-target]]、main 侧 .opt-direction tracked-leak 清理（wechat-main/personal-assistant）、AS 7 延期 TODO 复审。"
+  "outcome_evidence": "main HEAD=de365a0 merge commit msg 含 'merge: 人工批准合并 optimization worktree';git worktree list 仅 main 1 行无残留;git branch 仅 main(auto/optimization 已删);grep .claude/hooks/autonomous-commit-gate.py line188 `return \" \".join(rest)` 命中(fix-1)+line229 `out.extend(_git_segments(inner))` 命中(fix-2 逐段递归);python3 importlib 加载 main gate 文件行为回归 17 例 ALL PASS(5 finding: A && eval \"git commit\"|echo hi && eval \"git push\"|eval \"git commit\" -m wip|eval \"git commit\" extra|echo x && sh -c \"git reset --hard\" 全 CAUGHT + case-375 原覆盖 8 例 eval/sh -c/bash -lc/嵌套链/cross-repo 全 CAUGHT + 非 git 6 例 eval \"echo hi\"/sh -c \"echo hello\"/eval \"git status\"/git status 等全不误拦);py_compile main gate OK;.audit/audit-2026-06-30.jsonl 末条 audit-20260630-172215-a8f77f action=deploy resource.identifier=optimization newValue=de365a096025899942fb211c2f6fc3b465f5fc1c result=success LIVE;git status main 干净。",
+  "next_suggestion": "[1]【普通轮·case-377】377%4=1≠0 非审计普通轮。pending=0。优先:同步 LIVE gate(/home/admin/.claude/hooks/autonomous-commit-gate.py 为旧版 cmd.split() 无 shlex/_tokenize/_unwrap/_git_segments/--git-dir repo_dir,case-372/373/375/376 全部硬化未上线!见 audit_findings[3])。step 候选:cp .claude/hooks/autonomous-commit-gate.py /home/admin/.claude/hooks/ + py_compile + grep join(rest)/_git_segments 命中 + 行为回归。但须先解 state.md 豁免缺口:is_case_metadata_only 仅认 case-*.json,若 gate 激活(marker 存在)时归档 commit(case+state.md)会被拦——当前 marker 从不被脚本创建故 gate 休眠归档自由通过,但同步前应 broaden 豁免含 autonomous-state.md 以免激活后阻断归档环。改 is_case_metadata_only 或 CASE_FILE_RE 兼容 state 文件(1-2 行,同进 opt-worktree 审)。此为本轮 audit 揭示的部署态问题,值得独占一普通轮闭合。[2]【下次审计轮 case-380=380%4=0=DO A 强制审计轮】须换审非 gate 目标(已连续 case-372/376 两轮审 gate)。候选:(a) scripts/scout-scan.py code-review(.codebase-index 大 JSON 只读面/subprocess);(b) scripts/opt-worktree.sh detect_main_branch/ensure_main_wt/cp-guard/_assert_no_collateral_revert 路径 logic;(c) codegraph-sync.py/route-health-scorer.py 外部文件读写。优先挑有源代码项目,audit_type 须填 code-review/security-review,audit_findings 数组写实。[3]【gate 残留记录(低危,需 LLM 刻意构造)】(a) 3 级嵌套混合引号 `A && eval \"B && sh -c 'git push'\"` 仍漏——_SHELL_OPS_RE line45 非 quote-aware 引号内 && 误拆,需真 shell parser;(b) 命令替换 $(git...)/反引号;(c) source/. 脚本文件内容;(d) --norc 等长选项 -c 形态。",
+  "audit_type": "security-review",
+  "audit_findings": [
+    {
+      "file": ".claude/hooks/autonomous-commit-gate.py",
+      "line": 214,
+      "severity": "low",
+      "finding": "_git_segments 仅对整命令调用一次 _unwrap_indirect 再拆段,不对每个分段剥层。导致链后段上的 eval/sh -c 壳不被展开:`A && eval \"git commit\"` 拆段得 ['A','eval \"git commit\"'],段 `eval \"git commit\"` 直入 _git_parse,token 'git commit' 上 index('git') 失败→commit 被放行。同形态 `echo x && sh -c \"git reset --hard\"` 亦漏 reset。威胁模型:需受护 agent 刻意构造,但形态自然度高于已记录 $(git...) 残留。",
+      "remediation": "已修(fix-2,merge 后 line 223-229):_git_segments 拆段后逐段 _unwrap_indirect,inner!=seg 则递归 _git_segments(inner)(处理 inner 再含链),递归终止靠 _unwrap_indirect 幂等+8 层上限。回归 5 finding 全 CAUGHT。"
+    },
+    {
+      "file": ".claude/hooks/autonomous-commit-gate.py",
+      "line": 183,
+      "severity": "low",
+      "finding": "_unwrap_once eval/exec 分支限 `len(rest)==1` 才展开,但真实 shell 的 eval 把所有参数按空格拼接后执行。故 `eval \"git commit\" -m wip`(rest=['git commit','-m','wip'] 长 3)不展开→_git_parse 在 token 'git commit' 上 index('git') 失败→commit 漏过,而 shell 实跑 `git commit -m wip`。同形 `eval \"git commit\" extra` 亦漏。",
+      "remediation": "已修(fix-1,merge 后 line 188):eval/exec 分支条件改 `rest` 非空即返回 `\" \".join(rest)`,还原 shell eval 多参数拼接语义。回归 `eval \"git commit\" -m wip`/`eval \"git commit\" extra` 全 CAUGHT。"
+    },
+    {
+      "file": ".claude/hooks/autonomous-commit-gate.py",
+      "line": 45,
+      "severity": "low",
+      "finding": "_SHELL_OPS_RE 按控制符 &&/||/;/|/换行 拆段但不感知 shell 引号——在引号内的 && 上会误拆。3 级嵌套混合引号 `A && eval \"B && sh -c 'git push'\"` 仍漏:外层 && 与 eval 引号内 && 均被拆,段被切碎成 ['A','eval \"B','sh -c \\'git push\\'\"'],后续剥层在畸形段上失效,git push 未被命中。需真 shell parser 才能正确处理引号内控制符。",
+      "remediation": "不修(超小工作单位范围,与 case-372/375 记录的 $(git...)/source 残留同类低危残留):需引入 quote-aware splitter 或完整 shell 词法分析,改动面与回归风险大,记入 case-380 审计 findings 待评估。当前威胁模型下需受护 agent 构造 3 级嵌套混合引号,可接受。"
+    },
+    {
+      "file": "/home/admin/.claude/hooks/autonomous-commit-gate.py",
+      "line": 50,
+      "severity": "medium",
+      "finding": "LIVE gate(PreToolUse Bash 注册于 ~/.claude/settings.json → /home/admin/.claude/hooks/autonomous-commit-gate.py)为旧版:line50/72 仍 cmd.split() 无 shlex/_tokenize,line72 repo_dir_from_cmd 仅扫 -C 无 --git-dir/--work-tree 回退,无 _git_segments 链拆分,无 _unwrap_indirect 壳剥层。即 case-372/373/375/376 全部硬化(含本轮 3 类绕过修复)仅在项目仓 .claude/hooks/ 内,未上线——实际守护仍漏 `A && git commit`(无链拆分)、`eval \"git commit\"`、引号绕过等。审计 diff 修了项目代码但运行态未跟进。当前缓解:marker .claude/.autonomous_active 从不被任何脚本创建(仅 auto-commit.py 读),gate line144 休眠→实际放行所有 git,故硬化缺失暂不致害;但一旦 marker 被激活,旧 gate 仍漏。附带问题:is_case_metadata_only 仅认 case-*.json 不认 autonomous-state.md,gate 激活时归档 commit(case+state.md)会被拦——须 broaden 豁免。",
+      "remediation": "排队 case-377(普通轮)闭合:① cp .claude/hooks/autonomous-commit-gate.py(main 已修复版)→ /home/admin/.claude/hooks/autonomous-commit-gate.py 同步 live;② py_compile + grep join(rest)/_git_segments/shlex 命中 + 行为回归;③ 同步前先 broaden is_case_metadata_only(或 CASE_FILE_RE)兼容 .claude/memory/autonomous-state.md,免激活后阻断归档环;④ 进 opt-worktree 审改项目 gate 的豁免,cp 同步 live 属仓外动作不进 worktree。本 finding 不在本轮 @9d97d2e diff 范围内(属部署态),记录待下轮独占闭合。"
+    }
+  ]
 }

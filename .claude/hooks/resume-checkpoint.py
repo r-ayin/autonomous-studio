@@ -28,24 +28,40 @@ LATEST_FILE = os.path.join(CHECKPOINT_DIR, "latest.json")
 
 
 def read_latest_checkpoint():
-    if os.path.exists(LATEST_FILE):
-        return _read_json(LATEST_FILE)
+    # 直接尝试读取,避免 exists()→open() TOCTOU 竞态(save-checkpoint 写入瞬间可能读到半写文件)
+    try:
+        return _read_json_strict(LATEST_FILE)
+    except FileNotFoundError:
+        pass
+    except (json.JSONDecodeError, OSError) as e:
+        # latest.json 损坏/被截断——不再静默吞错,告知用户并降级到次新 checkpoint
+        print(f"[resume-checkpoint] ⚠️ latest.json 损坏({type(e).__name__}: {e}),降级扫描历史 checkpoint", file=sys.stderr)
     if os.path.isdir(CHECKPOINT_DIR):
         files = sorted([
             f for f in os.listdir(CHECKPOINT_DIR)
             if f.startswith("checkpoint_") and f.endswith(".json")
         ], reverse=True)
-        if files:
-            return _read_json(os.path.join(CHECKPOINT_DIR, files[0]))
+        for fname in files:
+            try:
+                return _read_json_strict(os.path.join(CHECKPOINT_DIR, fname))
+            except (json.JSONDecodeError, OSError, FileNotFoundError):
+                continue
     return None
 
 
 def _read_json(filepath):
+    """Legacy lenient reader — kept for backward compat; new code uses _read_json_strict."""
     try:
         with open(filepath, "r", encoding="utf-8") as f:
             return json.load(f)
     except Exception:
         return None
+
+
+def _read_json_strict(filepath):
+    """Strict JSON reader: raises on missing/malformed instead of silent None."""
+    with open(filepath, "r", encoding="utf-8") as f:
+        return json.load(f)
 
 
 def checkpoint_age(checkpoint):

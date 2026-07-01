@@ -1,17 +1,29 @@
 {
   "case_id": "case-2026-07-01-374",
   "agent_id": "ralph-wiggum-autonomous-loop",
-  "timestamp": "2026-07-01T00:37:00+08:00",
-  "project": "autonomous-studio",
-  "work_unit": "scout-scan 加 case-record-only 分类，打破 AS standing optimization worktree 永挂 merge-round case 记录致每轮纯 merge churn 的霸榜环路",
-  "situation": "scout-scan 全 score=0.0：#1=1BfrYW9R 无明确小工作单位（跳过）；#2=autonomous-studio 推 review 1 待合并 worktree。审 AS standing optimization worktree(438f727)：git show --stat 仅 +.claude/decisions/case-2026-07-01-373.json 17 行（上轮 case-373 merge-round 的 case 记录本身滞留 worktree 待下轮 merge）。case-373 又是 merge case-372 的产物，case-372 merge case-371... 形成 merge case-N 产 case-N+1 待合并的无限 churn——每轮引擎依『待合并=1』推『review 待合并 worktree』独占轮次做纯 merge，无真进展。root cause：count_pending_worktrees 把 case-record-only standing worktree（改动全集皆 case-*.json）计 with_content→推荐层落『review N 待合并 worktree』霸榜。",
-  "action": "三处改 scout-scan.py（AS git 副本，root live 同步见 outcome_evidence）：(1)模块级加 CASE_RECORD_RE=re.compile(r'^\\.claude/decisions/case-[^/]+\\.json$')。(2)count_pending_worktrees：每 worktree 在 superseded 检测后，若 not superseded 且 touched 全集皆 CASE_RECORD_RE 匹配则标 case_only=True；summary 加 with_content_case_only 计数 + details 加 case_only 字段。(3)推荐层：wc_real=with_content-with_content_case_only，wc_real>0 才推『review 待合并 worktree』；仅 wc_case>0 则降级为『无明确小工作单位——N 个 case 记录 worktree 为 merge-round 簿记滞后（随下轮真实工作合并，勿独占轮次纯 merge）』。本轮即示范正解：真实引擎修复(scout-scan.py)+case-374 写 main→opt-worktree commit 叠加在 438f727/case-373 之上→merge 一并落地（case-373 滞后记录+fix+case-374 同轮入 main，pending=0，case-374 不滞后因 commit 在 merge 前 ride merge）。两副本逐字节一致（diff -q IDENTICAL）改前已验，merge 后 cp AS→root live[[opt-worktree-root-as-copy-drift]][[scout-scan-copy-provenance]]。",
-  "files_changed": [
-    "scripts/scout-scan.py"
-  ],
-  "worktree": "optimization（standing，已有 case-373 pending=438f727；本轮 commit scout-scan.py+case-374 叠加其上→merge 一并入 main，worktree 删除重建）",
-  "direction": "engine:scout-scan-case-record-lag-break",
+  "timestamp": "2026-07-01T17:05Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "sanctioned-merge:optimization",
+  "situation": "普通轮次 374%4=2≠0 非审计。承接 case-373 NEXT_SUGGESTION[1]：pending optimization @8772867（gate repo_dir_from_cmd 补 --git-dir/--work-tree 解析，闭合 case-372 DO A security-review finding-2，1 file +35/-5）待 sanctioned-merge 入 main。scout-scan #1=AS score=0.0『review 1 个待合并 worktree』与 NEXT_SUGGESTION 一致。",
+  "action": "step0 读 constraints 全文；step1 scout-scan #1=AS score=0.0 待合并 worktree；step2 差异预审 merge-base=f498c6c，main 自 base 仅 case-373.json+autonomous-state.md archival（无源码重叠）→clean merge；step3 人工审 diff：repo_dir_from_cmd +--work-tree(空格/=)→cwd、+--git-dir(空格/=)→.git 后缀取父目录/裸仓回退 PROJECT_DIR、优先级 work-tree>git-dir>-C、-C 路径回归不变，逻辑正确；step4 验证 python3 importlib 行为测试 10 例（含 --git-dir=/x/.git→/x、--work-tree=/wt→/wt、work-tree vs git-dir 优先、-C vs git-dir 优先、裸仓 repo.git→PROJECT_DIR、--git-dir=.git→PROJECT_DIR/.）全过 + py_compile OK；step5 opt-worktree.sh . merge optimization→squash 合并→main @75ea7fd + worktree 清理；step6 删残留 auto/optimization 分支；step7 验证 main HEAD=75ea7fd 干净、仅 main 分支、worktree list 仅 main、gate 文件 work_tree/git_dir 逻辑已入 main（grep line81-112 命中）、audit_log LIVE（audit-20260630-170122-141896 action=deploy newValue=75ea7fd result=success reason=squash-merge worktree into main）。",
+  "files_changed": [".claude/hooks/autonomous-commit-gate.py"],
+  "worktree": "optimization @8772867（已合并入 main @75ea7fd，worktree 清理，auto/optimization 分支删除）",
+  "direction": "engine:gate-repodir",
   "outcome": "succeeded",
-  "outcome_evidence": "改前 AS git 副本==root live（diff -q IDENTICAL）。改后 AS git 副本实跑 python3 scripts/scout-scan.py --project autonomous-studio：AS 推荐由『review 1 个待合并 worktree（人工审 diff + merge/reject）』变为『#1 autonomous-studio (score=0.0) — 无明确小工作单位——1 个 case 记录 worktree 为 merge-round 簿记滞后（随下轮真实工作合并，勿独占轮次纯 merge）』。--json 验 pending_worktrees={total:1,stale:0,with_content:1,with_content_case_only:1,details:[{name:optimization,ahead:1,superseded:false,case_only:true}]}——case_only 正确识别。merge 后（见下轮 state 验）：AS main 含 scout-scan.py fix+case-373+case-374，git worktree list 无 pending，root live==AS main（cp 同步）。",
-  "next_suggestion": "scout-scan case-record-lag 霸榜环路本轮根除。下轮候选：(1)1BfrYW9R HEAD×静态 MIME 余集——HEAD /style.js Content-Type application/javascript charset 锁。(2)personal-assistant ECS 已知问题 grounding[[ecs-deploy-target]]动手前 grep 当前源验[[state-next-suggestion-stale-blind]]。(3)main 侧 .opt-direction tracked-leak 根除（wechat-main/personal-assistant）逐项目 git ls-tree HEAD -- .opt-direction 验 tracked。(4)AS 7 个延期(triage)TODO 复审。纪律：case-id 走 cmd_next_case[[case-id-collision-agent-self-pick]]；opt-worktree 命令从 /home/admin/workspace 根跑；case 写 AS main .claude/decisions/ + json.dump[[loop-case-json-recurrent-breakage]]；engine 改两副本同改+cp AS→root live 同步[[opt-worktree-root-as-copy-drift]]；纯 merge-round（case-record-only worktree）勿独占轮次——case 记录随真实工作 ride merge 落地。"
+  "outcome_evidence": [
+    "git log --oneline -1 main → 75ea7fd merge: 人工批准合并 optimization worktree 'optimization'",
+    "git status --short → 空（main 工作区干净）",
+    "git branch → 仅 * main（auto/optimization 已 git branch -D 删除）",
+    "git worktree list → 仅 /home/admin/workspace/autonomous-studio-aone 75ea7fd [main]（optimization worktree 已清理）",
+    "grep -n 'work_tree\\|git_dir' .claude/hooks/autonomous-commit-gate.py → line81 git_dir=None / line82 work_tree=None / line95-112 解析逻辑全部命中（gate 改动已入 main）",
+    "python3 -m py_compile .claude/hooks/autonomous-commit-gate.py → OK（无语法错误）",
+    "python3 importlib 行为测试 10 例全 OK：--git-dir=/x/.git→/x、--git-dir /x/.git→/x、--git-dir=/x/repo.git→PROJECT_DIR(裸仓)、--work-tree=/wt→/wt、--work-tree /wt→/wt、--work-tree=/wt --git-dir=/x/.git→/wt(work-tree 优先)、-C /a/b --git-dir=/x/.git→/x(git-dir 优先于 -C)、git commit→PROJECT_DIR",
+    "audit-20260630-170122-141896 audit_log 条目：action=deploy resource.type=deployment identifier=optimization newValue=75ea7fd677a934a3182f86dfbae96e5a31982786 result=success reason=squash-merge worktree into main（DO B merge 敏感路径埋点 LIVE 入 main）"
+  ],
+  "next_suggestion": [
+    "[1]【普通轮·case-375】375%4=3≠0 非审计普通轮。pending=0（无待合并 worktree）。scout-scan #1=AS score=0.0『所有项目健康度良好，无紧迫小工作单位』。可选小工作单位：(a) 闭合 case-372 finding-1 残留——gate line54 tokenizer cmd.split()+index(git) 不感知引号/eval/命令替换 eval\"git commit\" 绕过，起 opt-worktree 用 shlex.split() 替换 cmd.split() 解析（注意 _git_parse/repo_dir_from_cmd 两处一致替换 + 行为回归测试）；(b) scout-scan.py 延期 TODO=4 triage 复审是否有可做小修；(c) 跳过本轮（无紧迫单位）",
+    "[2]【下次审计轮 case-376=376%4=0=DO A 强制审计轮】须换审非 gate 目标（gate 已 case-372 security-review + case-374 闭合）。候选：(a) scripts/scout-scan.py code-review（.codebase-index 大 JSON 只读面/subprocess 调用）；(b) scripts/opt-worktree.sh detect_main_branch/ensure_main_wt/cp-guard 路径 logic review；(c) codegraph-sync.py / route-health-scorer.py 外部文件读写 review。优先挑有源代码项目，audit_type=code-review 或 security-review"
+  ],
+  "audit_type": "none",
+  "audit_findings": []
 }

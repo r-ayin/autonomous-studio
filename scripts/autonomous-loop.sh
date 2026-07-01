@@ -29,22 +29,26 @@ mkdir -p "$WORKSPACE/.claude"
 rm -f "$STOP_MARKER"
 
 PROMPT='你是 autonomous-studio 引擎的持续自治循环（Ralph Wiggum 模式，每轮新 context）。
-当前轮次：推进持久化自动开发研究管线的**一个小工作单位**。
+当前轮次：推进持久化自动开发研究管线的**一个小工作单位** 或 **一次全量深度审计**（由 audit-cycle-state 决定）。
 
-★ 预算：不设上限（用户 2026-06-27 指示）。仍做小工作单位聚焦、不深读大块代码——靠 scout-scan 排序选任务，最小改动+提交。
+★ 预算：不设上限（用户 2026-06-27 指示）。普通轮/瞭望轮仍守小工作单位；**全量审计轮解绑深度限制**（可读 5-15 文件、追跨模块数据流、可用 sub-agent 但必须 model=sonnet）。
 
 步骤：
-0. 读 .claude/autonomous-constraints.md 的排除项（DO NOT），严格遵守（如"不做 moni 前端重构"）
-1. 跑 bash scripts/scout-scan.py --workspace '"$WORKSPACE"'（不带 --json，文本报告，轻）→ 拿项目健康快照
-2. 报告末尾有「推荐工作单位（按健康度排序）」——**取 #1 项目及其推荐工作单位**（若 #1 被 autonomous-constraints.md 排除则顺延 #2）。仍坚持小工作单位、不深读大块代码。autonomous-studio 不被特殊排除：它若排 #1 说明真有结构性问题，该修就修；但日常自我润色不再因"最近活跃"霸榜。
-3. 最小改动（只改 1-3 个文件，不要 Read 超过 2 个源文件，不要碰 .codebase-index/ 大 JSON）
-4. 用 bash scripts/opt-worktree.sh commit <area:subdirection> "<说明>" <文件1> <文件2> 提交（指定文件，避免扫 WIP；禁直接 git commit main——gate 会拦）
-5. 汇报 + 喂蒸馏闭环：做了什么 + 哪个 worktree + 下轮建议；并写一条 case 到 autonomous-studio/.claude/decisions/case-YYYY-MM-DD-NNN.json（字段：case_id/agent_id/timestamp/project/work_unit/situation/action/files_changed/worktree/direction/outcome[枚举 succeeded|failed|rolled_back|superseded]/outcome_evidence[引用可观察事实，不接受散文]/next_suggestion）。预算已解禁，case 要写实、写全。
-6. **回写状态**（持久化关键，否则目标无法跨 context 传递）：更新 '"$WORKSPACE"'/.claude/memory/autonomous-state.md — GOAL_STATUS(active|paused|done)/ACTIVE_GOAL/LAST_UPDATED(YYYY-MM-DD)/LAST_WORKTREE/LAST_OUTCOME(done|blocked|in_progress)/NEXT_SUGGESTION(≥1 条下轮工作单位）
+0. 读 .claude/autonomous-constraints.md 全文（DO NOT 排除项 + DO 审计指令 A/B/C/D 四节）。然后读 .claude/audit-cycle-state.json 决定**本轮类型**：
+   - status=idle 或 cycle-complete → **本轮走全量审计路径**：选一个"未深度审过"的项目（看 .claude/audits/ 已有报告避免重复），深度审计（不限于 1-3 文件），产出独立 report 落 .claude/audits/audit-YYYY-MM-DD-NNN.md（不进 case JSON），把 findings 写到 audit-cycle-state.json 的 derived_fixes（每条标 kind: route-fix|direction-shift|structural）。status 改 auditing→fix-in-progress。然后本轮结束（不派生 fix，下轮起逐个派生）。
+   - status=fix-in-progress → **本轮走瞭望/研究或派生 fix 路径**：先看 audit-cycle-state.derived_fixes 里有没有 status=pending 的 finding；有 → 派生一个最小 fix case（route-fix 用 opt-worktree 复用，direction-shift 触发新 worktree——opt-worktree.sh 已内置 judge_direction_kind 自动判定，只需把公共接口文件列入改动）；finding 全 pending → 跑 scout-scan 做瞭望快照（轻量，不深读源码），写 case 存档。所有派生 fix 状态变 merged|rejected 后，audit-cycle-state.status 改 cycle-complete（下轮触发新审计）。
+   - status=auditing → 不应出现（审计单轮内完成），出现则降级走瞭望轮。
+1. 跑 bash scripts/scout-scan.py --workspace '"$WORKSPACE"'（不带 --json，文本报告，轻）→ 拿项目健康快照（瞭望/修复轮必跑；审计轮可跳过此步直接深审）
+2. 报告末尾有「推荐工作单位（按健康度排序）」——瞭望/修复轮取 #1 项目（若 #1 被 autonomous-constraints.md 排除则顺延 #2）。仍坚持小工作单位（**修复阶段** 1-3 文件）；**审计阶段** 不限深度。autonomous-studio 不被特殊排除：它若排 #1 说明真有结构性问题，该修就修；但日常自我润色不再因"最近活跃"霸榜。
+3. 修复轮的最小改动（只改 1-3 个文件，不要 Read 超过 2 个源文件——**仅修复轮**；审计轮可读 5-15 文件）；不要碰 .codebase-index/ 大 JSON
+4. 用 bash scripts/opt-worktree.sh commit <area:subdirection> "<说明>" <文件1> <文件2> 提交（指定文件，避免扫 WIP；禁直接 git commit main——gate 会拦）。opt-worktree.sh 已内置 direction_kind 判定：触及 .claude/public-interfaces.txt 列出的公共接口文件 → 自动开新 worktree（direction-shift）；不触及 → 复用同 area worktree（route-fix）。你不用手动决定。
+5. 汇报 + 喂蒸馏闭环：做了什么 + 哪个 worktree + 下轮建议；并写一条 case 到 autonomous-studio/.claude/decisions/case-YYYY-MM-DD-NNN.json（字段：case_id/agent_id/timestamp/project/work_unit/situation/action/files_changed/worktree/direction/outcome[枚举 succeeded|failed|rolled_back|superseded]/outcome_evidence[引用可观察事实，不接受散文]/next_suggestion/**audit_type**[枚举 code-review|security-review|audit-log-instrumentation|deep-audit|none]/**audit_findings**[数组，每条 {file,line,severity,finding,remediation,kind}，无发现写 []]/**audit_id**[派生 fix 写父审计 id，非审计 case 写 null]/**audit_depth**[枚举 shallow|deep，瞭望轮=shallow，全量审计轮=deep]）。预算已解禁，case 要写实、写全。**派生 fix case 必须在 audit-cycle-state.json 的 derived_fixes 数组里同步 status=pending→merged|rejected**。
+6. **回写状态**（持久化关键，否则目标无法跨 context 传递）：更新 '"$WORKSPACE"'/.claude/memory/autonomous-state.md — GOAL_STATUS(active|paused|done)/ACTIVE_GOAL/LAST_UPDATED(YYYY-MM-DD)/LAST_WORKTREE/LAST_OUTCOME(done|blocked|in_progress)/NEXT_SUGGESTION(≥1 条下轮工作单位）。**同时回写 .claude/audit-cycle-state.json**（status/derived_fixes[].status/last_audit_*），不写则审计周期状态丢失。
 
 纪律（用户定，无限制）：
 - 不设冷却/连续次数上限——worktree 隔离，main 永远安全，大胆做
-- 每轮聚焦一个**小**工作单位，做完提交就退出（while 循环重开新 context 继续）
+- 每轮聚焦一个**小**工作单位（修复轮）或**一次深度审计**（审计轮），做完就退出（while 循环重开新 context 继续）
+- 全量审计轮解绑深度但解绑**仅限审计**——审计挖出的问题在派生 fix 时仍拆成最小单位走 opt-worktree
 - 唯一停止：用户说停（.claude/.stop_autonomous 标记）或 kill 进程
 - 卡死保护：同错误连续 3 次无进展 → 跳到下个项目'
 
@@ -53,12 +57,13 @@ echo "workspace: $WORKSPACE"
 echo "停止: touch $STOP_MARKER  或  kill $$"
 echo ""
 
-# 模型策略（用户 2026-06-29 定）：优先 GLM-5.2；遇限流(402/429/quota/overloaded)回退 qwen3.7-max。
+# 模型策略（用户 2026-07-01 改）：自动决策引擎只跑 qwen3.7-max，不再 GLM-5.2/fallback 切换。
+# 原因：用户指示自动模式只跑 qwen3.7-max，避免 GLM 限流波动 + 简化模型策略。
 # 代理层：env ANTHROPIC_MODEL 经重映射，settings.json 的 model 字段对 claude -p 无效，必须 --model。
-PRIMARY_MODEL="GLM-5.2"          # 用户刚设的默认；有独立额度（见 memory glm52-budget-setup）
-FALLBACK_MODEL="qwen3.7-max"     # 代理层已验证 200，独立额度，限流时兜底
-STICKY_FAIL_THRESHOLD=3          # GLM-5.2 连续限流 N 轮后粘到 fallback，省调用
-PROBE_EVERY=10                   # 粘到 fallback 后每 N 轮探一次 GLM-5.2 是否恢复
+PRIMARY_MODEL="qwen3.7-max"        # 自动模式唯一模型，独立额度已验证 200
+FALLBACK_MODEL="qwen3.7-max"      # 同模型，不切换；保留变量名供下方逻辑兼容
+STICKY_FAIL_THRESHOLD=9999        # 极大值，永不粘性切换（同模型无意义切换）
+PROBE_EVERY=9999                  # 同上
 STICKY_FALLBACK=0
 GLM_FAIL_STREAK=0
 PROBE_COUNTDOWN=0

@@ -1,4 +1,8 @@
 #!/usr/bin/env python3
+# polyglot shim: the loop convention calls `bash scripts/scout-scan.py`, but this is a
+# python3 script. The next line re-execs under python3 when invoked via bash/sh, and is
+# a no-op string literal under direct python3 execution. Leave as-is.
+''''exec python3 -- "$0" "$@" # '''
 """scout-scan.py — 确定性项目发现 + 健康扫描 + 文件索引（零 LLM token）
 
 修复缺口：
@@ -22,7 +26,15 @@ from datetime import datetime, timezone
 IGNORE_DIRS = {".git", "node_modules", ".venv", "__pycache__", ".pytest_cache",
                "dist", "build", "out", "target", ".next", ".cache", "venv", "env",
                ".mypy_cache", ".tox", "coverage", ".nyc_output", ".opt-worktrees",
-               ".parallel-worktrees", "site-packages", ".venv-sidecar", "worktrees"}
+               ".parallel-worktrees", "site-packages", ".venv-sidecar", "worktrees",
+               "decisions"}
+# decisions/ 是引擎决策归档（.claude/decisions/decision-archive.md + case-*.json），
+# 属引擎元数据非项目源码。其 markdown ATX 标题散文 `## Case NN: triage ... 真 TODO 标记`
+# 会被 _MARKER_RE 的 `\bTODO\b\s*[:-]` 误匹配为真债务（TODO 后跟冒号），致 autonomous-studio
+# 永远计 3 个幽灵 TODO 霸榜 #2、每轮推 "triage TODO" 却无可 triage 之物（case-046 已判定
+# 856/864/872 三条历史案例标题"非扫描器可解，按纪律未动"）。这是继字符串字面量/【TODO】
+# 占位符/<!-- TODO --> HTML 注释之后的第 5 类标记虚高：归档标题散文。整目录排除即可，
+# case-*.json 本就不在扩展名白名单（.json 不扫），仅 decision-archive.md 受影响。
 # 虚拟环境目录名变体繁多（.venv / .venv-foo / .venv-sidecar / venv-xxx），
 # 单靠精确集合匹配会漏（曾致 x-tool 的 聚合ai客服开发/.venv-sidecar/site-packages
 # 里 pydantic/h11/PyInstaller 的第三方 FIXME/HACK 被计入项目真债，虚高至 #1）。
@@ -62,7 +74,21 @@ _STRIP_PLACEHOLDERS = re.compile(r"【[^】]*】")
 # `<!-- TODO -->` 待人工补充）。HTML 注释非可执行代码，按项目约定属占位提示不算真债。
 # 此前 x-tool 的 TODO=44 中 38 个全来自这类桩，致其标记密度虚高霸榜 #1。
 # 真债务行内注释（井号或双斜杠后跟标记加冒号）不在 HTML 注释里，不受影响。
-_STRIP_HTML_COMMENTS = re.compile(r"<!--.*?-->")
+_STRIP_HTML_COMMENTS = re.compile(r"<!--.*?-->", re.DOTALL)
+# 剥离多行 docstring/三引号串：_STRIP_STRINGS 只处理单行单/双引号串，逐行 sub 时
+# 跨行 `"""...TODO:..."""` 的内层标记会被 _MARKER_RE 误计为真债——与 line 53
+# 文档化意图（"docstring 里的标记名不算债务"）相悖，是字符串字面量/全角括号/
+# HTML注释/反引号/归档标题 之外残留的第 7 类自指虚高。三引号段天然跨行，必须
+# 在整文件内容上一次性剥（sub 后再分行），逐行 sub 无法闭合跨行三引号。
+# case-380 code-audit:scripts/scout-scan.py 发现并修复。
+_STRIP_TRIPLE = re.compile(r'"""[\s\S]*?"""|\'\'\'[\s\S]*?\'\'\'')
+# 剥离反引号代码段（markdown 代码段 + JS 模板字面量）：_STRIP_STRINGS 只剥单/双引号串，
+# 不识反引号。本文件自身的计数约定注释曾用反引号引述 markdown 散文标记形式来文档化
+# "这类散文非真债"，结果反引号内的标记形式反被 _MARKER_RE 计为真债——扫描器把自己
+# 文档里的引例算成了自己的债，是继 字符串字面量/全角括号/HTML注释/归档标题散文 之后的
+# 第 6 类标记自指虚高。剥离反引号段一劳永逸：真债务行内注释（标记后跟冒号/破折号）
+# 不会写在反引号里，JS 模板字面量内的标记是串内容非债。
+_STRIP_BACKTICKS = re.compile(r"`[^`]*`")
 _MARKER_RE = {m: re.compile(rf"\b{m}\b\s*[:-]") for m in ("TODO", "FIXME", "HACK")}
 # 延期债约定：债务标记单词后接 (deferred) 后缀（标记与括号间可有空白），表示已 triage 标注
 # 但确认延期（非清掉、非盲实现）的债——与 moni broker_qmt.py 既有约定一致。主 _MARKER_RE
@@ -90,6 +116,19 @@ def discover_projects(workspace):
         has_status = os.path.isfile(os.path.join(entry.path, "planning", "status.json"))
         if has_git or has_status:
             projects.append({"name": entry.name, "path": entry.path,
+                              "has_git": has_git, "has_studio": has_status})
+    # 兜底：workspace 自身就是一个独立项目仓（有 .git 或 planning/status.json），
+    # 但其直接子目录都不是项目时——典型如 loop 以引擎仓自身路径为 --workspace
+    # （autonomous-studio-aone 的 scripts/skills/phases 等子目录均非项目仓），
+    # 此前扫描得 0 项目、推荐列表空、引擎彻底失明。此时把 workspace 根本身当作
+    # 唯一项目上报，给出真实健康报告而非沉默的"发现 0 个项目"。
+    # 父级多项目 workspace（如 /home/admin/workspace）子项目齐全，此分支不触发。
+    if not projects:
+        has_git = os.path.isdir(os.path.join(workspace, ".git"))
+        has_status = os.path.isfile(os.path.join(workspace, "planning", "status.json"))
+        if has_git or has_status:
+            root_name = os.path.basename(workspace.rstrip("/")) or "root"
+            projects.append({"name": root_name, "path": workspace,
                               "has_git": has_git, "has_studio": has_status})
     return projects
 
@@ -144,7 +183,12 @@ def count_markers(path):
                     continue
             except OSError:
                 continue
-            if not f.endswith((".py", ".js", ".ts", ".tsx", ".jsx", ".md", ".sh", ".go", ".rs")):
+            # 债务标记是代码注释约定，markdown 是文档/散文：.md 中 `# TODO:` 标题、
+            # `TODO:` 描述性正文都匹配 MARKER 形式但非真债（如 autonomous-studio 的
+            # decision-archive.md 标题/state.md 正文曾致虚假霸榜 #1）。逐个补丁（【TODO】/
+            # `<!-- TODO -->` / 反引号引例）是打地鼠，排除 .md 一劳永逸。
+            # file_tree_and_symbols 仍独立索引 .md 标题，此处仅影响 marker 计数。
+            if not f.endswith((".py", ".js", ".ts", ".tsx", ".jsx", ".sh", ".go", ".rs")):
                 continue
             rel = os.path.relpath(fp, path)
             # 剥离 .claude/decisions/ 案例归档 markdown：case 标题常含 "TODO:"（如
@@ -156,21 +200,27 @@ def count_markers(path):
             hit = False
             try:
                 with open(fp, encoding="utf-8", errors="ignore") as fh:
-                    for line in fh:
-                        # 剥离字符串字面量 counts={"FIXME":0} / f"...FIXME..." 不再自指误算
-                        stripped = _STRIP_STRINGS.sub("", line)
-                        # 剥离全角括号占位符 【TODO...】 scaffold 模板提示不算真债务
-                        stripped = _STRIP_PLACEHOLDERS.sub("", stripped)
-                        # 剥离 HTML 注释占位符 <!-- TODO... --> project-protocol 模板桩不算真债务
-                        stripped = _STRIP_HTML_COMMENTS.sub("", stripped)
-                        for m, rx in _DEFERRED_RE.items():
-                            if rx.search(stripped):
-                                deferred[m] += 1
-                                hit = True
-                        for m, rx in _MARKER_RE.items():
-                            if rx.search(stripped):
-                                counts[m] += 1
-                                hit = True
+                    content = fh.read()
+                # 先在整文件内容上剥多行三引号串（跨行 docstring），再分行走其余
+                # 逐行 stripper。三引号剥离只能整内容做，否则逐行 sub 无法闭合跨行段。
+                content = _STRIP_TRIPLE.sub("", content)
+                for line in content.splitlines():
+                    # 剥离字符串字面量 counts={"FIXME":0} / f"...FIXME..." 不再自指误算
+                    stripped = _STRIP_STRINGS.sub("", line)
+                    # 剥离全角括号占位符 【TODO...】 scaffold 模板提示不算真债务
+                    stripped = _STRIP_PLACEHOLDERS.sub("", stripped)
+                    # 剥离 HTML 注释占位符 <!-- TODO... --> project-protocol 模板桩不算真债务
+                    stripped = _STRIP_HTML_COMMENTS.sub("", stripped)
+                    # 剥离反引号代码段 `# TODO:` 文档引例/JS 模板字面量不算真债务
+                    stripped = _STRIP_BACKTICKS.sub("", stripped)
+                    for m, rx in _DEFERRED_RE.items():
+                        if rx.search(stripped):
+                            deferred[m] += 1
+                            hit = True
+                    for m, rx in _MARKER_RE.items():
+                        if rx.search(stripped):
+                            counts[m] += 1
+                            hit = True
             except Exception:
                 continue
             if hit:
@@ -569,9 +619,7 @@ def scan_project(p):
     rep["symbols"] = {"functions": len(symbols["functions"]),
                       "classes": len(symbols["classes"]),
                       "headings": len(symbols["headings"])}
-    # 索引落盘到项目 .claude/ 或 workspace 索引目录
-    idx_dir = os.path.join(os.path.dirname(path), ".opt-worktrees", "_indexes")
-    # 存到 workspace 级索引目录（不污染项目）
+    # 索引落盘到 workspace 级 .codebase-index/（不污染项目源码树）
     idx_dir = os.path.join(os.path.dirname(path) or ".", ".codebase-index")
     os.makedirs(idx_dir, exist_ok=True)
     with open(os.path.join(idx_dir, f"{p['name']}.json"), "w", encoding="utf-8") as f:

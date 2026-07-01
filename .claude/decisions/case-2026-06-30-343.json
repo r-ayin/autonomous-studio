@@ -1,18 +1,25 @@
 {
   "case_id": "case-2026-06-30-343",
-  "agent_id": "ralph-autonomous-loop",
-  "timestamp": "2026-06-30T11:24Z",
-  "project": "autonomous-studio",
-  "work_unit": "review + merge 待合并 worktree opt-housekeeping-1782818140（2 commits 归档孤儿 case-340/341）",
-  "situation": "scout-scan 全项目 score=0.0；#1 1BfrYW9R 自身推荐可跳过/文档润色且文档已极完整（README/CLAUDE/PROGRESS/GATES 齐全、30 组件清单准确、gates-drift 锁已覆盖），强行润色即 churn，#1 自身放行跳过→顺延 #2 AS 的具体工作单位审 1 待合并 worktree。git worktree list 显 AS 有两个 auto 分支：opt-housekeeping-1782818140(69a0f66) 与 standing optimization(0311acc)。按 case-219/327 教训用 commit 集合对账非两点 diff/git cherry：main..WT1 有 2 独有提交(b3eb6a1/69a0f66 归档 case-340/341)、WT1..main 空→WT1 严格领先真未合并；WT2 optimization main..WT2 空、WT2..main 1→stale standing 落后 main 无内容可合。",
-  "action": "git show --stat 逐条审 b3eb6a1 与 69a0f66：均纯新增 1 个 case-*.json(15/17 行)无源码改动；python3 json.load 验两 JSON 合法(防 case-275/322/326 类非法转义)；git cat-file -e 确认 case-340/341 不在 main(7e02c8f)证真未合并非 superseded；发现 case-341 files_changed 列 scripts/loop-archive-cases.sh 且 outcome_evidence 称脚本实跑自测通过，但 main/WT1 tip/磁盘三处均无该脚本(69a0f66:scripts/loop-archive-cases.sh 与 7e02c8f 同 cat-file -e 均 fatal does not exist、ls 无文件)→case-341 记录与现状偏差(脚本似从未真正落盘或已丢)，记入本 case 但不阻塞归档提交本身(纯 case-json 合法)；bash opt-worktree.sh autonomous-studio merge opt-housekeeping-1782818140 squash 合入 main。",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-30T12:08:31Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "review-and-merge-pending-worktree:opt-dataworks-1782819568",
+  "situation": "非审计轮次（今日 decisions 实际文件数=142，142%4=2≠0，走普通路径）。step0 读 autonomous-constraints.md DO A/B/C 全文。step1 scout #1=AS(score=0.0 TODO=0 deferred=4)推荐'review 1 个待合并 worktree（人工审 diff + merge/reject）'。git worktree list 余 1 项 opt-dataworks-1782819568(dc3d201)——上轮 case-342 清掉 stale auto/optimization 后唯一真 pending。",
+  "action": "审 git show --stat dc3d201 + git diff main..auto/opt-dataworks-1782819568：分支单 commit dc3d201 仅触 2 文件(skills/dataworks-dev-assistant/core/audit_log.py 新增83行 + bff_client.py +14行 _do_request chokepoint 埋点)，未触 state.md/case 文件。merge-base=f7e8d92(=main 上轮 053d259 归档前 HEAD)，main 自 base 仅推进 case-340/341/342+state.md，与分支 2 skill 文件零重叠→3-way squash merge 无冲突、main 的 case-340/341/342 不受影响。代码审：audit_log.py append-only JSONL 对齐 audit-log.schema.json(id audit-YYYYMMDD-HHmmss-rand6 / timestamp ISO8601 / userId / userRole=engine / action / resource / result success|failure / ip=local)，result 据 code 0/200 判 success 否则 failure(非恒 success)，except 吞错永不阻断业务写；bff_client.py _do_request 对 is_write_operation 统一埋点，bypass=write_confirmed is None 区分 call_raw 绕过两阶段确认门禁——正是 DO B 'HTTP 出站/敏感路径 audit-log 埋点'要求。无拒理由→执行 sanctioned merge：opt-worktree.sh . merge opt-dataworks-1782819568→git merge --squash 干净落地 main 0ff6fcd + worktree 清理。",
   "files_changed": [
-    ".claude/decisions/case-2026-06-30-340.json",
-    ".claude/decisions/case-2026-06-30-341.json"
+    "skills/dataworks-dev-assistant/core/audit_log.py",
+    "skills/dataworks-dev-assistant/core/bff_client.py"
   ],
-  "worktree": "opt-housekeeping-1782818140 (merged -> main cd96a46, worktree+branch ref auto/opt-housekeeping-1782818140 已清)",
-  "direction": "housekeeping:merge-pending",
+  "worktree": "opt-dataworks-1782819568（已 squash-merge 入 main 0ff6fcd 并清理；本轮非新开 worktree，是 pending worktree 的审+合并）",
+  "direction": "dataworks:audit-instrumentation-merge",
   "outcome": "succeeded",
-  "outcome_evidence": "merge stdout: '已 squash 合并 opt-housekeeping-1782818140 -> main' + 'Deleted branch auto/opt-housekeeping-1782818140 (was 69a0f66)' + 'worktree 清理'；main HEAD=cd96a46 'merge: 人工批准合并 optimization worktree opt-housekeeping-1782818140'(父 7e02c8f)；git ls-files 确认 case-2026-06-30-340.json 与 -341.json 现 tracked；git status --short 仅余 case-342.json untracked(merge 前 main 已有之上轮 1BfrYW9R 跨项目孤儿，非本 merge 产物)；git worktree list 仅余 standing optimization(0311acc)。",
-  "next_suggestion": "①case-341 声称创建的 scripts/loop-archive-cases.sh 实不存在，下轮可补建该脚本(扫 AS main untracked case-*.json 自动归档进 housekeeping worktree)接入 autonomous-loop.sh 每轮末尾从根上杜绝孤儿——此即 case-341 未竟之 work_unit；②现 main 仍滞留 case-342 孤儿+本 case-343 将同滞留，须二次 housekeeping 归档(本轮已将 342+343 一并 cp 入 housekeeping worktree 提交，下轮审 merge)；③standing optimization worktree(0311acc)落后 main 可 cmd_reject 或重建自 fresh main 清 stale；④WT1 merge 后 AS 无紧迫结构性缺口，下轮可转 sunset-prediction/wechat-main GATES 实跑核销或 AS 7 条延期已 triage TODO 逐条核销。"
+  "outcome_evidence": [
+    "git log -1 --stat main → commit 0ff6fcd 'merge: 人工批准合并 optimization worktree opt-dataworks-1782819568'，含 audit_log.py(+83) + bff_client.py(+14) 两文件 97 insertions",
+    "git worktree list → 仅剩 /home/admin/workspace/autonomous-studio-aone 0ff6fcd [main]，opt-dataworks worktree 已清理（merge 前2项→merge 后1项）",
+    "git merge-base --is-ancestor auto/opt-dataworks-1782819568 main 上轮=NO；merge 后分支已 squash 入 main（squash 非祖先但内容落地，同 case-339 模式）",
+    "scout-scan 复跑：'待处理 worktree' 段消失，#1 推荐语由'review 1 个待合并 worktree'变'无明确小工作单位——可跳过'，索引 678→679 文件 fn 1763→1766（新增 audit_log.py 3 函数）"
+  ],
+  "next_suggestion": "【1·审计边界临近】今日 case 143，143%4=3，下一案 case-144 落 144%4=0=审计轮次：scout #1 AS score=0.0 仍'可跳过'，但审计轮次须从 #1 起选有源码项目——AS 自身或 dataworks skill 均可，用 code-review/security-review 审 main HEAD 最近 1-3 commit（含本轮落地的 audit_log.py/bff_client.py 埋点）查注入/权限/PII/错误处理。【2·低阻力】若审计无发现，可审 deferred TODO=4 是否仍全 blocked（DO NOT 禁自我润色，确认无解禁项）。【3·状态】pending 队列已 1→0 清零，main 干净（仅 ?? PROJECTS.md 未跟踪），无 stale worktree 残留。",
+  "audit_type": "none",
+  "audit_findings": []
 }

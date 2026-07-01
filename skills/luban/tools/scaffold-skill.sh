@@ -10,6 +10,29 @@ TARGET="${3:-./${SKILL_NAME}}"
 OWNER="${SCAFFOLD_OWNER:-LearnPrompt}"
 YEAR="$(date +%Y)"
 
+# security-review (case-408)：SKILL_NAME 同时经"路径拼接"与"JSON 字符串值"两面注入。
+#   - 路径穿越：SKILL_NAME 拼 $TARGET/skills/$SKILL_NAME/... 与 $TARGET/skills/$SKILL_NAME/SKILL.md，
+#     含 ../ 或 / 会在 cwd 之外建文件（mkdir -p 不校验语义）。
+#   - JSON 注入：SKILL_NAME/TAGLINE 直拼 marketplace.json 字符串值，含 " \ \n 会产出非法 JSON
+#     （已复现：tagline='一个能"引用"的定位' → json.decoder.JSONDecodeError line 8）。
+# "出生即合规"的骨架工具不应越界写或产出非法 JSON。slug 白名单一关封死两条面。
+if [[ ! "$SKILL_NAME" =~ ^[A-Za-z0-9_-]+$ ]]; then
+  echo "✘ 非法 skill-name '$SKILL_NAME': 仅允许 [A-Za-z0-9_-]（禁止 / \\ . 空格 引号，防路径穿越与 JSON 注入）" >&2
+  exit 1
+fi
+# JSON 字符串值转义（对齐 scripts/opt-worktree.sh json_escape）：TAGLINE 是自由文本，可合法含引号；
+# marketplace.json 必须合法可解析。SKILL_NAME 已过 slug 白名单无需转义，TAGLINE_ESC 是实际修复点。
+json_escape() {
+  local s="${1:-}"
+  s="${s//\\/\\\\}"
+  s="${s//\"/\\\"}"
+  s="${s//$'\n'/\\n}"
+  s="${s//$'\r'/\\r}"
+  s="${s//$'\t'/\\t}"
+  printf '%s' "$s"
+}
+TAGLINE_ESC="$(json_escape "$TAGLINE")"
+
 if [[ -e "$TARGET" && -n "$(ls -A "$TARGET" 2>/dev/null)" ]]; then
   echo "✘ 目标目录已存在且非空: $TARGET(不覆盖,自己确认后清理)" >&2
   exit 1
@@ -111,7 +134,7 @@ cat > "$TARGET/.claude-plugin/marketplace.json" <<EOF
   "plugins": [
     {
       "name": "${SKILL_NAME}",
-      "description": "${TAGLINE}",
+      "description": "${TAGLINE_ESC}",
       "version": "0.1.0",
       "author": { "name": "${OWNER}", "url": "https://github.com/${OWNER}" },
       "source": "./",

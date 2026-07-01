@@ -1,18 +1,26 @@
 {
   "case_id": "case-2026-07-01-387",
-  "agent_id": "ralph-autonomous-loop",
-  "timestamp": "2026-07-01T02:35:00+08:00",
-  "project": "wechat-main",
-  "work_unit": "untrack leaked .opt-direction control marker from git + add to .gitignore (rm-guard auto-untrack via chore rider commit)",
-  "situlation": "scout-scan reported all 8 projects health=0.0; #1 1BfrYW9R carried only 'doc polish or skip' and was already grep-verified healthy last round (case-386 state NEXT_SUGGESTION: MIME locks exist at smoke.test.js:1153, do not stack more lock churn [[state-next-suggestion-stale-blind]]). wechat-main showed the only concrete real signal: dirty=5 WIP + .opt-direction tracked. Investigation: .opt-direction (content 'data:scan-update-0629') is an opt-worktree local direction-marker stub, designed untracked+info/exclude-ignored — its presence in git is a control-file leak. Confirmed single-project leak (only wechat-main; other 7 projects clean). .gitignore lacked any .opt-direction entry. The 3 modified + 2 untracked WIP files are a coherent in-progress 06-29 search-quality feature (bing_search.py +224 lines dict/etymology content filtering, link extraction, skip-domains) — not mine to commit/alter, left untouched.",
-  "action": "Minimal 1-line real config rider: appended '.opt-direction' to wechat-main/.gitignore (prevents future re-leak). Committed via `opt-worktree.sh wechat-main commit chore:untrack-opt-direction .gitignore` specifying ONLY .gitignore — cp-guard copied .gitignore to new worktree opt-chore-1782844396 (area divergence engine→chore opened new branch), then rm-guard (opt-worktree.sh:408 `git rm -r --cached --ignore-unmatch -- .opt-direction`) auto-untracked .opt-direction from worktree index staging it as a deletion. Commit 8e87256 captured both M .gitignore + D .opt-direction. Step ③ restored only .gitignore in main WT (checkout HEAD), leaving WIP untouched. Merged opt-chore-1782844396 → main (squash ff 89d79c0); cmd_merge auto `branch -D auto/opt-chore-1782844396` + worktree dir cleanup [[opt-worktree-merge-leaves-branch-ref]].",
-  "files_changed": [
-    "wechat-main/.gitignore",
-    "wechat-main/.opt-direction(untracked)"
-  ],
-  "worktree": "wechat-main opt-chore-1782844396 (merged→main 89d79c0, branch+dir auto-cleaned)",
-  "direction": "chore:untrack-opt-direction",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-01T18:46Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "heartbeat-skip:non-audit-round-no-urgent-unit",
+  "situation": "case-387=387%4=3≠0 非审计轮（DO A 审计轮次为 case-388=388%4=0）。承接 case-386 NEXT_SUGGESTION[1]：预期仍 pending=0、AS score=0.0 无紧迫单位。scout-scan #1=autonomous-studio-aone score=0.0 推『无明确小工作单位——可跳过或做文档润色』，但 DO NOT 节明确禁止"日常自我润色"型无意义提交（autonomous-studio 仅当真有结构性问题才修）。需核实无可做单位后方可合规 skip。",
+  "action": "核实无可做单位四步：(1) git status --short→空(clean)；(2) git worktree list→仅 main 64b5260 无残留 opt-worktree；(3) git branch | grep auto/→空无残留分支；(4) deferred TODO 真实性复核→grep 命中 4 处真 deferred 标记(apply_resource_access.py:85 HologresTable getDetail 未实测/apply_resource_access.py:90 LindormTable getDetail 未实测/bff_client.py:207 待人工裁决 profile.json 兼容分支删除条件/scaffold-skill.sh:136 待真实运行回放)均非引擎可盲实现,正确留 triage。AS score=0.0 无源码改动单位→DO NOT 禁日常润色→不润色。无源码改动→无 opt-worktree→无 LIVE 同步→DO B 不触发(无敏感路径改动)无 audit-log 埋点。仅写 case-387+回写 state 作心跳(archival 直提 main,不经 opt-worktree——cp-guard 跳过 state.md)。",
+  "files_changed": [],
+  "worktree": "无（skip 轮无源码改动无 opt-worktree；main HEAD=64b5260 干净；pending=0）",
+  "direction": "skip",
   "outcome": "succeeded",
-  "outcome_evidence": "git -C wechat-main log --oneline -1 => 89d79c0 merge: 人工批准合并 optimization worktree 'opt-chore-1782844396'; git ls-files --error-unmatch .opt-direction => 'error: pathspec did not match any file(s) known to git' (NOW_UNTRACKED, was tracked before); git show HEAD:.gitignore | grep -c opt-direction => 1 (.gitignore entry on main HEAD); git status --short => 3 M (bing_search.py/daily-hotspot.sh/daily_report.py) + 2 ?? (bocha_search.py/deepseek_refine.py) WIP preserved untouched (5 files, same as scout dirty=5, .opt-direction no longer appears as it is now ignored+untracked); worktree commit 8e87256 show --name-status => 'M .gitignore' + 'D .opt-direction' (rm-guard staged deletion confirmed).",
-  "next_suggestion": "wechat-main dirty=5 WIP (06-29 search-quality feature: bing_search.py +224 lines dict-pattern filtering / bocha_search.py + deepseek_refine.py new modules) remains uncommitted in main WT — belongs to the in-progress 'data:scan-update-0629' direction, not autonomous-loop's to commit without review. If a future round picks wechat-main: confirm with user whether to snapshot-commit the WIP via opt-worktree (specify all 5 files) or leave for the author. Separately, scout-scan still ranks all 8 projects health=0.0 — next round should pick from state NEXT_SUGGESTION structural candidates: AS case-id collision root-cause hardening (unified issuance entry, [[case-id-collision-agent-self-pick]]) or 1BfrYW9R 5 retained-branch semantic archive ([[stale-branch-safe-delete-method]])."
+  "outcome_evidence": [
+    "scout-scan #1 autonomous-studio-aone score=0.0『无明确小工作单位——可跳过或做文档润色』",
+    "git status --short 输出为空（working tree clean）",
+    "git worktree list 仅 /home/admin/workspace/autonomous-studio-aone 64b5260 [main] 一行无残留",
+    "git branch | grep auto/ 无输出（无残留 auto/ 分支）",
+    "grep deferred 命中 4 处真 deferred 标记：apply_resource_access.py:85/90、bff_client.py:207、scaffold-skill.sh:136——均待人工裁决或真实环境测试,非引擎可盲实现"
+  ],
+  "next_suggestion": [
+    "【case-388=388%4=0 下次审计轮·DO A 强制】security-review .claude/hooks/reference-transaction.py（约58L,未深审）或 .claude/hooks/ 其它未审 hook；route-health-scorer.py 与 codegraph-sync.py（case-384 已审+case-385 已修落 main）不重复审",
+    "dataworks deferred TODO（apply_resource_access.py:85/90 Hologres/Lindorm getDetail、bff_client.py:207 profile.json 兼容分支、scaffold-skill.sh:136 运行回放）需人工/真实环境测试,审计轮不盲实现,正确留 triage"
+  ],
+  "audit_type": "none",
+  "audit_findings": []
 }

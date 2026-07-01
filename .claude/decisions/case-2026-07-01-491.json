@@ -1,0 +1,31 @@
+{
+  "case_id": "case-2026-07-01-491",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-01T11:20:00Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "派生 fix: save-checkpoint.py H-001 shell=True 命令注入修复 (audit-2026-07-01-001 派生)",
+  "situation": "audit-cycle-state status=fix-in-progress pending_count=2(H-001+H-002 均待派生 fix)。承接 case-490 NEXT[1]。audit-2026-07-01-001 H-001: save-checkpoint.py run() L34 subprocess.check_output(cmd, shell=True),cmd 整串拼自含 shell 元字符的 PROJECT_DIR(env CLAUDE_PROJECT_DIR 可被注入)→命令注入向量。调查中发现 H-002(非原子写)已由 case-488 @7b4189b 在 auto/opt-security-1782873915 worktree 修复(早于 case-490 审计,审计审 main HEAD 故重现),无需重复修。本轮聚焦 H-001。",
+  "action": "在 auto/opt-security-1782873915 worktree(已含 H-002 原子写版)上叠加 H-001 修复:run(cmd)→run(argv) 改 list 形式参数 + shell=False(旧 shell=True 删),argv 各元素原样传 execvp 不经 shell 解析,Windows % 转义逻辑随之删(shell=False 无 cmd.exe,% 字面量无展开,顺带修 latent Windows bug);collect_git_info 三处调用点改 list 形式 [\"git\",\"branch\",\"--show-current\"]/[\"git\",\"status\",\"--short\"]/[\"git\",\"log\",\"-1\",\"--format=%h %s\"]。直接 git commit 在 opt 分支(非 main,gate 不拦)。更新 audit-cycle-state.json: H-001 fix_case_id=case-491 fix_commit=ddc0f58 status=pending(待人工 merge);H-002 fix_case_id=case-488 fix_commit=7b4189b status=pending(回填,审计前已修)。pending_count 维持 2(均待人工 merge→merged 后归零触发下轮全量审计)。",
+  "files_changed": [
+    ".claude/hooks/save-checkpoint.py",
+    ".claude/audit-cycle-state.json"
+  ],
+  "worktree": "auto/opt-security-1782873915@ddc0f58(ahead=3 累计 7b4189b H-002 原子写+bf46478 resume-checkpoint TOCTOU+ddc0f58 H-001 shell 注入,3 commit 分属 2 不同文件 save-checkpoint.py/resume-checkpoint.py 无冲突)",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "ddc0f58 commit 落地 opt 分支(git log 可见 'opt(security:save-checkpoint-shell-injection)...')。py_compile OK。Stop hook smoke test 实跑:latest.json 有效 JSON(git branch=auto/opt-security-1782873915,last_commit=bf46478 经 list-form run() 正常采集),无 .tmp 残留。grep 确认 check_output 用 shell=False(line 36),3 处调用点均 list 形式(line 58-60),_atomic_write_json 保留(H-002 未回退)。worktree porcelain 空。git merge-tree --write-tree main auto/opt-security-1782873915 rc=0(可干净 squash merge)。audit-cycle-state.json valid JSON,两 derived_fix 均回填 fix_case_id+fix_commit。",
+  "next_suggestion": [
+    "[1]【人工 merge·高优】git merge --squash auto/opt-security-1782873915(3 commit:7b4189b H-002 原子写+bf46478 resume TOCTOU+ddc0f58 H-001 shell 注入)→main;merge-tree 干演 rc=0 clean。merge 后置 audit-cycle-state 两 derived_fix status=merged→pending_count=0→cycle-complete→触发下一轮全量审计(审未深度审过的项目,看 .claude/audits/ 避免重审 hooks)",
+    "[2]【人工 merge 待办】另 2 分支亦待 squash merge:auto/opt-security-1782866336@f7dda51(ahead=4)+auto/opt-security-1782872471@05a6c62(ahead=1),均 merge-tree 已审 clean",
+    "[3]【后续 medium route-fix 派生】H-003 find_task_files Path import NameError(同 save-checkpoint.py,下轮可顺手)+H-004 incremental-save latest.json 竞态+H-005~H-009 各 hook 非原子写,分批派生(每轮 1-2 文件小单位)",
+    "[4]【structural debt】H-011~H-018 audit-gap 类尚未写入 structural-debt.md,后续审计轮补登"
+  ],
+  "audit_type": "audit-log-instrumentation",
+  "audit_id": "audit-2026-07-01-001",
+  "audit_depth": "shallow",
+  "audit_findings": [
+    {"file": ".claude/hooks/save-checkpoint.py", "line": 34, "severity": "high", "finding": "H-001 run() subprocess.check_output(cmd, shell=True),cmd 含 PROJECT_DIR(env 可注入)→命令注入向量", "remediation": "已修复:run(argv) list 形式+shell=False,3 调用点改 list;ddc0f58@auto/opt-security-1782873915 待 merge", "kind": "route-fix"},
+    {"file": ".claude/hooks/save-checkpoint.py", "line": 182, "severity": "high", "finding": "H-002 write_checkpoint+latest.json 非原子写,中断留半写态破坏恢复入口", "remediation": "已由 case-488 @7b4189b 修复(tempfile.mkstemp+os.replace 原子写),早于本轮审计;回填 fix_case_id,待 merge", "kind": "route-fix"}
+  ],
+  "do_b_judgment": "不埋 audit-log。所修 subprocess 为只读 git 仓库自检(branch/status/log,参数硬编码无用户输入流入命令),非外部服务调用/shell exec 用户输入;checkpoint 读写同 case-489 判定为非敏感恢复路径(.claude/checkpoints/ 非敏感)。修复本身消除注入面(删 shell=True),无新增敏感操作。与 case-488/489 一致。"
+}

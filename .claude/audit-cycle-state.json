@@ -1,0 +1,53 @@
+{
+  "_schema": "audit-cycle-state v1.0",
+  "_description": "追踪当前全量审计周期状态。全量审计事件驱动：上次派生的 fix 全部 merge/reject 落定后才触发下一次全量审计。引擎每轮 step 0 读这个文件决定本轮是审计轮还是瞭望轮。",
+  "current_audit_id": "audit-2026-07-01-002",
+  "current_audit_started_at": "2026-07-01T03:50:00Z",
+  "current_audit_project": "autonomous-studio-aone",
+  "current_audit_module": "scripts",
+  "derived_fixes": [
+    {"fix_case_id": "case-2026-07-01-494", "audit_id": "audit-2026-07-01-002", "finding_id": "H-001", "status": "pending", "priority": 1, "note": "已派生 fix 落 opt-security-shift-1782878468(commit 0d26e39),待人工 sanctioned-merge 入 main 后 status→merged"},
+    {"fix_case_id": "case-2026-07-01-495", "audit_id": "audit-2026-07-01-002", "finding_id": "H-005", "status": "pending", "priority": 2, "note": "已派生 fix 落 opt-security-shift-1782878926(commit f5d21f0,run_round 改 mktemp 临时文件+shred -u),待人工 sanctioned-merge 入 main 后 status→merged"},
+    {"fix_case_id": "case-2026-07-01-496", "audit_id": "audit-2026-07-01-002", "finding_id": "M-002", "status": "pending", "priority": 3, "note": "已派生 fix 落 opt-security-shift-1782879314(commit 238afb1,_validate_commit_file_path helper+两处循环入口调用),待人工 sanctioned-merge 入 main 后 status→merged"},
+    {"fix_case_id": null, "audit_id": "audit-2026-07-01-002", "finding_id": "M-001", "status": "pending", "priority": 4},
+    {"fix_case_id": null, "audit_id": "audit-2026-07-01-002", "finding_id": "M-003", "status": "pending", "priority": 5},
+    {"fix_case_id": null, "audit_id": "audit-2026-07-01-002", "finding_id": "M-004", "status": "pending", "priority": 6},
+    {"fix_case_id": null, "audit_id": "audit-2026-07-01-002", "finding_id": "L-001", "status": "pending", "priority": 7},
+    {"fix_case_id": null, "audit_id": "audit-2026-07-01-002", "finding_id": "L-002", "status": "pending", "priority": 8},
+    {"fix_case_id": null, "audit_id": "audit-2026-07-01-002", "finding_id": "L-003", "status": "pending", "priority": 9}
+  ],
+  "pending_count": 9,
+  "status": "fix-in-progress",
+  "_status_note": "audit-2026-07-01-002 (scripts module) 完成深度审计，9 条 finding (2H/4M/3L) 全部 route-fix。case-494 派生 H-001 fix(落 opt-security-shift-1782878468 commit 0d26e39,待 sanctioned-merge)。case-495 派生 H-005 fix(落 opt-security-shift-1782878926 commit f5d21f0,run_round mktemp+shred,待 sanctioned-merge)。case-496 派生 M-002 fix(落 opt-security-shift-1782879314 commit 238afb1,_validate_commit_file_path helper,待 sanctioned-merge)。下轮应优先派 M-001 (slug glob 元字符过滤) → M-003 → M-004 → L-001/002/003。pending_count 仍=9(3 已派生待 merge,6 未派生;未 merge 不计落定)。",
+  "_status_enum": "idle | auditing | fix-in-progress | cycle-complete",
+  "last_audit_completed_at": "2026-07-01T03:55:00Z",
+  "last_audit_id": "audit-2026-07-01-002",
+  "next_audit_trigger_reason": null,
+  "_next_audit_trigger_reason_enum": "pending-fixes-cleared | manual-trigger | first-run",
+  "history": [
+    {
+      "audit_id": "audit-2026-07-01-001",
+      "project": "autonomous-studio-aone",
+      "module": "hooks",
+      "completed_at": "2026-07-01T11:10:00Z",
+      "findings_total": 19,
+      "findings_by_severity": {"high": 2, "medium": 7, "low": 6, "info": 4},
+      "derived_route_fixes": 2,
+      "derived_structural_debts": 0,
+      "fixes_merged_at": "2026-07-01T12:30:00Z",
+      "fixes_merged_commits": ["900a3cc", "b1d072d"]
+    },
+    {
+      "audit_id": "audit-2026-07-01-002",
+      "project": "autonomous-studio-aone",
+      "module": "scripts",
+      "completed_at": "2026-07-01T03:55:00Z",
+      "findings_total": 9,
+      "findings_by_severity": {"high": 2, "medium": 4, "low": 3, "info": 0},
+      "derived_route_fixes": 9,
+      "derived_structural_debts": 0,
+      "fixes_merged_at": null,
+      "fixes_merged_commits": []
+    }
+  ]
+}

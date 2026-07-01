@@ -1,27 +1,32 @@
 {
   "case_id": "case-2026-07-01-400",
-  "agent_id": "ralph-autonomous-loop",
-  "timestamp": "2026-07-01T04:53:00+08:00",
-  "project": "autonomous-studio",
-  "work_unit": "housekeeping:archive-orphan-cases — 用 loop-archive-cases.sh 归档滞留 AS main 的 2 个 untracked 孤儿 case（398/399，皆已 merge 的工作记录）",
-  "situation": "scout-scan 全 8 项目 health=0.0，#1 1BfrYW9R 推荐润色/跳过（[[scout-all-zero-pick-dirty-signal]] case-391 全零态）。1BfrYW9R 实测 38 pass 0 fail、dev-server.js 每条响应路径均已上回归锁（㉓㉔㉕㉖㉗㉘㉙㉚㉞㉟㊱），真饱和不下移润色。按指引找 dirty 信号：autonomous-studio dirty=2，git status 显 2 个 untracked case JSON（case-398/399）——皆上轮已完成+merge 的工作记录滞留 main 未归档（case-398 描述 opt-tooling-1782852080 husk-prune fix 已 merge 入 40cccda；case-399 描述该 merge 本身）。此即 loop-archive-cases.sh 注释所述缺口：跨项目轮次 case 写 AS main 但进目标项目 worktree，滞留成孤儿。",
-  "action": "运行 bash scripts/loop-archive-cases.sh（从 workspace 根，默认 project=autonomous-studio）。脚本扫 AS main porcelain untracked case JSON → 前置断言磁盘确有文件（防 porcelain 误读产空 commit，对齐 [[opt-worktree-empty-files-silent-bogus-commit]]）→ opt-worktree commit housekeeping:archive-cases 把 398/399 cp 进 housekeeping worktree → main 还原（untracked 删）→ 自测 main 干净。首轮 CWD 残留 autonomous-studio（前序 cd 致 PWD 双拼 PROJECT）报错，cd 回 workspace 根重跑成功。",
-  "files_changed": [],
-  "worktree": "opt-housekeeping-1782852774（路径 .opt-worktrees/autonomous-studio/opt-housekeeping-1782852774，branch auto/opt-housekeeping-1782852774，tip 8b253c0，待人工批准 merge）",
-  "direction": "housekeeping:archive-cases",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-01T19:47Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "code-audit:autonomous-studio-aone",
+  "direction": "audit",
+  "situation": "case-400=400%4=0 审计轮(DO A 强制)。承接 case-399 NEXT:case-400 审计轮,优先审 .claude/hooks/ 剩余未审最大 hook decision-observer.py(原 688L,UserPromptSubmit+Stop 感知层 hook,文件写/JSON 解析面)。已审 hook 5 个={autonomous-commit-gate(376/377/378)·codegraph-sync(384)·notify-phone(388)·pipeline-gate(392)·auto-commit(396)},本审第 6 个=decision-observer.py。scout-scan #1=AS score=0.0 无明确小工作单位,审计轮强制走 DO A 不 skip。",
+  "action": "手动 security-review decision-observer.py 全文(688L,1 源文件不超 2 限制)。审计维度:注入(subprocess/shell/SQL——无,纯正则+文件 IO)/权限(N/A,hook)/PII 凭证泄漏/错误处理/并发资源泄漏。发现 1 medium+1 low:(medium)handle_user_prompt_submit L451 prompt_preview(300c) 与 handle_stop L500 message_preview(500c) 经 safe_append_jsonl 原样落盘 .claude/decision-log.jsonl,用户调试时粘贴 sk-/Bearer/password=/JWT/AKIA 等秘钥即凭证明文 at-rest,属 DO B 敏感路径『用户输入存取』;(low)get_session_file L399 session_id 直接 os.path.join 拼路径未清洗,虽来源为 Claude Code 框架可信,但缺防御性 sanitize。修复(1 file +92/-4):①新增 _redact_secrets 正则(sk-/sk-ant-/gh[pousr]_/AKIA/Bearer/JWT/password|token|api_key=value 7 类)→[REDACTED];②新增 _audit_log_input_write(DO B 埋点)仅在擦到秘钥时按 audit-log.schema.json append .audit/audit-YYYY-MM-DD.jsonl(action=file_write,resource=decision-log.jsonl,result 如实 success/failure 不恒 success,fail-safe 吞异常不阻断 hook,对齐 auto-commit.py _audit_log_commit 模式);③prompt_preview/message_preview 写前过 _redact_secrets;④get_session_id 防御性清洗 [^A-Za-z0-9_\\-]→_ 防 path traversal。验证:py_compile OK+importlib 单测 sk-/password=/Bearer 各 1 redaction、normal text 0、evil session_id→______etc_evil.json 无 traversal;e2e CLAUDE_HOOK_EVENT=UserPromptSubmit 喂含 sk- prompt→decision-log preview=[REDACTED]、.audit/ 写 1 条 file_write success(id=audit-20260630-194646-zrxgs2 符合 schema 正则)。改动落 opt-worktree engine:security @3a5fa80(auto/optimization),pending=1 待下轮非审计轮 sanctioned-merge(同 case-396→397 模式)。",
+  "files_changed": [".claude/hooks/decision-observer.py"],
+  "worktree": "auto/optimization @ 3a5fa80（engine:security, opt-worktree pending=1 待 sanctioned-merge）",
   "outcome": "succeeded",
-  "outcome_evidence": [
-    "archive 脚本 stdout: 发现 2 个孤儿 case → opt-worktree commit housekeeping:archive-cases → 自测通过 AS main 干净",
-    "git -C autonomous-studio status --porcelain = 空（main 干净，dirty=2 信号消除）",
-    "git worktree list 含 /home/admin/workspace/.opt-worktrees/autonomous-studio/opt-housekeeping-1782852774 tip 8b253c0",
-    "git -C <wt> show --stat HEAD = commit 8b253c0 归档 2 个孤儿 case，2 files changed 56 insertions（28+28 行，非空 commit，非 bogus）",
-    "git -C <wt> ls-tree HEAD .claude/decisions/ 含 case-2026-07-01-398.json (blob 3dffadd) 与 case-2026-07-01-399.json (blob a54d180)",
-    "提交 author email = syp02536326@taobao.com（autonomous-commit-gate 接受，未触发 opt@auto 邮箱拒，对齐 [[push-rule-email-opt-auto-rejected]]）",
-    "AS main 磁盘 decisions/ 现 max case num = 397（398/399 已迁出，400 无撞号，对齐 [[case-id-collision-agent-self-pick]] 防撞）"
-  ],
-  "next_suggestion": [
-    "下轮可 merge opt-housekeeping-1782852774 回 AS main（口径 bash scripts/opt-worktree.sh autonomous-studio merge opt-housekeeping-1782852774）；merge 前 git show --stat 8b253c0 证仅 2 case JSON 无副作用。",
-    "scout 全零态持续：下轮若仍无 dirty 信号，接 case-399 遗留的结构性大项——standing-wt-from-standing-wt 嵌套根治（opt-worktree.sh 顶部加 PROJECT 守卫：pwd 含 /.opt-worktrees/ 则上溯真 main checkout），单独立 case。",
-    "1BfrYW9R 真饱和（38 测覆盖 dev-server 全响应路径）；其 Phase 1 UI 子步骤须改 index.html 超 2 源文件上限，宜跨 context 规划，不本轮做。"
+  "outcome_evidence": "1) py_compile .claude/hooks/decision-observer.py → COMPILE_OK;2) importlib 单测 _redact_secrets: 'sk-abcdef0123456789abcdefghij'→1 redaction→[REDACTED], 'password=hunter2secretvalue'→1, 'Bearer abcdef1234567890token'→1, 'normal text'→0(符合预期);3) get_session_file('../../etc/evil')→'/tmp/ast_test/.claude/sessions/______etc_evil.json'(无 path traversal),'abc-1234' 保留;4) e2e:CLAUDE_PROJECT_DIR=/tmp/ast_test CLAUDE_HOOK_EVENT=UserPromptSubmit echo '{\"prompt\":\"...sk-abcdef0123456789abcdefghij\",\"session_id\":\"s-1\"}'|python decision-observer.py → .claude/decision-log.jsonl prompt_preview='debug this: my key is [REDACTED]'(秘钥擦除) + .audit/audit-20260630-194646.jsonl 1 条 {action:file_write,result:success,id:audit-20260630-194646-zrxgs2}(DO B 埋点生效);5) git -C opt-worktree log --oneline -1=3a5fa80 opt(engine:security);6) main HEAD=4a146e0 clean,worktree list 含 optimization @3a5fa80。",
+  "next_suggestion": "[1]【case-401=401%4=1≠0 非审计轮】pending=1 opt-worktree engine:security @3a5fa80,预审 diff 仅 .claude/hooks/decision-observer.py 1file +92/-4 与归档环无源码重叠→clean,人工审 diff 确认 _redact_secrets(7 类秘钥正则)+_audit_log_input_write(DO B)+session_id 清洗 三点改动,opt-worktree.sh . merge optimization→squash 落 main+worktree 清理+auto/optimization 强删(同 case-397 模式)。回归:py_compile+grep _redact_secrets/_audit_log_input_write 命中。[2]【case-404=404%4=0 下次审计轮】DO A 审剩余最后未审 hook discovery-gate.py(387L,外部输入/路径校验面)——审完即 .claude/hooks/ 全量审计闭环。",
+  "audit_type": "security-review",
+  "audit_findings": [
+    {
+      "file": ".claude/hooks/decision-observer.py",
+      "line": 451,
+      "severity": "medium",
+      "finding": "handle_user_prompt_submit 的 prompt_preview(prompt[:300])经 safe_append_jsonl 原样落盘 .claude/decision-log.jsonl;用户调试时粘贴 sk-/Bearer/password=/JWT/AKIA 等秘钥即凭证明文 at-rest。属 DO B 敏感路径『用户输入存取』。handle_stop L500 message_preview(:500)同问题。",
+      "remediation": "新增 _redact_secrets 正则擦除 7 类常见秘钥模式→[REDACTED],prompt_preview/message_preview 写前过之;新增 _audit_log_input_write(DO B)仅在擦到秘钥时按 audit-log.schema.json 写 .audit/audit-YYYY-MM-DD.jsonl(action=file_write,result 如实 success/failure)。已落 opt-worktree @3a5fa80。"
+    },
+    {
+      "file": ".claude/hooks/decision-observer.py",
+      "line": 399,
+      "severity": "low",
+      "finding": "get_session_file 把 session_id 直接 os.path.join 拼路径(f\"{session_id}.json\")未清洗;session_id 来源为 Claude Code 框架(可信)但缺防御性 sanitize,若构造 ../ 可写出 .claude/sessions/ 之外(path traversal)。",
+      "remediation": "get_session_file 内 re.sub(r'[^A-Za-z0-9_\\-]','_',session_id) 剥离路径分隔符;已验证 '../../etc/evil'→'______etc_evil.json' 无 traversal。已落 opt-worktree @3a5fa80。"
+    }
   ]
 }

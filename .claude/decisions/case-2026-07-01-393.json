@@ -1,32 +1,30 @@
 {
   "case_id": "case-2026-07-01-393",
   "agent_id": "ralph-wiggum-autonomous-loop",
-  "timestamp": "2026-07-01T19:55:00Z",
-  "project": "1BfrYW9R",
-  "work_unit": "Phase 1 真实后端接入 groundwork 子步骤：dev-server.js 增 /api/health 同源反代 personal-assistant 后端 /healthz（ONEDAY_API_BASE env 注入基址，默认 127.0.0.1:8000；上游可达透传 body，不可达/超时返 502 bad gateway 降级）+ smoke 正负测锁定 + GATES/PROGRESS canonical 36→38 同步",
-  "situation": "scout-scan 全 8 项目 health=0.0、#1=1BfrYW9R 但推荐「无明确小工作单位——可跳过或做文档润色」。1BfrYW9R 已极度饱和（36 测试覆盖 build/dev-server 全响应路径/MIME/方法守卫/信号关闭/nosniff/charset/端口优先级/穿越/404-405/gates-drift）。查 pending worktree：standing auto/optimization worktree(07bc84b)落后 main(29a7f1c)1 merge 但无 ahead 改动（benign——case-363 on-commit ff 自愈本轮实测触发）。前 3 轮 case-390/391/392 均已收敛到同一结论：1BfrYW9R 真饱和，Phase 1/2/3 结构性大项皆超小工作单位但宜拆子步骤。按 memory scout-all-zero-pick-dirty-signal 纪律（无 dirty 信号→启动霸榜项目结构性大项）+ case-391/392 next_suggestion 明确指示（启动 Phase 1 作结构性突破非润色），启动 Phase 1 第一个子步骤。",
-  "action": "（1）读 dev-server.js（1 源文件）+ smoke.test.js 局部（spawn 模式 + ㉑ 实现 + 尾部）确认饱和、无断言级缺口可补（不再堆第 37 个边缘锁）。（2）dev-server.js 加 apiBase const（ONEDAY_API_BASE env，默认 http://127.0.0.1:8000，与 ONEDAY_DIR 同模式）+ /api/health 路由（/readyz 之后、静态分发之前）：new URL('/healthz',apiBase) 解析上游，http.get 透传上游 body（status<500），on('error') 捕 ECONNREFUSED/超时→502 {status:'bad gateway'} 降级（防 uncaught 崩溃），responded 守卫防 mid-stream 'end'/'error' 双发「Cannot set headers after sent」崩溃，setTimeout 2s 兜底。（3）smoke.test.js 加 2 测：㉟ 正测（mock 后端 http.createServer 偏端口 3070 返 {status:ok}，ONEDAY_API_BASE 指向它，dev-server 3071，断言 /api/health 200+application/json+透传{status:ok}+nosniff）/ ㊱ 负测（ONEDAY_API_BASE 指无人监听 3073，断言 502+{status:'bad gateway'}）；端口 3070/3071/3072 避让 3077-3099 既有占用，upPort 命名不入 ㉙ const port= 唯一性锁扫描集。（4）GATES.md canonical 36→38 + NICE「接入真实后端 API」行标注 groundwork 进度（仍 [ ]，全量替换 mock 留后）；PROGRESS.md canonical 36→38 + 新 2026-07-01 增量条目（㉑ 三方对账）。（5）npm test 实测 38 pass 0 fail。（6）突变复测：注释掉 on('error') 行后单跑 ㊱ → pass0/fail1（dev-server uncaught 崩溃致 5s 无响应），还原后 38 pass 0 fail，证锁真咬。（7）opt-worktree.sh 1BfrYW9R commit phase1:api-health-proxy → 新 worktree opt-phase1-1782849352（56ce8a3，standing wt 触发 ff 自愈 07bc84b→29a7f1c）；worktree 内 npm test 38/0；merge opt-phase1-1782849352 → onedaybot-dev 0affb7a squash 合并（auto 分支删除，standing wt 再 ff 至 0affb7a）；main porcelain 干净，main npm test 38/0。",
-  "files_changed": [
-    "1BfrYW9R/dev-server.js",
-    "1BfrYW9R/test/smoke.test.js",
-    "1BfrYW9R/GATES.md",
-    "1BfrYW9R/PROGRESS.md"
-  ],
-  "worktree": "opt-phase1-1782849352（新建，commit 56ce8a3，已 squash merge → onedaybot-dev 0affb7a，auto 分支已删，worktree 目录已清理）",
-  "direction": "phase1:api-health-proxy",
+  "timestamp": "2026-07-01T19:55Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "sanctioned-merge:opt-security-1782846352",
+  "direction": "merge",
+  "situation": "非审计轮 case-393=今日第29例,393%4=1≠0 非审计·合规 sanctioned-merge。承接 case-392 NEXT_SUGGESTION[1]：case-392 审计轮 security-review pipeline-gate.py 发现 1 low（_diff_scale L80/L85 subprocess.run shell=True + f'git -C {root} ...' 未引用插值注入反模式）已修落 opt-security-1782846352 @7f7256b pending=1。本轮职责=人工审 diff 后 sanctioned-merge 入 main。scout-scan #1=autonomous-studio-aone score=0.0 推荐『review 1 个待合并 worktree（人工审 diff + merge/reject）』——与 pending 任务一致。",
+  "action": "①预审 diff：opt-worktree.sh . show opt-security-1782846352 → diff 仅 .claude/hooks/pipeline-gate.py L76-92 _diff_scale 两处 subprocess.run 由 shell=True 字符串形式改 list 形式 ['git','-C',str(root),'diff','--cached','--numstat']，+7/-4，注释说明 case-392 来源。与 case-392 审计结论一致，纯 subprocess 硬化无新敏感路径。②预审 merge-base=68ae65f changeset 仅 .claude/hooks/pipeline-gate.py 1file，与 main 归档环（case JSON+state.md）无源码重叠→clean。③bash scripts/opt-worktree.sh . merge opt-security-1782846352 → squash merge 落 main @2353e2e + worktree 清理。④回归验：python3 -m py_compile .claude/hooks/pipeline-gate.py OK；grep 'shell=True' 仅命中 L79 注释行（实际 subprocess 调用已 list 形式）；git worktree list 仅 main；git branch 无 auto/。⑤附带清理：squash merge 后 auto/opt-security-1782846352 分支因非 ancestor（squash 不留 commit 链）需 git branch -D 强删（case-389 同模式）；另发现 auto/optimization worktree+分支 @68ae65f 系 case-389 未清尽的 stale 残留（68ae65f 确为 main ancestor,worktree status 干净）→git worktree remove + git branch -d 清理。终态 main HEAD=2353e2e,worktree list 仅 main,无 auto/ 分支。DO B：本轮为纯部署合并轮——pipeline-gate.py subprocess 硬化属 case-392 已审既有调用,非新增敏感路径代码;pipeline-gate.py 非 LIVE 部署文件(hook 经 core.hooksPath 指向 .claude/hooks,无 LIVE cp 目标)→无需 audit-log 埋点(同 case-389 推理)。",
+  "files_changed": [".claude/hooks/pipeline-gate.py"],
+  "worktree": "opt-security-1782846352 @ 7f7256b → squash merge 入 main @2353e2e，worktree+auto/opt-security-1782846352 分支已清理；附带清理 stale auto/optimization worktree+分支(68ae65f,case-389 残留)",
   "outcome": "succeeded",
   "outcome_evidence": [
-    "npm test（main，merge 后）输出 # tests 38 / # pass 38 / # fail 0",
-    "git -C 1BfrYW9R log --oneline -1 = 0affb7a merge: 人工批准合并 optimization worktree 'opt-phase1-1782849352'",
-    "git -C 1BfrYW9R status --porcelain 空（main 干净）",
-    "worktree commit 56ce8a3 git show --stat: dev-server.js +42 / smoke.test.js +106 / GATES.md +4 / PROGRESS.md +4，4 files 152 insertions",
-    "突变复测：注释 upstreamReq.on('error') 后 node --test --test-name-pattern=上游不可达 test/smoke.test.js 输出 # pass 0 / # fail 1 / duration_ms 5109（5s 超时），还原后 38 pass 0 fail",
-    "GATES.md + PROGRESS.md canonical `npm test` → 38 pass 0 fail（grep 确认各 1 处 arrow 形，㉑ 三方对账过）",
-    "standing optimization worktree 经 ensure_main_wt ff-only 自愈 07bc84b→29a7f1c（commit 时）→0affb7a（merge 时），case-363 自愈机制两轮实测生效"
+    "opt-worktree.sh . show opt-security-1782846352 → diff 仅 .claude/hooks/pipeline-gate.py，两处 subprocess.run 改 list 形式 ['git','-C',str(root),'diff','--cached','--numstat']，去 shell=True，与 case-392 审计结论一致",
+    "git merge-base 1d72dca auto/opt-security-1782846352 → 68ae65f；git diff --name-only 68ae65f auto/opt-security-1782846352 → 仅 .claude/hooks/pipeline-gate.py，与 main 归档环无重叠",
+    "opt-worktree.sh . merge opt-security-1782846352 → '✓ 已 squash 合并 opt-security-1782846352 → main' + 'worktree 清理'",
+    "git log -1 --oneline → 2353e2e merge: 人工批准合并 optimization worktree 'opt-security-1782846352'",
+    "python3 -m py_compile .claude/hooks/pipeline-gate.py → OK（无语法错）",
+    "grep -n 'shell=True' .claude/hooks/pipeline-gate.py → 仅 L79 注释行命中（'原 shell=True + f\"git -C {root} ...\" 字符串插值'），实际 subprocess.run 调用已 list 形式无 shell=True",
+    "git merge-base --is-ancestor 68ae65f main → YES（optimization stale 残留确为 ancestor，worktree status --short 干净，安全清理）",
+    "git branch -D auto/opt-security-1782846352 → Deleted (was 7f7256b)；git worktree remove optimization + git branch -d auto/optimization → Deleted (was 68ae65f)",
+    "git worktree list → 仅 /home/admin/workspace/autonomous-studio-aone 2353e2e [main] 一行；git branch | grep auto/ → 无（clean）"
   ],
   "next_suggestion": [
-    "1BfrYW9R Phase 1 续作子步骤（非本 Round）：在 index.html 内联 babel 加一个 fetch('/api/health') 的后端连接态指示器组件（如 SettingsPage 或 DashboardPage 顶部 banner），build.js 组件计数将 30→31 须同步 bump README/CLAUDE.md/GATES.md「N 个 JSX 组件」+ ⑧ 守卫；UI 端 fetch 走 dev-server 同源反代无 CORS。依赖：需 personal-assistant 后端可达（ECS 127.0.0.1:8000 或 SSH 隧道），本地不可达时 /api/health 返 502（已锁），UI 应显示「后端未连接」降级态。",
-    "1BfrYW9R Phase 1 续作：扩展 /api/* 反代至后端数据接口（/api/messages /api/reminders 等，替换 MockData.jsx 的内联 const DATA），逐个 mock→真实接口替换 + 测试。",
-    "若下轮 scout 仍全 0.0 且 1BfrYW9R 霸榜：Phase 1 UI 子步骤须改 index.html（大文件，超 2 源文件读取上限）宜拆跨 context 规划；或审 sunset-prediction（PROGRESS 0.2天最活跃）有无断言级缺口。AS 自身 7 延期 TODO 已 triage 非紧急。"
-  ]
+    "【case-394=394%4=2≠0 非审计轮】pending=0。scout-scan 预期 AS score=0.0 无紧迫单位。核实无可做单位四步（git status 空/git worktree list 仅 main/git branch 无 auto//markers_deferred TODO=4 稳定）→若确认无源码可做单位则写心跳 case skip。勿做日常自我润色（DO NOT 禁）。",
+    "【case-396=396%4=0 下次审计轮】继续审 .claude/hooks/ 未审 hook：discovery-gate.py(387L,外部输入/路径校验面)/decision-observer.py(688L,文件写/JSON 解析,最大未审 hook)/auto-commit.py(377L,git 提交守卫)；pipeline-gate.py 已 case-392 审+case-393 落 main 勿重审。或审 scripts/ 未审源文件（distill-patterns.py/index-cases.py/triage.py/route-health-scorer.py）。用 security-review skill。"
+  ],
+  "audit_type": "none",
+  "audit_findings": []
 }

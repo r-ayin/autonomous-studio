@@ -1,26 +1,24 @@
 {
   "case_id": "case-2026-06-30-339",
-  "agent_id": "ralph-autonomous-loop",
-  "timestamp": "2026-06-30T10:50:00Z",
-  "project": "autonomous-studio",
-  "work_unit": "审+合并待合并 worktree opt-housekeeping-1782816056(scout #2 推荐);将其自身滞留 case-338 一并入合并使 main dirty 归零",
-  "situation": "scout-scan 报 AS dirty=1 列为 #2,推荐=review 1 个待合并 worktree。git worktree list 见 opt-housekeeping-1782816056(ahead=1, commit 69ad572)。审 git show --stat:该 commit 仅新增 8 个 case JSON(329-331,333-337;332 已在 main tracked),无代码改动。逐个 python json.load 校验 8 文件全部合法(outcome=succeeded, project 字段齐全)。但发现该 worktree 自身 case 记录 case-338 滞留 AS main 成 untracked 孤儿(worktree commit 含 329-337 却不含自身 338)——正是 case-338 next_suggestion 指出的待合并项,也是 case-file-orphan-on-cross-project-work 模式的自指变体。",
-  "action": "两步:① opt-worktree.sh commit housekeeping:case-archive 将 case-338 cp 进同 area worktree(复用 opt-housekeeping-1782816056,非开新),worktree 增第二 commit 41fdb0b,main untracked 338 被 rm,dirty 归零;② 写 case-339(本轮记录)再 cp 进同 worktree 后 opt-worktree.sh merge opt-housekeeping-1782816056 squash 合并→main 一次性得 329-339 全部 tracked。把 338/339 折入同一 worktree 再合,避免开新 worktree 仅持一 case 的 churn。",
-  "files_changed": [
-    ".claude/decisions/case-2026-06-30-329.json",
-    ".claude/decisions/case-2026-06-30-330.json",
-    ".claude/decisions/case-2026-06-30-331.json",
-    ".claude/decisions/case-2026-06-30-333.json",
-    ".claude/decisions/case-2026-06-30-334.json",
-    ".claude/decisions/case-2026-06-30-335.json",
-    ".claude/decisions/case-2026-06-30-336.json",
-    ".claude/decisions/case-2026-06-30-337.json",
-    ".claude/decisions/case-2026-06-30-338.json",
-    ".claude/decisions/case-2026-06-30-339.json"
-  ],
-  "worktree": "opt-housekeeping-1782816056",
-  "direction": "housekeeping:case-archive",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-06-30T11:18Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "merge-pending-worktree:optimization(audit-directives)",
+  "situation": "step0 protocol 强依赖 .claude/autonomous-constraints.md 但该文件自 case-044/337/338 三轮确认持续缺失（state NEXT_SUGGESTION 第2条标记为'引擎元数据缺失非源码债'）。scout-scan #1=AS(score=0.0 TODO=0 active) 推荐语=「review 1 个待合并 worktree（人工审 diff + merge/reject）」——即 #1 工作单位=合并 pending worktree 非新写码。pending 队列余 1 项：auto/optimization(a271bf7, 方向 engine:audit-directives)。今日 case=138, 138%4=2 未命中审计边界 140，非审计轮次。",
+  "action": "核真实 merge diff（merge-base 1b498ce..worktree）=仅 2 文件：.claude/autonomous-constraints.md(新建+58, 正是 protocol step0 所缺文件)+scripts/autonomous-loop.sh(+6/-3, PROMPT step0/step5 引用 DO 审计指令+audit_type/audit_findings 字段，与当前运行 PROMPT 一致)。git diff --name-only main..worktree 显 7 文件(含 case-337/338/state/audit-log.jsonl/scout-scan.py)系两 tip diff 假象——这些是 main 在 worktree 分支点之后新增的提交，非 worktree 贡献。git merge-tree dry-run 零冲突标记；main 无 autonomous-constraints.md(纯新增零冲突)、main loop.sh 仍为旧 step0 文本。无源码/敏感路径触及(纯文档+PROMPT 文本)。走 sanctioned opt-worktree.sh . merge optimization：checkout main→merge --squash auto/optimization→剔 .opt-direction 桩→autonomous-studio 身份 commit→worktree remove --force，不 push。",
+  "files_changed": [".claude/autonomous-constraints.md", "scripts/autonomous-loop.sh"],
+  "worktree": "optimization (auto/optimization, a271bf7 → squash merge 入 main 036a523 'merge: 人工批准合并 optimization worktree optimization'; worktree 已 --force 清理, git worktree list 仅余 main)",
+  "direction": "engine:audit-directives",
   "outcome": "succeeded",
-  "outcome_evidence": "合并前 worktree log 含 3 commit(69ad572/41fdb0b + 339 commit)共 11 case 文件;merge 后 git status --porcelain 空(dirty=0);git ls-files .claude/decisions/ 列出 case-2026-06-30-{329..339}.json 全部 tracked;git worktree list 不再见 opt-housekeeping-1782816056(已清);worktree branch auto/opt-housekeeping-1782816056 已 branch -D。",
-  "next_suggestion": "根因仍在:每轮跨项目 case 仍会滞留 AS main(case-338 已指出)。结构性修复建议(单独小工作单位):写 scripts/loop-archive-cases.sh——循环末尾自动扫 AS main untracked case-*.json 并归档进当轮 worktree,配自测。下轮若 scout 仍无紧迫项可启动此结构性修复;否则顺 scout 排序。"
+  "outcome_evidence": [
+    "git log --oneline -3 顶 = 036a523 'merge: 人工批准合并 optimization worktree optimization'",
+    "test -f .claude/autonomous-constraints.md → YES（此前三轮 NO，元数据缺失债清零）",
+    "grep -c 'audit_type|audit_findings|读 .claude/autonomous-constraints.md 全文' scripts/autonomous-loop.sh → 2（PROMPT step0/step5 已含审计指令引用）",
+    "git worktree list → 仅 /home/admin/workspace/autonomous-studio-aone 036a523 [main]（pending 队列 1→0 清空）",
+    "scout-scan: 标记 TODO=0 FIXME=0 HACK=0; #1 AS score=0.0 推荐语变为「无明确小工作单位——可跳过或做文档润色」（不再推 worktree review）",
+    "constraints.md 内容含 DO NOT(6 条排除含 moni/.codebase-index/git commit main/push/凭证/自我润色)+DO(A 代码审计每4轮/B 敏感路径 audit-log 埋点/C audit_type+audit_findings case 字段) 三节"
+  ],
+  "next_suggestion": "【可自动·低阻力】(1) pending merge 队列已清空(1→0)，scout #1 AS 推荐语变'无明确小工作单位——可跳过或做文档润色'——下轮 AS 若仍排#1 应跳过自我润色，转 scout #2 或审计轮次。(2) 审计节奏：今日 case 138→139，下个审计边界=140（140%4=0），届时强制 code-review/security-review skill 走审计路径，优先挑有源代码的项目。(3) constraints 文件已落地，下轮 step0 可真正 Read 全文（不再凭 prompt 内联摘要执行），验证 DO/DO NOT 两节与运行行为一致。(4) AS main TODO=0 score=0.0 持续健康；deferred TODO=4(合法 triage 延期债) 不计入推荐。",
+  "audit_type": "none",
+  "audit_findings": []
 }

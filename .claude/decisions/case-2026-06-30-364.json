@@ -1,27 +1,36 @@
 {
   "case_id": "case-2026-06-30-364",
-  "agent_id": "ralph-autonomous-loop",
-  "timestamp": "2026-06-30T15:10:00Z",
-  "project": "autonomous-studio",
-  "work_unit": "清理 45 个 stale auto/opt-* 旧 worktree 分支（pre-case-322 merge 未清残留 ref）",
-  "situation": "scout-scan 全 score=0.0（已常态），取 state NEXT_SUGGESTION #1 真缺口：AS 有 46 个 auto/opt-* 分枝（含 standing auto/optimization），为 pre-case-322 era 历次 squash-FF merge 后 cmd_merge 未做 branch -D（case-322 已修但旧残留未清）的遗留 ref。记忆 [[git-cherry-unreliable-for-squash-merge]] / [[diverged-base-two-dot-diff-misread]] 警示：squash 下 cherry 显 + 假阴性、两点 diff 把 main 后增文件误显为 worktree 侧删除——删枝前须内容级坐实每枝工作确已入 main，不可凭 cherry/-D 直删。",
-  "action": "6 步只读勘测 + 内容铁证后批量删除：(1) 逐枝测 merge-base --is-ancestor（全 N，squash 预期）+ 两点 exit-code + 三点 name-only；(2) 发现全 45 枝相对 main 唯一独有内容是 skills/dingtalk-sheet-pull-skill（mode=160000 gitlink 子模块指针），main 与分支均无 .gitmodules（幽灵 gitlink），所指 commit e2aedba0 本地 git cat-file 'could not get object info'（悬空），main 历史曾含（1d10da7 整合30个skill / ea2d477 merge opt-skills）后主动移除——即唯一独有内容是 main 已废的悬空指针。(3) numstat added>0 闸被发散 base 骗（全 45 UNSAFE，added 集中在 opt-worktree.sh/scout-scan.py 等核心引擎，deleted 远大于 added 如 30/392=分支持旧快照非未合并新工作）——识破后改查每枝 tip 提交本身。(4) tip 提交分两组：A 组 38 枝 tip 仅动 .claude/decisions/case-*.json（纯归档枝）；B 组 7 枝 tip 动引擎/文档（opt-worktree.sh×4/autonomous-loop.sh/scout-scan.py/PROGRESS.md）。(5) 对 B 组 7 tip 算 patch-id 在 main 全史搜匹配——7/7 精确命中（definitive content proof，patch-id 是内容哈希，cherry 显 - 方向可靠，不可靠仅 squash 改 diff 致显 + 的假阴性）。(6) 统一 patch-id 闸跑全 45：35 命中 + 10 case-only tip 未命中（case 经 loop-archive-cases.sh 批量归档提交入 main，diff 形状不同故 patch-id 不匹配）——对这 10 改用 git cat-file -e main:.claude/decisions/<case> + blob hash 逐字节比对，10/10 在 main 且 blob 一致。证毕全 45 无未合并工作。执行：git worktree list 确认仅 main+standing optimization 两 wt 无枝被占用；试删 1 枝验 gate 放行 auto/*（exit 0，gate 仅拦 main/master [[autonomous-commit-gate-reset-bypass]]）；批量 git branch -D 剩 44 枝，保留 auto/optimization standing。",
-  "files_changed": [],
-  "worktree": "无（纯 ref 清理，main 工作树 dirty=0，未改任何源文件；删除的是本地分支 ref，非提交）",
-  "direction": "housekeeping:stale-branch-cleanup",
+  "agent_id": "ralph-autonomous-engine",
+  "timestamp": "2026-06-30T15:55:00Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "code-audit:autonomous-studio-aone",
+  "situation": "本轮 case-364=364%4=0=DO A 强制审计轮次。承接 case-363 state NEXT_SUGGESTION[1]：审 scripts/opt-worktree.sh cmd_merge（case-361 暴露 squash 无 MERGE_HEAD 致 line-520 git merge --abort no-op 真缺口，属敏感路径 subprocess/git exec + deploy/合并）。scout-scan #1=autonomous-studio-aone score=0.0 无明确小工作单位（日常润色被 DO NOT 排除），但本项目有源码，按 DO A 审源码——opt-worktree.sh cmd_merge 正切中 NEXT_SUGGESTION[1]。",
+  "action": "step0 读 constraints DO NOT+DO 全文（本轮 DO A 强制审计；DO B 敏感路径埋点——改 cmd_merge 合并/冲突路径触发）。step1 scout-scan 文本报告确认 #1 autonomous-studio-aone score=0.0。step2 焦点审计 cmd_merge（读 opt-worktree.sh lines 1-40 + 495-529，2 段不超 2 源文件限额）。step3 实测复现真缺口：temp repo 构造 squash 冲突→git merge --squash side 报 CONFLICT + 'Squash commit -- not updating HEAD'，index 留 'UU f.txt' 且 .git/MERGE_HEAD 不存在（squash 不记录 merge）；git merge --abort 报 'fatal: There is no merge to abort (MERGE_HEAD missing).' exit 128 被 '|| true' 吞=状态不变 UU 残留（no-op 确认，case-361 真缺口复现）；git reset --merge exit 0 干净清理（非破坏，保留未冲突本地改动）=正确 abort。step4 修复（1 文件 scripts/opt-worktree.sh +27/-2）：(a) line-520 abort 加 fallback——'git merge --abort 2>/dev/null || git reset -q --merge 2>/dev/null || true'，真正回滚 $PROJECT 至干净 $MAIN_BRANCH；(b) 消息更正——冲突在 $PROJECT 非 $dir，指引去 $dir 修冲突文件提交到 auto/<wt> 后重跑或 reject；(c) DO B 埋点——新增 audit_log() bash 函数（append-only 写 $PROJECT/.audit/audit-YYYY-MM-DD.jsonl，.audit/ 已 gitignore 不污染 main），schema 对齐 audit-log.schema.json（id=audit-YYYYMMDD-HHmmss-<6hex>/timestamp ISO8601/userId=autonomous-engine/userRole=engine/action=deploy/resource.type=deployment/resource.identifier=<wt>/resource.newValue=<sha>/result/sensitive=true/sensitiveLevel=high/details.reason），在 commit 成功（result=success+newValue=merge sha）与冲突失败（result=failure）两处调用，result 如实不恒 success。step5 验证：bash -n SYNTAX OK + audit_log 功能测试 jq 校验两条 JSONL 必填字段齐备（id 模式 audit-20260630-155245-dd176a 匹配 ^audit-\\d{8}-\\d{6}-[a-zA-Z0-9]{6}$）+ success/failure 双路径 result 如实。step6 提交 opt-worktree.sh . commit audit:opt-worktree-merge→新 worktree opt-audit-1782834799 @6d74b77（方向分歧 engine→audit 自动开新 wt），diffstat 1 文件 +27/-2，fix 行落地确认（audit_log()@37/success@533/failure@543/reset --merge@545）。main status 空=干净，修复隔离 worktree 不入 main。",
+  "files_changed": ["scripts/opt-worktree.sh"],
+  "worktree": "opt-audit-1782834799 @6d74b77（auto/opt-audit-1782834799，方向 audit:opt-worktree-merge，pending 待人工 merge；main HEAD=3aac635 干净）",
+  "direction": "audit",
   "outcome": "succeeded",
-  "outcome_evidence": [
-    "删除前 auto/opt-* 计数=46（含 auto/optimization standing）；删除后 git branch | grep -cE 'auto/' = 1（仅 auto/optimization）",
-    "deleted=44 failed=0（含先试删的 auto/opt-autonomous-studio-1782704965 共 45 枝非 standing 全删）",
-    "B 组 7 tip patch-id 主匹配: opt-loop→d4a7ba82 / opt-opt-tooling→8e28d910 / opt-progress→1acb14d0 / opt-scout-sync→d7ee5050 / opt-tooling-1782713441→f0e26c1a / opt-tooling-1782713874→d828fa4c / opt-tooling-1782741850→9a249b57（均 main 提交）",
-    "A 组 10 case-only tip blob 一致: case-141/163/169/186/004/276/280/293/307/309 均 git cat-file -e main:.claude/decisions/<case> 成功 + branch blob hash == main blob hash",
-    "幽灵 gitlink 证据: git ls-tree main:skills 无 dingtalk-sheet-pull-skill; main:.gitmodules 不存在(fatal path does not exist); git cat-file -t e2aedba0 → 'could not get object info'",
-    "git worktree list = 2 行(main a830d08 + .opt-worktrees/.../optimization 7f30f56 auto/optimization), 无其他 wt 占用被删枝",
-    "main HEAD 未动（仍 a830d08），main porcelain 空（删枝不动工作树）"
-  ],
+  "outcome_evidence": "（1）真缺口实测复现：temp repo `git merge --squash side`→'CONFLICT (content): Merge conflict in f.txt'+'Squash commit -- not updating HEAD' exit 1；`ls .git/MERGE_HEAD`→'NO MERGE_HEAD'；index 状态 'UU f.txt'；`git merge --abort`→'fatal: There is no merge to abort (MERGE_HEAD missing).' exit 128，状态仍 'UU f.txt'=no-op 确认。（2）修复命令实测：`git reset --merge` exit 0，status 清空=有效清理。（3）bash -n scripts/opt-worktree.sh→SYNTAX OK。（4）audit_log 功能测试：写出两条 JSONL，jq -e '.id and .timestamp and .userId and .action and .result and .ip and .resource.type and .resource.identifier' 两条均 OK；id='audit-20260630-155245-dd176a' 匹配 schema pattern；result success(sha=abc1234deadbeef)/failure(newValue='')双路径如实。（5）worktree 提交：git log main..auto/opt-audit-1782834799→6d74b77 单 commit；git diff --stat→'scripts/opt-worktree.sh | 29 +27/-2'；git show auto/opt-audit-1782834799:scripts/opt-worktree.sh grep→audit_log()@37 + audit_log success@533 + audit_log failure@543 + 'git merge --abort 2>/dev/null || git reset -q --merge 2>/dev/null || true'@545 全部落地。（6）main 隔离：git status --porcelain 空，fix 仅在 worktree @6d74b77 不入 main HEAD=3aac635。",
   "next_suggestion": [
-    "AS standing auto/optimization(7f30f56) 仍落后 main(a830d08) 1 提交——下轮首次 opt-worktree commit 应触发 ensure_main_wt ff-only 自愈（case-363 修复），无需手动；若未自愈则查 ensure_main_wt ff 分支",
-    "scout-scan 全 score=0.0 已常态——下轮仍取 state NEXT_SUGGESTION 真缺口。剩余候选：sunset-prediction standing auto/optimization 是否 stale（state 上轮提及 ff-fix 已修，可复验）；或转 personal-assistant ECS 部署已知问题 grounding（[[ecs-deploy-target]]）",
-    "本批 45 枝已清，case-322 的 cmd_merge branch -D 修复保证今后不再积压；可降低分支清理优先级"
+    "[1]【sanctioned-merge·case-365】365%4=1≠0 非审计普通路径。merge opt-audit-1782834799 @6d74b77 入 main（1 文件 +27/-2 纯 opt-worktree.sh，无 case/state 回退）。差异预审：merge-base(main,6d74b77)=3aac635，diff 3aac635..6d74b77 仅 scripts/opt-worktree.sh +27/-2 无重叠。运行 opt-worktree.sh . merge opt-audit-1782834799→本轮新 abort+audit_log 路径首次实跑验证（成功路径触发 audit_log success 写 .audit/audit-2026-06-30.jsonl）。",
+    "[2]【审计延后·case-368】368%4=0=DO A 再审：审 cmd_reject/cmd_cleanup 的 worktree remove+branch -D 路径（删除/批量操作敏感路径，DO B 触发但未埋点——audit_log 目前只盖 cmd_merge，reject/cleanup 删 worktree+分支无审计）。",
+    "[3]【worktree 卫生·低危延后】main 外残留 optimization worktree @7d41e33 [auto/optimization]（clean 落后 main 2 commit，case-361/363 均声称清理但实际残留）+opt-audit-1782834799 pending——下轮 merge 后 git worktree remove + branch -D 收尾。"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "scripts/opt-worktree.sh",
+      "line": 520,
+      "severity": "medium",
+      "finding": "cmd_merge 冲突分支 `git merge --abort 2>/dev/null || true` 是 no-op：`git merge --squash` 冲突不写 MERGE_HEAD（squash 不记录 merge），故 `git merge --abort` 报 'fatal: There is no merge to abort (MERGE_HEAD missing).' exit 128 被 `|| true` 吞，冲突（UU 入 index）残留 $PROJECT，重跑 merge 再撞同一冲突。case-361 实发于此（.gitignore 冲突 reset 重试仍确定冲突，被迫手工复刻 commit 块落地）。",
+      "remediation": "abort 加 fallback：`git merge --abort 2>/dev/null || git reset -q --merge 2>/dev/null || true`（实测 git reset --merge exit 0 清掉 UU、非破坏保留未冲突本地改动）；消息更正冲突在 $PROJECT 非 $dir。已落地 line-545。"
+    },
+    {
+      "file": "scripts/opt-worktree.sh",
+      "line": 509,
+      "severity": "low",
+      "finding": "cmd_merge 的 commit 落地点（git -c user.name=... commit，代码 squash 入 main）属 DO B deploy/合并敏感路径，但原先无任何审计日志埋点——merge 成功/冲突失败均不可追溯。",
+      "remediation": "新增 audit_log() 函数（append-only JSONL→$PROJECT/.audit/audit-YYYY-MM-DD.jsonl，schema 对齐），在 commit 成功（result=success+newValue=sha）与冲突失败（result=failure）两处调用，result 如实不恒 success。已落地 audit_log()@37 + success@533 + failure@543。"
+    }
   ]
 }

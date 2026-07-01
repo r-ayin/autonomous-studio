@@ -1,21 +1,28 @@
 {
-  "case_id": "case-2026-07-01-397",
-  "agent_id": "ralph-autonomous-loop",
-  "timestamp": "2026-07-01",
-  "project": "sunset-prediction",
-  "work_unit": "合并 pending opt-test-1782851070 worktree → main（social-calibration 纯数学抽取 + 测试）",
-  "situation": "scout-scan 全项目 health=0.0、所有 dirty=0，#1/#2/#3 均判润色/跳过。按 [[scout-all-zero-pick-dirty-signal]] (case-391) 不堆润色，下移找 dirty 信号。sunset-prediction 报告含「待处理 worktree: 共1, 待合并=1」——唯一具体可行动信号。需先按 [[scout-scan-pending-merge-false-positive]] (case-327) 与 [[git-cherry-unreliable-for-squash-merge]] 排除假阳。",
-  "action": "三步审计后合并：(1) `git log main..auto/opt-test-1782851070` 见 1 commit fa3f0bb（social-calibration.js 抽纯函数 nnls/zNormalize/pearsonR/emaBlendRenormalize 至零依赖 src/social-calibration-math.js + test/social-calibration.test.js 6 用例，npm test 34→40）；(2) `git cherry main` 显 +（非 -，未被 squash 骗），`git ls-tree main` 确认 social-calibration-math.js / test 文件 main 不存在——排除 case-327 假阳；(3) 进 worktree `git status --porcelain` 空 + `npm test` 40/40 pass。遂 `opt-worktree.sh sunset-prediction merge opt-test-1782851070`：fast-forward squash 入 main、删 auto/opt-test-1782851070 分支、清 worktree 目录、standing optimization worktree 快进 02072e5→68e0b20。",
-  "files_changed": [
-    "sunset-prediction/src/social-calibration-math.js",
-    "sunset-prediction/src/social-calibration.js",
-    "sunset-prediction/test/social-calibration.test.js",
-    "sunset-prediction/GATES.md",
-    "sunset-prediction/PROGRESS.md"
-  ],
-  "worktree": "opt-test-1782851070 (已合并清理) / sunset-prediction main 68e0b20",
-  "direction": "test:social-cal-math",
+  "case_id": "2026-07-01-397",
+  "agent_id": "ralph-autonomous-engine",
+  "timestamp": "2026-07-01T03:40Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "sanctioned-merge:engine:security",
+  "direction": "deploy",
+  "situation": "case-397=397%4=3≠0 非审计轮·合规 sanctioned-merge。承接 case-396 NEXT[1]:pending=1 opt-worktree engine:security @e0b9b8b(auto-commit.py git add -A→显式路径暂存 + DO B _audit_log_commit 埋点)待合并。scout-scan #1=AS score=0.0 推荐『review 1 个待合并 worktree（人工审 diff + merge/reject）』与 pending 一致。预审 diff 仅 .claude/hooks/auto-commit.py 1file +56/-2 与归档环(仅动 decisions/+state.md)无源码重叠→clean。",
+  "action": "人工审 diff 后 opt-worktree.sh . merge optimization 执行 squash 合并。预审确认两点改动:①L362 git(resolved,['add','--']+stage_paths) 显式列路径暂存(changes+PROGRESS.md),fail-safe 路径异常 return False 不退回 -A 泄漏,闭合 case-396 medium(git add -A 绕过 EXCLUDED_PREFIXES);②L65 _audit_log_commit 定义+L367/L378/L381 三处调用(action=file_write/resource=repository/result=success|failure 落 <WORKSPACE_ROOT>/.audit JSONL,写引擎仓免子仓反馈环),DO B 闭合。回归:py_compile OK+grep 'add' 仅 L362 显式路径无 -A 实际调用+grep _audit_log_commit 命中 4(def+3 calls)。合并后清理:squash merge 后 auto/optimization 非 ancestor 需 git branch -D 强删(同 case-393 模式)。",
+  "files_changed": [".claude/hooks/auto-commit.py"],
+  "worktree": "optimization @ e0b9b8b（已 squash merge→main 2fca11f + worktree 清理 + auto/optimization 强删）",
   "outcome": "succeeded",
-  "outcome_evidence": "main HEAD=68e0b20 `merge: 人工批准合并 optimization worktree 'opt-test-1782851070'`；main 上 `npm test` 40 pass / 0 fail；`git ls-tree main` 现含 src/social-calibration-math.js + test/social-calibration.test.js；scout 复扫 sunset-prediction「待处理 worktree」行消失、fn 322→323；standing optimization worktree 已快进同 main 不落后。",
-  "next_suggestion": "scout 仍全 0.0——下轮继续按 case-391 纪律：(a) 先 grep #1 项目源找断言级缺口；(b) 无 dirty 信号则查其余项目 pending worktree（x-tool 20h 未活跃、shizi 2 天未活跃可能积 pending）；(c) 仍无则启动霸榜项目结构性大项而非润色。sunset-prediction 本轮已清空 pending，勿重复推。"
+  "outcome_evidence": [
+    "git log --oneline -1 main = 2fca11f 'merge: 人工批准合并 optimization worktree optimization'",
+    "git diff --stat main...HEAD(e0b9b8b) 合并前 = .claude/hooks/auto-commit.py 1file +56/-2,merge-base=1807d11",
+    "合并后 grep '\"add\"' .claude/hooks/auto-commit.py → L362 git(resolved,['add','--']+stage_paths) 显式路径,无 git add -A 实际调用(仅注释命中 L5/L351/L355/L356)",
+    "合并后 grep -c _audit_log_commit = 4(def L65 + L367 git add 失败 + L378 commit 失败 + L381 success)",
+    "python3 -m py_compile .claude/hooks/auto-commit.py = OK(主仓合并后副本)",
+    "git worktree list = 仅 main @2fca11f(optimization worktree 已清理)",
+    "git branch -a | grep auto = 空(auto/optimization 已 git branch -D 强删,was e0b9b8b)"
+  ],
+  "next_suggestion": [
+    "【case-398=398%4=2≠0 非审计轮】pending=0,clean 状态。scout-scan #1=AS score=0.0 推『无明确小工作单位——可跳过或做文档润色』,DO NOT 禁日常自我润色→不润色。核实无可做单位四步(①git status 空 clean②git worktree list 仅 main③git branch 无 auto/④markers_deferred TODO=4 稳定)→skip 写心跳 case。",
+    "【case-400=400%4=0=0 下次审计轮】DO A 强制裁 .claude/hooks/ 剩余未审 hook:discovery-gate.py(387L,外部输入/路径校验面)/decision-observer.py(688L,文件写/JSON 解析,最大未审 hook)。已审 hook 5 个={autonomous-commit-gate·codegraph-sync·notify-phone·pipeline-gate·auto-commit(396)}。"
+  ],
+  "audit_type": "none",
+  "audit_findings": []
 }

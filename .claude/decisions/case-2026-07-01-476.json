@@ -1,0 +1,25 @@
+{
+  "case_id": "case-2026-07-01-476",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-01T01:38:30Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "code-audit:autonomous-studio-aone (.claude/hooks/protocol-check.py security-review)",
+  "situation": "审计轮 case-476=476%4=0 DO A 续审未审源码。scout-scan #1=AS score=0.0『review 1 个待合并 worktree』但 opt-security-1782866336@5b5d956(ahead=3) 已由 case-465/468/469/472 四轮审查结论合并就绪且引擎 autonomous-commit-gate.py 无权 merge→不重复审，按 DO A 改走源码审计。从今日已审文件集(opt-worktree.sh/autonomous-commit-gate.py/codegraph-sync.py/notify-phone.py/pipeline-gate.py/auto-commit.py/decision-observer.py/discovery-gate.py/stop-completion-gate.py/post-edit-lint.py/scout-scan.py/triage.py/route-health-scorer.py)外选未审源码 .claude/hooks/protocol-check.py(144行,PreToolUse:Write/Edit 自举 hook,含 subprocess 调 bootstrap.py 属 DO B 外部调用敏感路径候选)。",
+  "action": "security-review skill 全文件逐行审计 protocol-check.py。注入面:subprocess L67-73 list-form argv [sys.executable, BOOTSTRAP_SCRIPT, os.path.join(project_dir,'dummy')] shell 隐式 False + timeout=10 + 固定脚本路径,无 shell 注入;实测 .claude/skills/project-protocol/ 目录不存在→BOOTSTRAP_SCRIPT 恒 isfile=False→L63 check_and_bootstrap 早退 bootstrap_unavailable,L67-82 subprocess 分支实际不可达,subprocess 风险降为纯理论。路径:L22-49 get_project_dir parts[0] 过滤 '.'/'..'(L37)+os.path.isdir 校验,无穿越可利用面;skip_prefixes L32 any(part.startswith(p)) 覆盖 .claude/node_modules/.git/__pycache__/.venv。输入:L87 stdin json.loads 无 eval/exec;L105-129 status.json 读取 stage 仅作 stage_artifacts dict key + f-string 到 stderr,无注入。唯一可记录:L72 env={**os.environ,'CLAUDE_PROJECT_DIR':WORKSPACE_ROOT} 全量转发父 env 给子进程——常见 Python 实践、bootstrap.py 为受信仓内脚本且需 PATH/CLAUDE_PROJECT_DIR 才能运行,过滤会破坏功能,判 info 级非可操作。无真问题→不起 opt-worktree,存档 case。",
+  "files_changed": [],
+  "worktree": "none",
+  "direction": "audit",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "wc -l .claude/hooks/protocol-check.py = 144 行(未审源码,选为审计对象)",
+    "grep 今日 case audit_findings file 字段:protocol-check.py 未出现在任何已审 case 的 audit_findings 中→确为未审源码",
+    "ls .claude/skills/project-protocol/ → 'dir absent'→BOOTSTRAP_SCRIPT 路径不存在→L63 bootstrap_unavailable 早退→L67-82 subprocess 分支不可达(实测)",
+    "L67-73 subprocess.run argv=[sys.executable, BOOTSTRAP_SCRIPT, os.path.join(project_dir,'dummy')], 无 shell=True, timeout=10→无 shell 注入面(源码可观察)",
+    "L37 project_name = parts[0] if parts[0] not in ('.','..') else None→'..' 被过滤;L42 os.path.isdir(project_dir) 校验→无穿越可利用面(源码可观察)",
+    "L87 json.loads(sys.stdin.read());全文件无 eval/exec/os.system/Shell=True(源码可观察)",
+    "L72 env={**os.environ,...} 全量转发——info 级非可操作:bootstrap 需 PATH/CLAUDE_PROJECT_DIR,过滤破坏功能"
+  ],
+  "next_suggestion": "下轮 case-477=477%4=1≠0 非审计轮·skip 心跳;case-480=480%4=0 审计轮·DO A 续审未审源码(候选:.claude/hooks/incremental-save.py 91行 / patterns-write-gate.py 52行 / resume-checkpoint.py 213行 / save-checkpoint.py 222行 / scripts/distill-patterns.py 416行 / scripts/index-cases.py 137行)",
+  "audit_type": "security-review",
+  "audit_findings": []
+}

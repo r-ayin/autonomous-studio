@@ -57,6 +57,48 @@ case "$PROJECT" in
 esac
 # per-project 子目录，避免多项目 worktree 撞车（之前 $PROJECT/../.opt-worktrees 共享导致跨项目冲突）
 WT_BASE="$PROJECT/../.opt-worktrees/$(basename "$PROJECT")"
+# json_escape <string>（case-368 security-review defense-in-depth）：audit_log 的
+# reason/identifier/sha 经 printf %s 直拼 JSON，未转义 " 与 \。git refname 禁这些字符
+# 故 branch 名派生值实践不可注入；但 $PROJECT 路径 / $(basename "$dir") 非 refname 受控，
+# slug() 仅剥 : / 不剥 " \——含 " 会 corrupt JSONL 破 jq 解析。转义 \ " 及控制符保证输出
+# 始终合法 JSON。不阻断主流程：空输入 / 异常均原样返回。
+json_escape() {
+  local s="${1:-}"
+  s="${s//\\/\\\\}"
+  s="${s//\"/\\\"}"
+  s="${s//$'\n'/\\n}"
+  s="${s//$'\r'/\\r}"
+  s="${s//$'\t'/\\t}"
+  printf '%s' "$s"
+}
+# audit_log <result> <worktree> <commit-sha|空> <reason>
+# DO B（autonomous-constraints.md）：cmd_merge 是 deploy/变更合并敏感路径（git exec + 代码入 main），
+# 落地与冲突均记 JSONL 审计日志，schema 对齐 .claude/decisions/audit-log.schema.json。append-only 写
+# $PROJECT/.audit/audit-YYYY-MM-DD.jsonl（.audit/ 已 gitignore，不污染 main）。result 如实反映，不恒 success。
+# 纯本地 JSONL，不新建库/不接外部系统。审计为可观测性，绝不阻断合并主流程（调用点带 || true）。
+# case-368：wt/sha/reason 经 json_escape 后再拼 JSON，闭合 case-366 low 级 finding。
+audit_log() {
+  local result="$1" wt="$2" sha="$3" reason="$4"
+  # action/resource_type 参数化（case-366）：cmd_merge 用默认 deploy/deployment；
+  # cmd_reject/cmd_cleanup 删 worktree+分支是 delete/artifact（DO B 删除/批量敏感路径）。
+  # 默认值保证既有 cmd_merge 两处调用（line 533/543）行为不变。
+  local action="${5:-deploy}" rtype="${6:-deployment}"
+  local aud_dir="$PROJECT/.audit" ts id_date rid fpath
+  mkdir -p "$aud_dir" 2>/dev/null || return 0
+  ts="$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || printf '')"
+  id_date="$(date -u +%Y%m%d-%H%M%S 2>/dev/null || printf '00000000-000000')"
+  rid="$(od -An -tx1 -N3 /dev/urandom 2>/dev/null | tr -d ' \n' || printf '')"
+  [[ ${#rid} -ge 6 ]] || rid="$(printf '%06d' "$RANDOM" 2>/dev/null || printf '000000')"
+  fpath="$aud_dir/audit-$(date -u +%Y-%m-%d 2>/dev/null || printf '1970-01-01').jsonl"
+  # action/rtype 为代码内 enum 字面量（调用方传 delete/artifact 等），不转义；
+  # wt/sha/reason 含外部派生值，必转义。
+  local wt_e sha_e reason_e
+  wt_e="$(json_escape "$wt")"
+  sha_e="$(json_escape "$sha")"
+  reason_e="$(json_escape "$reason")"
+  printf '{"id":"audit-%s-%s","timestamp":"%s","userId":"autonomous-engine","userRole":"engine","action":"%s","resource":{"type":"%s","identifier":"%s","newValue":"%s"},"result":"%s","ip":"local","sensitive":true,"sensitiveLevel":"high","details":{"reason":"%s"}}\n' \
+    "$id_date" "$rid" "$ts" "$action" "$rtype" "$wt_e" "$sha_e" "$result" "$reason_e" >> "$fpath" 2>/dev/null || true
+}
 # 动态探测项目默认分支：x-tool/moni 用 master，autonomous-studio 用 main。
 # 硬编码 main 会导致 master 项目 worktree add 失败被 || true 吞、随后写 .opt-direction 崩。
 detect_main_branch() {
@@ -80,6 +122,43 @@ MAIN_BRANCH="$(detect_main_branch "$PROJECT")"
 area_of() { echo "${1%%:*}"; }
 slug() { echo "$1" | tr ':' '-' | tr '/' '-'; }
 
+# direction_kind 判定（用户 2026-07-01 定）：审计深度解绑后，原 area-字符串相等判定太粗，
+# 改用"是否触及项目公共接口文件"作为强信号——命中 = direction-shift（项目方向更新）→ 强制开新
+# worktree 即便 area 同；不命中 = route-fix（原路线修复）→ 走原有 area 复用逻辑。
+# 信号源：/home/admin/workspace/autonomous-studio-aone/.claude/public-interfaces.txt
+#   每行 `<project_name>:<relative_path>`，# 注释，空行忽略。
+# 文件不存在 → 默认 route-fix（向后兼容）。无 files 参数时扫 main 工作区 porcelain。
+# 返回 stdout: "route-fix" | "direction-shift"
+judge_direction_kind() {
+  local proj="$1"; shift
+  local -a files=("$@")
+  local pi_file="/home/admin/workspace/autonomous-studio-aone/.claude/public-interfaces.txt"
+  [[ -f "$pi_file" ]] || { echo "route-fix"; return 0; }
+  local proj_name; proj_name="$(basename "$proj")"
+  # 若未传 files，扫 main 工作区改动
+  if [[ ${#files[@]} -eq 0 ]]; then
+    local p
+    while IFS= read -r -d '' p; do
+      p="${p#???}"
+      case "$p" in *" -> "*) p="${p##* -> }";; esac
+      [[ -n "$p" ]] && files+=("$p")
+    done < <(git -C "$proj" status --porcelain -z 2>/dev/null)
+  fi
+  [[ ${#files[@]} -eq 0 ]] && { echo "route-fix"; return 0; }
+  local f
+  for f in "${files[@]}"; do
+    [[ -z "$f" ]] && continue
+    # 精确行匹配 "<proj>:<f>"
+    if grep -qxF "${proj_name}:${f}" "$pi_file" 2>/dev/null; then
+      echo "direction-shift"
+      return 0
+    fi
+  done
+  echo "route-fix"
+  return 0
+}
+
+
 # 防御性根因补强（与 4fcb8bc 互补，非冗余）：worktree 方向标记桩 .opt-direction 写入
 # 工作区后，立即登记到该 worktree 专属 info/exclude，让 git 永不追踪它。4fcb8bc 在
 # cmd_merge 落地前 unstage+删桩（merge 兜底），但部分 worktree 分支仍可能在 merge 前
@@ -98,8 +177,16 @@ ensure_main_wt() {
   local dir="$WT_BASE/optimization"
   if [[ ! -d "$dir" ]]; then
     mkdir -p "$WT_BASE"
-    git -C "$PROJECT" worktree add -b auto/optimization "$dir" "$MAIN_BRANCH" 2>/dev/null || \
-      git -C "$PROJECT" worktree add "$dir" auto/optimization 2>/dev/null || true
+    # 两次 worktree add 都失败时不得吞错继续——旧实现尾部 `|| true` 吞掉失败后，
+    # 仍向 mkdir 建出的空 dir 写 .opt-direction 桩并打印「✓ 建 optimization worktree」，
+    # 造成功假象；后续 cmd_commit 在非 worktree 上 cp/commit 必败且报错晦涩（审计发现，
+    # 与 cmd_merge line471 失败即中止的纪律不一致）。改为校验：两次都败→清空 dir+中止。
+    if ! git -C "$PROJECT" worktree add -b auto/optimization "$dir" "$MAIN_BRANCH" 2>/dev/null && \
+       ! git -C "$PROJECT" worktree add "$dir" auto/optimization 2>/dev/null; then
+      echo "❌ 建 optimization worktree 失败: $dir——检查 $MAIN_BRANCH 分支可用性 / auto/optimization 残留分支 / 路径权限。中止，未写 .opt-direction 桩。" >&2
+      rmdir --ignore-fail-on-non-empty "$dir" 2>/dev/null || true
+      exit 1
+    fi
     echo "engine:general" > "$dir/.opt-direction"
     _ignore_opt_direction_marker "$dir"
     echo "✓ 建 optimization worktree: $dir"
@@ -272,16 +359,51 @@ _assert_no_collateral_revert() {
 # 不改 staged、不中止（与 _assert_no_collateral_revert 语义一致）。
 cmd_precommit() { _assert_no_collateral_revert; }
 
+# 删除路径名校验（case-382 security-review）：cmd_merge/reject/show 的 <worktree> 参数
+# (CLI $3) 原样拼进 dir="$WT_BASE/$wt"，其中 cmd_merge(L569)/cmd_reject(L588) 有
+# `git worktree remove "$dir" --force || rm -rf "$dir"` fallback。wt 未校验为 basename——
+# 若传 `../`、`.` 或 `..`，`[[ -d "$dir" ]]` 命中遍历目标后 worktree remove 对未注册路径
+# 失败，`|| rm -rf "$dir"` 即删遍历目标（删除敏感路径的路径遍历）。引擎自身只传 basename
+# （cmd_list 输出），但删除路径须纵深防御：wt 须为纯 basename（非空、非 . / ..、不含 /）。
+_validate_wt_name() {
+  local wt="$1"
+  if [[ -z "$wt" || "$wt" == "." || "$wt" == ".." || "$wt" == *"/"* ]]; then
+    echo "❌ worktree 名非法（须为纯 basename，不含 /，非 . 或 ..）: '$wt'——拒绝以防 rm -rf 路径遍历（case-382）" >&2
+    exit 1
+  fi
+}
+
 cmd_commit() {
   local direction="${3:?need direction}"
   local msg="${4:?need commit message}"
   ensure_main_wt
   local cur_area; cur_area=$(current_area)
   local new_area; new_area=$(area_of "$direction")
+  # direction_kind 判定（用户 2026-07-01）：触及公共接口文件 = direction-shift（强制新 worktree）
+  # 不命中 = route-fix（原 area 复用逻辑）。files 是 ${@:5}（暂记，下方 cmd 流程还会重读）
+  local -a _files_for_judgment=("${@:5}")
+  local direction_kind; direction_kind=$(judge_direction_kind "$PROJECT" "${_files_for_judgment[@]}")
+  # 审计修复（case-356）：跟踪本调用是否新建了分歧 worktree。copied=0 中止（line 352）
+  # 时须回滚它，否则 git worktree add 建出的 opt-<area>-<ts> worktree+分支成孤儿，
+  # 污染 git worktree list / scout-scan（case-353 残留 wt 漂移根因的分歧-wt 面；
+  # optimization 持久 wt 由 ensure_main_wt 建、cmd_cleanup 可收，不在此列）。
+  local created_new_wt=0
+  local new_wt_branch=""
 
-  # 选目标 worktree：方向 area 一致 → 主 worktree；不一致 → 复用或开新
+  # 选目标 worktree：direction-shift 优先（强制新 wt）> area 不一致 > area 一致复用 optimization
   local target
-  if [[ "$cur_area" == "$new_area" ]]; then
+  if [[ "$direction_kind" == "direction-shift" ]]; then
+    # 公共接口文件被改 → 项目方向更新，强制开新 worktree（即便 area 同）
+    local ts; ts=$(date +%s)
+    target="$WT_BASE/opt-$(slug "$new_area")-shift-$ts"
+    new_wt_branch="auto/opt-$(slug "$new_area")-shift-$ts"
+    mkdir -p "$target"
+    git -C "$PROJECT" worktree add -b "$new_wt_branch" "$target" "$MAIN_BRANCH" 2>/dev/null
+    echo "$direction" > "$target/.opt-direction"
+    _ignore_opt_direction_marker "$target"
+    created_new_wt=1
+    echo "↔ direction-shift（触及公共接口文件，$cur_area → $new_area）→ 强制开新 worktree: $(basename "$target")"
+  elif [[ "$cur_area" == "$new_area" ]]; then
     target="$WT_BASE/optimization"
   else
     # 先找已有的同 area worktree 复用，没有才建新（避免同方向开一堆 worktree）
@@ -291,10 +413,11 @@ cmd_commit() {
     existing=$( { ls -d "$WT_BASE"/opt-$(slug "$new_area")-* 2>/dev/null || true; } | head -1 )
     if [[ -n "$existing" ]]; then
       target="$existing"
-      echo "→ 复用同 area worktree: $(basename "$target")"
+      echo "→ 复用同 area worktree (route-fix): $(basename "$target")"
     else
       local ts; ts=$(date +%s)
       target="$WT_BASE/opt-$(slug "$new_area")-$ts"
+      new_wt_branch="auto/opt-$(slug "$new_area")-$ts"
       mkdir -p "$target"
       # 失败须清 husk：worktree add 失败（分支名撞/路径冲突）时 mkdir 已建空目录，
       # set -e 下硬 abort 会留空 husk 累积（.opt-worktrees/<proj>/.opt-worktrees/opt-*，
@@ -306,7 +429,8 @@ cmd_commit() {
       fi
       echo "$direction" > "$target/.opt-direction"
       _ignore_opt_direction_marker "$target"
-      echo "↔ 方向分歧（$cur_area → $new_area），开新 worktree: $(basename "$target")"
+      created_new_wt=1
+      echo "↔ 方向分歧（$cur_area → $new_area，route-fix 新 area），开新 worktree: $(basename "$target")"
     fi
   fi
 
@@ -425,6 +549,23 @@ cmd_commit() {
   if (( copied == 0 )); then
     echo "⚠️ 无文件被实际迁移（全部被 cp-guard 跳过或不存在）——无内容可提交，中止，不生成空提交。被跳过文件 main 改动已保留，请人工 merge 对应 worktree 后重做。" >&2
     if (( ${#skipped[@]} > 0 )); then echo "   跳过文件: ${skipped[*]}" >&2; fi
+    # 审计修复（case-356）：回滚本调用新建的分歧 worktree——copied=0 中止时它无任何提交内容，
+    # 留下即成孤儿 wt+分支（污染 worktree list / scout-scan）。仅清本调用新建者，不动复用/
+    # optimization 持久 wt。worktree remove --force 因 wt 无 commit 可净移；branch -D 删空分支。
+    # DO B（autonomous-constraints.md）：此回滚是 delete 敏感路径（worktree remove --force +
+    # branch -D），与 cmd_reject/cmd_cleanup 对称记 JSONL 审计日志（action=delete, resource=artifact）。
+    # result 如实反映：worktree 目录已消失=success（branch -D best-effort，失败仅 reason 标注），
+    # 仍在=failure。case-370 闭合全删除路径 audit_log 对称（merge/reject/cleanup/commit-rollback 四路径 LIVE）。
+    if (( created_new_wt )) && [[ -n "$new_wt_branch" ]]; then
+      git -C "$PROJECT" worktree remove --force "$target" 2>/dev/null || true
+      git -C "$PROJECT" branch -D "$new_wt_branch" 2>/dev/null || true
+      if [[ ! -d "$target" ]]; then
+        audit_log success "$(basename "$target")" "" "rollback divergent worktree on copied=0 abort (no content migrated); branch $new_wt_branch -D (best-effort)" delete artifact || true
+      else
+        audit_log failure "$(basename "$target")" "" "rollback incomplete on copied=0 abort: $target still exists after remove --force" delete artifact || true
+      fi
+      echo "   已回滚本调用新建的分歧 worktree: $(basename "$target")（避免孤儿）" >&2
+    fi
     exit 1
   fi
 
@@ -500,6 +641,19 @@ cmd_commit() {
     exit 1
   fi
   echo "✓ 提交到 $(basename "$target")  方向=$direction"
+
+  # ⑤ 自动 push opt 分支到 origin（用户 2026-07-01 定）：
+  # worktree 分支均为 auto/opt-* 命名，远端 push 安全；main/master 由 reference-transaction
+  # hook 拦截直写，且 worktree 分支永不命中 main/master。push 失败不阻断 commit（已落本地），
+  # 只 warn——网络/权限问题不应让引擎整轮 fail。
+  local wt_branch; wt_branch=$(git -C "$target" symbolic-ref --short HEAD 2>/dev/null)
+  if [[ -n "$wt_branch" && "$wt_branch" == auto/opt-* ]]; then
+    if git -C "$target" push -u origin "HEAD:${wt_branch}" 2>&1 | sed 's/^/  [push] /'; then
+      echo "✓ 已 push ${wt_branch} → origin/${wt_branch}"
+    else
+      echo "⚠️ push ${wt_branch} 失败（commit 已落本地 worktree，不阻断；下次 merge 时再 push）" >&2
+    fi
+  fi
 }
 
 cmd_list() {
@@ -518,6 +672,7 @@ cmd_list() {
 
 cmd_show() {
   local wt="${3:-optimization}"
+  _validate_wt_name "$wt"
   local dir="$WT_BASE/$wt"
   [[ -d "$dir" ]] || { echo "❌ worktree 不存在: $wt"; exit 1; }
   echo "=== $wt 的优化 diff（待人工审）==="
@@ -543,6 +698,7 @@ cmd_show() {
 
 cmd_merge() {
   local wt="${3:?need worktree}"
+  _validate_wt_name "$wt"
   local dir="$WT_BASE/$wt"
   [[ -d "$dir" ]] || { echo "❌ worktree 不存在: $wt"; exit 1; }
   cd "$PROJECT"
@@ -569,6 +725,8 @@ $(git log --oneline "$MAIN_BRANCH"..auto/$(basename "$dir") 2>/dev/null | head -
     # ↑ 只列 worktree 相对 main 的 ahead 提交（本 worktree 真实贡献）。旧 `git log --oneline auto/...`
     # 从根起 log 整条分支史，会把 main 已有提交灌进合并消息正文（实测 873f688 正文混入
     # 2aa0eba/0a2124d/4dc2565 等 main 提交，仅 734512b 属该 worktree），误导审阅。
+    local merge_sha; merge_sha="$(git rev-parse HEAD 2>/dev/null || printf '')"
+    audit_log success "$wt" "$merge_sha" "squash-merge worktree into $MAIN_BRANCH" || true
     echo "✓ 已 squash 合并 $wt → $MAIN_BRANCH"
     git -C "$PROJECT" worktree remove "$dir" --force 2>/dev/null || rm -rf "$dir"
     # 合并后删 auto/<wt> 分支（case-322 收口：cmd_reject/cmd_cleanup 已有此行，root live
@@ -583,18 +741,33 @@ $(git log --oneline "$MAIN_BRANCH"..auto/$(basename "$dir") 2>/dev/null | head -
     # 缺 case-2026-07-01-391.json）。合并即 ff，关闭窗口；ff-only+祖先校验保未合并改动不丢。
     ensure_main_wt
   else
-    echo "❌ 合并冲突，人工处理: cd $dir && 解决后 opt-worktree.sh merge"
-    git merge --abort 2>/dev/null || true
+    # case-361 真缺口修复：`git merge --squash` 冲突不写 MERGE_HEAD（squash 不记录 merge），
+    # 故 `git merge --abort` 报 `fatal: There is no merge to abort (MERGE_HEAD missing)` exit 128
+    # 被 `|| true` 吞 = no-op，冲突（UU 入 index）残留 $PROJECT 致重跑再撞同一冲突。fallback
+    # `git reset --merge`（实测 exit 0 清掉 UU、非破坏——保留未冲突本地改动）真正回滚 $PROJECT
+    # 至干净 $MAIN_BRANCH，去 $dir 修冲突文件提交到 auto/<wt> 后再跑可干净重试。
+    audit_log failure "$wt" "" "squash merge conflict, $PROJECT rolled back to clean $MAIN_BRANCH" || true
+    echo "❌ 合并冲突：已回滚 $PROJECT 至干净 $MAIN_BRANCH。去 $dir 解决冲突文件、提交到 auto/$(basename "$dir")，再跑 opt-worktree.sh merge \"$PROJECT\" \"$wt\"；或 opt-worktree.sh reject \"$PROJECT\" \"$wt\" 放弃"
+    git merge --abort 2>/dev/null || git reset -q --merge 2>/dev/null || true
     exit 1
   fi
 }
 
 cmd_reject() {
   local wt="${3:?need worktree}"
+  _validate_wt_name "$wt"
   local dir="$WT_BASE/$wt"
   [[ -d "$dir" ]] || { echo "❌ worktree 不存在: $wt"; exit 1; }
   git -C "$PROJECT" worktree remove "$dir" --force 2>/dev/null || rm -rf "$dir"
   git -C "$PROJECT" branch -D "auto/$(basename "$dir")" 2>/dev/null || true
+  # DO B（autonomous-constraints.md）：reject 是删除敏感路径（worktree remove + branch -D），
+  # 与 cmd_merge 对称记 JSONL 审计日志（action=delete, resource=artifact）。result 如实反映：
+  # worktree 目录已消失=success（branch -D best-effort，失败仅 reason 标注），仍在=failure。
+  if [[ ! -d "$dir" ]]; then
+    audit_log success "$wt" "" "rejected worktree; branch auto/$(basename "$dir") -D (best-effort)" delete artifact || true
+  else
+    audit_log failure "$wt" "" "reject incomplete: $dir still exists after remove --force" delete artifact || true
+  fi
   echo "✗ 已拒绝并删除 worktree: $wt（分支 auto/$(basename "$dir") 保留可恢复，或手动删）"
 }
 
@@ -625,10 +798,52 @@ cmd_cleanup() {
     fi
     git -C "$PROJECT" worktree remove "$d" --force 2>/dev/null || rm -rf "$d"
     git -C "$PROJECT" branch -D "auto/$name" 2>/dev/null || true
-    echo "✓ 清理空 worktree: $name（0 提交，死桩）"
-    removed=$((removed + 1))
+    # DO B：cleanup 批量删空 worktree（worktree remove + branch -D）是删除/批量敏感路径，
+    # 逐条记 JSONL 审计日志（action=delete, resource=artifact），与 cmd_merge/reject 对称。
+    # case-412 审计修复：result 如实反映删除是否生效，不恒 success（autonomous-constraints.md
+    # DO B 明令"确保 result 字段如实反映成功/失败"）。旧实现无条件 audit_log success——若
+    # worktree remove --force 与 rm -rf 双双失败（权限/挂载占用），目录仍在却记 success，审计
+    # 日志失真。与 cmd_reject(L610) 对称：按 [[ -d "$d" ]] 实判，branch -D best-effort 仅 reason 标注。
+    if [[ ! -d "$d" ]]; then
+      audit_log success "$name" "" "cleanup empty worktree (0 commits, dead stub); branch auto/$name -D (best-effort)" delete artifact || true
+      echo "✓ 清理空 worktree: $name（0 提交，死桩）"
+      removed=$((removed + 1))
+    else
+      audit_log failure "$name" "" "cleanup incomplete: $d still exists after remove --force + rm -rf" delete artifact || true
+      echo "⚠️ 清理失败（目录仍在）: $name" >&2
+      skipped=$((skipped + 1))
+    fi
   done
   echo "清理完成: 删 $removed / 跳 $skipped（有真提交或未提交改动）"
+
+  # 阶段 2：清理无 linked worktree 的 auto/opt-* 孤儿分支（case-356 fix 已防新 leak，
+  # 残留为历史遗留）。仅当分支名匹配 auto/opt-* 且 WT_BASE 下无同名目录时删除。
+  local orphan_removed=0 orphan_skipped=0 branch wt_dir
+  while IFS= read -r branch; do
+    [[ -z "$branch" ]] && continue
+    # git branch --list 输出带前导空格和可能的 * 当前分支标记，trim 掉
+    branch="${branch#"${branch%%[![:space:]]*}"}"   # 去前导空白
+    branch="${branch#\* }"                           # 去当前分支标记
+    [[ "$branch" == auto/opt-* ]] || continue
+    local slug="${branch#auto/}"
+    wt_dir="$WT_BASE/$slug"
+    if [[ -d "$wt_dir" ]]; then
+      orphan_skipped=$((orphan_skipped + 1))
+      continue
+    fi
+    # case-412 审计修复：branch -D 失败须记 failure，不恒 success（DO B）。
+    # 用 git branch -D 的退出码直接判（if-conditional 不触发 set -e）。
+    if git -C "$PROJECT" branch -D "$branch" 2>/dev/null; then
+      audit_log success "$branch" "" "cleanup orphan branch auto/opt-* (no linked worktree)" delete artifact || true
+      echo "✓ 清理孤儿分支: $branch（无 linked worktree）"
+      orphan_removed=$((orphan_removed + 1))
+    else
+      audit_log failure "$branch" "" "orphan branch -D failed (checked out elsewhere? refs/heads still present)" delete artifact || true
+      echo "⚠️ 孤儿分支删除失败: $branch（refs/heads 仍在）" >&2
+      orphan_skipped=$((orphan_skipped + 1))
+    fi
+  done < <(git -C "$PROJECT" branch --list 'auto/opt-*' 2>/dev/null)
+  echo "孤儿分支清理: 删 $orphan_removed / 跳 $orphan_skipped（有 linked wt）"
 }
 
 # 取当天（或指定日）下一个可用 case 编号：扫 main 工作树 + 所有 pending opt worktree 的

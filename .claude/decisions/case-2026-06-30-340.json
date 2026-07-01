@@ -1,15 +1,32 @@
 {
   "case_id": "case-2026-06-30-340",
-  "agent_id": "ralph-wiggum-autonomous-loop",
-  "timestamp": "2026-06-30T10:55Z",
-  "project": "1BfrYW9R (oneday-design)",
-  "work_unit": "新增 ㉚ dev-server.js argv 优先于 PORT env 端口优先级守卫回归锁",
-  "situation": "scout-scan 全项目健康度 score=0.0 无紧迫工作单位，#1 为 1BfrYW9R（推荐文档润色）。审 dev-server.js line 8 端口优先级链 `argv > PORT env > 默认 3015` 三级，发现 ⑫ 仅锁 env 回退分支（无 argv + PORT env 起服务），而 argv 优先于 env 的全链首位零测覆盖——日后改成 `PORT env || argv || 3015`（部署优先 env 的合理误改）会致本地 `npm run dev <port>` 在 shell 已设或 PaaS 残留 PORT env 时被 env 覆盖、本地端口预期落空，而 ⑫（不带 argv）仍全绿的真缺口。",
-  "action": "在 test/smoke.test.js ⑫ 之后追加测试 ㉚：同时注入 argv=3077 + PORT env=3076（两端口不同），三轮询断言 GET 3077 返 200 + listen 日志含 http://localhost:3077 且不含 http://localhost:3076 + GET 3076 ECONNREFUSED（env 端口未监听证 argv 真优先）。env 端口命名为 envPort 不入 ㉙ `const port =` 集合不污染端口唯一性锁。同步 bump GATES.md canonical 箭头形 31 pass 0 fail 为 32、追加 ㉚ 枚举叙事与历史里程碑行、PROGRESS.md 最近里程碑链承接 ㉙。突变复测：line 8 改 `PORT env || argv || 3015` 后 ㉚ 转红 not ok 15（GET 3077 ECONNREFUSED + 日志报 3076），还原后 32 pass 0 fail 证锁真咬。",
-  "files_changed": ["1BfrYW9R/test/smoke.test.js", "1BfrYW9R/GATES.md", "1BfrYW9R/PROGRESS.md"],
-  "worktree": "opt-tests-1782817679 (branch auto/opt-tests-1782817679, tip 2c0f5cb)",
-  "direction": "tests:port-precedence",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-06-30T11:22Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "code-audit:autonomous-studio-aone",
+  "situation": "审计轮次判定：今日 decisions 目录已有 case-337/338/339 三条，本轮为今日第 4 条 case，4%4=0 命中审计边界（与上轮 case-339 state NEXT_SUGGESTION '下个审计边界=140(140%4=0)' 一致）。step0 读 .claude/autonomous-constraints.md 全文（DO A/B/C 三节）→ 走审计路径。step1 scout-scan #1=autonomous-studio-aone(score=0.0 TODO=0 active=0 deferred TODO=4)推荐语='无明确小工作单位——可跳过或做文档润色'；DO A 要求审计轮次从 #1 起挑有源代码项目（跳过纯文档/配置）——AS 有 scripts/scout-scan.py 等源码，符合。pending worktree 队列=0、工作树净（仅 PROJECTS.md 未跟踪）→ code-review/security-review skill 走 current diff 无对象，按 DO A fallback 审 main HEAD 最近 1-3 commit 的源码改动。git log -5 --stat 显示最近真实源码改动=1aa9b23(scout-scan.py +9 反引号剥离 + audit-log.jsonl 新建)与 036a523(autonomous-constraints.md 新建 + autonomous-loop.sh PROMPT)；scout-scan.py 是唯一含逻辑的源文件改动，定为审计对象。",
+  "action": "对 1aa9b23 的 scripts/scout-scan.py count_markers 反引号剥离改动做手动 code-review（code-review skill 走 diff 无对象，按 fallback 手动审；未深读大块代码，仅读 count_markers 函数 145-199 + 改动 diff）。套用 DO A 清单：注入(SQL/命令/XSS)/鉴权缺失/PII凭证泄漏/错误处理空洞/并发资源泄漏。审计结论=无真实 correctness/security bug：(1) 剥离顺序 _STRIP_STRINGS→_PLACEHOLDERS→_HTML_COMMENTS→_STRIP_BACKTICKS 合理，各剥离器分隔符独立无干扰；(2) 真债标记(# TODO: 行内注释)从不裹反引号→不受影响，反引号裹的均为文档引例/JS 模板字面量→正确不计；(3) 正则 r\"`[^`]*`\" 编译一次、非重叠左-to-right替换、无异常路径，外层 try/except Exception 覆盖文件读；(4) 不平衡反引号不匹配=非回归(旧版同样会计)；(5) 自洽——line185 注释 `# TODO:` 引例被新剥离器自身中和无自指虚高；(6) 无注入/鉴权/PII/外部调用/subprocess/fs写，纯本地文件读+静态正则。发现 1 条低危 audit-log schema 一致性 finding(ip 字段用真实 LAN IP 而非 'local')——不回修：audit-log.jsonl 是 append-only JSONL，改写历史条目违反 append-only 契约，remediation 落为未来指引。无真问题需 opt-worktree 修复→按 DO A '无真问题→写 case 存档'，不起 worktree、不改码。",
+  "files_changed": [],
+  "worktree": "none（审计轮次无真问题需修复；唯一 finding 落在 append-only 历史日志上不应回改，故无 opt-worktree）",
+  "direction": "audit",
   "outcome": "succeeded",
-  "outcome_evidence": "npm test 实测 32 pass 0 fail（加测前 31 pass，加测后 ㉑ gates-doc-drift 先红报 GATES 声称 31 实际 32，bump GATES 后转绿 32 pass 0 fail）；㉙ 端口唯一性锁仍绿证 const port=3077 唯一不撞号；突变复测 line 8 改 env 优先后 ㉚ 转红 not ok 15 还原后绿证锁真咬；opt-worktree commit 输出 提交到 opt-tests-1782817679，main 1BfrYW9R git status --porcelain 空即干净，worktree tip 2c0f5cb 含三文件改动。",
-  "next_suggestion": "1BfrYW9R 部署/服务维度回归锁已极密（启动/服务/方法/关闭/端口优先级全链均锁），下轮可转其他项目：scout-scan #2 autonomous-studio 有 7 条延期已 triage TODO 可逐条核销或做 scout-scan 自身结构性缺口（如待合并误报 case-327 的 patch-id 对账）；或 sunset-prediction/wechat-main 的 GATES 实跑核销。1BfrYW9R 本身仅余 Phase 1 真实后端 API endpoint 接入（依赖 personal-assistant 后端，跨项目留后）。"
+  "outcome_evidence": [
+    "git show 1aa9b23 -- scripts/scout-scan.py → +_STRIP_BACKTICKS=re.compile(r\"`[^`]*`\") @line70 + count_markers 内 stripped=_STRIP_BACKTICKS.sub(\"\",stripped) @line186（HTML注释剥离后、deferred/MARKER 计数前）",
+    "Read scripts/scout-scan.py:145-199 → 剥离顺序 _STRIP_STRINGS(180)→_PLACEHOLDERS(182)→_HTML_COMMENTS(184)→_STRIP_BACKTICKS(186)→_DEFERRED_RE(187-190)→_MARKER_RE(191-194)；真债 # TODO(deferred) 行内注释无反引号不被剥离",
+    "scout-scan 实跑：标记 TODO=0 FIXME=0 HACK=0、deferred TODO=4 不变、#1 AS score=0.0 推荐语='无明确小工作单位——可跳过或做文档润色'——反引号剥离生效无幽灵霸榜（审计对象行为符合预期）",
+    "git show 1aa9b23 -- .claude/decisions/audit-log.jsonl → 新建 1 条 audit-20260630-105936-0dv11c config_change/medium，字段对齐 schema(id/timestamp/userId/userRole/action/resource/result=success/ip/sensitive/sensitiveLevel/details/metadata)，result 如实反映成功",
+    "audit_findings 唯一条目：.claude/decisions/audit-log.jsonl line1 ip=172.16.61.117 低危——constraints.md §B 指引'无网络上下文写 local'，本条用真实 LAN IP；不改（append-only 契约）",
+    "git worktree list → 仅 main（pending 队列=0，无待合并 worktree 干扰审计对象）"
+  ],
+  "next_suggestion": "【可自动·低阻力】(1) 下轮(今日 case 5, 5%4=1)非审计轮次，scout #1 AS score=0.0 推荐'可跳过'、deferred TODO=4 全为人工/真实系统 blocked(dataworks apply_resource_access.py:85/90 未实测、bff_client.py:206 待人工裁决、scaffold-skill.sh:136 待真实回放)——无可行小工作单位时按 DO NOT 跳过自我润色，记 no-op case 或等下个审计边界(case 8, 8%4=0)。(2) 下个审计边界=今日 case 8（8%4=0），届时优先挑有源代码项目（dataworks-dev-assistant 有 .py 源码且含 deferred 未实测项，可作 code-review/security-review 对象审 bff_client.py HTTP 调用/apply_resource_access.py 权限校验）。(3) audit-log ip 字段：未来纯本地引擎上下文的 audit-log 埋点写 ip='local'（本条 finding 的 remediation，不回改历史）。(4) AS main TODO=0 score=0.0 持续健康，concurrency 无虞。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": ".claude/decisions/audit-log.jsonl",
+      "line": 1,
+      "severity": "low",
+      "finding": "audit-log 条目 audit-20260630-105936-0dv11c 的 ip 字段值为 '172.16.61.117'（真实 LAN IP），而 autonomous-constraints.md §B 指引要求'无网络上下文写 local'。引擎纯本地操作无网络调用上下文，应写 'local'。非安全 bug（私有 LAN IP 不泄漏），仅 schema 一致性指引偏离。",
+      "remediation": "不回改本条历史记录（audit-log.jsonl 为 append-only JSONL，改写历史违反 append-only 契约）。未来敏感路径 audit-log 埋点在纯本地引擎上下文时 ip 字段写 'local'；仅当存在真实 HTTP 出站/远程调用上下文时才记实际远端 IP。"
+    }
+  ]
 }

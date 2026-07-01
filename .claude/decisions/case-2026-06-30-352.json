@@ -1,26 +1,35 @@
 {
   "case_id": "case-2026-06-30-352",
-  "agent_id": "ralph-autonomous-loop",
-  "timestamp": "2026-06-30T13:30:00Z",
-  "project": "1BfrYW9R (oneday-design)",
-  "work_unit": "锁 405 响应 Content-Type: text/plain 头部（㉓ 强化，与 ㉘ 404 头部对称）",
-  "situation": "scout-scan 全项目健康度良好无紧迫工作单位，#1 为 1BfrYW9R（oneday-design）。读 dev-server.js + smoke.test.js 发现：㉘（404 头部 Content-Type 回归锁）的注释早已声称「405→text/plain」为已锁不变量（GATES.md line 21 ㉘ 条目原文「与 405/探针/静态 200 每条响应路径一致」、smoke.test.js line 1594 注释「405→text/plain」），实则 405 响应的 Content-Type 此前零断言覆盖——㉓ 方法守卫测只断言 status 405 + Allow 头 + body 'Method Not Allowed'，从未断言 Content-Type。这是 doc-claim-vs-test-coverage 缺口：把 dev-server.js line 40 writeHead 的 Content-Type 删掉致 'Method Not Allowed' 文本 body 无类型、浏览器被迫 MIME 嗅探（nosniff 下 strict 浏览器拒显），而 ㉓ 全套断言仍绿。",
-  "action": "smoke.test.js ㉓ 测内增 POST / 405 响应 Content-Type 断言（assert.match(post.headers['content-type'], /^text\\/plain/)，含缺头时 undefined 的可读报错文案），不新增 test 注册数（避免 bump 端口/GATES 计数，㉑ gates-doc-drift 计数不变）。同步更新 GATES.md ㉓ 条目标题（+Content-Type: text/plain 头）与条目尾追加 2026-06-30 强化说明，PROGRESS.md 最近里程碑前置新里程碑。突变复测三步：(1) baseline 33 pass 0 fail；(2) 把 dev-server.js line 40 改回 writeHead(405, { Allow }) 删 Content-Type → ㉓ 转红 not ok 27 / pass32/fail1，error 文案「POST / 405 须带 Content-Type: text/plain... 实际：undefined」；(3) 还原 dev-server.js → 33 pass 0 fail，证锁真咬。",
-  "files_changed": [
-    "1BfrYW9R/test/smoke.test.js",
-    "1BfrYW9R/GATES.md",
-    "1BfrYW9R/PROGRESS.md"
-  ],
-  "worktree": "opt-tests-1782825852 (auto/opt-tests-1782825852, 方向=tests:405-content-type-header, 基于 main 8808462)",
-  "direction": "tests:405-content-type-header",
+  "agent_id": "ralph-autonomous-studio",
+  "timestamp": "2026-06-30T13:58:00Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "code-audit:autonomous-studio-aone",
+  "direction": "audit",
+  "situation": "审计轮次（case-352，352%4=0=DO A 强制 code-review/security-review）。scout-scan 仅 1 项目 AS(score=0.0 无明确小工作单位)；上轮 case-351 NEXT_SUGGESTION 指出 dataworks 已连续多轮审(case-344/348/350)，本轮换审 AS 自身源码避盲区。main HEAD 最近 3 commit 为 case/state 归档+dataworks merge，AS 引擎自身源码无近期改动→按 DO A.2 审 AS 引擎最敏感的 shell 脚本 scripts/opt-worktree.sh（git/subprocess/文件系统写编排，679 文件中安全面最大）。",
+  "action": "逐行审计 opt-worktree.sh（585 行）。重点：注入风险（commit 消息内 $direction/$msg 在双引号 -m 参数内为字面量，bash 不再求值→安全；slug/area_of 仅 tr 转换→分支名安全）、错误处理空洞、cp-guard/del-guard/leak 断言。发现 1 真问题：ensure_main_wt(line 69-79) 两次 git worktree add 皆败时尾部 `|| true` 吞错，仍向 mkdir 建出的空 dir 写 .opt-direction 桩 + 打印「✓ 建 optimization worktree」成功假象→后续 cmd_commit 在非 worktree 上 cp/commit 必败且报错晦涩，与同文件 cmd_merge(line 471) 失败即中止的纪律不一致。起 opt-worktree 修：改为 `if ! add1 && ! add2; then ❌+rmdir+exit 1; fi`（1 文件，最小改动）。未触 DO B 敏感路径（auth/PII/凭证/外部 HTTP/部署/删除-many）：本次为引擎内部 git 编排的错误处理硬化，未新增/修改任何敏感操作，故不补 audit-log 埋点（AS 引擎无 audit logger，为此内部 plumbing 新建 logger 属过度工程/日常自我润色，违反 DO NOT#14）。",
+  "files_changed": ["scripts/opt-worktree.sh"],
+  "worktree": "optimization (commit 678432f, branch auto/optimization, 待人工审合并)",
   "outcome": "succeeded",
   "outcome_evidence": [
-    "cmd_commit 输出「✓ 提交到 opt-tests-1782825852  方向=tests:405-content-type-header」",
-    "worktree git log：b70e327 opt(tests:405-content-type-header): test: 锁 405 响应 Content-Type... （父 8808462）",
-    "main porcelain 空（git status --porcelain 无输出），HEAD=8808462 未被直改（gate 守住）",
-    "worktree 与 main 分离：main 仍旧 ㉓（无 Content-Type 断言）跑 33 pass 0 fail，worktree 含新断言",
-    "突变复测：删 dev-server.js line 40 Content-Type → ㉓ not ok 27 pass32/fail1 报「实际：undefined」；还原 → 33 pass 0 fail",
-    "㉑ gates-doc-drift 测仍绿（test 注册数 33 == GATES canonical「33 pass 0 fail」，未新增 test）"
+    "bash -n scripts/opt-worktree.sh → OK（语法通过）",
+    "双失败场景验证：/tmp 临时仓 pre-occupy auto/optimization 于他 worktree → `opt-worktree.sh . init` 输出「❌ 建 optimization worktree 失败...中止，未写 .opt-direction 桩。」exit=1，且 `ls .../optimization/.opt-direction` = No such file（旧实现此处会打印 ✓ + 写桩）",
+    "正常路径回归：fresh 临时仓 `opt-worktree.sh . init` → 「✓ 建 optimization worktree」+ `git -C ... rev-parse --is-inside-work-tree`=true + .opt-direction=engine:general（未误伤合法 init）",
+    "worktree 提交 678432f diff 仅 scripts/opt-worktree.sh(+14/-2)，ensure_main_wt 体含新 if/rmdir/exit1 守卫（git show HEAD:scripts/opt-worktree.sh line 69-89 证实）",
+    "main 未动：opt-worktree.sh 在 main 工作树已还原至 HEAD（commit 流程 ③ 还原步骤），fix 仅存于 optimization worktree 待 sanctioned merge"
   ],
-  "next_suggestion": "1BfrYW9R dev-server.js 响应路径头部覆盖至此合围（200 静态/MIME/404/405/探针均有 Content-Type 断言）。剩余真正未锁的响应路径头部：/readyz 503 分支（line 58 writeHead(503, {Content-Type: application/json})）—— ㉑/⑪ 只断言 503 status + body {status:not ready}，未断言 Content-Type: application/json 头，与本次 405 缺口同形（doc 称锁实则未锁），下轮可对称强化。或转其他项目（scout-scan 全绿，可做 personal-assistant 真实后端 API endpoint 接入，闭合 oneday-design Phase 1 deploy 通道遗留）。"
+  "next_suggestion": [
+    "人工审 optimization worktree commit 678432f：opt-worktree.sh . show optimization 看 diff，opt-worktree.sh . merge optimization 合并或 reject",
+    "下轮 case-353=353%4=1≠0=非审计轮次，普通路径：scout-scan 选 #1 工作单位（AS score=0.0→可能仍无明确单位，可 review/merge 本轮 678432f 或跳过）",
+    "续审 AS 自身源码可扩到 scripts/scout-scan.py + .claude/hooks/autonomous-commit-gate.py（gate 本身是 main 守卫，值得下次审计轮次覆盖）"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "scripts/opt-worktree.sh",
+      "line": 73,
+      "severity": "medium",
+      "finding": "ensure_main_wt: `git worktree add -b auto/optimization ... || git worktree add ... auto/optimization || true`——两次 add 皆败时 `|| true` 吞错，紧接向 mkdir 建出的非 worktree 空 dir 写 .opt-direction 桩并打印「✓ 建 optimization worktree」成功假象。后续 cmd_commit 在该伪 worktree 上 cp/commit 必败且报错晦涩（无法定位根因=worktree 未建）。触发条件：auto/optimization 分支已在他 worktree 检出（两次 add 都拒绝）+ 原 optimization dir 被删（[[ ! -d ]] 放行）。与同文件 cmd_merge(line 471 checkout 失败即 exit 1)纪律不一致。",
+      "remediation": "改为 `if ! git worktree add -b auto/optimization ... && ! git worktree add ... auto/optimization; then echo ❌ >&2; rmdir --ignore-fail-on-non-empty \"$dir\"; exit 1; fi`——失败即中止、清空伪 dir、不写桩、不报成功。已落地 commit 678432f。"
+    }
+  ]
 }

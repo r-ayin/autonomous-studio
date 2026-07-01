@@ -1,15 +1,35 @@
 {
   "case_id": "case-2026-06-30-350",
-  "agent_id": "ralph-autonomous-loop",
-  "timestamp": "2026-06-30T13:11:00Z",
-  "project": "sunset-prediction",
-  "work_unit": "GATES 实跑核销：修复 health-check.py 硬编码 WSL SRC_DIR 致 python health-check.py 崩溃，🟡 门禁由 [ ] 转 [x]",
-  "situation": "scout-scan 全 8 项目 score=0.0（健康），#1 1BfrYW9R 33 测全绿且 standing optimization worktree 仅 idle .opt-direction 标记（无具体工作单位，纯 doc polish=churn，受 [[scout-scan-standing-worktree-not-stale]] 不清）。顺延按持久化 state NEXT_SUGGESTION「sunset-prediction/wechat-main GATES 实跑核销」选 sunset-prediction（上次 gates 核销 2 天前 ff6c70b，drift 风险）。实跑 npm test=28 pass 0 fail；实跑 python3 health-check.py 崩溃：FileNotFoundError: '/mnt/e/x-tool/wanxia'——health-check.py L6 硬编码 WSL 源目录 SRC_DIR，Linux-native 容器内不存在，server 死时 restart()→ensure_deployed()→shutil.copytree(不存在路径) 崩溃。GATES 🟡「python health-check.py 通过」长期 [ ] 未核销即因 NeverPassed：脚本结构性不可移植。同模式历史前例 967f857（puppeteer 去 /root 硬编码→os.homedir()+CHROME_PATH env）。",
-  "action": "1 文件最小改动 health-check.py L5-9：SRC_DIR 由硬编码 \"/mnt/e/x-tool/wanxia\" 改 os.environ.get(\"WANXIA_SRC_DIR\", os.path.dirname(os.path.abspath(__file__)))（env 可覆盖、默认脚本自身目录，与 967f857 同模式）。/api/health 路由本就存在（src/routes.js:334 返 200+JSON status:ok），故 check() 逻辑无需改——根因仅 SRC_DIR 不可移植。GATES.md L35 🟡 门禁由 [ ] 转 [x] 并缀实跑证据。端到端实证：fuser -k 8080; nohup node server.js → 启动日志 '[calibration] Restored weights from database' + '🌅 ...已启动: http://localhost:8080'；python3 health-check.py → {\"status\":\"ok\",\"port\":8080} exit 0。SRC_DIR 可移植性独立实证：python3 -c 解析默认 SRC_DIR=/home/admin/workspace/sunset-prediction exists=True（旧硬编码 /mnt/e/x-tool/wanxia exists=False）。server 死路径不再 FileNotFoundError（SRC_DIR 恒存在）。",
-  "files_changed": ["sunset-prediction/health-check.py", "sunset-prediction/GATES.md"],
-  "worktree": "opt-gates-1782824938 (sunset-prediction/.opt-worktrees/opt-gates-1782824938, branch auto/opt-gates-1782824938, commit 951d8a3)",
-  "direction": "gates:health-portable",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-06-30T21:38:00Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "audit-correlation-instrumentation:dataworks bff_client 重试审计关联（落地 case-348 deferred F2）",
+  "situation": "普通路径轮次 case-350（350%4=2≠0=非审计轮次，符合上轮 case-349 NEXT_SUGGESTION[1] 判定）。step0 读 autonomous-constraints.md DO A/B/C 全文。step1 scout-scan #1=autonomous-studio-aone score=0.0，推荐「无明确小工作单位——可跳过或做文档润色」，延期 TODO=4 已 triage 不计入；DO NOT 禁「日常自我润色型无意义提交」。state NEXT_SUGGESTION[2] 留有 deferred F2（case-348 审计发现，low-medium）：bff_client._call 限频重试循环(685-699)每次 _do_request 触 _audit_write→record()，一次逻辑写命中限频重试 N 次产 N 条无 correlationId 关联条目，审计者无法区分「1 次逻辑写重试 N 次」vs「N 次独立逻辑写」。F2 触敏感路径（外部 HTTP 出站+重试）→DO B 强制 audit-log 埋点，且 F2 本身即审计日志可观测性硬化（非润色、非新功能），是本轮唯一实质可执行工作单位。",
+  "action": "step2 深审 2 源文件（不超 2 源文件纪律）：audit_log.py 全文（record() 现签名 work_dir,api_name,params_summary,result_code,*,user_id,user_role,ip,bypass）+ bff_client.py _do_request(477-547)/_call(642-723)/call_raw(724-729) 段；grep 证 _audit_write=from audit_log import record as（line 53），即 _audit_write 即 record()。F2 修复最小改动 3 文件：(1) audit_log.py record() 增可选 keyword-only 参 correlation_id=None/attempt=None，details 仅在调用方提供时写 correlationId/attempt（向后兼容旧调用点不污染）；(2) bff_client.py _do_request 签名增 correlation_id=None/attempt=0 透传到 _audit_write 调用；_call 重试循环前生成 correlation_id=str(uuid.uuid4()) 一次，循环内 _do_request 传 correlation_id=correlation_id, attempt=attempt（attempt=range(max_retries+1) 递增）使重试 N 条共享同 id+各异 attempt；call_raw 单次直调生成独有 correlation_id+attempt=0 同构；(3) audit-log.schema.json details.properties 增可选 correlationId(string)/attempt(integer,min 0) 字段。step3 改 3 文件在 main 工作区。step4 opt-worktree.sh . commit dataworks:audit-correlation-id（area=dataworks≠engine→开新 worktree opt-dataworks-1782826672 非 reuse）。验：ast.parse 两文件 OK+schema JSON load OK+e2e 4 PASS（PASS1 retry-trio 同 cid+attempts 0,1,2+result 如实 failure/failure/success；PASS2 call_raw 异 cid+attempt=0；PASS3 legacy 无 correlationId/attempt 键向后兼容；PASS4 schema 声明两字段 optional in details.properties）。",
+  "files_changed": [
+    "skills/dataworks-dev-assistant/core/audit_log.py",
+    "skills/dataworks-dev-assistant/core/bff_client.py",
+    ".claude/decisions/audit-log.schema.json"
+  ],
+  "worktree": "opt-dataworks-1782826672（base=main HEAD ded8666 全新基座无误报，单 commit 630af77，方向=dataworks:audit-correlation-id，3 文件 +47/-5：audit_log.py +14/-1、bff_client.py +29/-4、audit-log.schema.json +9/-0；pending 待下轮 case-351 人工审合并）",
+  "direction": "dataworks:audit-correlation-id",
   "outcome": "succeeded",
-  "outcome_evidence": "worktree commit 951d8a3 含修复：`git -C <wt> show HEAD:health-check.py` grep 命中 L9 'SRC_DIR = os.environ.get(\"WANXIA_SRC_DIR\", os.path.dirname(os.path.abspath(__file__)))'；`git -C <wt> show HEAD:GATES.md` grep 命中 L35 '- [x] 🟡 python health-check.py 通过 —— 2026-06-30 修复 ...'。main porcelain 空（opt-worktree 步骤③还原）。实跑命令输出：python3 health-check.py → {\"status\":\"ok\",\"port\":8080} exit=0（server 活时 check() 命中 /api/health 200）。SRC_DIR 解析 exists=True vs 旧路径 exists=False。npm test 28 pass 0 fail（未回归）。",
-  "next_suggestion": "sunset-prediction opt-gates-1782824938 待人工 merge→main（1 commit, 2 文件, 纯 gates 核销零代码行为变化除 health-check.py SRC_DIR 可移植性）。merge 后 GATES 🟡 python health-check.py 转正。剩余 sunset-prediction GATES 未过项：🟡 POST /api/xhs/generate 手动触发路由未实现（仅 cron 22:30）、🟡 前端 npm run build（package.json 无 build 脚本）、🟡 小红书限流、🟢 cron 失败无重试。下轮可选：wechat-main GATES 实跑核销（dirty=3 须先查 pending worktree），或 sunset-prediction 补 POST /api/xhs/generate 路由（小工作单位，解锁另一 🟡）。AS 观察期继续：housekeeping wt 累积+main 干净度监控。"
+  "outcome_evidence": "git log -1 --stat auto/opt-dataworks-1782826672=commit 630af77 3 files changed +47/-5（audit_log.py 14、bff_client.py 29、audit-log.schema.json 9）；merge-base main..branch=ded8666==main HEAD（无落后/无 stale 基座）；git status main 我 3 文件 clean（opt-worktree 步骤③还原 main 到 HEAD）；python3 ast.parse bff_client.py+audit_log.py=OK；python3 json.load audit-log.schema.json=OK；e2e PASS1 entries[:3] 三条 details.correlationId 全==同 cid+attempt==[0,1,2]+result==[failure,failure,success]（重试关联+result 如实）；PASS2 entries[3] call_raw details.correlationId!=trio cid+attempt==0；PASS3 entries[4] legacy details 无 correlationId/attempt 键（向后兼容旧 record() 调用点不污染）；PASS4 schema.properties.details.properties 含 correlationId+attempt(minimum 0) 且均不在 required。",
+  "next_suggestion": [
+    "[1]【pending 1·待人工 merge】opt-dataworks-1782826672(F2 重试审计关联修复) 下轮 case-351 sanctioned merge：merge-base main..branch=ded8666==main HEAD 无落后；1 commit 630af77；squash-relevant diff(merge-base..branch)=3 文件 audit_log.py/bff_client.py/audit-log.schema.json（注意：full diff main..branch 若显多余 case/state 文件为 archival commit 误报同 case-345/347/349 模式，须以 git show --stat 630af77 为准只看 branch 自有 commit）；审无拒理由（DO B 敏感 HTTP 重试路径审计可观测性硬化非润色，向后兼容旧调用点、result 仍如实、非阻断语义保留）→opt-worktree.sh . merge opt-dataworks-1782826672 落 main+worktree 清理；post-merge 验 main _call 重试循环 correlation_id 生成+透传在位、call_raw 独有 id+attempt=0 在位、record() 可选参在位、ast.parse OK、e2e 4 PASS 复跑、pending 1→0",
+    "[2]【下轮 case-351=351%4=3≠0=普通路径轮次】scout-scan 取 #1 工作单位；若 #1 仍无明确单位则审/merge pending opt-dataworks-1782826672 为工作单位",
+    "[3]【下次审计轮次=case-352（352%4=0）】届时选有源码项目走 code-review/security-review skill；dataworks-dev-assistant 已连续多轮审计（case-344/348/350），case-352 可换审其他有源码项目（如 moni 排除/xia/pachong）避免单一项目审计盲区",
+    "[4]【optimization worktree(75629c7)落后 main 17+ commit 0 自有非 stale 不清理】下轮 engine:general 新优化可 reset 重基到 main HEAD ded8666",
+    "[5]【本轮 case-350.json+state.md 须落 archival commit】opt-worktree.sh . commit engine:archival"
+  ],
+  "audit_type": "audit-log-instrumentation",
+  "audit_findings": [
+    {
+      "file": "skills/dataworks-dev-assistant/core/bff_client.py",
+      "line": "685-699",
+      "severity": "low-medium",
+      "finding": "bff_client._call 限频重试循环每次 _do_request 在写操作时触 _audit_write→record()，一次逻辑写命中限频重试 N 次产 N 条无 correlationId 关联的审计条目，审计者无法区分「1 次逻辑写重试 N 次」与「N 次独立逻辑写」（case-348 F2，deferred 至本轮）",
+      "remediation": "已修（本轮落地）：_call 重试循环前生成 uuid4 correlation_id 一次，循环内 _do_request(correlation_id=同值, attempt=range 递增) 使重试 N 条共享同 id+各异 attempt；call_raw 单次直调生成独有 id+attempt=0 同构；audit_log.record 透传可选 correlation_id/attempt，details 仅在提供时写 correlationId/attempt；schema details.properties 增可选 correlationId/attempt 字段。e2e 4 PASS 验关联性+向后兼容"
+    }
+  ]
 }

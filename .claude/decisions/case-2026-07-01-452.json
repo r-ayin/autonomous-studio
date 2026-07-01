@@ -1,0 +1,17 @@
+{
+  "case_id": "case-2026-07-01-452",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-01T23:59Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "code-audit:scripts/route-health-scorer.py",
+  "situation": "审计轮 case-452=452%4=0·DO A 代码审计。scout-scan #1=AS score=0.0 仅 1 项目,但审计轮不因 score 0.0 skip。承接 case-451 NEXT[1] 续审未审源码。已审 18 处(含 case-448 post-edit-lint.py);本轮从未审候选 codegraph-sync.py/decision-observer.py/discovery-gate.py/auto-commit.py/route-health-scorer.py 中选 scripts/route-health-scorer.py(331 行,CodeGraph 驱动路线健康度评分器,含 4 处 subprocess + 文件读)。",
+  "action": "对 scripts/route-health-scorer.py 逐行 security-review(DO A step 2 关注注入/权限/PII/错误处理/资源)。①4 处 subprocess:L29 codegraph/L190 git diff/L224 date,全 list 形式无 shell=True/os.system/eval/exec(grep 验证 clean),cmd_args 与 project_path 俱作为独立 list 元素传入→无命令注入向量;②timeout:L29 codegraph 30s、L192 git diff 10s 均有,L224 date 无 timeout 但 date 近瞬时 coreutil 非真问题;③路径:project_path 来自 CLI arg/env/cwd,仅读 .planning/ spec 文件,本地 dev tool 非服务→无遍历风险;④PII/凭证:读 data-model.md/openapi yaml,输出 JSON 到 stdout,无网络无凭证;⑤except Exception fail-open 返回默认分,符合非阻断评分器契约。结论无真问题。按 DO A step 3 无真问题→存档不起 opt-worktree 不改源码。",
+  "files_changed": [],
+  "worktree": "无(审计轮无源码改动,直提 main 归档)",
+  "direction": "audit",
+  "outcome": "succeeded",
+  "outcome_evidence": "①grep -n 'shell=True\\|os.system\\|eval(\\|exec(' scripts/route-health-scorer.py=0 命中(无注入向量);②L29 subprocess.run(args,...) args=[\"codegraph\"]+cmd_args 列表形;③L190-192 subprocess.run([\"git\",\"diff\",\"--stat\",\"HEAD~5..HEAD\"],...,timeout=10,cwd=project_path) 列表形+timeout;④L224 subprocess.run([\"date\",\"-u\",\"+%Y-%m-%dT%H:%M:%SZ\"],...) 列表形;⑤L258/L276 read_text(encoding=utf-8) 仅读 .planning/ spec;⑥git status --porcelain=空、worktree list=仅 main@f937710、branch=仅 * main,无 opt 分支。",
+  "next_suggestion": "[1]case-453=453%4=1≠0 非审计轮·sanctioned-merge 待审 worktree 或 skip 心跳(无待审 worktree 预期 skip)。[2]case-456=456%4=0 下次审计轮 续审未审源码(已审 19 处含本轮 route-health-scorer.py;剩余候选:codegraph-sync.py 380行/decision-observer.py 776行/discovery-gate.py 460行/auto-commit.py 431行)",
+  "audit_type": "security-review",
+  "audit_findings": []
+}

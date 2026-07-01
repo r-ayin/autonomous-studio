@@ -101,8 +101,13 @@ def check_syntax():
         return True, "git_skip"
     for f in changed[:15]:
         try:
+            # "--" 终止选项解析：若改动文件名以 "-" 开头（如根目录 -x.py），
+            # py_compile 的 argparse 会把它当 CLI 选项而非文件名，误报
+            # "the following arguments are required: filenames" 且 returncode!=0
+            # → check_syntax 误判为语法错误触发 Stop 阻断（最多 3 次后 MAX_STRIKES
+            # 放行自愈，但仍属假阳性）。case-472 security-review 修复。
             cr = subprocess.run(
-                ["python", "-m", "py_compile", f],
+                ["python", "-m", "py_compile", "--", f],
                 cwd=WORKSPACE_ROOT, capture_output=True, timeout=10)
             if cr.returncode != 0:
                 return False, f"语法错误: {f}"

@@ -14,6 +14,7 @@ import os
 import json
 import sys
 import subprocess
+import tempfile
 from datetime import datetime, timezone
 
 # Windows GBK 编码兼容
@@ -24,14 +25,16 @@ if sys.platform == "win32":
         pass
 
 
-def run(cmd, timeout=3):
-    """安全执行 shell 命令（Windows 兼容——% 符号转义）"""
+def run(argv, timeout=3):
+    """安全执行命令——list 形式 + shell=False，杜绝命令注入
+
+    PROJECT_DIR 源自环境变量 CLAUDE_PROJECT_DIR，可能含 shell 元字符；旧实现
+    shell=True 直传整串命令构成注入向量（audit-2026-07-01-001 H-001）。改 list
+    形式后 argv 各元素原样传给 execvp，不经 shell 解析，亦无需 Windows % 转义。
+    """
     try:
-        # Windows cmd.exe 会把 %h %s 当成变量展开→需双重转义
-        if sys.platform == "win32" and "%" in cmd:
-            cmd = cmd.replace("%", "%%")
         return subprocess.check_output(
-            cmd, shell=True, cwd=PROJECT_DIR, text=True, encoding="utf-8", timeout=timeout
+            argv, shell=False, cwd=PROJECT_DIR, text=True, encoding="utf-8", timeout=timeout
         ).strip()
     except Exception:
         return ""
@@ -52,9 +55,9 @@ os.makedirs(CHECKPOINT_DIR, exist_ok=True)
 # ── 收集上下文 ─────────────────────────────────
 def collect_git_info():
     """收集 git 状态"""
-    branch = run("git branch --show-current")
-    status = run("git status --short")[:800]
-    last_commit = run("git log -1 --format=\"%h %s\"")
+    branch = run(["git", "branch", "--show-current"])
+    status = run(["git", "status", "--short"])[:800]
+    last_commit = run(["git", "log", "-1", "--format=%h %s"])
     return {
         "branch": branch,
         "status": status,
@@ -179,17 +182,34 @@ def prune_old_checkpoints():
 
 
 # ── 写入检查点 ─────────────────────────────────
+def _atomic_write_json(filepath, data):
+    """原子写 JSON：先写临时文件再 os.replace，失败清理后 raise（不静默吞错）。
+
+    本 hook 的存在意义是 SSH 断开/kill 后恢复会话——非原子写（open('w') 截断后写）
+    会在中途断开时留下半写态文件，破坏的恰是恢复入口，故必须原子写。
+    """
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(filepath), suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        os.replace(tmp, filepath)
+    except Exception:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+
 def write_checkpoint(checkpoint, timestamp):
-    """写入检查点文件 + 更新 latest.json"""
+    """写入检查点文件 + 更新 latest.json（均原子写）"""
     filename = f"checkpoint_{timestamp.replace(':', '-').replace('+', '_')}.json"
     filepath = os.path.join(CHECKPOINT_DIR, filename)
 
-    with open(filepath, "w", encoding="utf-8") as f:
-        json.dump(checkpoint, f, ensure_ascii=False, indent=2)
+    _atomic_write_json(filepath, checkpoint)
 
-    # 更新 latest.json（用复制而非 symlink，Windows 兼容）
-    import shutil
-    shutil.copy2(filepath, LATEST_LINK)
+    # 更新 latest.json（原子替换——shutil.copy2 中途断开会留半写态，破坏恢复入口）
+    _atomic_write_json(LATEST_LINK, checkpoint)
 
     return filepath
 

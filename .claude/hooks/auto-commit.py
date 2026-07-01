@@ -10,6 +10,8 @@ import os
 import sys
 import json
 import re
+import random
+import string
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
@@ -58,6 +60,42 @@ def git(repo_path: str, args: list, timeout: int = 15):
         return -1, "", "timeout"
     except Exception as e:
         return -2, "", str(e)
+
+
+def _audit_log_commit(repo_name: str, result: str, detail: str = ""):
+    """审计埋点(DO B / .claude/decisions/audit-log.schema.json):
+    auto-commit 对子仓库执行 git commit + push origin 属敏感外部调用(subprocess + 远端推送),
+    原仅 stderr 静默打印不可观测。append-only 写一条 JSONL 到
+    <WORKSPACE_ROOT>/.audit/audit-YYYY-MM-DD.jsonl,使 commit/push 行为可审计。
+    写到 WORKSPACE_ROOT(引擎仓)而非子仓库——免在子仓 .audit/ 造未跟踪文件触发下轮
+    auto-commit 反馈环。fail-safe:日志写失败绝不影响提交流程(吞异常)。"""
+    try:
+        now = datetime.now(timezone.utc)
+        date = now.strftime("%Y%m%d")
+        date_dashed = now.strftime("%Y-%m-%d")
+        rid = now.strftime("%H%M%S")
+        suffix = "".join(random.choices(string.ascii_lowercase + string.digits, k=6))
+        entry = {
+            "id": f"audit-{date}-{rid}-{suffix}",
+            "timestamp": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "userId": "engine",
+            "userRole": "engine",
+            "action": "file_write",
+            "resource": {"type": "repository", "identifier": repo_name,
+                         "newValue": detail[:200]},
+            "result": result,
+            "ip": "local",
+            "sensitive": True,
+            "sensitiveLevel": "medium",
+            "details": {"reason": "auto-commit.py 子仓库自动提交+推送 origin",
+                        "errorMessage": detail[:200]},
+        }
+        adir = os.path.join(WORKSPACE_ROOT, ".audit")
+        os.makedirs(adir, exist_ok=True)
+        with open(os.path.join(adir, f"audit-{date_dashed}.jsonl"), "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except Exception:
+        pass  # 审计写失败不影响提交主流程
 
 
 def is_excluded(file_path: str) -> bool:
@@ -309,12 +347,24 @@ def do_commit(repo_name: str, repo_path: str, is_subrepo: bool,
     proj_path = resolved
     update_progress_md(proj_path, changes, commit_msg)
 
-    # Stage 所有文件（含刚更新的 PROGRESS.md）
-    rc, _, err = git(resolved, ["add", "-A"])
+    # Stage 仅过滤后的项目文件 + PROGRESS.md（case-396 security-review：
+    # 原 `git add -A` 暂存全部变更，绕过 EXCLUDED_PREFIXES 过滤——过滤仅作用于
+    # commit 消息生成，实际暂存把 .claude/ 等内部文件及非 gitignore 的 .env/凭证
+    # 一并暂存并 commit+push 到 origin，违背 L6 文档意图"跳过 .claude/ 等内部文件"。
+    # 改显式列路径暂存：只 stage changes（已过滤）+ PROGRESS.md。fail-safe——
+    # 若路径含特殊字符致 git status --porcelain 带引号、git add 失败，则放弃本次
+    # 提交（return False），绝不退回 `git add -A` 泄漏，安全姿态优先。）
+    stage_paths = [c["path"] for c in changes]
+    if "PROGRESS.md" not in stage_paths and os.path.isfile(os.path.join(resolved, "PROGRESS.md")):
+        stage_paths.append("PROGRESS.md")
+    if not stage_paths:
+        return False
+    rc, _, err = git(resolved, ["add", "--"] + stage_paths)
     if rc != 0:
         if not suppress_output:
             print(f"  [AUTO-COMMIT] ⚠️ {repo_name}: git add 失败 — {err[:100]}",
                   file=sys.stderr)
+        _audit_log_commit(repo_name, "failure", f"git add 失败: {err[:160]}")
         return False
 
     # Commit
@@ -325,7 +375,11 @@ def do_commit(repo_name: str, repo_path: str, is_subrepo: bool,
         if not suppress_output:
             print(f"  [AUTO-COMMIT] ⚠️ {repo_name}: commit 失败 — {err[:100]}",
                   file=sys.stderr)
+        _audit_log_commit(repo_name, "failure", f"commit 失败: {err[:160]}")
         return False
+
+    _audit_log_commit(repo_name, "success",
+                      f"commit {len(changes)} 文件: {commit_msg.splitlines()[0][:120]}")
 
     if not suppress_output:
         print(f"  [AUTO-COMMIT] ✅ {repo_name}: {len(changes)} 文件已提交",
@@ -339,13 +393,22 @@ def do_commit(repo_name: str, repo_path: str, is_subrepo: bool,
             if rc_remote == 0:
                 rc_push, _, push_err = git(resolved, ["push", "origin", branch], timeout=60)
                 if rc_push == 0:
+                    # DO B 审计埋点（case-464 security-review 发现）：push origin 是敏感
+                    # 出站 subprocess 调用，原仅 stderr 打印不可观测。补 success 记录，
+                    # 使 push 行为可审计（result 如实反映成功/失败，不恒 success）。
+                    _audit_log_commit(repo_name, "success",
+                                      f"push origin/{branch}: {len(changes)} 文件")
                     if not suppress_output:
                         print(f"  [AUTO-PUSH] ✅ {repo_name}: → origin/{branch}", file=sys.stderr)
                 else:
+                    _audit_log_commit(repo_name, "failure",
+                                      f"push origin/{branch} 失败: {push_err[:160]}")
                     if not suppress_output:
                         print(f"  [AUTO-PUSH] ⚠️ {repo_name}: push 失败 — {push_err[:100]}", file=sys.stderr)
-    except Exception:
-        pass  # push 失败不阻塞
+    except Exception as push_exc:
+        # DO B（case-464）：push 异常路径亦记 failure，原 pass 吞掉不可审计。
+        _audit_log_commit(repo_name, "failure", f"push 异常: {str(push_exc)[:160]}")
+        pass  # push 失败不阻塞主流程
 
     return True
 

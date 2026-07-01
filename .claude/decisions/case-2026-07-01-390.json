@@ -1,19 +1,26 @@
 {
-  "case_id": "case-2026-07-01-390",
-  "agent_id": "ralph-autonomous-loop",
-  "timestamp": "2026-07-01T03:10:00Z",
-  "project": "1BfrYW9R",
-  "work_unit": "审 + 合并待合并 worktree opt-test-1782846007（HEAD × /readyz 就绪探针回归锁），并补 GATES ㉔ canonical prose 与 test 对齐",
-  "situation": "scout-scan #1 推荐 1BfrYW9R 审 1 个待合并 worktree。opt-test-1782846007 tip e5f88c2 单提交：smoke.test.js ㉔ 增 HEAD /readyz 3 断言(200+application/json;charset=utf-8+body空) + PROGRESS 增量。git cherry b6a9d2c e5f88c2 返 +（真未入 main，非 squash 误报）。审 diff 发现：test 真、36 pass 0 fail、突变复测文档齐、锁真咬(HEAD /readyz 异步 fs.access 路由与 /healthz 不同，此前 HEAD 放行零覆盖)；但 GATES ㉔ canonical prose 枚举仅列 HEAD //healthz/style.css/app.js，漏 /readyz——prose 与 test 不符（prose drift）。HEAD /readyz 在 GATES 出现 0 次（grep -c 证实）。",
-  "action": "两步合并。(1) verdict=merge e5f88c2：worktree 干净(e5f88c2)后 opt-worktree.sh 1BfrYW9R merge opt-test-1782846007 → onedaybot-dev 07bc84b squash 合并(smoke+PROGRESS)，auto 分支删除。(2) 补 prose drift：在 main GATES.md ㉔/㉕ 边界锚点「还原后 35 pass 0 fail，证锁真咬；㉕ dev-server.js MIME 表完整覆盖剩余扩展名」后插 2026-07-01 强化条目列 HEAD /readyz(异步 fs.access 路由 dev-server.js line 63-73，与 HEAD /healthz 探针对称)，python 精确替换断言 count==1；npm test 36 pass 0 fail 不变(㉑ arrow 计数未变，新增 prose 非 arrow 形不触发 gates-doc-drift)；opt-worktree.sh 1BfrYW9R commit test:gates-readyz-prose → 新 worktree opt-test-1782846755（standing optimization worktree 触发 ff-only 自愈 b6a9d2c→07bc84b）；merge opt-test-1782846755 → 29a7f1c。",
-  "files_changed": [
-    "1BfrYW9R/test/smoke.test.js",
-    "1BfrYW9R/PROGRESS.md",
-    "1BfrYW9R/GATES.md"
-  ],
-  "worktree": "opt-test-1782846007(审+合并,e5f88c2→merged 07bc84b,分支已删) ; opt-test-1782846755(我新建,GATES prose,37374f7→merged 29a7f1c,分支已删)",
-  "direction": "test:head-readyz-gates-prose",
+  "case_id": "2026-07-01-390",
+  "agent_id": "ralph-autonomous-engine",
+  "timestamp": "2026-07-01T19:25Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "heartbeat:no-work-unit-skip",
+  "situation": "非审计轮 case-390=390%4=2≠0 合规 skip 审计。承接 case-389 NEXT_SUGGESTION[1]:pending=0(case-388 audit 的 opt-optimization worktree 已 case-389 sanctioned-merge 落 main @47128f1,worktree+auto/optimization 分支已清理)。scout-scan #1=autonomous-studio-aone score=0.0 推『无明确小工作单位——可跳过或做文档润色』,但 autonomous-constraints.md DO NOT 禁日常自我润色→不润色。需核实仓内真无可做单位。",
+  "action": "核实无可做小工作单位四步:①git status --short 空→main 干净无 WIP。②git worktree list 仅 main @1e27436(case-389 归档 commit),无 optimization/其它 worktree 残留。③git branch | grep auto/ 无残留分支(case-389 已 git branch -D auto/optimization)。④scout-scan 烟测:markers_deferred TODO=4/FIXME=0/HACK=0 与 case-386/387/389 一致稳定,grep 复核 4 处真 deferred 标记(apply_resource_access.py:85 HologresTable getDetail 未实测/apply_resource_access.py:90 LindormTable getDetail 未实测/bff_client.py:207 待人工裁决 profile.json 兼容分支删除条件/scaffold-skill.sh:136 待真实运行回放)均需人工或真实环境,非引擎可盲实现→正确留 triage。无源码改动→不起 opt-worktree→无 LIVE 同步→DO B 不触发(无敏感路径改动)无 audit-log 埋点。仅写 case-390 + 回写 state 作心跳(archival 直提 main,gate 豁免 case/state 元数据)。",
+  "files_changed": [],
+  "worktree": "none (心跳轮无源码改动,无 opt-worktree)",
+  "direction": "skip",
   "outcome": "succeeded",
-  "outcome_evidence": "1BfrYW9R main git log: 29a7f1c merge opt-test-1782846755 + 07bc84b merge opt-test-1782846007（两 squash 均落地）；git status --short 空（main 干净）；npm test → # tests 36 # pass 36 # fail 0；grep -c 'HEAD /readyz' GATES.md = 1（prose drift 修复，前置=0）；git cherry 前置返 + 证 e5f88c2 真未入 main 非 false-positive；两 auto/* 分支均 Deleted branch 输出证实清理。",
-  "next_suggestion": "1BfrYW9R HEAD /readyz 锁+prose 已闭合，scout-scan 下轮 #1 应顺位变更。建议下轮重跑 scout-scan 取新 #1（大概率 autonomous-studio 或 wechat-main）；1BfrYW9R ㉔ 探针 HEAD 合围已完整(/healthz+/readyz)，无紧迫后续；可关注 1BfrYW9R 是否还有其他 canonical prose vs test 枚举不符（如 ㉞ nosniff / ㉝ charset 的路径枚举是否齐全），但非紧迫。"
+  "outcome_evidence": [
+    "git status --short → 空(main 干净无 WIP)",
+    "git worktree list → 仅 /home/admin/workspace/autonomous-studio-aone 1e27436 [main],无残留 worktree",
+    "git branch | grep -E 'auto/|optimization' → (none)(无残留分支)",
+    "scout-scan.py → autonomous-studio-aone score=0.0『无明确小工作单位——可跳过或做文档润色』,markers_deferred TODO=4 稳定",
+    "grep deferred 标记 → 4 处真 triage(apply_resource_access.py:85,90/bff_client.py:207/scaffold-skill.sh:136)均需人工或真实环境,引擎不盲实现"
+  ],
+  "next_suggestion": [
+    "[1]【case-391=391%4=3≠0 非审计】pending=0,AS score 预期 0.0 无紧迫单位——预期仍 skip;scout-scan 烟测核 deferred TODO 真实性(bff_client.py:207 profile.json 兼容分支删除条件/scaffold-skill.sh:136 真实运行回放/apply_resource_access.py:85,90 Hologres·Lindorm getDetail 实测均需人工/真实环境,引擎不盲实现)。无源码改动→无 opt-worktree→DO B 不触发。",
+    "[2]【case-392=392%4=0 下次审计轮】继续审 .claude/hooks/ 未审 hook:discovery-gate.py(387L)/decision-observer.py(688L)/auto-commit.py(377L)/pipeline-gate.py(167L deploy 敏感),notify-phone.py 已 case-388 审+case-389 修落 main 勿重审;或审 scripts/ 未审源文件(scout-scan.py/route-health-scorer.py/triage.py)。"
+  ],
+  "audit_type": "none",
+  "audit_findings": []
 }

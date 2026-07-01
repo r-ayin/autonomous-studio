@@ -1,0 +1,25 @@
+{
+  "case_id": "2026-07-01-440",
+  "agent_id": "ralph",
+  "timestamp": "2026-07-01T06:58:00Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "code-audit:autonomous-studio-aone",
+  "situation": "审计轮(case-440=今日第76例,440%4=0→DO A 代码审计)。scout-scan #1=AS score=0.0,仅 1 项目且有源码。case-436 已审 bff_client.py/scout-scan.py/scaffold-skill.sh(发现 F1 已合并 main@125a15e),本轮挑未审的敏感路径源码:autonomous-commit-gate.py——这是拦截直接 git commit/push/merge 到 main 的 PreToolUse 确定性 backstop(变更门禁/permission 敏感路径),若它有绕过向量则'main 永远安全'承诺失效。逐行审 _GUARDED 集合与 _eval_segment 路由。",
+  "action": "审计发现 _GUARDED 只含 commit/push/merge/reset/branch/update-ref,遗漏 cherry-pick/revert/am/rebase——这四者同样在当前分支创建提交,引擎在 main 上执行任一(如 git cherry-pick <worktree-sha> 直落 main)gate 完全不拦。验证 opt-worktree.sh/autonomous-loop.sh 正常流程不用这四子命令(grep 仅注释命中),补齐不误伤。修复(1 文件 +19/-4):①_ GUARDED 纳入 cherry-pick/revert/am/rebase;②_eval_segment 把原 if sub in (commit,push,merge) 扩为 _COMMIT_CREATING 集合(含四新子命令),于 main 分支时拦,复用现有 _audit_log_block 埋点(DO B 已满足,无需新增 instrumentation);③更新顶部 docstring 触发条件枚举。归档豁免仍仅限 commit(其余操作 refs/commits 无 staged 概念)。rebase --onto <newbase> <upstream> <branch> 显式指向 main 的形态未单独覆盖(注释标注低危,需解析位置参数,刻意构造)。",
+  "files_changed": [".claude/hooks/autonomous-commit-gate.py"],
+  "worktree": "optimization @0353f7d (branch auto/optimization, 待 sanctioned-merge)",
+  "direction": "audit:gate-commit-creating-subcommands",
+  "outcome": "succeeded",
+  "outcome_evidence": "①ast.parse 修复后文件=AST OK;②8 用例行为测试全 PASS——main 分支:git cherry-pick abc123/git revert abc123/git am p.mbox/git rebase origin/main/git -C /tmp/x cherry-pick sha 均 blocked=True;git checkout -b feat/git status/git log -3 均 blocked=False(不误伤);③feature 分支(auto/optimization)monkeypatch current_branch 后四子命令均 blocked=False(opt-worktree 流程不误伤);④git diff --stat cb8ce66..0353f7d=.claude/hooks/autonomous-commit-gate.py +19/-4 单文件;⑤main git status --short=空 clean;⑥git worktree list=main @cb8ce66 + optimization @0353f7d 两项。审计 skill 路径:本轮手工逐行审(非 /code-review skill 调用),audit_type=code-review。",
+  "next_suggestion": ["sanctioned-merge:opt-worktree.sh . merge optimization(@0353f7d,单文件+19/-4,main 自 base cb8ce66 仅 archival 无重叠,预期干净 squash)"],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": ".claude/hooks/autonomous-commit-gate.py",
+      "line": 48,
+      "severity": "medium",
+      "finding": "_GUARDED 集合遗漏 cherry-pick/revert/am/rebase 四个 commit-creating 子命令。这些子命令在当前分支创建提交,于 main 上执行即直写 main,但原 _eval_segment 因 sub not in _GUARDED 早退返回 None→gate 放行。违背'deterministic backstop——LLM 可能忽略 prompt 但 bash exit 2 阻断'承诺:引擎跑 `git cherry-pick <sha>` / `git revert <sha>` / `git am <mbox>` / `git rebase <upstream>` 在 main 上可绕过 gate 直写 main。与已堵的 case-372(eval 引号)/case-376(命令链)/case-378($()替换)/case-428(全路径)同类绕过向量。",
+      "remediation": "把 cherry-pick/revert/am/rebase 纳入 _GUARDED,并在 _eval_segment 把 if sub in (commit,push,merge) 扩为 _COMMIT_CREATING={commit,push,merge,cherry-pick,revert,am,rebase},于 branch in MAIN_BRANCHES 时返回 block detail。复用现有 _audit_log_block 埋点(DO B 已满足)。已修 @0353f7d 待合并。"
+    }
+  ]
+}

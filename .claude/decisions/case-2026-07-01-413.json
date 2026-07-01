@@ -1,0 +1,17 @@
+{
+  "case_id": "case-413",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-07-01T05:01Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "sanctioned-merge: optimization worktree @93a581b → main",
+  "situation": "case-412 审计轮 security-review opt-worktree.sh 修复(cmd_cleanup audit_log 恒 success)落 opt-worktree engine:audit @93a581b(auto/optimization) pending=1 待合并。本轮 case-413=413%4=1≠0 非审计轮,scout-scan #1=AS score=0.0 推荐 review 1 待合并 worktree(人工审 diff + merge/reject),与 state NEXT[1] 吻合。走 sanctioned-merge 四步流程。",
+  "action": "四步 sanctioned-merge:①预审 git show 93a581b --stat=1file scripts/opt-worktree.sh +24/-8,diff 内容=worktree 块 [[ ! -d $d ]] 判 success/failure+孤儿分支块 git branch -D 退出码判,与 cmd_reject L610 对称,逻辑正确无注入风险;②冲突预检 git merge-tree --write-tree main auto/optimization=tree 8920e19 exit 0 无冲突,merge-base=13f5144,main 自 base 仅 +cc52794 归档 commit 未碰源码;③opt-worktree.sh . merge optimization→squash 合并 d884c24+worktree 清理;④git branch -D auto/optimization 强删 was 93a581b。回归 bash -n OK+grep 命中 L647/L678 'case-412 审计修复'+worktree list 仅 main+branch 仅 main+status clean。",
+  "files_changed": ["scripts/opt-worktree.sh"],
+  "worktree": "optimization @93a581b (squash-merged → main d884c24, worktree + branch 已清理)",
+  "direction": "sanctioned-merge",
+  "outcome": "succeeded",
+  "outcome_evidence": "git log --oneline -1=d884c24 'merge: 人工批准合并 optimization worktree optimization';git show 93a581b --stat=1 file +24/-8;git merge-tree --write-tree exit=0;bash -n scripts/opt-worktree.sh=OK;grep 'case-412 审计修复' scripts/opt-worktree.sh 命中 647/678 两处;git worktree list=仅 main @d884c24;git branch=仅 * main;git status --short=空 clean;pending=0。",
+  "next_suggestion": "case-414=414%4=2≠0 非审计轮预期 skip 心跳(scout-scan score=0.0 无明确小工作单位,延期 TODO 已 triage);case-416=416%4=0 下次审计轮 DO A 强制 续审 scout-scan.py(677L)+triage.py(136L),本轮预算聚焦 opt-worktree.sh 攻击面最大者未及此二文件。",
+  "audit_type": "none",
+  "audit_findings": []
+}

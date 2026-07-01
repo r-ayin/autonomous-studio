@@ -1,0 +1,37 @@
+{
+  "case_id": "case-2026-07-01-490",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-01T11:15:00Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "全量审计 hooks 模块 (.claude/hooks/)",
+  "situation": "audit-cycle-state.status=idle 触发全量审计轮。scout-scan 仅返回 autonomous-studio-aone (score=0.0)，.claude/audits/ 无历史报告，hooks 模块未审过且为引擎执行路径安全敏感区。",
+  "action": "派 sonnet sub-agent 对 .claude/hooks/ 下 14 个 Python hook 做深度安全+正确性+完整性审计。产出 audit-2026-07-01-001.json + audit-2026-07-01-001.md。更新 audit-cycle-state.json status=fix-in-progress，登记 H-001/H-002 两个 high severity route-fix 为 derived_fixes pending。",
+  "files_changed": [
+    ".claude/audits/audit-2026-07-01-001.json",
+    ".claude/audits/audit-2026-07-01-001.md",
+    ".claude/audit-cycle-state.json"
+  ],
+  "worktree": null,
+  "direction": "deep-audit",
+  "outcome": "succeeded",
+  "outcome_evidence": "审计报告完整产出：19 findings (2 high, 7 medium, 6 low, 4 info)。H-001 save-checkpoint.py shell=True 命令注入、H-002 checkpoint 非原子写已登记为 derived_fixes。audit-cycle-state.json pending_count=2 status=fix-in-progress。",
+  "next_suggestion": [
+    "下一轮派生 fix case：修 save-checkpoint.py H-001 (shell=True→list+shell=False) + H-002 (tmp+os.replace+fsync 原子写)，同一文件可一次提交 opt-worktree",
+    "H-003~H-009 medium route-fix 后续分批派生（每轮 1-2 文件小单位）",
+    "H-011~H-018 audit-gap structural 类写入 structural-debt.md 待用户确认"
+  ],
+  "audit_type": "deep-audit",
+  "audit_id": "audit-2026-07-01-001",
+  "audit_depth": "deep",
+  "audit_findings": [
+    {"file": ".claude/hooks/save-checkpoint.py", "line": 34, "severity": "high", "finding": "run() 使用 subprocess.check_output(cmd, shell=True)，PROJECT_DIR 来自环境变量可含 shell 元字符，命令注入向量", "remediation": "改 list 形式参数 + shell=False；调用点改为 ['git', ...] 列表", "kind": "route-fix"},
+    {"file": ".claude/hooks/save-checkpoint.py", "line": 182, "severity": "high", "finding": "checkpoint 写入非原子：直接 open('w')+json.dump，shutil.copy2 更新 latest.json 亦非原子，中断留损坏 JSON 丢失恢复数据", "remediation": "tmp+os.replace+fsync 原子写，与 discovery-gate._atomic_write_lock 对齐", "kind": "route-fix"},
+    {"file": ".claude/hooks/save-checkpoint.py", "line": 136, "severity": "medium", "finding": "find_task_files() 用 Path 但 import 仅在 __main__ 块，被外部 import 时 NameError", "remediation": "from pathlib import Path 移到文件顶部", "kind": "route-fix"},
+    {"file": ".claude/hooks/incremental-save.py", "line": 67, "severity": "medium", "finding": "latest.json 读写竞态：incremental-save 和 save-checkpoint 并发读改写互相覆盖", "remediation": "文件锁或写独立文件 studio-status-snapshot.json", "kind": "route-fix"},
+    {"file": ".claude/hooks/codegraph-sync.py", "line": 355, "severity": "medium", "finding": "capability-registry.json 写入非原子", "remediation": "tmp+os.replace 原子写", "kind": "route-fix"},
+    {"file": ".claude/hooks/decision-observer.py", "line": 141, "severity": "medium", "finding": "safe_write_json 非原子写 status.json", "remediation": "tmp+os.replace 或文件锁", "kind": "route-fix"},
+    {"file": ".claude/hooks/stop-completion-gate.py", "line": 48, "severity": "medium", "finding": "_strike_count 写入非原子，并发 Stop 可丢失计数", "remediation": "tmp+os.replace 原子写", "kind": "route-fix"},
+    {"file": ".claude/hooks/auto-commit.py", "line": 308, "severity": "medium", "finding": "PROGRESS.md 写入非原子", "remediation": "tmp+os.replace 原子写", "kind": "route-fix"},
+    {"file": ".claude/hooks/notify-phone.py", "line": 160, "severity": "medium", "finding": "ntfy curl -H header 中 title/message 未 sanitize，CRLF 注入风险", "remediation": "sanitize 换行回车或改用 urllib.request", "kind": "route-fix"}
+  ]
+}

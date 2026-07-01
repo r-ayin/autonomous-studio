@@ -1,28 +1,17 @@
 {
   "case_id": "case-2026-07-01-398",
-  "agent_id": "ralph-autonomous-loop",
-  "timestamp": "2026-07-01T04:41:24+08:00",
-  "project": "autonomous-studio",
-  "work_unit": "修 opt-worktree.sh pending worktree-add 失败留空 husk 的泄漏 + 清扫 5 个既有空壳",
-  "situation": "scout-scan 全 8 项目 health=0.0、#1(1BfrYW9R) 推荐润色/跳过——case-391 全零态。按 case-391 指引下移找 dirty 信号：扫 standing optimization worktree 发现嵌套 .opt-worktrees/ 下 5 个空壳目录（content=0、无 .git 文件、git worktree list 不注册）——opt-cases-1782710534 / opt-cases-1782703893 / optimization（AS）、opt-docs-1782709369（wechat-main）、optimization（1BfrYW9R）。grep opt-worktree.sh 定位根因：line 279 mkdir -p \"$target\" 先于 line 280 git worktree add，若 add 失败（分支名撞/路径冲突）set -e 硬 abort，mkdir 已建的空目录滞留成 husk。4/5 空壳名 opt-* 源此 pending 路径；1/5（optimization 空壳）源从 standing wt 内再跑 opt-worktree 致 PROJECT 解析嵌套（本提交不修，留后）。",
-  "action": "1) line 278-280 改 if ! 包裹 git worktree add：失败 rmdir \"$target\" + return 1（让调用方感知），成功路径零变化。2) 两副本同改（root live scripts/opt-worktree.sh 实跑 + AS git autonomous-studio/scripts/opt-worktree.sh 跟踪，改前 diff 确认 IDENTICAL）。3) bash -n 双副本语法 OK + 改后仍 IDENTICAL。4) 突变复测：mktemp 建 target → git worktree add -b auto/optimization（已存分支强制失败）→ rmdir 清 husk → target after=gone(fixed)、无伪 worktree 注册。5) rmdir 清 5 个空壳 + 3 个空父目录 .opt-worktrees/<proj>/.opt-worktrees。6) opt-worktree.sh autonomous-studio commit tooling:husk-prune 提交 AS 副本（standing area=engine ≠ tooling → 开新 pending worktree opt-tooling-1782852080）。",
-  "files_changed": [
-    "autonomous-studio/scripts/opt-worktree.sh (AS git 跟踪副本，提交进 worktree commit 5ea1491，AS main 已还原至 HEAD 待 merge)",
-    "scripts/opt-worktree.sh (root live 实跑副本，非 git，直改保留 fix 供 bash scripts/opt-worktree.sh 即时生效)"
-  ],
-  "worktree": "opt-tooling-1782852080 (.opt-worktrees/autonomous-studio/opt-tool-1782852080, branch auto/opt-tooling-1782852080, tip 5ea1491, 待人工批准 merge)",
-  "direction": "tooling:husk-prune",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-01T19:36:00Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "noop-heartbeat:skip-non-audit-clean",
+  "situation": "非审计轮 case-398=今日第34例,398%4=2≠0 非审计·合规 skip。承接 case-397 NEXT[1]:pending=0 clean 状态。scout-scan #1=AS score=0.0 推『无明确小工作单位——可跳过或做文档润色』，DO NOT 禁日常自我润色→不润色。核实无可做单位四步全清：①git status --porcelain 空 clean ②git worktree list 仅 main @fada534 ③git branch 无 auto/ ④markers_deferred TODO=4 稳定（grep 复核 _DEFERRED_RE 计数逻辑正常，4 处真 deferred=apply_resource_access.py:85,90 Hologres/Lindorm getDetail 未实测 / bff_client.py:207 profile.json 兼容分支待人工裁决 / scaffold-skill.sh 模板占位，均非引擎可盲实现，正确留 triage）。",
+  "action": "无可做小工作单位——非审计轮 + clean + DO NOT 禁润色 → skip，不建 opt-worktree，不改源码。仅写 case-398 + 回写 autonomous-state 作心跳（archival 直提 main）。",
+  "files_changed": [],
+  "worktree": "none（skip 轮无 worktree）",
+  "direction": "skip",
   "outcome": "succeeded",
-  "outcome_evidence": [
-    "bash -n scripts/opt-worktree.sh → OK；bash -n autonomous-studio/scripts/opt-worktree.sh → OK",
-    "diff scripts/opt-worktree.sh autonomous-studio/scripts/opt-worktree.sh → IDENTICAL（两副本同改）",
-    "突变复测：git worktree add -b auto/optimization（已存分支）失败 → rmdir 清 husk → `[ -d \"$target\" ]` 报 gone (fixed)；git worktree list | grep fakefail → 无伪注册",
-    "5 空壳清扫：rmdir OK 逐个确认（opt-cases-1782710534 / opt-cases-1782703893 / optimization(AS) / opt-docs-1782709369(wm) / optimization(1Bfr)）+ 3 空父目录 rmdir OK；find .opt-worktrees -maxdepth 3 -name .opt-worktrees -type d 现仅剩顶层 .opt-worktrees（合法存储）",
-    "git -C opt-tool-1782852080 log --oneline -1 → 5ea1491 opt(tooling:husk-prune): fix(opt-worktree): 清 pending worktree add 失败留的空 husk",
-    "grep -c '失败须清 husk' worktree/scripts/opt-worktree.sh → 1（fix 已入 worktree 提交）",
-    "grep -c '失败须清 husk' scripts/opt-worktree.sh(root live) → 1（实跑副本即时生效）",
-    "git -C autonomous-studio status --porcelain → 空（AS main 干净，edit 已迁 worktree，待 merge 回填）",
-    "提交 author email = syp02536326@taobao.com（autonomous-commit-gate 接受，未触发 opt@auto 邮箱拒）"
-  ],
-  "next_suggestion": "下轮可 merge opt-tool-1782852080 回 AS main（人工批准口径：bash scripts/opt-worktree.sh autonomous-studio merge opt-tool-1782852080），merge 后 AS main 回填 fix、再 cp AS→root 确认两副本同步（防 [[opt-worktree-root-as-copy-drift]]）。另留未修项：standing-wt-from-standing-wt 致 optimization 空壳（从 standing wt 内跑 opt-worktree 时 PROJECT 解析嵌套建双 .opt-worktrees）——根治须在 opt-worktree.sh 顶部加 PROJECT 自检（若 CWD 在某 .opt-worktrees/ 内则上溯到真 main checkout），属结构性大项，单独立 case。仍处 case-391 全零态：无 dirty 信号时下轮可考虑 1BfrYW9R Phase 2 表单校验/骨架屏（UI 侧结构性大项，dev-server.js 已 38 测饱和）。"
+  "outcome_evidence": "①git status --porcelain 输出空（clean）；②git worktree list 仅一行 /home/admin/workspace/autonomous-studio-aone fada534 [main] 无 auto/；③git branch | grep auto 无输出（无 auto 分支）；④scout-scan 报告 markers_deferred TODO=4 与上轮 case-397 一致，_DEFERRED_RE（scout-scan.py:92）计数逻辑未变；⑤scout-scan #1 autonomous-studio-aone score=0.0 文本『无明确小工作单位——可跳过或做文档润色』。无源码改动→无 opt-worktree→无 LIVE 同步→DO B 不触发无 audit-log 埋点。",
+  "next_suggestion": "【case-399=399%4=3≠0 非审计轮】预期 skip（pending=0 clean；DO NOT 禁润色→核实四步后写心跳 case）。【case-400=400%4=0=0 下次审计轮】DO A 强制裁 .claude/hooks/ 剩余未审 hook：discovery-gate.py(387L,外部输入/路径校验面)/decision-observer.py(688L,文件写/JSON 解析,最大未审 hook)。已审 hook 5 个={autonomous-commit-gate(376/377/378)·codegraph-sync(384)·notify-phone(388)·pipeline-gate(392)·auto-commit(396)}。审计轮优先用 security-review skill。",
+  "audit_type": "none",
+  "audit_findings": []
 }

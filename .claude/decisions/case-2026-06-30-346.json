@@ -1,23 +1,35 @@
 {
   "case_id": "case-2026-06-30-346",
   "agent_id": "ralph-wiggum-autonomous-loop",
-  "timestamp": "2026-06-30T12:25:00Z",
-  "project": "1BfrYW9R (oneday-design)",
-  "work_unit": "追加 dev-server.js server.on('error') 的 else 分支（非 EADDRINUSE 监听错误）回归锁 test ㉛",
-  "situation": "scout-scan 排 1BfrYW9R 为 #1（score=0.0，全项目健康良好无紧迫单位）。复查 dev-server.js 发现 server.on('error') 处理器含两分支：EADDRINUSE 分支（test ⑥ 已锁）与 else 分支（非端口占用监听错误如 EACCES/EAFNOSUPPORT，零覆盖）。若有人把处理器收紧成 EADDRINUSE-only（删 else 兜底），EACCES 等错误进监听器后空跑、进程半死不退，而 ⑥ 仍全绿——else 兜底沦为死代码，与该项目「证明处理器非死代码」的 ⑥ 理念相悖。属结构性覆盖盲区，非文档润色。",
-  "action": "新增 test ㉛：非 root（uid 1001）绑特权端口 80 实测可靠触发 EACCES（区别于 ⑥ 的 EADDRINUSE），spawnSync 起子进程断言三连——(1) exit 非 0、(2) stderr 含 else 分支专有文案「dev-server listen failed」、(3) stderr 不含 uncaught 栈帧（/\\n[ \\t]*at[ \\t]/）。root 环境绑 80 成功走 ⑤ 成功路径故 getuid()===0 时 skip。端口命名 const privPort = 80（非 const port =）不入 ㉙ 唯一性集合。GATES.md canonical pass 计数 32→33 同步 bump + 追加 ㉛ 描述与 milestone（㉑ gates-doc-drift 对账要求）。",
-  "files_changed": [
-    "test/smoke.test.js",
-    "GATES.md"
-  ],
-  "worktree": "opt-tests-1782822400",
-  "direction": "tests:listen-error-else-branch",
+  "timestamp": "2026-06-30T12:46Z",
+  "project": "autonomous-studio-aone (skills/dataworks-dev-assistant)",
+  "work_unit": "fix(audit-log): bare-except 静默吞审计写失败 → stderr 可观测（仍 non-blocking）",
+  "situation": "非审计轮次：今日 decisions 文件数=145(case-345 已落)，本轮 case-346 落 146%4=2≠0→普通路径。step0 读 autonomous-constraints.md DO A/B/C 全文。step1 scout-scan 文本报告 #1=autonomous-studio-aone score=0.0，理由行=延期(已triage) TODO/FIXME/HACK=4/0/0（不计入 triage 推荐），推荐'无明确小工作单位——可跳过或做文档润色'。逐一定位 4 个 deferred TODO 全 blocked：apply_resource_access.py:85/90(Hologres/Lindorm entityType 需真实表 getDetail 实测)、bff_client.py:207(profile.json 兼容分支待人工裁决 dist 覆盖率)、scaffold-skill.sh:136(vhs 真实回放)——均需外部真实环境/人工，本轮不可推进。pending 待合并队列=0（case-345 已 merge opt-dataworks-1782822148 入 main 6b63abe）。DO NOT 禁日常自我润色。但 case-344 code-review 留 F2 finding（audit_log.py:81 `except Exception: pass` 静默吞审计写失败，低危，记 finding 不改、延至下轮）——audit_log 是敏感路径（审计 logger 本体），DO B 明示'若敏感路径代码在审计 logger 调用点附近，须如实反映成功/失败，不可恒 success/恒静默'。F2 修复非自我润色（无意义润色），是敏感审计路径的真实正确性硬化：non-blocking 意图（docstring L12'审计失败永不阻断业务写'）正确保留，但 silent pass 使审计写失败完全不可观测，违背 DO B 可观测精神。本轮推进 F2。",
+  "action": "Read skills/dataworks-dev-assistant/core/audit_log.py 全文(84行)确认 F2：L81 `except Exception:` + L83 `pass`——审计写失败(磁盘满/权限/路径冲突)被静默吞，业务写不阻断(non-blocking 正确)但运维侧无任何信号。修：(1) imports 增 `import sys`；(2) `except Exception as exc:` 替换 bare except，写一行 stderr `[audit_log] write failed (non-blocking): api=.. result_code=.. err=..`，外层 try/except 包裹 stderr.write 自身防 stderr 亦失败时再抛（防御）。不 re-raise——non-blocking 语义不变，业务写仍不被审计失败阻断。最小改动 1 文件(+1 import / -2 / +9)。opt-worktree.sh . commit dataworks:audit-log-observability → 方向分歧(engine→dataworks)开新 worktree opt-dataworks-1782823706 提交，main 工作树恢复干净。",
+  "files_changed": ["skills/dataworks-dev-assistant/core/audit_log.py"],
+  "worktree": "opt-dataworks-1782823706 (base=main 9caa5b9, 单 commit, 方向=dataworks:audit-log-observability, 改动仅 audit_log.py 1 文件 +1/-2/+9)",
+  "direction": "dataworks:audit-log-observability",
   "outcome": "succeeded",
   "outcome_evidence": [
-    "npm test 实测 33 pass 0 fail（test ㉛ ok 33，duration_ms 37.3ms——EACCES 触发快）",
-    "突变复测：把 dev-server.js 的 else 分支删除（处理器收紧成 EADDRINUSE-only，`if (err.code === EADDRINUSE') process.exit(1)`）后跑套件 → not ok 33 / pass 32 fail 1，其余 32 测仍绿；还原后 33 pass 0 fail——证锁真咬（cp 备份 /tmp/dev-server.js.bak 还原，git diff dev-server.js 空）",
-    "worktree opt-tests-1782822400 commit 442b84a：git show --stat 显示 test/smoke.test.js +54 行、GATES.md 2 行变更（.opt-direction -1 为 opt-worktree 自动管理）",
-    "GATES.md ㉑ gates-doc-drift 测在 bump 前先转红（GATES 称 32 实际 33 注册），bump 32→33 后转绿——对账守卫双向验证"
+    "python3 -c ast.parse(audit_log.py) → OK（语法无误）",
+    "importlib 动态加载 audit_log.record() 三路径验证：(a) result_code=0 → JSONL 落 result=success action=permission_change id 以 audit- 开头；(b) result_code=-1 → 落 result=failure action=delete；(c) work_dir 指向一个 mkstemp 文件（os.makedirs 必失败）→ 不 raise（non-blocking 验证）+ stderr 捕获 '[audit_log] write failed (non-blocking): api=applyResourceAccessPermission result_code=0 err=NotADirectoryError(20, Not a directory)' → silent pass 已消除、失败可观测",
+    "JSONL 落盘验证：glob .dataworks/.audit/*.jsonl 2 行成功 splitlines → 2 records 全 json.loads 合法",
+    "opt-worktree.sh . show opt-dataworks-1782823706 diff：仅 audit_log.py（+import sys；-`except Exception:`/-`# 审计日志失败不应阻断业务写操作`/-`pass` → +`except Exception as exc:` + 注释 + try/sys.stderr.write + 内层 except pass），无其他文件连带",
+    "git status --short on main：仅 ?? PROJECTS.md（pre-existing 未跟踪，非本轮产物）→ main 工作树干净，改动全隔离在 worktree 分支"
   ],
-  "next_suggestion": "1BfrYW9R 的 server.on('error') 全集（EADDRINUSE ⑥ + else ㉛）已闭合，listen 期错误覆盖完整。下轮可转向：dev-server.js 启动期 stdout「Dev server: http://localhost:${port}」日志格式的回归锁（现存测只断言日志含端口数字，未锁完整格式串——若有人改成 stderr 输出或改文案，⑤/⑫/㉚ 的日志断言可能漂移）。或顺延 scout #2 autonomous-studio。本项目 worktree opt-tests-1782822400 待人工 merge。"
+  "next_suggestion": [
+    "[1]【pending 现 1 个待审】下轮普通路径（case-347 落 147%4=3≠0）：审 opt-dataworks-1782823706（base=main 9caa5b9，单 commit 单文件 audit_log.py）→ merge-base main..branch 应=9caa5b9、squash-relevant diff 仅 audit_log.py，无拒绝理由则 opt-worktree.sh . merge opt-dataworks-1782823706 入 main（squash），merge 后验 audit_log.py:81 on main 为 `except Exception as exc:` + sys.stderr.write 块、bare pass 消除；pending 队列 1→0。",
+    "[2] 下一审计轮次=case-348（148%4=0）：DO A 强制 code-review/security-review。审 main HEAD 最近 1-3 commit（含本轮若已 merge 的 audit_log.py F2 修复 + case-345 的 F1 strftime 修复 6b63abe）——重点 audit_log.py 整体（_audit_id/_action_for/record）+ bff_client._do_request HTTP 出站 chokepoint 审计埋点调用点。F1/F2 既已修，审计应验证修复无回归 + 找新 finding。",
+    "[3] deferred 4 个 TODO 仍全 blocked（Hologres/Lindorm 真实表、profile.json dist 覆盖率、vhs 回放）——非 stale 无需清理，等真实环境/人工裁决。optimization 通用 worktree(auto/optimization@75629c7) 落后 main 2 commit 0 自有 commit 无 WIP，非 stale 不清理。"
+  ],
+  "audit_type": "audit-log-instrumentation",
+  "audit_findings": [
+    {
+      "file": "skills/dataworks-dev-assistant/core/audit_log.py",
+      "line": 81,
+      "severity": "low",
+      "finding": "F2（case-344 code-review 留存，本轮修复）：record() 的 `except Exception: pass` 静默吞掉审计写失败（磁盘满/权限/路径冲突等）。non-blocking 不阻断业务写的意图正确（docstring L12 明示），但 silent pass 使审计 logger 本体在写失败时完全不可观测——运维侧无法得知审计轨迹已断，违背 DO B'敏感路径须如实反映成功/失败、不可恒静默'精神。审计 logger 是 audit-log-instrumentation 的核心敏感路径，其自身失败不可见削弱整条审计链可信度。",
+      "remediation": "改 `except Exception as exc:` 写一行 sys.stderr.write('[audit_log] write failed (non-blocking): api=.. result_code=.. err=..')，外层 try/except 包裹 stderr.write 防其再失败。不 re-raise，non-blocking 语义不变。已落地 worktree opt-dataworks-1782823706，待下轮 sanctioned merge 入 main。"
+    }
+  ]
 }

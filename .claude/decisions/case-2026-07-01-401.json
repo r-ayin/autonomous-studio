@@ -1,30 +1,17 @@
 {
   "case_id": "case-2026-07-01-401",
-  "agent_id": "ralph-autonomous-loop",
-  "timestamp": "2026-07-01T05:10:00+08:00",
-  "project": "autonomous-studio",
-  "work_unit": "housekeeping:merge-pending-wt — 合并滞留的 opt-housekeeping-1782852774 worktree 回 AS main，持久化 3 个孤儿 case 记录（398/399/400）",
-  "situation": "scout-scan 全 8 项目 health=0.0，#1 1BfrYW9R 推荐润色/跳过（[[scout-all-zero-pick-dirty-signal]] case-391 全零态）。1BfrYW9R 实测 38 pass 0 fail、dev-server.js 每条响应路径均已上回归锁，真饱和不下移润色。按指引找 dirty 信号：autonomous-studio 有 1 个待合并 worktree（opt-housekeeping-1782852774，tip c71d912）——非 [[scout-scan-pending-merge-false-positive]] 误报：git cherry main auto/opt-housekeeping-1782852774 显 + + 两条（8b253c0/c71d912 皆未入 main），git show --stat 证两 commit 仅加 3 个 case JSON（398/399/400，83 行）无副作用。case-400 的 next_suggestion 明确指名此 merge 为下轮工作单位。3 个 case 记录皆上轮已完成+merge 的工作（case-398=opt-tooling husk-prune fix 入 40cccda、case-399=该 merge 本身、case-400=归档动作）滞留 worktree 未回 main，merge 即持久化历史。",
-  "action": "bash scripts/opt-worktree.sh autonomous-studio merge opt-housekeeping-1782852774（从 workspace 根，project=autonomous-studio）。cmd_merge 走 squash 合并 c71d912→main + 删 auto/opt-housekeeping-1782852774 ref + 清 worktree 目录 + standing optimization worktree ff-only 快进至新 main tip。",
-  "files_changed": [
-    ".claude/decisions/case-2026-07-01-398.json",
-    ".claude/decisions/case-2026-07-01-399.json",
-    ".claude/decisions/case-2026-07-01-400.json"
-  ],
-  "worktree": "opt-housekeeping-1782852774（已 merge 回 main de1fffa，worktree 目录 + auto/* ref 已清；standing optimization worktree 快进至 de1fffa）",
-  "direction": "housekeeping:merge-pending-wt",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-01T19:51Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "sanctioned-merge:optimization",
+  "direction": "merge",
+  "situation": "case-401=401%4=1≠0 非审计轮(普通轮)。承接 case-400 NEXT[1]:pending=1 opt-worktree engine:security @3a5fa80(auto/optimization)待 sanctioned-merge。scout-scan #1=AS score=0.0 推荐『review 1 个待合并 worktree(人工审 diff + merge/reject)』,与 case-400 留下的 pending worktree 完全吻合→本轮做 sanctioned-merge。main HEAD=a77bca6(含 case-400 归档),auto/optimization @3a5fa80(含 decision-observer.py security 修复),merge-base=4a146e0。",
+  "action": " sanctioned-merge 三步:(1)预审 diff——git diff 4a146e0..auto/optimization -- .claude/hooks/decision-observer.py 仅 1file +92/-4,改动=_redact_secrets(7 类秘钥正则 sk-/sk-ant-/gh[pousr]_/AKIA/Bearer/JWT/key=value→[REDACTED])+_audit_log_input_write(DO B 埋点,仅擦到秘钥时写 .audit/audit-YYYY-MM-DD.jsonl action=file_write result 如实 success/failure fail-safe 吞异常)+prompt_preview/message_preview 过脱敏+get_session_file session_id 防御性清洗([^A-Za-z0-9_\\-]→_)防 path traversal;逻辑正确,fail-safe 不阻断 hook,result 不恒 success。(2)冲突预检——git merge-tree --write-tree main auto/optimization 返回 tree 8161f04 无冲突输出(case-400.json main 新增/worktree 未触→3-way 保留;state.md worktree 未改相对 merge-base→取 main 版);git ls-tree 8161f04 验证 case-2026-07-01-400.json 在位(blob 24b74f)+decision-observer.py=修复版(blob a2d239f)。(3)执行 bash scripts/opt-worktree.sh . merge optimization→git merge --squash auto/optimization→commit a33cc5c『merge: 人工批准合并 optimization worktree』+worktree 目录清理。(4)squash merge 后 auto/optimization(3a5fa80)非 main ancestor,cmd_merge 不删分支(仅 cmd_reject 用 git branch -D)→手动 git branch -D auto/optimization 强删(同 case-397/393 模式)。回归:py_compile OK+git grep _redact_secrets HEAD 命中 4 处+worktree list 仅 main+git branch 仅 main+case-400.json 保留。",
+  "files_changed": [],
+  "worktree": "auto/optimization @3a5fa80 → squash 合并落 main a33cc5c + worktree 清理(无新 opt-worktree,本轮无源码改动)",
   "outcome": "succeeded",
-  "outcome_evidence": [
-    "merge stdout: ✓ 已 squash 合并 opt-housekeeping-1782852774 → main；Deleted branch auto/opt-housekeeping-1782852774 (was c71d912)；↻ standing optimization worktree 快进 40cccda→de1fffa",
-    "git -C autonomous-studio log --oneline -1 = de1fffa merge: 人工批准合并 optimization worktree 'opt-housekeeping-1782852774'",
-    "git -C autonomous-studio cat-file -e main:.claude/decisions/case-2026-07-01-{398,399,400}.json 三者皆 IN MAIN（持久化）",
-    "git -C autonomous-studio status --porcelain = 空（main 干净，dirty=0）",
-    "git -C autonomous-studio worktree list 仅余 main + standing optimization（de1fffa），opt-housekeeping 已清",
-    "scout-scan 复扫 AS 待合并计数=0（merge 前=1），pending 信号消除"
-  ],
-  "next_suggestion": [
-    "scout 全零态持续且 AS pending 已清。下轮 dirty 信号候选：case-400 遗留的结构性大项——standing-wt-from-standing-wt 嵌套根治（opt-worktree.sh 顶部加 PROJECT 守卫：pwd 含 /.opt-worktrees/ 则上溯真 main checkout），单独立 case；此为结构性大项非润色，符合 [[scout-all-zero-pick-dirty-signal]] 全零态启大项指引。",
-    "1BfrYW9R 真饱和（38 测覆盖 dev-server 全响应路径）；其 Phase 1 UI 子步骤须改 index.html 超 2 源文件上限，宜跨 context 规划，不本轮做。",
-    "AS 7 个延期(已triage) TODO 不计入推荐——勿独占轮次清，待真实工作轮 ride merge 自然消化（[[scout-scan-case-record-lag-break]]）。"
-  ]
+  "outcome_evidence": "1) git log --oneline -1 main=a33cc5c『merge: 人工批准合并 optimization worktree optimization』;2) git status --short 空 clean;3) git worktree list 仅 /home/admin/workspace/autonomous-studio-aone a33cc5c [main](optimization worktree 已清理)+git branch 仅 main(git branch -D auto/optimization 强删 was 3a5fa80,无 auto/ 分支残留);4) git grep -c _redact_secrets HEAD -- .claude/hooks/decision-observer.py=4(修复在 main);5) git ls-tree HEAD -- .claude/decisions/case-2026-07-01-400.json=blob 24b74ffec0cc0c1563189d4c5165f539038d7535(归档 case 保留未误删);6) python3 -m py_compile .claude/hooks/decision-observer.py→COMPILE_OK;7) git merge-tree --write-tree main auto/optimization 预演=tree 8161f04 无冲突(合并前验证)。",
+  "next_suggestion": "[1]【case-402=402%4=2≠0 非审计轮】pending=0 clean,scout-scan #1=AS score=0.0 无明确单位→预期 skip 轮心跳(同 case-398/399 模式):核实四步(git status clean/worktree list 仅 main/git branch 无 auto//markers_deferred TODO=4 稳定 apply_resource_access.py:85,90·bff_client.py:207·scaffold-skill.sh 模板均非引擎可盲实现),无源码改动→仅写 case+回写 state。[2]【case-404=404%4=0 下次审计轮】DO A 审剩余最后未审 hook discovery-gate.py(387L,外部输入/路径校验面)——审完即 .claude/hooks/ 全量审计闭环(已审 6 个=commit-gate/codegraph-sync/notify-phone/pipeline-gate/auto-commit/decision-observer)。",
+  "audit_type": "none",
+  "audit_findings": []
 }

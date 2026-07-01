@@ -1,41 +1,28 @@
 {
   "case_id": "case-2026-07-01-394",
-  "agent_id": "ralph-autonomous-studio",
-  "timestamp": "2026-07-01T20:10:00Z",
-  "project": "sunset-prediction",
-  "work_unit": "校准模块 calibration.js P0 测试缺口：抽纯函数 computeWeightsFromPairs 至零依赖 calibration-math.js + 6 断言级测试",
-  "situation": "scout-scan 全 8 项目 health=0.0；#1=1BfrYW9R 真饱和（case-393 已锁 38 测，NEXT_SUGGESTION 指明下轮审 sunset-prediction 断言级缺口）。查 sunset-prediction PROGRESS/GATES：P0「校准模块 calibration.js/social-calibration.js 无专项测试」未核销，已知风险列同名缺口。calibration.js calibrateWeights 含 dimErrors/归一化/EMA/边界 clamp/MAE 数学全内联且耦合 storage.js DB + setWeights，无纯函数可测。",
-  "action": [
-    "1) 从 calibrateWeights 抽纯函数 computeWeightsFromPairs(pairs,currentWeights)——无 DB/setWeights/saveWeightRecord 副作用，返回 {blended,dimErrors,totalMAE,sampleCount}；calibrateWeights 调用它 + 落库（行为保持 refactor）。",
-    "2) 首版直接 import '../src/calibration.js' 写 6 测——worktree npm test 报 not ok（整文件加载失败）：因 calibration.js 静态 import storage.js→better-sqlite3，fresh worktree 无 node_modules 致 MODULE_NOT_FOUND；CWD 有 node_modules 时 34/0 但破坏兄弟测试零依赖性质。",
-    "3) 修正：新建零依赖 src/calibration-math.js（WEIGHT_BOUNDS/EMA_ALPHA/computeWeightsFromPairs，不 import 任何 storage/prediction-engine）；calibration.js 改 import + re-export；test 改 import calibration-math.js。",
-    "4) 6 测手算确定性：全零误差+等权→visibility clamp 至 0.15 其余 0.1695（10/59 归一化）/ 归一化和≈1.0 / 零误差维度权重>高误差维度 / null pred-actual 的 dimErrors 回落 50 / 多 pair MAE 均值 / 入参不可变。",
-    "5) 突变复测两轮：注释 clamp 循环→test1 fail→还原 34/0（worktree + main 各一次）。",
-    "6) 续提用 case-104 逃逸口：worktree 内直 git commit --amend（auto/* 分支 gate 豁免，cmd_commit cp-guard 会 clobber 已编辑 worktree——case-390 教训）。",
-    "7) opt-worktree merge opt-test-1782849958 → main squash 02072e5；standing optimization worktree ff 自愈。"
-  ],
-  "files_changed": [
-    "src/calibration-math.js (新建, 73 行, 零依赖纯数学)",
-    "src/calibration.js (WEIGHT_BOUNDS/EMA_ALPHA/computeWeightsFromPairs 内联块移出, 改 import+re-export, -47 行)",
-    "test/calibration.test.js (新建, 6 用例 105 行)",
-    "GATES.md (NICE 28→34 用例+calibration-math 零依赖说明; 已知风险核销 calibration.js 部分)",
-    "PROGRESS.md (P0 校准测试核销; 已完成 28→34; 变更历史 2026-07-01 条)"
-  ],
-  "worktree": "opt-test-1782849958 (auto/opt-test-1782849958, tip ba3360a; merged→main 02072e5 squash, auto 分支删除+worktree 清理)",
-  "direction": "test:calibration-pure-fn",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-01T20:05Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "no-op:skip-no-work-unit",
+  "direction": "skip",
+  "situation": "非审计轮 case-394=今日第30例,394%4=2≠0 亦符 global 394%4=2≠0 非审计·合规 skip。承接 case-393 NEXT_SUGGESTION[1]：pending=0（case-392 审计的 opt-security-1782846352 已 case-393 sanctioned-merge 落 main @2353e2e,worktree+auto/ 分支已清理）。scout-scan #1=autonomous-studio-aone score=0.0 推『无明确小工作单位——可跳过或做文档润色』,但 DO NOT 禁日常自我润色→不润色。需核实确无源码可做单位方可合规 skip。",
+  "action": "核实无可做单位四步:①git status --short → 空 clean②git worktree list → 仅 /home/admin/workspace/autonomous-studio-aone a6a5ff1 [main] 一行,无残留 worktree③git branch | grep auto/ → 无（clean,case-393 已清尽 auto/opt-security-1782846352 与 stale auto/optimization）④scout-scan markers_deferred TODO=4 稳定,grep 复核 4 处真 deferred——apply_resource_access.py:85(HologresTable holo-table TODO deferred 未实测 getDetail)、:90(LindormTable lindorm-table TODO deferred 未实测)、bff_client.py:207(profile.json 迁移期兼容分支 TODO deferred 待人工裁决 dist 全覆盖)、scaffold-skill.sh(L28-86 多处 【TODO:...】 为 skill 模板占位提示非真债务,case-391 同判定)——均非引擎可盲实现,正确留 triage。无源码改动→无 opt-worktree→无 LIVE 同步→DO B 不触发(无敏感路径改动)无 audit-log 埋点。仅写 case-394+回写 state 作心跳(archival 直提 main,不经 opt-worktree,cp-guard 跳过 state.md)。",
+  "files_changed": [],
+  "worktree": "无（纯心跳轮,无源码改动,archival 直提 main）",
   "outcome": "succeeded",
   "outcome_evidence": [
-    "main HEAD=02072e5, porcelain 空（git status --short 无输出）",
-    "main npm test: # tests 34 / # pass 34 / # fail 0（无 node_modules 亦 34/0——fresh-checkout 可跑）",
-    "main ls src/calibration-math.js test/calibration.test.js 均存在",
-    "main 突变复测：注释 clamp→not ok 1（computeWeightsFromPairs visibility clamp 测）+#fail 1；还原→#pass 34/#fail 0——证锁咬非散文",
-    "merge squash diffstat: 5 files changed, 190 insertions(+), 63 deletions(-), create calibration-math.js + calibration.test.js",
-    "git cat-file -e HEAD:src/calibration-math.js 退出 0（commit 内容实存, 非 case-record-claims-nonexistent-file 场景）"
+    "git status --short → 无输出（clean tree）",
+    "git worktree list → 仅 /home/admin/workspace/autonomous-studio-aone a6a5ff1 [main] 一行",
+    "git branch | grep auto/ → 无输出（无 auto/ 残留分支）",
+    "scout-scan.py 输出 → autonomous-studio-aone score=0.0『无明确小工作单位——可跳过或做文档润色』+ 延期(已triage) TODO=4 FIXME=0 HACK=0",
+    "grep -n 'TODO(deferred)' skills/dataworks-dev-assistant/modules/security-center/scripts/apply_resource_access.py → L85 HologresTable 'holo-table' 未实测、L90 LindormTable 'lindorm-table' 未实测（需真实 Hologres/Lindorm getDetail 实测,引擎不可盲实现）",
+    "grep -n 'TODO(deferred)' skills/dataworks-dev-assistant/core/bff_client.py → L207 profile.json 迁移期兼容分支待人工裁决删除条件（需确认所有 dist 全覆盖,引擎不可盲实现）",
+    "grep -n 'TODO' skills/luban/tools/scaffold-skill.sh → L28-86 多处【TODO:...】为 skill scaffold 模板占位提示（非真债务,case-391 同判定）"
   ],
   "next_suggestion": [
-    "sunset-prediction P0 续：social-calibration.js 仍无专项测试（含社媒 DB 交互，需 mock storage 或抽纯函数同本法）；GATES 已知风险列此项——下轮可同模式抽纯函数+零依赖测。",
-    "sunset-prediction P2：18:00 日报 cron 失败无重试（仅 console.error）——可加指数退避重试+ALERT sentinel（同 WEIBO_COOKIE 5d7cee0 模式）。",
-    "1BfrYW9R Phase 1 UI 子步骤（index.html fetch /api/health banner 组件）须改 index.html 超 2 源文件读取上限，宜跨 context 规划（case-393 NEXT_SUGGESTION 已载）。",
-    "纪律：续提 worktree 已编辑文件用 case-104 直 git commit --amend 勿走 cmd_commit（cp-guard clobber，[[opt-worktree-cp-guard-blocks-pending-append]]）；突变复测须实跑证锁咬[[case-record-claims-nonexistent-file]]；ESM 静态 import 链会拖传递依赖破坏零依赖测试——纯函数抽独立模块避之（本轮踩坑修正）；case-id 走扫盘 max+1（本轮 393→394）[[case-id-collision-agent-self-pick]]；case json.dump round-trip[[loop-case-json-recurrent-breakage]]。"
-  ]
+    "【case-395=395%4=3≠0 非审计轮】pending=0。scout-scan 预期 AS score=0.0 无紧迫单位。核实无可做单位四步（git status 空/git worktree list 仅 main/git branch 无 auto//markers_deferred TODO=4 稳定）→若确认无源码可做单位则写心跳 case skip。勿做日常自我润色（DO NOT 禁）。",
+    "【case-396=396%4=0 下次审计轮】继续审 .claude/hooks/ 未审 hook：discovery-gate.py(387L,外部输入/路径校验面)/decision-observer.py(688L,文件写/JSON 解析,最大未审 hook)/auto-commit.py(377L,git 提交守卫)；pipeline-gate.py 已 case-392 审+case-393 落 main 勿重审。或审 scripts/ 未审源文件（distill-patterns.py/index-cases.py/triage.py/route-health-scorer.py）。用 security-review skill。"
+  ],
+  "audit_type": "none",
+  "audit_findings": []
 }

@@ -1,29 +1,26 @@
 {
   "case_id": "case-2026-07-01-386",
   "agent_id": "ralph-wiggum-autonomous-loop",
-  "timestamp": "2026-06-30T18:25:46Z",
-  "project": "autonomous-studio",
-  "work_unit": "archive 4 lagged case records (382-385) missing from AS main + resolve case-378 id-collision — AS bookkeeping cleanup",
-  "situation": "scout-scan 全 8 项目健康度皆 0.0、#1 1BfrYW9R 仅「文档润色或跳过」。深查 1BfrYW9R 未见真缺口：MIME 表全集锁已存在于 smoke.test.js:1153（.png/.svg/.ico/.json/.jsx 五件套），非缺测。转 #2 autonomous-studio：scout 报 2 pending case-record worktree（merge-round 簿记滞后）。逐案盘查发现 4 条 case 记录未入 main 提交：case-383 仅存于 opt-bookkeeping-1782842412 worktree（committed there, main 无）；case-382/384/385 为 AS main 工作树 untracked 孤儿（git status ?? 前缀，[[case-file-orphan-on-cross-project-work]] 模式，无任何分支提交）。另 opt-docs-1782839721 worktree 持 case-378 扩展版（blob b7e544b7, 15+/9-），与 main 已有 case-378 合并复审记录（blob dbf078f）同号异内容——典型 case-id 碰撞（[[case-id-collision-agent-self-pick]]）。",
-  "action": "4 步簿记收口，每步可观察：(1) opt-worktree.sh autonomous-studio merge opt-bookkeeping-1782842412 —— squash fast-forward 入 main tip 6802b96，case-383.json 落 main 提交；cmd_merge 末尾 branch -D auto/opt-bookkeeping-1782842412 触发（[[opt-worktree-merge-leaves-branch-ref]] 修复生效，输出 'Deleted branch auto/opt-bookkeeping-1782842412 (was 8178cf0)'），worktree 目录同清。(2) opt-worktree.sh autonomous-studio commit 'bookkeeping:archive-orphan-cases' '<msg>' .claude/decisions/case-2026-07-01-{382,384,385}.json —— cmd_commit 首行查 AS main porcelain 非空（3 untracked 孤儿）触发 cp-guard，cp 三文件入新 worktree opt-bookkeeping-1784843788（实际 opt-bookkeeping-1782843788，方向分歧 engine→bookkeeping 开新枝），commit 3c69561；cp 后 main 工作树 porcelain 转 clean（孤儿被带走）。(3) merge opt-bookkeeping-1782843788 —— squash 入 main tip 5407544，382/384/385 落 main 提交，auto/ 分支同清。(4) reject opt-docs-1782839721 —— case-378 碰撞处理：main 已有合法 case-378 合并复审记录，nosniff 实现证据已全在 1BfrYW9R GATES/PROGRESS（㉞ 回归锁 + 突变复测文案），worktree 扩展版为冗余碰撞副本；reject 清 worktree+分支（保留可恢复提示）。",
-  "files_changed": [
-    ".claude/decisions/case-2026-07-01-382.json",
-    ".claude/decisions/case-2026-07-01-383.json",
-    ".claude/decisions/case-2026-07-01-384.json",
-    ".claude/decisions/case-2026-07-01-385.json",
-    ".claude/decisions/case-2026-07-01-386.json"
-  ],
-  "worktree": "opt-bookkeeping-1782842412 (merged→main 6802b96, branch cleaned) + opt-bookkeeping-1782843788 (merged→main 5407544, branch cleaned) + opt-docs-1782839721 (rejected, collision)",
-  "direction": "bookkeeping:archive-lagged-cases",
+  "timestamp": "2026-07-01T18:42Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "no-op:skip-non-audit-idle",
+  "situation": "case-386=386%4=2≠0 非审计轮（审计门 N%4==0 未到，case-388 才进审计路径）。承接 case-385 NEXT_SUGGESTION[1]：pending=0,AS score=0.0 无紧迫单位,可跳过。scout-scan #1=autonomous-studio-aone score=0.0 推荐单位『无明确小工作单位——可跳过或做文档润色』。autonomous-constraints.md DO NOT 禁『日常自我润色型无意义提交』,autonomous-studio 仅真结构性问题才修——本轮 score=0.0 无结构性问题。",
+  "action": "核实无可做工作单位后走合规 skip 轮：(1) git worktree list→仅 main b03fe7c,无残留 worktree;(2) git branch|grep auto/→无,git status→clean,pending=0;(3) 核 scout-scan 报告的『延期(已triage) TODO=4』真实性→grep `\\b(TODO|FIXME|HACK)\\b\\s*\\(\\s*deferred\\b` 命中 4 处真 deferred 标记(skills/dataworks-dev-assistant/core/bff_client.py:207 / skills/luban/tools/scaffold-skill.sh:136 / skills/dataworks-dev-assistant/modules/security-center/scripts/apply_resource_access.py:85,90),均标注待人工裁决/真实环境测试(部署环境 profile.json 兼容分支删除条件/真实运行回放/Hologres·Lindorm getDetail 实测)——非 false positive,非引擎可盲实现,正确留 triage 不动。无源码改动→无 opt-worktree→无 LIVE 同步需求→无 audit-log 埋点(DO B 不触发:无敏感路径改动)。仅写本 case + 回写 state 作心跳记录(archival-commit-mechanism:case/state 直提 main,cp-guard 跳过 state.md)。",
+  "files_changed": [],
+  "worktree": "无（本轮无源码改动,skip 轮;case/state 走 archival 直提 main）",
+  "direction": "skip",
   "outcome": "succeeded",
   "outcome_evidence": [
-    "git cat-file -e main:.claude/decisions/case-2026-07-01-{378,379,380,381,382,383,384,385}.json 全 exit 0 —— 378-385 八条 case 记录皆已 committed on main（含本轮新落 382/383/384/385）",
-    "git log --oneline main -3: 5407544 'merge: ...opt-bookkeeping-1782843788' atop 6802b96 'merge: ...opt-bookkeeping-1782842412' atop 61c9c85 —— 两笔 squash merge 提交可溯",
-    "git status --short on AS main 输出空 —— main 工作树干净，0 untracked 孤儿（cp-guard 已带走 382/384/385，无滞留）",
-    "git worktree list 仅 autonomous-studio[main 5407544] + .opt-worktrees/.../optimization[6802b96] —— opt-bookkeeping/opt-docs 两 worktree 目录已清",
-    "git branch | grep auto/ 仅 '+ auto/optimization' —— auto/opt-bookkeeping-1782842412 / -1782843788 / opt-docs-1782839721 三 auto/ 分支皆已 -D",
-    "git rev-list --count main..auto/optimization = 0 —— standing optimization worktree 0 ahead（非 pending，case-363 修复排除 stale 计数），下轮 cmd_commit 触发 ff-only 自愈追平 main",
-    "scout-scan 本轮报 AS '待处理 worktree 共2 待合并=2' —— 清后应降为 0 pending（仅 standing, ahead=0）"
+    "git worktree list → /home/admin/workspace/autonomous-studio-aone  b03fe7c [main]（仅 main,无残留）",
+    "git branch | grep -E 'auto/|opt-' → 无输出（pending worktree branch=0）",
+    "git status --short → 空（working tree clean,dirty=0）",
+    "scout-scan → autonomous-studio-aone score=0.0 #1,推荐『无明确小工作单位——可跳过或做文档润色』,标记 TODO=0 FIXME=0 HACK=0",
+    "grep deferred 正则命中 4 处真 deferred 标记(bff_client.py:207/scaffold-skill.sh:136/apply_resource_access.py:85,90)——均待人工/外部测试,非引擎可盲实现,正确留 triage"
   ],
-  "next_suggestion": "AS case 档案收口完成（378-385 全在 main，0 孤儿，0 pending worktree）。下轮 scout-scan 应将 AS 降排（无簿记滞后可咬）。若 AS 仍排前列，挑真实结构性工作（如 case-id 碰撞根因——cmd_next_case 已扫盘防撞但 agent 手挑号绕过 [[case-id-collision-agent-self-pick]]，可硬化为统一发号入口；属引擎自改需谨慎+两副本同改 [[opt-worktree-root-as-copy-drift]]）。否则顺延他项：sunset-prediction（PROGRESS 0.2天最活跃，health 0.0）、wechat-main（dirty=5 WIP 待 triage）、或 x-tool（按记忆 #1 真实 TODO 密度 case-016 已 triage）。1BfrYW9R 已高度硬化（36 锁含 MIME 全集 + nosniff + shutdown），勿继续堆安全头锁致自指润色。"
+  "next_suggestion": [
+    "【case-387=387%4=3≠0 非审计轮】预期仍 pending=0,AS score=0.0 无紧迫单位——继续 skip 或预备 case-388 审计轮",
+    "【case-388=388%4=0 下次审计轮·DO A 强制】security-review .claude/hooks/reference-transaction.py(58L,未深审)或 .claude/hooks/ 其它未审 hook;route-health-scorer.py 与 codegraph-sync.py(case-384 已审+case-385 已修落 main)不重复;dataworks-dev-assistant 的 3 处 deferred TODO 需人工/真实环境测试,审计轮不盲实现"
+  ],
+  "audit_type": "none",
+  "audit_findings": []
 }

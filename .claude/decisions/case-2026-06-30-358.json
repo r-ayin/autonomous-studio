@@ -1,24 +1,21 @@
 {
-  "case_id": "2026-06-30-358",
-  "agent_id": "ralph-autonomous-loop",
-  "timestamp": "2026-06-30T14:25:00Z",
-  "project": "autonomous-studio",
-  "work_unit": "AS housekeeping: 归档 8 个跨项目轮次滞留 main 的 untracked case 350-357",
-  "situation": "scout-scan 全项目 score=0.0 无紧迫工作单位;#1 1BfrYW9R 标\"可跳过\"且按 [[state-next-suggestion-stale-blind]] 其 Content-Type 早已断言(stale);顺延 #2 autonomous-studio。AS main 有 8 个 untracked case-2026-06-30-35{0..7}.json 滞留——state NEXT_SUGGESTION 明确点名\"AS housekeeping 归档 untracked case 350-357\"。这些孤儿是跨项目轮次 step5 写 case 到 AS main、step4 却提交进目标项目 worktree 的结构性产物([[case-file-orphan-on-cross-project-work]]),污染 scout-scan dirty 信号且易撞号([[case-id-collision-agent-self-pick]])。归档脚本 scripts/loop-archive-cases.sh 已存在(44cf835),记忆 [[case-record-claims-nonexistent-file]] case-343\"不存在\"已 stale。",
-  "action": "1) python3 json.load 校验 8 个 case 文件完整性(防 [[loop-case-json-recurrent-breakage]] 式破损 case 入归档)——8/8 OK。2) bash scripts/loop-archive-cases.sh /home/admin/workspace/autonomous-studio(传绝对路径;首次传相对名 autonomous-studio 在 CWD=AS 下被拼成 AS/AS 报\"不是 git 仓库\",改绝对路径生效)。脚本扫 main porcelain untracked case-*.json→opt-worktree commit housekeeping:archive-cases→main 还原→自测断言 main 干净。",
-  "files_changed": [
-    ".claude/decisions/case-2026-06-30-350.json",
-    ".claude/decisions/case-2026-06-30-351.json",
-    ".claude/decisions/case-2026-06-30-352.json",
-    ".claude/decisions/case-2026-06-30-353.json",
-    ".claude/decisions/case-2026-06-30-354.json",
-    ".claude/decisions/case-2026-06-30-355.json",
-    ".claude/decisions/case-2026-06-30-356.json",
-    ".claude/decisions/case-2026-06-30-357.json"
-  ],
-  "worktree": "opt-housekeeping-1782829334 (autonomous-studio, commit d68a07d, 8 files +176;待人工审合并;auto/opt-housekeeping-1782829334 分支)",
-  "direction": "housekeeping:archive-cases",
+  "case_id": "case-2026-06-30-358",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-06-30T14:58:00Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "cmd_cleanup-orphan-branch-gc",
+  "situation": "非审计轮次(358%4=2)。scout #1 AS score=0.0 无明确工作单位。NEXT_SUGGESTION[2] 指出 5 个 pre-fix 孤儿分支 auto/opt-dataworks-* 待清（case-356 fix 已防新 leak，残留为历史遗留）。实查发现共 8 个孤儿分支（5 dataworks + 2 scout + 1 skills）均无 linked worktree，污染 git branch 列表。",
+  "action": "扩 scripts/opt-worktree.sh cmd_cleanup(line539)增加阶段2：wt 循环后扫 git branch --list 'auto/opt-*'，对每个分支检查 WT_BASE 下是否有同名目录，无则 branch -D。修 trim 逻辑去前导空白(branch输出每行2空格前缀)+当前分支标记。单文件改动+21/-1。bash -n OK；实跑 cleanup 验证删 8 跳 0(worktree list 仅 main 不变)。提交到 optimization worktree(engine:hygiene area 复用)。",
+  "files_changed": ["scripts/opt-worktree.sh"],
+  "worktree": "optimization @7bfecc8 (auto/optimization, engine:general area)",
+  "direction": "engine:hygiene",
   "outcome": "succeeded",
-  "outcome_evidence": "脚本 stdout: \"→ 发现 8 个孤儿 case\"+\"✓ 提交到 opt-housekeeping-1782829334 方向=housekeeping:archive-cases\"+\"✓ 自测通过：main 干净，8 个 case 已入 housekeeping worktree 待合并\"。git status --porcelain | grep case- 无输出(✓ 无 untracked case)。git worktree list 见 /home/admin/workspace/.opt-worktrees/autonomous-studio/opt-housekeeping-1782829334 d68a07d [auto/opt-housekeeping-1782829334]。git show --stat d68a07d:8 files changed 176 insertions(+),Author autonomous-studio <syp02536326@taobao.com>。AS main HEAD 仍 38ff884(未动 main,仅 worktree 提交)。",
-  "next_suggestion": "下轮可合并 opt-housekeeping-1782829334 入 AS main(scripts/opt-worktree.sh autonomous-studio merge opt-housekeeping-1782829334),三点 diff 证增量后 squash。或转 sunset-prediction 真缺口:XHS 路由入口加 cookie 健康预检(hasXiaohongshuCookie,无 cookie 直接返 503 结构化错而非让 publish-xhs 跑到 120s 超时,state NEXT_SUGGESTION 已点名)。或 1BfrYW9R 后端 API 接入(依赖 personal-assistant)。注意:归档脚本对 CWD 敏感——传相对 project 名在 CWD=该项目下会被拼成 双层路径,须传绝对路径(本 case 实踩)。"
+  "outcome_evidence": "post-cleanup: `git branch --list 'auto/opt-*'` 空 + `git worktree list` 仅 main@6e761c3 + `git status --short` 仅 M scripts/opt-worktree.sh + opt-worktree.sh commit 成功建 optimization wt 7bfecc8。cleanup 输出 '孤儿分支清理: 删 8 / 跳 0' 实证 8 个孤儿分支(auto/opt-dataworks-1782819568/2148/3706/5078/6672 + auto/opt-scout-1782742915/817213 + auto/opt-skills-1782760777) 全被 branch -D。",
+  "next_suggestion": [
+    "[1]【merge 候选】pending optimization @7bfecc8 含本轮 orphan-gc + case-355/356 累计 3 commits(.gitignore+opt-worktree.sh)，文件集与 main 不相交可安全 squash merge；下轮 case-359=359%4=3≠0 非审计普通路径可执行 sanctioned-merge",
+    "[2]【审计盲区轮换·case-360】下个审计轮 360%4=0 换审 .claude/hooks/autonomous-commit-gate.py(main 守卫从未被审)或 scout-scan.py 标记计数/排除逻辑，避单文件连续审盲区",
+    "[3]【case-356 low 延后】opt-worktree.sh line 402/424 另两 exit 1 路径未接 created_new_wt 回滚——抽共用回滚函数统一 cmd_commit 全 exit 1 路径(line355已修/404/427待补)"
+  ],
+  "audit_type": "none",
+  "audit_findings": []
 }

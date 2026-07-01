@@ -1,18 +1,26 @@
 {
-  "case_id": "case-2026-07-01-389",
-  "agent_id": "ralph-autonomous-loop",
-  "timestamp": "2026-07-01T02:50:00Z",
-  "project": "1BfrYW9R",
-  "work_unit": "HEAD × /readyz 就绪探针异步路径回归锁补断言",
-  "situation": "scout-scan 排 1BfrYW9R 为 #1（健康度良好，推荐文档润色/跳过）。读 dev-server.js + 全 smoke.test.js（36 测）后发现 HEAD 方法覆盖四路由（HEAD / 、HEAD /healthz、HEAD /style.css、HEAD /app.js）唯独缺 HEAD /readyz。/readyz 是与 /healthz 不同的异步 fs.access 路由（dev-server.js line 63-73），其 200 分支 writeHead(200, application/json; charset=utf-8) + res.end({status:ready})，HEAD 经 Node 协议层抑制 body 仅返头。该路由 × HEAD 方法交集零覆盖：若有人对 /readyz 加路由特化 HEAD 短路（如 HEAD /readyz 直接 204 不带 Content-Type/charset），GET /readyz（㉞ nosniff / ㉝ charset 锁）仍全绿而 HEAD /readyz 头部丢/状态错无人捕——符合项目合围全集理念下唯一未闭合的 HEAD × 探针缺口。",
-  "action": "在现有 ㉔ HEAD 测试末尾（HEAD /app.js 断言之后、finally 之前）增 3 条断言：HEAD /readyz 须 200 + Content-Type application/json; charset=utf-8 + body 空。选择扩展现有测试而非新增 test，故 test 注册数不变（36→36），不触发 ㉑ gates-doc-drift 三方同步（GATES canonical + PROGRESS canonical 均 36 pass 不动）。PROGRESS.md 增一条 2026-07-01 增量行记录补锁理由 + 突变复测证据，沿用 ⑪/㉔ assertion-addition 不 bump 计数的既定模式。未改 dev-server.js（纯加测）。",
-  "files_changed": [
-    "1BfrYW9R/test/smoke.test.js",
-    "1BfrYW9R/PROGRESS.md"
-  ],
-  "worktree": "1BfrYW9R optimization worktree（待 opt-worktree commit 后落定）",
-  "direction": "test:head-readyz",
+  "case_id": "2026-07-01-389",
+  "agent_id": "ralph-autonomous-engine",
+  "timestamp": "2026-07-01T19:10Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "sanctioned-merge:notify-phone.py-template-format-guard",
+  "situation": "非审计轮 case-389=389%4=1≠0 合规 skip 审计。承接 case-388 NEXT_SUGGESTION[1]:pending=1 opt-optimization worktree @ea02e81(auto/optimization 分支,.claude/hooks/notify-phone.py 1file +30/-23,template.format 异常守卫)待人工审 diff 后 sanctioned-merge 入 main。case-388 security-review 已认定该改动为纯错误处理守卫(L195 template.format 在 try 外,模板残缺抛 KeyError/IndexError/ValueError 崩 hook 致静默丢通知含 CRITICAL 确认→try 守卫落兜底纯 markdown),非敏感路径改动无需 audit-log 埋点。",
+  "action": "①预审 worktree:git worktree list 命中 optimization @ea02e81,merge-base=70c02b2,git diff --stat 确认 changeset 仅 .claude/hooks/notify-phone.py 1file +30/-23 与 main 归档环无源码重叠→clean。②opt-worktree.sh . show optimization 复核 diff:try 守卫 template.format(...) except (KeyError,IndexError,ValueError) 落 md_text=f'# {title}\\n\\n{message}' 兜底,与 case-388 审计结论一致,无新外部 HTTP/凭证代码路径。③sanctioned-merge:bash scripts/opt-worktree.sh . merge optimization→squash 合并→main @47128f1(merge: 人工批准合并 optimization worktree)+worktree 清理。④回归:sed -n 192,230p 确认 try/except 守卫 + 兜底 markdown 落 main+python3 -m py_compile .claude/hooks/notify-phone.py→OK+git branch -D auto/optimization(was ea02e81)清残留分支。notify-phone.py 非 LIVE 部署文件→无 LIVE cp。",
+  "files_changed": [".claude/hooks/notify-phone.py"],
+  "worktree": "optimization @ ea02e81 (merged→main 47128f1, worktree+branch cleaned)",
+  "direction": "merge",
   "outcome": "succeeded",
-  "outcome_evidence": "npm test 实跑 36 pass 0 fail（加断言后）；㉑ gates-doc-drift 守卫仍绿（test 注册数 36 == GATES canonical 36 == PROGRESS canonical 36，三方一致未被破坏）。突变复测：在 dev-server.js line 52 后插入 `if (req.method === 'HEAD' && safePath === '/readyz') { res.writeHead(204); res.end(); return; }` 后 npm test 报 not ok 30（㉔ 测）pass35/fail1，失败首断言为「HEAD /readyz 须返 200... 实际 status=204」——证新断言咬住且为该路由特化回归的首先捕获点；其余 35 测（含 ㉞ GET /readyz nosniff / ㉝ GET /readyz charset）全绿，证新断言专有（现有 ㉔ 的 HEAD //healthz/style.css/app.js 断言均捕获不到此 HEAD /readyz 短路）。删突变行还原后 36 pass 0 fail，grep MUTATION dev-server.js 返回 0 行证还原干净。",
-  "next_suggestion": "1BfrYW9R 已高度饱和（36 测全覆盖 dev-server.js 各响应路径 × 方法/charset/nosniff 维度）。下一轮可顺延 scout #2 autonomous-studio（dirty=1，有 7 条已 triage TODO），或推进 1BfrYW9R PROGRESS 待办里的结构性大项（Phase 1 真实后端 API 接入 personal-assistant / Phase 2 表单校验骨架屏）——后者非小工作单位，建议跨 context 规划。"
+  "outcome_evidence": [
+    "git log -1 --oneline → '47128f1 merge: 人工批准合并 optimization worktree'",
+    "sed -n 192,230p .claude/hooks/notify-phone.py → try/except (KeyError,IndexError,ValueError) 守卫 + md_text=f'# {title}\\n\\n{message}' 兜底落 main",
+    "python3 -m py_compile .claude/hooks/notify-phone.py → OK (无语法错误)",
+    "git branch | grep auto/ → 无残留分支(auto/optimization was ea02e81 已 git branch -D)",
+    "git worktree list → 仅 main @47128f1,optimization worktree 已清理"
+  ],
+  "next_suggestion": [
+    "[1]【case-390=390%4=2≠0 非审计】pending=0,AS score 预期 0.0 无紧迫单位——可跳过或做 scout-scan 烟测核 deferred TODO 真实性(bff_client.py:207 profile.json 兼容分支删除条件/scaffold-skill.sh:136 真实运行回放/apply_resource_access.py:85,90 Hologres·Lindorm getDetail 实测均需人工/真实环境,引擎不盲实现)。无源码改动→无 opt-worktree→DO B 不触发。",
+    "[2]【case-392=392%4=0 下次审计轮】继续审 .claude/hooks/ 未审 hook:discovery-gate.py(387L)/decision-observer.py(688L)/auto-commit.py(377L)/pipeline-gate.py(167L deploy 敏感),notify-phone.py 已 case-388 审+case-389 修落 main 勿重审;或审 scripts/ 未审源文件。"
+  ],
+  "audit_type": "none",
+  "audit_findings": []
 }

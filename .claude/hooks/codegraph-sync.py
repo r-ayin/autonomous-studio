@@ -20,6 +20,7 @@ import json
 import os
 import subprocess
 import sys
+import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -29,6 +30,25 @@ REGISTRY_PATH = CODEGRAPH_DIR / "capability-registry.json"
 TOUCHPOINTS_PATH = CODEGRAPH_DIR / "engine-touchpoints.json"
 RULES_PATH = CODEGRAPH_DIR / "integration-rules.json"
 SUGGESTIONS_PATH = Path(PROJECT_DIR) / ".claude" / "memory" / "autonomous-suggestions.md"
+
+
+def _atomic_write_json(filepath, data):
+    """原子写 JSON：先写临时文件再 os.replace，失败清理后 raise（不静默吞错）。
+
+    capability-registry.json 是引擎冷启动预分析的能力来源——非原子写（open('w')
+    截断后写）会在中途断开时留下半写态损坏文件，破坏冷启动预分析入口，故必须原子写。
+    """
+    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(str(filepath)), suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+        os.replace(tmp, str(filepath))
+    except Exception:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
 
 
 def get_codegraph_version():
@@ -288,7 +308,7 @@ def append_suggestions(diff, new_matches):
     if not diff and not new_matches:
         return
 
-    timestamp = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
+    timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     lines = [
         f"\n---",
         f"## CodeGraph 融合层变更检测 — {timestamp}",
@@ -351,9 +371,8 @@ def main():
         print("[codegraph-sync] 能力扫描失败")
         return 1
 
-    # 5. 保存新注册表
-    with open(REGISTRY_PATH, "w", encoding="utf-8") as f:
-        json.dump(new_caps, f, ensure_ascii=False, indent=2)
+    # 5. 保存新注册表（原子写：防止断开中途留半写态损坏文件）
+    _atomic_write_json(REGISTRY_PATH, new_caps)
     print(f"[codegraph-sync] 能力注册表已更新 → {REGISTRY_PATH}")
 
     # 6. 计算差异

@@ -10,7 +10,9 @@ r"""autonomous-commit-gate.py — PreToolUse Hook (matcher: Bash)
 触发条件(全部满足才拦):
   1. .claude/.autonomous_active 标记存在(引擎自治激活时建)
   2. 目标分支是 main/master(或 push 显式推 main/master ref)
-  3. 子命令是 git commit / git push / git merge
+  3. 子命令是会在当前分支创建提交/移动 main ref 的 git 子命令:
+     commit / push / merge / cherry-pick / revert / am / rebase
+     / reset(--hard/--soft/--mixed) / branch(-f/-D/-d/-m/-M) / update-ref
 
 豁免:case 元数据归档——commit 仅触及 .claude/decisions/case-*.json 时放行。
   跨项目 case 按先例(0f77848/06937a9)直提 AS main 归档,这是元数据而非代码优化,
@@ -25,7 +27,7 @@ r"""autonomous-commit-gate.py — PreToolUse Hook (matcher: Bash)
   正确识别分支。case-归档豁免配合此修复:分支检测修好后归档 commit 落 main 会被拦,
   需此豁免放行元数据归档(代码 commit 仍拦)。
 """
-import os, sys, json, re, subprocess
+import os, sys, json, re, subprocess, datetime, random, string, shlex
 
 if sys.platform == "win32":
     try:
@@ -38,21 +40,66 @@ MARKER = os.path.join(PROJECT_DIR, ".claude", ".autonomous_active")
 MAIN_BRANCHES = {"main", "master"}
 # case 元数据文件:.claude/decisions/case-*.json(允许任意前导子路径)
 CASE_FILE_RE = re.compile(r"(^|/)\.claude/decisions/case-[^/]+\.json$")
+# 引擎状态文件:.claude/memory/autonomous-state.md——归档环每轮回写 state.md 直提 main
+# (见 [[archival-commit-mechanism]])。gate 激活后须与 case-*.json 同列豁免,否则 state.md
+# commit 被 gate 拦→归档环断裂(case-377 闭合 case-376 audit_findings[3] 部署态隐患)。
+STATE_FILE_RE = re.compile(r"(^|/)\.claude/memory/autonomous-state\.md$")
 # 取一个值的 git 全局选项(-C <path>、-c <k=v>、--git-dir <path>、--work-tree <path>)
 _GIT_VALOPTS = {"-C", "-c", "--git-dir", "--work-tree", "-b", "-B"}
+# 拦截的 git 子命令。commit-creating 类(commit/push/merge/cherry-pick/revert/am/rebase)
+# 会在当前分支创建提交——于 main 上执行即直写 main,case-440 审计发现原 _GUARDED 漏掉
+# cherry-pick/revert/am/rebase:引擎跑 `git cherry-pick <sha>` / `git revert <sha>` /
+# `git am <mbox>` / `git rebase <upstream>` 在 main 上即绕过 gate 直写 main,违背
+# "main 永远安全"确定性 backstop。补齐后这四子命令于 main 分支同 commit/merge 被拦。
+# reset/branch/update-ref 走各自 ref-mover 专路(见 _eval_segment);checkout/switch
+# 豁免(opt-worktree 内部用,改 working tree 不动 main ref)。
+_GUARDED = {"commit", "push", "merge", "cherry-pick", "revert", "am", "rebase",
+            "reset", "branch", "update-ref"}
+# shell 顺序/管道控制符——命令链按此拆段逐段评估,堵 `A && git commit` 类绕过(见 _git_segments)
+_SHELL_OPS_RE = re.compile(r"\s*(?:&&|\|\||;|\||\n)\s*")
+
+
+def _tokenize(cmd):
+    """shell-aware 分词:用 shlex.split 尊重单/双引号与转义,使 `eval "git commit"`
+    正确产出 ['eval','git','commit'] 识别为 git 子命令(堵 case-372 finding-1:
+    cmd.split() 不感知引号→带引号 git 调用形如 `"git" commit` 拆出 '"git"' 而非
+    'git',index('git') 失败→gate 漏过)。shlex 在引号不平衡等畸形输入上抛
+    ValueError→回退 str.split 保持旧行为不崩(畸形命令本就罕见且后续 _git_segments/
+    branch 探测仍兜底)。"""
+    try:
+        return shlex.split(cmd, posix=True)
+    except ValueError:
+        return cmd.split()
+
+
+def _is_git_token(t):
+    """识别 git 调用 token:裸 'git' 或 basename 为 git 的路径(/usr/bin/git、./git、bin/git)。
+    堵 case-428 审计 finding:原 toks.index('git') 精确匹配 'git' token,全路径调用
+    `/usr/bin/git commit` 的 token='/usr/bin/git' 不匹配→index 失败→_git_parse 返回
+    (None,[])→gate 漏过(全路径 git commit 直提 main 不拦),与 case-372/376/378 同类
+    绕过向量。要求路径形含 '/' 故裸别名(如 mygit)不误命中;若 `/path/git` 后跟恰好
+    'commit'/'push' 等受拦子命令的极罕见非 git 命令会被误拦——fail-safe(过拦安全,
+    用户可 rm 标记或走 opt-worktree),过拦代价远低于全路径绕过代价。"""
+    if t == "git":
+        return True
+    return "/" in t and os.path.basename(t) == "git"
 
 
 def _git_parse(cmd):
     """tokenize 命令,返回 (子命令 or None, 子命令之后的 token 列表)。
     跨过 git 与子命令之间的全局选项:取值的选项(-C <path> 等)连同其值一起跳过,
     其他 -/-- 开头的标志只跳过自身。这样 `git -C <path> commit` 正确识别子命令=commit。
-    非 git 命令(无独立 "git" token)返回 (None, [])。"""
-    toks = cmd.split()
-    try:
-        i = toks.index("git")
-    except ValueError:
+    非 git 命令(无 git token)返回 (None, [])。git token 识别见 _is_git_token——
+    兼容全路径调用(/usr/bin/git),堵 case-428 全路径绕过。"""
+    toks = _tokenize(cmd)
+    gi = None
+    for idx, t in enumerate(toks):
+        if _is_git_token(t):
+            gi = idx
+            break
+    if gi is None:
         return None, []
-    i += 1
+    i = gi + 1
     while i < len(toks):
         t = toks[i]
         if t in _GIT_VALOPTS and i + 1 < len(toks):  # -C <path> 等:跳过两项
@@ -67,10 +114,15 @@ def _git_parse(cmd):
 
 def repo_dir_from_cmd(cmd):
     """从 `git -C <path> ...` 解析真实目标 repo 工作目录(多个 -C 依次累积进入)。
-    无 -C 时回退 PROJECT_DIR——若后者非 git repo,branch 探测返回空串(等价于"非
+    也识别 --git-dir/--work-tree(--git-dir=<path> 与空格形式):--work-tree 直接作为
+    工作目录;--git-dir=<...>/.git 取其父目录,裸仓(无 .git 后缀)无工作树→回退
+    PROJECT_DIR。优先级 work-tree > git-dir > -C(显式指向 strongest 信号)。无上述
+    任一时回退 PROJECT_DIR——若后者非 git repo,branch 探测返回空串(等价于"非
     main",放行)。引擎约定用 `git -C <project>` 而非 cd(见 autonomous-loop 纪律)。"""
-    toks = cmd.split()
+    toks = _tokenize(cmd)
     paths = []
+    git_dir = None
+    work_tree = None
     i = 0
     while i < len(toks):
         t = toks[i]
@@ -82,12 +134,37 @@ def repo_dir_from_cmd(cmd):
             paths.append(t[2:])
             i += 1
             continue
+        if t == "--work-tree" and i + 1 < len(toks):
+            work_tree = toks[i + 1]
+            i += 2
+            continue
+        if t.startswith("--work-tree="):
+            work_tree = t[len("--work-tree="):]
+            i += 1
+            continue
+        if t == "--git-dir" and i + 1 < len(toks):
+            git_dir = toks[i + 1]
+            i += 2
+            continue
+        if t.startswith("--git-dir="):
+            git_dir = t[len("--git-dir="):]
+            i += 1
+            continue
         i += 1
-    if not paths:
+    if work_tree:
+        p = work_tree
+    elif git_dir:
+        # /x/.git → /x;相对 ".git" → ".";裸仓(无 .git 后缀)无工作树→回退 PROJECT_DIR
+        if git_dir.endswith(os.sep + ".git") or os.path.basename(git_dir) == ".git":
+            p = os.path.dirname(git_dir) or "."
+        else:
+            return PROJECT_DIR
+    elif not paths:
         return PROJECT_DIR
-    p = paths[0]
-    for extra in paths[1:]:  # git 多个 -C 按出现顺序依次进入
-        p = os.path.join(p, extra)
+    else:
+        p = paths[0]
+        for extra in paths[1:]:  # git 多个 -C 按出现顺序依次进入
+            p = os.path.join(p, extra)
     if not os.path.isabs(p):
         p = os.path.join(PROJECT_DIR, p)
     return p
@@ -117,10 +194,269 @@ def staged_files(repo):
 
 
 def is_case_metadata_only(files):
-    """豁免判定:全部已暂存文件都是 .claude/decisions/case-*.json。"""
+    """豁免判定:全部已暂存文件都是归档环元数据——.claude/decisions/case-*.json 或
+    .claude/memory/autonomous-state.md(后者每轮回写,见 [[archival-commit-mechanism]])。
+    全部命中豁免集才放行直提 main;混入源码则不豁免(走 opt-worktree)。"""
     if not files:
         return False
-    return all(CASE_FILE_RE.search(f) for f in files)
+    return all(CASE_FILE_RE.search(f) or STATE_FILE_RE.search(f) for f in files)
+
+
+def _unwrap_once(cmd):
+    """剥一层间接执行壳:eval/exec "<inner>" 或 sh/bash -c "<inner>" → 返回 inner
+    (shlex 已去引号,inner 为干净命令串);非该形态返回 None。仅处理壳在段首的形态——
+    命令链 `A && eval "..."` 先经 _git_segments 拆段,逐段进这里。source/. 执行脚本文件
+    (内容不可静态知)不展开。"""
+    toks = _tokenize(cmd)
+    if not toks:
+        return None
+    head, rest = toks[0], toks[1:]
+    # eval/exec <args...>: 真实 shell 的 eval 把所有参数按空格拼接后执行,
+    # 故 eval "git commit" -m wip → "git commit -m wip"(case-376 审计 finding:
+    # 原 len(rest)==1 限制使 `eval "git commit" -m wip` 因 rest 长度 2 而不展开→
+    # _git_parse 在 token 'git commit' 上 index('git') 失败→漏过 commit)。
+    # join 还原 shell 拼接语义,使多参数 eval 也能被剥层。
+    if head in ("eval", "exec") and rest:
+        return " ".join(rest)
+    # sh/bash/dash/ash/zsh -c <cmd>[: -c/-lc/-ec 等含 c 的短选项后跟命令串]
+    if head in ("sh", "bash", "dash", "ash", "zsh") and len(rest) >= 2 \
+            and rest[0].startswith("-") and not rest[0].startswith("--") and "c" in rest[0]:
+        return rest[1]
+    return None
+
+
+def _unwrap_indirect(cmd):
+    """递归剥层间接执行壳(eval/exec/sh -c/bash -c),展平成可直接分段评估的命令串。
+    堵 case-372 finding-1:`eval "git commit"` 原被 _git_parse 漏过——shlex 把引号内
+    `git commit` 当作单个 token,`index("git")` 失败→放行。剥层后 inner="git commit"
+    再分段评估即命中 commit。8 层上限防病态递归。"""
+    for _ in range(8):
+        inner = _unwrap_once(cmd)
+        if inner is None or inner == cmd:
+            return cmd
+        cmd = inner
+    return cmd
+
+
+def _git_segments(cmd):
+    """把命令按 shell 顺序/管道控制符拆段(&&、||、;、|、换行),逐段独立评估。
+    先 _unwrap_indirect 剥 eval/exec/sh -c 壳(堵 case-372 finding-1 引号内 git 绕过),
+    再按控制符拆段,并对每个分段再次 _unwrap_indirect + 递归 _git_segments——堵 case-376
+    审计 finding:`A && eval "git commit"` 原仅对整命令剥层(head='A'→不展开),拆段后
+    段 `eval "git commit"` 直入 _git_parse,token 'git commit' 上 index('git') 失败→
+    漏过;逐段剥层并递归(因 inner 可能再含链 `eval "A && git commit"`)即命中。
+    修命令链绕过:`A && git commit` 里危险 git 在链后段,原 `_git_parse` 用 `index("git")`
+    只取首个 git token——若前段也含 git(如 `git -C . status && git -C . commit`),
+    commit 会被当成前段参数而放行;逐段评估即可命中后段真实 commit。分支与 repo 按本段
+    -C 解析,故跨 repo 链(`-C A status && -C B commit`)也能正确定位 B 的分支。
+    递归终止:_unwrap_indirect 幂等(无壳时 inner==cmd),每层剥壳使命令严格变短,深度受
+    _unwrap_indirect 8 层上限束缚。残留:source/. 脚本文件内容、--norc 等长选项 -c
+    形态不在展开范围(需 LLM 刻意构造,低危)。命令替换 $(...)/反引号由 main() 调
+    _cmd_substitutions 单独评估(见 case-378),不在此函数职责内。"""
+    expanded = _unwrap_indirect(cmd)
+    out = []
+    for seg in [s for s in _SHELL_OPS_RE.split(expanded) if s]:
+        inner = _unwrap_indirect(seg)
+        if inner != seg:
+            # 段本身是 eval/sh -c 壳:剥层后 inner 可能再含控制符链 → 递归拆段
+            out.extend(_git_segments(inner))
+        else:
+            out.append(seg)
+    return out
+
+
+def _cmd_substitutions(cmd):
+    """提取命令替换 $(...) 与反引号 `...` 的内层命令串列表。shell 执行替换时把
+    内层命令输出代入——内层若含受拦 git 子命令等同直接执行,须评估。堵 case-378
+    闭合的 `out=$(git commit -m wip)` / `out=$(git push origin main)` 类绕过——
+    shlex 不解 $(),token 形如 'out=$(git' 上 index('git') 失败→原 _git_parse 漏过。
+
+    手动扫描配对括号(支持嵌套)并尊重引号:单引号串内 shell 不展开(整段跳过),
+    双引号串内 $()/` 仍展开(正常扫,双引号内 ) 不误终结 $( )。$(( 算术展开)与
+    $(< file) 进程替换不含 git 子命令,跳过。残留:反引号内嵌反引号、$(... $(...) ...)
+    深嵌套(需真 shell parser,刻意构造,低危,与 case-376 文档边界一致)不展开。"""
+    out = []
+    i, n = 0, len(cmd)
+    while i < n:
+        c = cmd[i]
+        if c == "'":  # 单引号串:shell 不展开 $()/`,整段跳过(免误提取字面量致 FP)
+            j = i + 1
+            while j < n and cmd[j] != "'":
+                j += 1
+            i = j + 1
+            continue
+        if c == "$" and i + 1 < n and cmd[i + 1] == "(":
+            if i + 2 < n and cmd[i + 2] == "(":  # $(( 算术展开:跳到匹配 ))
+                depth, j = 2, i + 3
+                while j < n and depth > 0:
+                    depth += 1 if cmd[j] == "(" else (-1 if cmd[j] == ")" else 0)
+                    j += 1
+                i = j
+                continue
+            depth, j, inner = 1, i + 2, []
+            while j < n and depth > 0:
+                cj = cmd[j]
+                if cj == '"':  # 双引号内 ) 不终结 $( —— 跳到闭 "
+                    k = j + 1
+                    while k < n and cmd[k] != '"':
+                        if cmd[k] == "\\" and k + 1 < n:
+                            k += 2
+                            continue
+                        k += 1
+                    inner.extend(cmd[j:k + 1])
+                    j = k + 1
+                    continue
+                if cj == "(":
+                    depth += 1
+                elif cj == ")":
+                    depth -= 1
+                    if depth == 0:
+                        break
+                inner.append(cj)
+                j += 1
+            if depth == 0:
+                out.append("".join(inner))
+            i = j + 1
+            continue
+        if c == "`":  # 反引号命令替换
+            j, inner = i + 1, []
+            while j < n and cmd[j] != "`":
+                if cmd[j] == "\\" and j + 1 < n:  # \` 转义:取字面量
+                    inner.append(cmd[j + 1])
+                    j += 2
+                    continue
+                inner.append(cmd[j])
+                j += 1
+            if j < n:
+                out.append("".join(inner))
+            i = j + 1
+            continue
+        i += 1
+    return out
+
+
+def _push_refs_main(rest):
+    """push 的 refspec 是否触及 main/master。覆盖裸 ref、HEAD:main、main:main、+force 前缀。"""
+    for t in rest:
+        if t in MAIN_BRANCHES:
+            return True
+        if any(p in MAIN_BRANCHES for p in t.lstrip("+").split(":")):
+            return True
+    return False
+
+
+def _eval_segment(seg):
+    """评估单段命令,返回 block_detail 文本或 None(未命中/豁免)。"""
+    sub, rest = _git_parse(seg)
+    if sub not in _GUARDED:
+        return None
+    branch = current_branch(seg)
+    repo = repo_dir_from_cmd(seg)
+    # commit-creating 子命令:在当前分支创建提交/移动其 ref。于 main 上执行即直写 main → 拦。
+    # 含 cherry-pick/revert/am/rebase(case-440 补齐:原仅 commit/push/merge 在此路,这四者
+    # 同样创建提交却走 not-in-_GUARDED 早退放行→绕过)。归档豁免仅限 commit(其余操作 refs/
+    # commits 无 staged 文件概念)。rebase --onto <newbase> <upstream> <branch> 显式指向 main
+    # 的形态未单独覆盖(需解析位置参数,刻意构造,低危;当前分支=main 的常见形态已拦)。
+    _COMMIT_CREATING = {"commit", "push", "merge", "cherry-pick", "revert", "am", "rebase"}
+    if sub in _COMMIT_CREATING:
+        # 目标分支是 main/master → 拦(分支从本段 -C 解析)
+        targets_main = branch in MAIN_BRANCHES
+        if sub == "push":
+            # 显式推 main/master ref(含 HEAD:main / main:main / +force)→ 即便在 feature 分支也拦
+            targets_main = targets_main or _push_refs_main(rest)
+        if targets_main:
+            # 豁免:归档环元数据(case-*.json + autonomous-state.md)按先例可直提 main
+            staged = staged_files(repo)
+            if sub == "commit" and is_case_metadata_only(staged):
+                _audit_log_exempt(seg, staged)  # 豁免埋点(DO B,对称于 _audit_log_block)
+                return None
+            return f"直接 {sub} 到 main/master"
+    elif sub == "reset":
+        # ref-mover 模式(--hard/--soft/--mixed)在 main 移动分支指针 → 拦;无模式标志的暂存区操作放行
+        _REF_MOVER_FLAGS = {"--hard", "--soft", "--mixed"}
+        if any(t in _REF_MOVER_FLAGS for t in rest) and branch in MAIN_BRANCHES:
+            return "git reset --hard/--soft/--mixed 在 main 分支（移动分支指针）"
+    elif sub == "branch":
+        # -f/-D/-d/-m/-M 触及 main/master → 拦;纯列分支或新建分支放行
+        _BR_DANGEROUS = {"-f", "--force", "-D", "-d", "--delete", "-m", "-M", "--move"}
+        has_dangerous = any(t in _BR_DANGEROUS for t in rest)
+        branch_names = [t for t in rest if not t.startswith("-")]
+        if has_dangerous and any(b in MAIN_BRANCHES for b in branch_names):
+            flags_used = " ".join(t for t in rest if t.startswith("-"))
+            return f"git branch {flags_used} 操作 main/master"
+    elif sub == "update-ref":
+        # git update-ref refs/heads/main <sha> 直接写 main ref → 拦
+        _MAIN_REFS = {f"refs/heads/{b}" for b in MAIN_BRANCHES}
+        if any(t in _MAIN_REFS for t in rest):
+            return "git update-ref 直接写 refs/heads/main/master"
+    return None
+
+
+def _audit_log_block(cmd, block_detail):
+    """审计埋点(按 .claude/decisions/audit-log.schema.json):gate 拦下 main 直写尝试时
+    append-only 写一条 JSONL 到 <PROJECT_DIR>/.audit/audit-YYYY-MM-DD.jsonl。
+    fail-safe——日志写失败绝不影响拦截决策(吞异常,仍按原 block 路径 exit 2)。"""
+    try:
+        now = datetime.datetime.now(datetime.timezone.utc)
+        date = now.strftime("%Y%m%d")        # id 用紧凑 8 位(对齐 schema id 模式)
+        date_dashed = now.strftime("%Y-%m-%d")  # 文件名用 dashed(对齐约束文档 .audit/audit-YYYY-MM-DD.jsonl)
+        rid = now.strftime("%H%M%S")
+        suffix = "".join(random.choices(string.ascii_lowercase + string.digits, k=6))
+        entry = {
+            "id": f"audit-{date}-{rid}-{suffix}",
+            "timestamp": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "userId": "engine",
+            "userRole": "engine",
+            "action": "compliance_check",
+            "resource": {"type": "permission", "identifier": "git-main-write",
+                         "newValue": block_detail},
+            "result": "denied",
+            "ip": "local",
+            "sensitive": True,
+            "sensitiveLevel": "high",
+            "details": {"reason": f"autonomous-commit-gate 拦截:{block_detail}",
+                        "errorMessage": cmd[:200]},
+        }
+        adir = os.path.join(PROJECT_DIR, ".audit")
+        os.makedirs(adir, exist_ok=True)
+        with open(os.path.join(adir, f"audit-{date_dashed}.jsonl"), "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except Exception:
+        pass  # 审计写失败不影响拦截决策
+
+
+def _audit_log_exempt(cmd, files):
+    """审计埋点(DO B:鉴权/permission 敏感路径变更——case-377 broadened 豁免集纳入
+    state.md):gate 激活态下放行归档环元数据 commit 直提 main 时,append-only 写一条
+    JSONL 到 <PROJECT_DIR>/.audit/audit-YYYY-MM-DD.jsonl。与 _audit_log_block 对称——
+    拦(denied)/放(success)两端均可观测,豁免行为不再静默。fail-safe:写失败不影响放行。"""
+    try:
+        now = datetime.datetime.now(datetime.timezone.utc)
+        date = now.strftime("%Y%m%d")
+        date_dashed = now.strftime("%Y-%m-%d")
+        rid = now.strftime("%H%M%S")
+        suffix = "".join(random.choices(string.ascii_lowercase + string.digits, k=6))
+        entry = {
+            "id": f"audit-{date}-{rid}-{suffix}",
+            "timestamp": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "userId": "engine",
+            "userRole": "engine",
+            "action": "compliance_check",
+            "resource": {"type": "permission", "identifier": "git-main-write-exempt",
+                         "newValue": ",".join(sorted(files))[:200]},
+            "result": "success",
+            "ip": "local",
+            "sensitive": True,
+            "sensitiveLevel": "medium",
+            "details": {"reason": "autonomous-commit-gate 豁免:归档环元数据(case-*.json/autonomous-state.md)直提 main",
+                        "errorMessage": cmd[:200]},
+        }
+        adir = os.path.join(PROJECT_DIR, ".audit")
+        os.makedirs(adir, exist_ok=True)
+        with open(os.path.join(adir, f"audit-{date_dashed}.jsonl"), "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
 
 
 def main():
@@ -132,68 +468,36 @@ def main():
     if data.get("tool_name") != "Bash":
         print("{}")
         return
-    cmd = (data.get("tool_input") or {}).get("command", "") or ""
-
-    # 用 tokenizer 取子命令(跨过 -C/-c 等 git 全局选项)
-    # 拦截:commit/push/merge + reset(ref-mover 模式) + branch(-f/-D/-m main) + update-ref(直写)
-    # 豁免:checkout/switch(opt-worktree.sh 内部用)不在拦截集合中
-    sub, rest = _git_parse(cmd)
-    _GUARDED = {"commit", "push", "merge", "reset", "branch", "update-ref"}
-    if sub not in _GUARDED:
-        print("{}")
-        return
-
-    # 只在 autonomous 模式激活时拦
+    # 只在 autonomous 模式激活时拦(标记存在);用户直接指挥的提交(标记不存在)放行
     if not os.path.exists(MARKER):
         print("{}")
         return
+    cmd = (data.get("tool_input") or {}).get("command", "") or ""
 
-    branch = current_branch(cmd)
-    repo = repo_dir_from_cmd(cmd)
+    # 逐段评估命令链——堵 `A && git commit` 类绕过(原 index("git") 只看首个 git token)
     block_detail = None
+    for seg in _git_segments(cmd):
+        block_detail = _eval_segment(seg)
+        if block_detail is not None:
+            break
 
-    if sub in ("commit", "push", "merge"):
-        # 目标分支是 main/master → 拦(分支从命令的 -C 解析,修复 workspace-root 失效)
-        targets_main = branch in MAIN_BRANCHES
-        if sub == "push":
-            # 显式推 main/master ref(如 `git -C <p> push origin main`)→ 即便当前在 feature 分支也拦
-            targets_main = targets_main or any(t in MAIN_BRANCHES for t in rest)
-        if targets_main:
-            # 豁免:case 元数据归档(仅 .claude/decisions/case-*.json)按先例可直提 main
-            if sub == "commit":
-                files = staged_files(repo)
-                if is_case_metadata_only(files):
-                    print("{}")
-                    return
-            block_detail = f"直接 {sub} 到 main/master"
-
-    elif sub == "reset":
-        # ref-mover 模式(--hard/--soft/--mixed)在 main 分支上会移动分支指针 → 拦
-        # 无模式标志的 reset(如 `git reset HEAD file`)是暂存区操作 → 放行
-        _REF_MOVER_FLAGS = {"--hard", "--soft", "--mixed"}
-        is_refmove = any(t in _REF_MOVER_FLAGS for t in rest)
-        if is_refmove and branch in MAIN_BRANCHES:
-            block_detail = "git reset --hard/--soft/--mixed 在 main 分支（移动分支指针）"
-
-    elif sub == "branch":
-        # -f/-D/-d/-m/-M 触及 main/master → 拦;纯列分支或创建新分支 → 放行
-        _BR_DANGEROUS = {"-f", "--force", "-D", "-d", "--delete", "-m", "-M", "--move"}
-        has_dangerous = any(t in _BR_DANGEROUS for t in rest)
-        branch_names = [t for t in rest if not t.startswith("-")]
-        if has_dangerous and any(b in MAIN_BRANCHES for b in branch_names):
-            flags_used = " ".join(t for t in rest if t.startswith("-"))
-            block_detail = f"git branch {flags_used} 操作 main/master"
-
-    elif sub == "update-ref":
-        # git update-ref refs/heads/main <sha> 直接写 main ref → 拦
-        _MAIN_REFS = {f"refs/heads/{b}" for b in MAIN_BRANCHES}
-        if any(t in _MAIN_REFS for t in rest):
-            block_detail = "git update-ref 直接写 refs/heads/main/master"
+    # 命令替换内层命令也评估——堵 `out=$(git commit -m wip)` 类绕过(shlex 不解 $(),
+    # token 'out=$(git' 上 index('git') 失败→段循环漏过;提取 $()/` 内层后递归评估即命中)。
+    # 已被上面段循环命中则不再评估(免重复 _audit_log_block)。
+    if block_detail is None:
+        for sub_cmd in _cmd_substitutions(cmd):
+            for seg in _git_segments(sub_cmd):
+                block_detail = _eval_segment(seg)
+                if block_detail is not None:
+                    break
+            if block_detail is not None:
+                break
 
     if block_detail is None:
         print("{}")
         return
 
+    _audit_log_block(cmd, block_detail)  # 审计埋点(fail-safe,不影响拦截)
     print(json.dumps({
         "decision": "block",
         "reason": (

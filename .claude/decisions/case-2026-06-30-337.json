@@ -1,25 +1,37 @@
 {
   "case_id": "case-2026-06-30-337",
-  "agent_id": "ralph-autonomous-loop",
-  "timestamp": "2026-06-30T12:25:00+08:00",
-  "project": "autonomous-studio",
-  "work_unit": "review 1 个待合并 worktree（人工审 diff + merge/reject）— standing optimization worktree (auto/optimization @47d1228) 2 commits ahead of AS main",
-  "situation": "scout-scan #2=AS「review 1 个待合并 worktree」。git worktree list 显 standing optimization worktree tip=47d1228。git cherry main auto/optimization: 6eaa008(merge commit)显 '-'(已等价入 main)，3f50d2a+47d1228 显 '+'(真未入 main)。三点 diff main...auto/optimization 隔离 worktree 侧真贡献=case-332.json(+19 新)+scout-scan.py(+33/-2: decisions 剥离 6 行 + superseded 内容等价对账逻辑 ~27 行)；case-327.json 三点显 +15 但 main 已含(独立同内容加入,非冲突)。关键核验:47d1228 的 superseded 逻辑 main 已字节级含(ac2372d/opt-scout-1782787912 merge 早先独立带入),两 tip diff main..47d1228 仅显 decisions 剥离 6 行 → merge 净效果=decisions-strip+case-332.json,无冲突。47d1228 claim「AS active TODO 3→0」:实跑 main 版 scout-scan --project autonomous-studio 显 TODO=3(全来自 decision-archive.md 案例标题 'Case 37: ...真实 # TODO: 标记' 命中 _MARKER_RE=\\bTODO\\b\\s*[:-])，worktree 版剥离 .claude/decisions/ 后 3→0,claim 属实非散文。",
-  "action": "(1) dry-run `git merge --squash auto/optimization`(AS main,无 --commit)验 'Auto-merging scripts/scout-scan.py; Automatic merge went well' exit 0、无 unmerged path(---diff-filter=U 空)，随后 git merge --abort + reset --hard 还原 main 干净(仅 7 untracked case 残留,index clean)。(2) 跑 `opt-worktree.sh autonomous-studio merge optimization` → git merge --squash auto/optimization 干净自动合并 scout-scan.py,commit 0311acc(email syp02536326@taobao.com),worktree remove + auto/optimization 分支 ref -D(was 47d1228)。(3) [[opt-worktree-root-as-copy-drift]] sync 核:diff root live scripts/scout-scan.py ↔ AS-git IDENTICAL(根 live mtime 12:11 早于 worktree commit 12:14,证根 live=实跑权威先改后 cp 入 worktree 提交 [[scout-scan-copy-provenance]]；本次 drift 反向:根 live 领先 AS-git main,merge 把 main 拉齐根 live,无需再 cp)。",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-06-30T11:00Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "审计轮次 code-review：scout-scan.py count_markers 第6类标记自指虚高（反引号代码段未剥离）致 AS 幽灵 TODO=2 霸榜#1",
+  "situation": "本轮=审计轮次（今日 decisions/ 目录 case-2026-06-30-* 共 136 个，136%4=0 命中审计边界；且全日 0 个 audit_type≠none 案例——审计指令自始至今未被遵守，本轮为首例）。step0 读 .claude/autonomous-constraints.md → 文件不存在（case-044 昨日亦记录'constraints 文件不存在→无 DO NOT 排除项'），仅能凭 protocol prompt 内联的 DO/DO NOT 摘要执行。step1 scout-scan --workspace AS 仓报 #1=autonomous-studio-aone(score=0.03, TODO=2 active, TODO=4 deferred, dirty=1)，推荐'triage 前 1-2 个 TODO'。审计轮次优先挑有源码项目→AS 自身是源码项目且排#1，按 protocol'autonomous-studio 不被特殊排除：真有结构性问题该修就修'推进。",
+  "action": "不深读大块代码，用 /tmp 脚本精确复刻 count_markers 的剥离链（_STRIP_STRINGS 单双引号 + _STRIP_PLACEHOLDERS 全角括号 + _STRIP_HTML_COMMENTS + _MARKER_RE `\\bTODO\\b\\s*[:-]`）定位 2 个 active TODO 真身：均在 scripts/scout-scan.py:160-161（count_markers 内文档注释），反引号引述 `.md 中 \\`# TODO:\\` 标题` / `\\`TODO:\\` 描述性正文` 来文档化'markdown 散文 TODO 非真债'。根因：_STRIP_STRINGS 正则 `\"...\"|'...'` 只剥单/双引号串，不识反引号（markdown 代码段 + JS 模板字面量），反引号内的 TODO: 反被 _MARKER_RE 计为真债——扫描器把自己文档里的引例算成了自己的债。这是继 ①字符串字面量 ②【全角括号】占位符 ③<!-- HTML 注释 --> ④归档 .md 标题散文 ⑤根兜底 之后的第6类标记自指虚高（前5类历次提交 1b498ce/22164fa 等已修）。最小改 1 文件 2 处：①新增 _STRIP_BACKTICKS=re.compile(r\"`[^`]*`\") 定义（带注释说明第6类、避自指陷阱——注释内不写反引号引述的标记形式字面量，首版注释用 \\\\`# TODO:\\\\` 反斜杠转义反引号致配对错乱重新引入 2 幽灵，已改为纯散文不写标记字面量）；②count_markers 在 _STRIP_HTML_COMMENTS.sub 后追加 _STRIP_BACKTICKS.sub。审计指令要求'修改敏感路径必须补 audit-log 埋点'→ 按 .claude/decisions/audit-log.schema.json 写 .claude/decisions/audit-log.jsonl 一条（action=config_change, sensitiveLevel=medium, resource.identifier=scripts/scout-scan.py, approvalId=case-2026-06-30-337），schema required 字段全通过。",
   "files_changed": [
-    "autonomous-studio/scripts/scout-scan.py",
-    "autonomous-studio/.claude/decisions/case-2026-06-30-332.json"
+    "scripts/scout-scan.py",
+    ".claude/decisions/audit-log.jsonl"
   ],
-  "worktree": "autonomous-studio/optimization (auto/optimization @47d1228, merge 后 worktree+分支 ref 已清理)",
-  "direction": "engine:scanner-accuracy",
+  "worktree": "opt-scout-1782817213 (/home/admin/workspace/.opt-worktrees/autonomous-studio-aone/opt-scout-1782817213 — AS:scout 方向分歧 engine→scout 开新隔离 worktree, commit 17e76d7)",
+  "direction": "scout:backtick-strip",
   "outcome": "succeeded",
   "outcome_evidence": [
-    "git log --oneline -1 main = '0311acc merge: 人工批准合并 optimization worktree optimization'",
-    "grep -c 'rel.startswith(\".claude/decisions/\")' autonomous-studio/scripts/scout-scan.py = 1(decisions-strip 已落 main)",
-    "git cat-file -e main:.claude/decisions/case-2026-06-30-332.json exit 0(case-332 已入 main)",
-    "git worktree list 仅显 AS main 一行(standing optimization worktree 已清理,下次 commit 由 ensure_main_wt 从 fresh main 重建)",
-    "python3 scripts/scout-scan.py --workspace /home/admin/workspace --project autonomous-studio | grep '标记:' = '标记: TODO=0 FIXME=0 HACK=0'(merge 前 TODO=3,fix 生效,claim 3→0 验证)",
-    "diff scripts/scout-scan.py autonomous-studio/scripts/scout-scan.py = IDENTICAL(根 live↔AS-git 无 drift)"
+    "python3 ast.parse(scripts/scout-scan.py) → 'syntax OK'（语法未破坏）",
+    "修复前 直调 count_markers('.') → counts {'TODO':2,'FIXME':0,'HACK':0} deferred {'TODO':4}；mfiles 含 scripts/scout-scan.py（自指）",
+    "修复后 直调 count_markers('.') → counts {'TODO':0,'FIXME':0,'HACK':0} deferred {'TODO':4}（deferred 不变=未误伤真延期债）；mfiles 不再含 scripts/scout-scan.py（自指消除），仍含 skills/.../bff_client.py + apply_resource_access.py + scaffold-skill.sh（其 deferred 真债保留）",
+    "real scout-scan.py --workspace AS 仓 报 标记: TODO=0 FIXME=0 HACK=0（修复前 TODO=2）、score=0.0（修复前 0.03）、#1 推荐改'review 1 个待合并 worktree'（修复前推幽灵'triage TODO'）",
+    "opt-worktree.sh . commit scout:backtick-strip → '✓ 提交到 opt-scout-1782817213 方向=scout:backtick-strip'（worktree 隔离提交 17e76d7，main 未动）",
+    "main git status --porcelain → 仅 ?? PROJECTS.md（本轮前既存未跟踪文件，非本改），main 干净",
+    "worktree 内 grep -c _STRIP_BACKTICKS scripts/scout-scan.py → 2（定义+使用两处）",
+    "audit-log.jsonl 条目 id=audit-20260630-105936-0dv11c，schema required[id/timestamp/userId/action/resource/result/ip] 全present，resource.type=file+identifier=scripts/scout-scan.py"
   ],
-  "next_suggestion": "AS main 仍有 7 untracked case(329/330/331/333/334/335/336 + 本轮 337)待批量 opt-worktree commit 归档;case 须先落 AS main dirty 才被 cp 入 worktree [[opt-worktree-commit-porcelain-gate]];归档完整性 smoke 守卫(json.load 全量 case-*.json)应覆盖 329-337。standing optimization worktree 已清,下次 opt-worktree commit/init 会从 fresh main 0311acc 重建 auto/optimization。下轮若 scout 再排 AS,优先批量归档 case 而非新润色。"
+  "next_suggestion": "(1)【需人工·低阻力】opt-worktree.sh /home/admin/workspace/autonomous-studio-aone merge opt-scout-1782817213 落地反引号剥离修复(1 文件+1 audit-log 条目，零冲突)，merge 后 AS main TODO=0 永久健康、scout-scan.py 自指幽灵彻底消除。(2) constraints 文件 .claude/autonomous-constraints.md 持续缺失（case-044/337 两轮确认）——protocol step0 强依赖它却不存在，下轮可从 protocol prompt 内联的 DO/DO NOT 摘要 + 历史案例引用重建该文件（属引擎元数据缺失，非源码债，可独立做一小工作单位）。(3) 审计节奏：本轮为首例 code-review，下个审计边界=今日 case 数达 140 时（136→140 %4=0）；期间若改敏感路径仍须补 audit-log 埋点+audit_type 字段。(4) pending 人工 merge 队列再+1：opt-scout-1782817213 加入既有 opt-scanner-1782794236/opt-scout-1782792420/opt-docs-1782793013/agent-dashboard opt-dashboard-1782795095 等阻塞队列。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "scripts/scout-scan.py",
+      "line": "160-161 (修复前)",
+      "severity": "medium",
+      "finding": "第6类标记自指虚高：count_markers 的 _STRIP_STRINGS 正则只剥单/双引号串，不剥离反引号代码段（markdown 代码段 + JS 模板字面量）。本文件 160/161 行注释用反引号引述 `# TODO:` / `TODO:` 来文档化'markdown 散文非真债'，反引号内的标记形式反被 _MARKER_RE `\\bTODO\\b\\s*[:-]` 计为真债，致 AS 永远 TODO=2 幽灵霸榜 scout #1、每轮推'triage TODO'却无可 triage 之物。扫描器把自身文档引例算成自己的债，与既有 4 类自指虚高同源。",
+      "remediation": "新增 _STRIP_BACKTICKS=re.compile(r\"`[^`]*`\")，count_markers 在 _STRIP_HTML_COMMENTS.sub 后追加 _STRIP_BACKTICKS.sub。与既有 strip 哲学一致（剥字符串字面量/占位符/HTML 注释——串内容非债）。验 AS TODO 2→0、deferred 4 不变、scout-scan.py 出 mfiles、推荐改真 worktree review。注释须避自指：不写反引号引述的标记形式字面量（首版用 \\\\`# TODO:\\\\` 反斜杠转义反引号致配对错乱重引入 2 幽灵，已改纯散文）。"
+    }
+  ]
 }

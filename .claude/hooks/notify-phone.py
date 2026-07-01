@@ -25,8 +25,10 @@ import json
 import socket
 import subprocess
 import time
+import random
+import string
 import urllib.request
-from datetime import datetime
+from datetime import datetime, timezone
 
 # ── Windows GBK 兼容 ─────────────────────────────
 if sys.platform == "win32":
@@ -88,10 +90,18 @@ def is_do_not_disturb(policy: dict | None) -> bool:
     current_time = current_hour * 60 + current_minute
 
     for schedule in dnd.get("schedule", []):
-        start_parts = schedule["start"].split(":")
-        end_parts = schedule["end"].split(":")
-        start_time = int(start_parts[0]) * 60 + int(start_parts[1])
-        end_time = int(end_parts[0]) * 60 + int(end_parts[1])
+        # 单条 schedule 字段残缺/格式非法(缺 start/end、非 "HH:MM"、非数字)时
+        # KeyError/IndexError/ValueError/AttributeError 一路冒泡会崩 send()/main()
+        # 致 hook 非零退出、静默丢全部通知(含 CRITICAL 确认)(case-444 security-review F1)。
+        # fail-open:跳过该条坏 schedule,其余合法条目仍生效——通知通道不因配置瑕疵而断。
+        try:
+            start_parts = schedule["start"].split(":")
+            end_parts = schedule["end"].split(":")
+            start_time = int(start_parts[0]) * 60 + int(start_parts[1])
+            end_time = int(end_parts[0]) * 60 + int(end_parts[1])
+        except (KeyError, IndexError, ValueError, AttributeError, TypeError):
+            print(f"[NOTIFY] DND schedule 条目格式非法,跳过: {schedule!r}", file=sys.stderr)
+            continue
 
         if start_time <= end_time:
             if start_time <= current_time <= end_time:
@@ -192,29 +202,36 @@ def notify_via_dingtalk(level: str, title: str, message: str, policy: dict | Non
 
     if template:
         # 使用模板格式化消息
-        md_text = template.format(
-            stage=title,
-            score="",
-            issue=message,
-            suggestion="",
-            app_name=title,
-            build_id="",
-            check_items="",
-            batch_count="",
-            task_name=title,
-            failed_cases="",
-            error_message=message,
-            reason=message,
-            count="",
-            duration="",
-            conflict_files="",
-            workers="",
-            artifact="",
-            test_count="",
-            batch_index="",
-            total_batches="",
-            observation="",
-        )
+        # try 守卫：notification-policy.json 的 dingtalk_template 若格式说明符残缺/引用
+        # 不存在的字段，str.format 抛 KeyError/IndexError/ValueError——此前未捕获会
+        # 一路冒泡崩 send()/main() 致 hook 非零退出、静默丢通知（含 CRITICAL 确认）。
+        # 落兜底纯 markdown，保证通知通道不因模板瑕疵而断（case-388 security-review）。
+        try:
+            md_text = template.format(
+                stage=title,
+                score="",
+                issue=message,
+                suggestion="",
+                app_name=title,
+                build_id="",
+                check_items="",
+                batch_count="",
+                task_name=title,
+                failed_cases="",
+                error_message=message,
+                reason=message,
+                count="",
+                duration="",
+                conflict_files="",
+                workers="",
+                artifact="",
+                test_count="",
+                batch_index="",
+                total_batches="",
+                observation="",
+            )
+        except (KeyError, IndexError, ValueError):
+            md_text = f"# {title}\n\n{message}"
     else:
         md_text = f"# {title}\n\n{message}"
 
@@ -229,6 +246,11 @@ def notify_via_dingtalk(level: str, title: str, message: str, policy: dict | Non
         },
     }
 
+    # DO B 埋点:钉钉 Webhook URL 内嵌 access_token(secret),dispatch 即 secret_access。
+    # result 如实反映成功/失败(errcode!=0 或异常→failure),不恒 success。
+    # 注意:detail 严禁含 webhook 明文(内含 access_token),仅记 errcode/异常类型。
+    ok = False
+    detail = ""
     try:
         data = json.dumps(body, ensure_ascii=False).encode("utf-8")
         req = urllib.request.Request(
@@ -239,10 +261,14 @@ def notify_via_dingtalk(level: str, title: str, message: str, policy: dict | Non
         )
         with urllib.request.urlopen(req, timeout=5) as resp:
             result = json.loads(resp.read().decode("utf-8"))
-            return result.get("errcode") == 0
+            ok = result.get("errcode") == 0
+            if not ok:
+                detail = f"errcode={result.get('errcode')}"
     except Exception as e:
         print(f"[NOTIFY] 钉钉通知失败: {e}", file=sys.stderr)
-        return False
+        detail = f"exception={type(e).__name__}"
+    _audit_log_notify("success" if ok else "failure", detail)
+    return ok
 
 
 # ── 去抖 ────────────────────────────────────────
@@ -358,6 +384,39 @@ def send(title: str, message: str, reason: str, priority: str) -> bool:
     if os.environ.get("NOTIFY_DEBUG"):
         print(f"\n🔔 [{title}] {message}", file=sys.stderr)
     return False
+
+
+def _audit_log_notify(result: str, detail: str):
+    """审计埋点(DO B:外部调用/secret 敏感路径——钉钉 Webhook URL 内嵌 access_token,
+    dispatch 即 secret_access)。append-only 写 JSONL 到 <PROJECT_DIR>/.audit/audit-YYYY-MM-DD.jsonl。
+    fail-safe:写失败不影响通知主流程。detail 严禁含 webhook 明文(内含 access_token)。
+    对齐 .claude/decisions/audit-log.schema.json,与 autonomous-commit-gate.py _audit_log_block 同构。"""
+    try:
+        now = datetime.now(timezone.utc)
+        date = now.strftime("%Y%m%d")
+        date_dashed = now.strftime("%Y-%m-%d")
+        rid = now.strftime("%H%M%S")
+        suffix = "".join(random.choices(string.ascii_lowercase + string.digits, k=6))
+        entry = {
+            "id": f"audit-{date}-{rid}-{suffix}",
+            "timestamp": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "userId": "engine",
+            "userRole": "engine",
+            "action": "secret_access",
+            "resource": {"type": "secret", "identifier": "dingtalk-webhook-token"},
+            "result": result,
+            "ip": "local",
+            "sensitive": True,
+            "sensitiveLevel": "critical",
+            "details": {"reason": "notify-phone 钉钉通知 dispatch(使用 webhook access_token)",
+                        "errorMessage": detail[:200]},
+        }
+        adir = os.path.join(PROJECT_DIR, ".audit")
+        os.makedirs(adir, exist_ok=True)
+        with open(os.path.join(adir, f"audit-{date_dashed}.jsonl"), "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except Exception:
+        pass
 
 
 def main():
