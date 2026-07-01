@@ -477,8 +477,19 @@ cmd_commit() {
   #   "stash apply 冲突，改动留在 stash" —— 实则无 stash、改动滞留 main、worktree 无 commit。
   # 改显式 cp：①指定文件 cp 到 target → ②worktree add+commit → ③main 还原
   #   (tracked → checkout HEAD / untracked 新文件 → rm) → ④断言 worktree 有新 commit 且 main 干净
+  # L-002 fix: cd $PROJECT 前将 files 规范化为相对 $PROJECT 的路径,防调用方 cwd ≠ $PROJECT 时
+  # 传入的相对路径在 cd 后失效。先 realpath 到绝对(容忍调用方 cwd 相对路径),再 --relative-to
+  # 折回 $PROJECT 相对路径——保证 git add/cp 在 worktree 里操作的是 scripts/foo.sh 而非绝对路径。
+  local -a _files_raw=("${@:5}")
+  local -a _files_norm=()
+  for _f in "${_files_raw[@]}"; do
+    [[ -z "$_f" ]] && continue
+    local _abs; _abs="$(realpath -m "$_f" 2>/dev/null || echo "$_f")"
+    local _rel; _rel="$(realpath -m --relative-to="$PROJECT" "$_abs" 2>/dev/null || echo "$_abs")"
+    _files_norm+=("$_rel")
+  done
   cd "$PROJECT"
-  local -a files=("${@:5}")   # 数组保留含空格的文件名（旧 "${@:5}" 拼成空格串再 for f in $files 会按 IFS 分词，空格文件名断裂）
+  local -a files=("${_files_norm[@]}")   # 数组保留含空格的文件名（旧 "${@:5}" 拼成空格串再 for f in $files 会按 IFS 分词，空格文件名断裂）
   if [[ -z "$(git status --porcelain)" ]]; then
     echo "（无未提交改动，跳过）"
     return 0
