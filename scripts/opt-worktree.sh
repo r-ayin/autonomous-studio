@@ -483,12 +483,17 @@ cmd_commit() {
   # L-002 fix: cd $PROJECT 前将 files 规范化为相对 $PROJECT 的路径,防调用方 cwd ≠ $PROJECT 时
   # 传入的相对路径在 cd 后失效。先 realpath 到绝对(容忍调用方 cwd 相对路径),再 --relative-to
   # 折回 $PROJECT 相对路径——保证 git add/cp 在 worktree 里操作的是 scripts/foo.sh 而非绝对路径。
+  # AS-EC-018 (audit-2026-07-02-002): realpath -m 会解析符号链接，当 $PROJECT 或文件路径含 symlink
+  # 时，解析后的绝对路径与 $PROJECT 字面前缀不匹配 → --relative-to 产出含 .. 的路径 →
+  # _validate_commit_file_path 拒绝。改用 -m -s（no-symlink-resolution）仅做词法规范化，
+  # 保留对不存在文件的容忍（-m）同时避免 symlink 导致的路径错位。$PROJECT 也同步规范化确保基准一致。
+  local _proj_norm; _proj_norm="$(realpath -m -s "$PROJECT" 2>/dev/null || echo "$PROJECT")"
   local -a _files_raw=("${@:5}")
   local -a _files_norm=()
   for _f in "${_files_raw[@]}"; do
     [[ -z "$_f" ]] && continue
-    local _abs; _abs="$(realpath -m "$_f" 2>/dev/null || echo "$_f")"
-    local _rel; _rel="$(realpath -m --relative-to="$PROJECT" "$_abs" 2>/dev/null || echo "$_abs")"
+    local _abs; _abs="$(realpath -m -s "$_f" 2>/dev/null || echo "$_f")"
+    local _rel; _rel="$(realpath -m -s --relative-to="$_proj_norm" "$_abs" 2>/dev/null || echo "$_abs")"
     _files_norm+=("$_rel")
   done
   cd "$PROJECT"
