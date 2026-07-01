@@ -14,15 +14,15 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-07-01T04:01:00Z（派生 fix 轮 case-494·audit-002 H-001 route-fix。opt-worktree.sh:327(direction-shift)+:348(route-fix 新 area)两处 worktree add 失败吞错+空目录残留+写桩造成功假象,仿 ensure_main_wt 守护:失败→rmdir --ignore-fail-on-non-empty $target+exit 1 不写桩。1 文件 +15/-2。bash -n OK+隔离功能测试(预建同名分支强制 worktree add 失败)验证 GUARD_EXIT=1/空目录已清/无桩/无孤儿 wt。落 opt-security-shift-1782878468(commit 0d26e39)待 sanctioned-merge。audit-cycle-state H-001 填 fix_case_id=case-494 status 仍 pending(未 merge) pending_count=9 不变）**
-- **活跃项目**: autonomous-studio-aone 维护——**audit-002 scripts module 9 findings,H-001 已派生 case-494 待 merge,余 8 待派生(H-005→M-002→M-001→M-003→M-004→L-001/002/003)**。audit-001 hooks module 已 cycle-complete(2H merged via 900a3cc/b1d072d)。**已审源码:hooks/ 14 hook 全审+scripts/opt-worktree.sh+autonomous-loop.sh 深审**。
-- **当前阶段**: case-494 收尾——H-001 fix 落 opt-security-shift-1782878468 待人工 sanctioned-merge;下轮派 H-005(autonomous-loop.sh:73 claude 输出改 mktemp 临时文件)
+- **最后活跃: 2026-07-01T04:15:00Z（派生 fix 轮 case-496·audit-002 M-002 route-fix。opt-worktree.sh:431,515 cmd_commit 文件列表 _cp_guard/rm 对 f=../../etc/cron.d/evil 可写/删 worktree 外文件。新增 _validate_commit_file_path helper(拒空/绝对路径/..段),两处 files 循环入口调用;非法路径跳过+报错不 abort。1 文件 +33。触及 scripts/opt-worktree.sh(public-interfaces.txt)→direction-shift 开新 worktree opt-security-shift-1782879314(commit 238afb1)。bash -n OK+单元测试 7/7(reject ['', '/etc/passwd', '../foo', 'a/../b', './../c']; pass ['scripts/foo.sh', '.claude/hooks/bar.py', 'a/b/c.txt'])。主仓 status clean(direction-shift 已还原主树)。落 opt-security-shift-1782879314 待人工 sanctioned-merge。audit-cycle-state M-002 填 fix_case_id=case-496 status 仍 pending pending_count=9 不变(3 已派生待 merge,6 未派生)）**
+- **活跃项目**: autonomous-studio-aone 维护——**audit-002 scripts module 9 findings,H-001/H-005/M-002 已派生(case-494/495/496)待 merge,余 6 待派生(M-001→M-003→M-004→L-001/002/003)**。audit-001 hooks module 已 cycle-complete(2H merged via 900a3cc/b1d072d)。**已审源码:hooks/ 14 hook 全审+scripts/opt-worktree.sh+autonomous-loop.sh 深审**。
+- **当前阶段**: case-496 收尾——M-002 fix 落 opt-security-shift-1782879314(commit 238afb1)待人工 sanctioned-merge;下轮派 M-001(slug glob 元字符过滤,opt-worktree.sh:339)
 - **GOAL_STATUS**: active
 - **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动；审计轮次事件驱动 audit-cycle-state + 敏感路径 audit-log 埋点）
-- **LAST_UPDATED**: 2026-07-01(case-493 audit-002 完成)
-- **LAST_WORKTREE**: 无(纯审计轮不产 worktree)。opt-security-* 三分支已 merge 入 main 并删;仅 auto/optimization 空壳保留
+- **LAST_UPDATED**: 2026-07-01(case-496 M-002 派生 fix)
+- **LAST_WORKTREE**: opt-security-shift-1782879314(commit 238afb1,M-002 fix 待 sanctioned-merge)。另 opt-security-shift-1782878468(H-001 commit 0d26e39)+opt-security-shift-1782878926(H-005 commit f5d21f0)亦待 merge;auto/optimization 空壳保留
 - **LAST_OUTCOME**: done
-- **NEXT_SUGGESTION**: [1]【下轮=派生 H-001 fix】opt-worktree.sh line 327/348 worktree add 失败后 rmdir $target + 明确 exit 1(仿 ensure_main_wt 模式),1 文件 route-fix,走 opt-worktree commit。[2]【再下轮=派生 H-005 fix】autonomous-loop.sh line 73 claude 输出改 mktemp 临时文件,tail/grep 读文件避免变量膨胀+敏感信息暴露。[3]【后续】M-002 路径遍历校验→M-001 glob 元字符→M-003 symbolic-ref 查分支→M-004 --bg 实现或删除文档→L-* 三个 low。9 个全部 merge/reject 后 audit-cycle-state 回 cycle-complete→触发 audit-003 审 scout-scan.py 或 sibling 项目(agent-dashboard/1BfrYn9G/huiyis)。[4]【structural debt】audit-002 无 structural finding,H-010~H-018(audit-001 low/info)仍未补登 structural-debt.md,可在派生 fix 间隙顺手补。
+- **NEXT_SUGGESTION**: [1]【下轮=派生 M-001 fix】scripts/opt-worktree.sh:339 slug() 未过滤 glob 元字符致 ls -d "$WT_BASE"/opt-$(slug "$new_area")-* 若 area 含 * 或 ? 则 glob 展开匹配非目标 worktree→slug() 增加 glob 元字符剥离或报错。route-fix(opt-worktree.sh 公共接口→direction-shift 新 worktree)。[2]【后续优先级队列】M-001→M-003(cmd_merge symbolic-ref 查分支名,:628)→M-004(--bg 实现或删文档,autonomous-loop.sh:19)→L-001(trap 清理孤儿 claude,:20)→L-002(files 转绝对路径,:364)→L-003(grep 模式收窄,:76)。[3]【merge 待办】H-001(opt-security-shift-1782878468/0d26e39)+H-005(opt-security-shift-1782878926/f5d21f0)+M-002(opt-security-shift-1782879314/238afb1)三 fix 待人工 sanctioned-merge 入 main;merge 后回写 audit-cycle-state derived_fixes 对应 status=merged+pending_count 递减。[4]9 个全 merge/reject 后 audit-cycle-state→cycle-complete 触发 audit-003(审 scout-scan.py 或 sibling 项目 agent-dashboard/1BfrYn9G/huiyis)。[5]【structural debt】audit-002 无 structural finding;audit-001 遗留 H-010~H-018 未补登 structural-debt.md,可在派生 fix 间隙顺手补。
 - **自主循环**: 🟢 活跃
   - L1 Inline: 每次回复末尾内联检查 (+ git status)
   - L2 Heartbeat: CronCreate 每7分钟（执行轨——推进 Studio 阶段或主动扫描）
@@ -74,10 +74,10 @@ metadata:
 <!-- GOAL_ID: G-2026-06-15-002 -->
 <!-- GOAL_STATUS: active -->
 <!-- ACTIVE_GOAL: ralph-wiggum-autonomous-loop (每轮一个小工作单位，scout-scan 排序选任务) -->
-<!-- LAST_UPDATED: 2026-07-01(case-494 H-001 派生 fix) -->
-<!-- LAST_WORKTREE: opt-security-shift-1782878468(commit 0d26e39,H-001 fix 待 sanctioned-merge)。audit-002 余 8 finding 待派生 -->
+<!-- LAST_UPDATED: 2026-07-01(case-496 M-002 派生 fix) -->
+<!-- LAST_WORKTREE: opt-security-shift-1782879314(commit 238afb1,M-002 fix 待 sanctioned-merge)。另 opt-security-shift-1782878468(H-001 0d26e39)+opt-security-shift-1782878926(H-005 f5d21f0)亦待 merge;auto/optimization 空壳保留 -->
 <!-- LAST_OUTCOME: done -->
-<!-- NEXT_SUGGESTION: [1]下轮=派生 H-005 fix: autonomous-loop.sh:73 `out=$(claude -p ... 2>&1)` 改 mktemp 临时文件,tail/grep 读文件避免 MB 级变量膨胀+敏感信息驻留,结束 shred/rm。1 文件 route-fix 走 opt-worktree commit。[2]后续 M-002(opt-worktree.sh:431/515 cmd_commit 文件列表 .. 遍历校验)→M-001(slug glob 元字符)→M-003(symbolic-ref 查分支)→M-004(--bg 实现或删文档)→L-001(trap 清理)/L-002(文件转绝对路径)/L-003(grep 模式收窄)。9 个全 merge/reject 后 audit-cycle-state→cycle-complete 触发 audit-003。[3]H-001 fix 待人工 sanctioned-merge opt-security-shift-1782878468 入 main;merge 后回写 audit-cycle-state derived_fixes[H-001].status=merged+pending_count--。[4]audit-001 遗留 H-009 notify-phone ntfy header 注入未修可顺手;H-010~H-018 structural debt 待补登 structural-debt.md。 -->
+<!-- NEXT_SUGGESTION: [1]下轮=派生 M-001 fix: scripts/opt-worktree.sh:339 slug() 未过滤 glob 元字符致 ls -d 误匹配→slug() 增 glob 元字符剥离或报错。route-fix(opt-worktree.sh 公共接口→direction-shift)。[2]后续 M-001→M-003(cmd_merge symbolic-ref,:628)→M-004(--bg 实现或删文档,autonomous-loop.sh:19)→L-001(trap 清理孤儿 claude,:20)→L-002(files 转绝对路径,:364)→L-003(grep 模式收窄,:76)。[3]H-001(1782878468/0d26e39)+H-005(1782878926/f5d21f0)+M-002(1782879314/238afb1)三 fix 待人工 sanctioned-merge 入 main;merge 后回写 audit-cycle-state derived_fixes status=merged+pending_count--。[4]9 个全 merge/reject 后 audit-cycle-state→cycle-complete 触发 audit-003(审 scout-scan.py 或 sibling 项目)。[5]audit-001 遗留 H-010~H-018 structural debt 待补登 structural-debt.md。 -->
 
 | 字段 | 内容 |
 |------|------|

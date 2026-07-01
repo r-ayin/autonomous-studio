@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-01-496",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-01T04:15:00Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "M-002 fix: cmd_commit 文件列表路径遍历防御",
+  "situation": "audit-2026-07-01-002 finding M-002 (MED): scripts/opt-worktree.sh:431,515 cmd_commit 显式文件循环未校验 .. 遍历 / 绝对路径，_cp_guard \"$f\" \"$target/$f\" + rm -f \"$f\" 对 f=`../../etc/cron.d/evil` 可写/删 worktree 外文件。H-001/H-005 已派生待 merge，本轮按优先级派 M-002。",
+  "action": "新增 _validate_commit_file_path helper（拒绝空/绝对路径/含 .. 段），在 cmd_commit 两处 files 循环入口（cp 阶段 line ~435、还原 main 阶段 line ~515）调用；非法路径跳过并报错（不 abort 整个 commit），让合法文件继续迁移。bash -n 通过；7/7 单元测试用例符合预期（拒: '' '/etc/passwd' '../foo' 'a/../b' './../c'；通: 'scripts/foo.sh' '.claude/hooks/bar.py' 'a/b/c.txt'）。",
+  "files_changed": ["scripts/opt-worktree.sh"],
+  "worktree": "opt-security-shift-1782879314",
+  "direction": "security:path-traversal-guard",
+  "outcome": "succeeded",
+  "outcome_evidence": "① commit sha=238afb167b9298fa659a131615e720915ef3015b, direction=security:path-traversal-guard (direction-shift 自动触发因 opt-worktree.sh 在 public-interfaces.txt)。② diff --stat: scripts/opt-worktree.sh | 33 +++ (仅 1 文件)。③ bash -n syntax OK。④ 单元测试 7/7: reject ['', '/etc/passwd', '../foo', 'a/../b', './../c']; pass ['scripts/foo.sh', '.claude/hooks/bar.py', 'a/b/c.txt']。⑤ git worktree list 含新 wt opt-security-shift-1782879314@238afb1。",
+  "next_suggestion": "[1]【人工 merge 待办,累计 3 worktree】opt-security-shift-1782878468(H-001)+opt-security-shift-1782878926(H-005)+opt-security-shift-1782879314(M-002) 均待 squash-merge 入 main。[2]【下轮派生 fix】audit-cycle-state.pending_count=9→M-002 派生后仍=9(状态 pending);下轮应派 M-001(slug glob 元字符过滤),再 M-003/M-004/L-*。[3]【pending fix 全部 merged/rejected 后】audit-cycle-state.status→cycle-complete,下下轮触发新一轮全量审计(挑未审过项目,避开 hooks/scripts)。",
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-01-002",
+  "audit_depth": "shallow"
+}
