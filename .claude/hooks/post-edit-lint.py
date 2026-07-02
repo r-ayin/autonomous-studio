@@ -20,6 +20,38 @@ if sys.platform == "win32":
 WORKSPACE_ROOT = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
 
 
+def _audit_log(action, resource, result):
+    """Append-only audit log for security-relevant events (constraints B).
+
+    Writes to <project>/.audit/audit-YYYY-MM-DD.jsonl. Never raises; failures
+    are silently dropped so the hook stays non-blocking.
+    """
+    try:
+        from datetime import datetime, timezone
+        import random
+        import string
+
+        now = datetime.now(timezone.utc)
+        rand6 = "".join(random.choices(string.ascii_lowercase + string.digits, k=6))
+        entry = {
+            "id": f"audit-{now.strftime('%Y%m%d-%H%M%S')}-{rand6}",
+            "timestamp": now.isoformat(),
+            "userId": os.environ.get("USER", os.environ.get("USERNAME", "unknown")),
+            "userRole": "engine",
+            "action": action,
+            "resource": resource,
+            "result": result,
+            "ip": "local",
+        }
+        audit_dir = os.path.join(WORKSPACE_ROOT, ".audit")
+        os.makedirs(audit_dir, exist_ok=True)
+        log_path = os.path.join(audit_dir, f"audit-{now.strftime('%Y-%m-%d')}.jsonl")
+        with open(log_path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except Exception:
+        pass  # Audit logging must never break the hook.
+
+
 def main():
     try:
         raw = sys.stdin.read()
@@ -41,9 +73,24 @@ def main():
 
     findings = []
 
-    # 绝对化
+    # 绝对化 + path traversal guard (PEL-001 fix)
     if not os.path.isabs(file_path):
         file_path = os.path.join(WORKSPACE_ROOT, file_path)
+    try:
+        real_path = os.path.realpath(file_path)
+        real_root = os.path.realpath(WORKSPACE_ROOT)
+        # Ensure resolved path is within workspace root.
+        # realpath resolves symlinks and '..' so prefix check is safe.
+        if not (real_path == real_root or real_path.startswith(real_root + os.sep)):
+            _audit_log("path-traversal-blocked", file_path, "denied")
+            print("{}")
+            return
+        file_path = real_path
+    except (OSError, ValueError):
+        # Unresolvable path (broken symlink, null byte, etc.) — deny silently.
+        _audit_log("path-unresolvable", file_path, "denied")
+        print("{}")
+        return
     if not os.path.exists(file_path):
         print("{}")
         return
