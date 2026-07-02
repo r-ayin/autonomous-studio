@@ -90,13 +90,34 @@ async function apiPut(path, body) {
 }
 
 /**
+ * Safely parse a JSON string; returns fallback on malformed input instead of throwing.
+ * Prevents deserializeEvent / findBatchEvent from crashing the deploy pipeline
+ * when the server returns corrupted payload strings (audit finding M-001).
+ * Logging is best-effort and synchronous to avoid breaking sync call sites.
+ */
+function safeJsonParse(text, fallback = {}) {
+  if (text == null) return fallback;
+  try {
+    return JSON.parse(text);
+  } catch (err) {
+    try {
+      process.stderr.write(
+        `[event-client] JSON.parse failed: ${err.message} | snippet=${String(text).slice(0, 200)}\n`
+      );
+    } catch { /* ignore */ }
+    return fallback;
+  }
+}
+
+/**
  * Deserialize a raw event from the server (payload is a JSON string → object).
+ * Tolerates malformed payload by falling back to {} (audit finding M-001).
  */
 function deserializeEvent(raw) {
   if (!raw) return null;
   return {
     ...raw,
-    payload: raw.payload ? JSON.parse(raw.payload) : {},
+    payload: safeJsonParse(raw.payload, {}),
   };
 }
 
@@ -148,7 +169,7 @@ export async function findBatchEvent(taskId, batchIndex) {
   });
   const items = extractItems(resp);
   const match = items.find(raw => {
-    const payload = raw.payload ? JSON.parse(raw.payload) : {};
+    const payload = safeJsonParse(raw.payload, {});
     return payload.batch_index === batchIndex;
   });
   return match ? deserializeEvent(match) : null;

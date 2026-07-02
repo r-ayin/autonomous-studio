@@ -17,6 +17,28 @@ import { parseArgs } from 'node:util';
 
 const TERMINAL_STATUSES = new Set(['SUCCESS', 'FAILED']);
 
+/**
+ * Safely parse CLI-supplied JSON strings; returns fallback on malformed input.
+ * Prevents the entire report-event invocation from crashing when a user/script
+ * passes corrupted --check-items / --resolved-strategy / --payload (audit finding L-003).
+ */
+function safeJsonParseCli(text, fallback, context) {
+  if (text == null) return fallback;
+  try {
+    return JSON.parse(text);
+  } catch (err) {
+    writeAuditLog({
+      auditAction: 'cli-json-parse-failed',
+      resourceType: 'cli-argument',
+      resourceId: context || 'unknown',
+      result: 'failure',
+      details: { error: err.message, snippet: String(text).slice(0, 200) },
+      metadata: { tags: ['prod-deploy', 'report-event', 'malformed-cli-json'] },
+    });
+    return fallback;
+  }
+}
+
 // ─── Event Handlers ─────────────────────────────────────────────────────────
 
 async function handlePipelineCheck(taskId, args) {
@@ -121,7 +143,7 @@ async function handlePreCheck(taskId, args) {
     strict: false,
   });
 
-  const checkItems = values['check-items'] ? JSON.parse(values['check-items']) : null;
+  const checkItems = values['check-items'] ? safeJsonParseCli(values['check-items'], null, 'pre_check:check-items') : null;
   const existing = await findEvent(taskId, 'pre_check');
 
   if (!existing) {
@@ -172,7 +194,7 @@ async function handleDeployPlan(taskId, args) {
     strict: false,
   });
 
-  const resolvedStrategy = values['resolved-strategy'] ? JSON.parse(values['resolved-strategy']) : {};
+  const resolvedStrategy = values['resolved-strategy'] ? safeJsonParseCli(values['resolved-strategy'], {}, 'deploy_plan:resolved-strategy') : {};
   const existing = await findEvent(taskId, 'deploy_plan');
 
   if (existing) {
@@ -205,7 +227,7 @@ async function handleDeployBatch(taskId, args) {
   const batchIndex = parseInt(values['batch-index'], 10);
   const batchTotal = values['batch-total'] ? parseInt(values['batch-total'], 10) : null;
   const instances = values['instances'] ? parseInt(values['instances'], 10) : null;
-  const extraPayload = values.payload ? JSON.parse(values.payload) : null;
+  const extraPayload = values.payload ? safeJsonParseCli(values.payload, null, `deploy_batch:payload:${values['batch-index'] || '?'}`) : null;
 
   const existing = await findBatchEvent(taskId, batchIndex);
 
