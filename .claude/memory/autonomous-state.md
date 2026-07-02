@@ -14,15 +14,15 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-07-02T03:15Z（case-2026-07-02-056 瞭望轮#106,fix-in-progress 阻塞检查,pending_count=4,opt-hooks-1782932119 4 commits 已 push origin,等用户 merge/reject）**
-- **活跃项目**: autonomous-studio-aone 维护——**audit-2026-07-02-001完成(.claude/hooks/):H-001/M-001/M-002/L-001 全派生 fix,均在 opt-hooks-1782932119 pending merge(origin 已同步)**。I-001审计埋点DRY→SD-001。**已审源码:hooks/+scripts/+runtime-listeners/+tests/+.claude/hooks/(100%顶层代码+gate基础设施覆盖)**。下一深审目标(等 cycle-complete):check-planning-status.sh/protocol-check.py/decision-observer.py三辅助脚本,或跨模块数据流。
-- **当前阶段**: case-2026-07-02-056 瞭望轮#106完成;**pending_count=4(全部 pending merge in opt-hooks-1782932119)**;**fix-in-progress→等用户merge/reject后cycle-complete**。待merge列表:opt-hooks-1782932119(含H-001+M-001+M-002+L-001)+opt-tests-1782904286+opt-engine-shift-1782901796+opt-runtime-listeners-1782902553。
+- **最后活跃: 2026-07-02T11:30Z（case-2026-07-02-149 audit-history drift repair,audit-2026-07-01-004 fixes_merged_at=null→rejected-archive,state-only direct commit @717a169）**
+- **活跃项目**: dingtalk-auto——**BLOCKED 13+轮:等用户merge opt-dingtalk-auto-1782948136(4 commits)+opt-dashboard-auth-1782947814(H-001)**。audit-2026-07-02-002派生5 fix全pending,L-001 rejected,I-001→SD-004 structural-debt。shizi case-2026-07-02-147 opt-shizi-1782953491 pending merge。fa_agent case-2026-07-02-135 opt-fa_agent-1782949878 pending merge。**已修复(case-149):audit-2026-07-01-004(tests)history条目标记rejected-archive,不再误判为未完成周期**。autonomous-studio-aone已审模块:hooks/+scripts/+runtime-listeners/+tests/+.claude/hooks/(100%)。
+- **当前阶段**: case-2026-07-02-149 audit-history drift repair succeeded(state-only direct commit);**audit-cycle-state status=fix-in-progress,pending_count=5(all dispatched pending merge,L-001 rejected)**。**BLOCKED 13+轮:等用户merge后触发cycle-complete→新审计**。卡死保护生效:跳过dingtalk重复提醒,做跨项目worktree积压态势感知+state schema健康维护。
 - **GOAL_STATUS**: active
 - **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动；审计轮次事件驱动 audit-cycle-state + 敏感路径 audit-log 埋点）
-- **LAST_UPDATED**: 2026-07-02(case-2026-07-02-056 瞭望轮#106,fix-in-progress 维持,pending_count=4)
-- **LAST_WORKTREE**: null (瞭望轮无 commit)。待merge列表: opt-hooks-1782932119+opt-tests-1782904286+opt-engine-shift-1782901796+opt-runtime-listeners-1782902553。
+- **LAST_UPDATED**: 2026-07-02(case-2026-07-02-149 audit-history-drift-repair state-only-direct-commit)
+- **LAST_WORKTREE**: none(state-only direct commit to main @717a169)。待merge列表: opt-shizi-1782953491+opt-fa_agent-1782949878+opt-dingtalk-auto-1782948136(含4 commits)+opt-dashboard-auth-1782947814(H-001)+opt-tests-1782904286(audit-004遗留,rejected-archive)+opt-engine-shift-1782901796+opt-runtime-listeners-1782902553。
 - **LAST_OUTCOME**: done
-- **NEXT_SUGGESTION**: [1]【阻塞·用户动作】review opt-hooks-1782932119 diff(H-001+M-001+M-002+L-001),merge/reject各case;落定后derived_fixes[].status改merged,全完→status=cycle-complete。[2]同步review其他3待merge worktree(opt-tests/opt-engine-shift/opt-runtime-listeners)。[3]cycle-complete后下轮启动新全量审计,优先未审module:check-planning-status.sh/protocol-check.py/decision-observer.py,或跨模块数据流。[4]structural debt SD-001(审计埋点DRY refactor)需用户授权direction-shift。
+- **NEXT_SUGGESTION**: [1]⚠️用户approve merge dingtalk-auto 2个opt-worktree(opt-dashboard-auth-1782947814+opt-dingtalk-auto-1782948136),merge后pending_count→0,cycle-complete触发新全量审计(下一目标:browser-use/pc_agent/open-design未深度审过)。[2]用户merge opt-shizi-1782953491+opt-fa_agent-1782949878。[3]SD-004 dingtalk-auto audit-log需授权direction-shift。[4]连续blocked 13+轮,下轮若仍blocked可做其他项目GATES扫描(pc_agent/shizi/open-design)或(若用户已merge部分fix使pending_count降低)启动新一轮全量审计。[5]历史遗留:opt-tests-1782904286 worktree仍存在但内容stale,可cleanup。
 - **自主循环**: 🟢 活跃
   - L1 Inline: 每次回复末尾内联检查 (+ git status)
   - L2 Heartbeat: CronCreate 每7分钟（执行轨——推进 Studio 阶段或主动扫描）
@@ -74,10 +74,10 @@ metadata:
 <!-- GOAL_ID: G-2026-06-15-002 -->
 <!-- GOAL_STATUS: active -->
 <!-- ACTIVE_GOAL: ralph-wiggum-autonomous-loop (每轮一个小工作单位，scout-scan 排序选任务) -->
-<!-- LAST_UPDATED: 2026-07-02(case-2026-07-02-056 瞭望轮#106,fix-in-progress,pending_count=4,opt-hooks-1782932119 已push origin等merge) -->
-<!-- LAST_WORKTREE: null(瞭望轮无commit)。待merge:opt-hooks+opt-tests+opt-engine-shift+opt-runtime-listeners -->
+<!-- LAST_UPDATED: 2026-07-02(case-2026-07-02-149 audit-history-drift-repair state-only-direct-commit) -->
+<!-- LAST_WORKTREE: none(state-only direct commit to main @717a169)。待merge列表: opt-shizi-1782953491+opt-fa_agent-1782949878+opt-dingtalk-auto-1782948136(含4 commits)+opt-dashboard-auth-1782947814(H-001)+opt-tests-1782904286(audit-004遗留,rejected-archive)+opt-engine-shift-1782901796+opt-runtime-listeners-1782902553 -->
 <!-- LAST_OUTCOME: done -->
-<!-- NEXT_SUGGESTION: [1]用户review opt-hooks-1782932119(H-001+M-001+M-002+L-001),merge/reject→derived_fixes status改merged。[2]全落定→cycle-complete→新全量审计(check-planning-status.sh/protocol-check.py/decision-observer.py或跨模块数据流)。[3]review其他3 worktree。[4]SD-001需授权 -->
+<!-- NEXT_SUGGESTION: [1]⚠️用户approve merge dingtalk-auto 2个opt-worktree,merge后cycle-complete触发新审计。[2]用户merge opt-shizi-1782953491+opt-fa_agent-1782949878。[3]SD-004 dingtalk-auto audit-log需授权。[4]连续blocked 13+轮,下轮若仍blocked可扫其他项目GATES或(若pending_count降低)启动新审计。[5]历史遗留:opt-tests-1782904286 worktree仍存在但stale,可cleanup -->
 
 | 字段 | 内容 |
 |------|------|

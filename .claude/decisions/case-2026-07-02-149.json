@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-02-149",
+  "agent_id": "ralph-wiggum-loop",
+  "timestamp": "2026-07-02T11:30:00Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "audit-history drift repair: mark audit-2026-07-01-004 history entry fixes_merged_at=rejected-archive (derived fixes archived unmerged, worktree opt-tests-1782904286 stale)",
+  "situation": "Scout #120 (fix-in-progress phase). 5 pending derived_fixes from audit-2026-07-02-002 all BLOCKED on human merge (opt-dingtalk-auto-1782948136 + opt-dashboard-auth-1782947814), 13th+ consecutive blocked round. Discovered audit-cycle-state.history inconsistency: audit-2026-07-01-004 (tests module) had fixes_merged_at=null with 5 derived_route_fixes + 2 structural_debts silently dropped from active tracking after cases 579-583 were archived unmerged on 2026-07-02. This could cause future audit cycles to misinterpret as incomplete and skip triggering next deep audit.",
+  "action": "Verified via archive grep that case-579~583 (audit_id=audit-2026-07-01-004) are in .claude/archive/2026-07/ with outcome=succeeded but never merged; worktree opt-tests-1782904286 still exists at commit 52ae82e but content is stale. Edited audit-cycle-state.json history entry for audit-2026-07-01-004: set fixes_merged_at='rejected-archive', added _note explaining drift. Direct-committed to main per archival-commit-mechanism (state-only file exception to DO NOT direct-commit rule, matches historical pattern a3249fb). Pushed to origin/main @717a169.",
+  "files_changed": [".claude/audit-cycle-state.json"],
+  "worktree": null,
+  "direction": "state:audit-history-cleanup",
+  "outcome": "succeeded",
+  "outcome_evidence": "git log --oneline -1 shows 717a169 on main; git push origin main succeeded (7ebfc60..717a169); jq '.history[] | select(.audit_id==\"audit-2026-07-01-004\") | .fixes_merged_at' returns \"rejected-archive\"; two current-cycle worktrees (opt-dingtalk-auto-1782948136 @7390bd0, opt-dashboard-auth-1782947814 @8e2dc30) verified present via git worktree list and remotes/origin branches exist.",
+  "next_suggestion": "User must merge opt-dingtalk-auto-1782948136 (case-130/131/132/134) and opt-dashboard-auth-1782947814 (case-129) to unblock audit cycle. After merge, engine will mark derived_fixes status=merged, set audit-cycle-state.status=cycle-complete, and trigger next full deep audit (likely targeting fa_agent or browser-use — both not yet deep-audited).",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": null,
+  "audit_depth": "shallow"
+}
