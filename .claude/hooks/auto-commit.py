@@ -42,6 +42,20 @@ EXCLUDED_PREFIXES = (
     ".git", ".pytest_cache", "Inno Setup 6", "Telegram Desktop",
 )
 
+# AC-F005 fix: 敏感文件后缀/文件名硬排除（防凭证泄露到 git history）
+SENSITIVE_SUFFIXES = (
+    ".env", ".pem", ".key", ".p12", ".pfx", ".jks", ".keystore",
+    ".secret", ".secrets", ".credentials", ".token",
+    ".aws", ".npmrc", ".pypirc", ".dockercfg",
+)
+SENSITIVE_BASENAMES = {
+    ".env", ".env.local", ".env.production", ".env.staging", ".env.development",
+    "id_rsa", "id_dsa", "id_ecdsa", "id_ed25519",
+    "google-services.json", "GoogleService-Info.plist",
+    "credentials.json", "service-account.json", "client_secret.json",
+    ".htpasswd", "shadow", "passwd",
+}
+
 # 根仓库中属于子仓库的路径（由 _belongs_to_subrepo 动态判断）
 SUBREPO_NAMES = {r["name"] for r in KNOWN_REPOS if r["is_subrepo"]}
 
@@ -103,6 +117,13 @@ def is_excluded(file_path: str) -> bool:
     fp = file_path.replace("\\", "/")
     for prefix in EXCLUDED_PREFIXES:
         if fp == prefix or fp.startswith(prefix + "/"):
+            return True
+    # AC-F005 fix: 敏感后缀/文件名硬排除
+    basename = os.path.basename(fp).lower()
+    if basename in {b.lower() for b in SENSITIVE_BASENAMES}:
+        return True
+    for suffix in SENSITIVE_SUFFIXES:
+        if fp.lower().endswith(suffix):
             return True
     return False
 
