@@ -167,6 +167,16 @@ async function main() {
 
   if (!cachedTaskId) {
     cachedTaskId = await drillDownToPreCheckTask();
+    // M-002 fix: persist task_id cache immediately after drill-down so that a
+    // later updateEvent failure (network blip) does not force a redundant
+    // re-drill on the next poll cycle. Payload-only update (status=null keeps
+    // existing event status per event-client terminal-state semantics).
+    try {
+      await updateEvent(event, null, { task_id: String(cachedTaskId) });
+    } catch (cacheErr) {
+      // Non-fatal: worst case we re-drill next cycle. Log for observability.
+      console.error(`WARN: failed to persist pre-check task_id cache: ${cacheErr.message}`);
+    }
   }
 
   const taskStatusRaw = await runA1('app', 'pipeline', 'stage', 'job', 'task', 'status', '--task-id', String(cachedTaskId), '--app', appName, '--format', 'json');
