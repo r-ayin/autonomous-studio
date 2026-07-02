@@ -40,7 +40,12 @@ IGNORE_DIRS = {".git", "node_modules", ".venv", "__pycache__", ".pytest_cache",
 # 里 pydantic/h11/PyInstaller 的第三方 FIXME/HACK 被计入项目真债，虚高至 #1）。
 # 故任何 .venv 前缀目录一律忽略。
 IGNORE_DIR_PREFIXES = (".venv",)
-IGNORE_FILES_SUFFIX = (".pyc", ".log", ".lock", ".min.js", ".min.css", ".map")
+IGNORE_FILES_SUFFIX = (".pyc", ".log", ".lock", ".min.js", ".min.css", ".map",
+                       "_bundle.js", ".bundle.js")
+# _bundle.js / .bundle.js：第三方 vendor bundle（如 excalidraw-diagram-skill/references/
+# _excalidraw_bundle.js 含 React/Excalidraw 上游 TODO=33），非自有代码债。此前 AS
+# 计 TODO=3（实际 33，scout 有截断）致每轮推 "triage TODO" 却无可 triage 之物。
+# .min.js 已排除但 uncompressed bundle 未覆盖。
 MAX_FILE_SIZE = 2 * 1024 * 1024  # >2MB 不索引内容
 STALE_DAYS = 7
 
