@@ -12,6 +12,7 @@
 import { parseArgs } from 'node:util';
 import { createEvent } from './lib/event-client.js';
 import { getTask, updateTask } from './lib/task-client.js';
+import { writeAuditLog } from './lib/audit-log-helper.js';
 
 const { values } = parseArgs({
   options: {
@@ -50,6 +51,16 @@ async function main() {
   });
 
   console.log(JSON.stringify({ success: true, task_id: taskId, status: finishStatus, summary }));
+
+  // DO B audit-log: deploy-complete is a sensitive path (deploy action)
+  writeAuditLog({
+    auditAction: 'deploy-complete',
+    resourceType: 'deployment',
+    resourceId: taskId,
+    result: success ? 'success' : 'failure',
+    details: { reason: summary || (success ? 'deploy-succeeded' : 'deploy-failed') },
+    metadata: { tags: ['prod-deploy', 'complete-task', finishStatus] },
+  });
 }
 
 main().catch(err => { console.error('ERROR:', err.message); process.exit(1); });

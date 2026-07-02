@@ -12,6 +12,7 @@
  */
 
 import { findEvent, findBatchEvent, createEvent, updateEvent } from './lib/event-client.js';
+import { writeAuditLog } from './lib/audit-log-helper.js';
 import { parseArgs } from 'node:util';
 
 const TERMINAL_STATUSES = new Set(['SUCCESS', 'FAILED']);
@@ -78,6 +79,15 @@ async function handleBuild(taskId, args) {
   if (!existing) {
     const payload = { pipeline_id: values['pipeline-id'], cr_id: values['cr-id'] };
     const event = await createEvent(taskId, 'build', payload);
+    // DO B audit-log: build creation implies pipeline trigger (sensitive path)
+    writeAuditLog({
+      auditAction: 'pipeline-triggered',
+      resourceType: 'pipeline',
+      resourceId: values['pipeline-id'] || taskId,
+      result: 'success',
+      details: { reason: 'build-event-created', correlationId: taskId },
+      metadata: { tags: ['prod-deploy', 'build', 'pipeline-trigger'] },
+    });
     if (values.status) {
       const fields = values['error-message'] ? { error_message: values['error-message'] } : null;
       return updateEvent(event, values.status, fields);
@@ -206,6 +216,18 @@ async function handleDeployBatch(taskId, args) {
     if (instances != null) eventPayload.instances = instances;
     if (extraPayload) Object.assign(eventPayload, extraPayload);
     const event = await createEvent(taskId, 'deploy_batch', eventPayload, values['deploy-order-id']);
+    // DO B audit-log: batch deploy start is a sensitive path (deploy action)
+    writeAuditLog({
+      auditAction: 'batch-deploy-start',
+      resourceType: 'deployment',
+      resourceId: `${values['deploy-order-id'] || taskId}:batch-${batchIndex}`,
+      result: 'success',
+      details: {
+        reason: 'batch-deploy-created',
+        correlationId: taskId,
+      },
+      metadata: { tags: ['prod-deploy', 'deploy-batch', `batch-${batchIndex}`] },
+    });
     if (values.status) {
       const fields = values['error-message'] ? { error_message: values['error-message'] } : null;
       return updateEvent(event, values.status, fields);
