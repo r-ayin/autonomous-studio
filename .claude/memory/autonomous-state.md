@@ -14,15 +14,15 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-07-02T06:03Z（case-2026-07-02-200 pc_agent M-001 TOCTOU fix committed, audit-2026-07-02-006 fix-in-progress）**
-- **活跃项目**: audit-cycle-state status=fix-in-progress, current_audit_id=audit-2026-07-02-006 (pc_agent), pending_count=3。**已审项目**: autonomous-studio-aone (5 modules), dingtalk-auto (deadlock-archived), agentfw (rejected-archive), fusion-server (H-001/H-002 merged-local; M/I rejected-archive), fa_agent (all 8 fixes dispatched), **pc_agent (audit-2026-07-02-006: H-001 ✅merged case-2026-07-02-001; M-001 ✅committed case-2026-07-02-200 opt-pc_agent-1782972172; M-002 image magic + M-003 multipart sanitize + L-001 fail-fast → 3 pending route-fixes; I-001 → SD-008 structural)**。
-- **当前阶段**: H-001 merged, M-001 committed. 3 remaining derived fixes pending.**下轮派生 M-002**。
+- **最后活跃: 2026-07-03T03:15Z（case-2026-07-03-060 open-design M-003 plugin archive fetcher SSRF guard → opt-open-design-1783015907）**
+- **活跃项目**: audit-cycle-state status=fix-in-progress. audit-2026-07-03-012 (open-design apps/daemon) complete: 27 findings (6 high, 13 medium, 8 low). H-002 merged; H-003/H-004/H-005/M-001/M-003 dispatched (case-2026-07-03-056/057/058/059/060, all push 403 awaiting human merge). 10 derived fixes still pending dispatch. 11 structural debts queued (SD-019 through SD-029).
+- **当前阶段**: fix-in-progress. H-002+H-003+H-004+H-005+M-001+M-003 dispatched; continue with remaining 10 pending fixes sequentially.
 - **GOAL_STATUS**: active
 - **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动；审计轮次事件驱动 audit-cycle-state + 敏感路径 audit-log 埋点）
-- **LAST_UPDATED**: 2026-07-02(case-2026-07-02-200 pc_agent M-001 TOCTOU fix)
-- **LAST_WORKTREE**: opt-pc_agent-1782972172 (pc_agent M-001)。待merge列表: opt-docs-1782966525(fusion PROGRESS.md)+opt-shizi-1782953491+opt-fa_agent-1782949878(M-004)+opt-dingtalk-auto-1782948136(含4 commits)+opt-dashboard-auth-1782947814(H-001)+**opt-server-1782967507(H-001 bcrypt + H-002 JWT fail-fast + H-003 bind-loopback + M-001 ref-whitelist + M-002 is_public-gate + M-003 auth-fail-fast + L-001 error-sanitize)**+**opt-security-1782971766(pc_agent H-001 sandbox)**+**opt-pc_agent-1782972172(pc_agent M-001 TOCTOU)**。Orphan待决策: opt-tests-1782904286+opt-engine-shift-1782901796+opt-runtime-listeners-1782902553。⚠️ GONE: opt-agentfw-1782961299, opt-fusion-1782964240, opt-fusion-server-1782965668。
+- **LAST_UPDATED**: 2026-07-03(case-2026-07-03-060 open-design M-003 plugin archive fetcher SSRF guard)
+- **LAST_WORKTREE**: opt-open-design-1783015907
 - **LAST_OUTCOME**: done
-- **NEXT_SUGGESTION**: [1]🔥派生 pc_agent M-002 fix: claude-pipeline.js fetchImageAsBase64 加 magic byte validation（route-fix, 1 file）。[2]然后 M-003 multipart filename sanitize。[3]然后 L-001 fail-fast client。[4]SD-007/SD-008 audit-log + HTTP client dedup 等用户授权。[5]merge shizi+fa_agent+dingtalk+dashboard-auth+docs+server+security+pc_agent worktrees。
+- **NEXT_SUGGESTION**: [1] Dispatch M-005 (portless loopback origin bypass — remove portless fallback or restrict to safe read-only paths). [2] Then M-006 OAuth callback postMessage wildcard targetOrigin. [3] Structural debts SD-019/SD-020 need user decision when pending_count < 5.
 - **自主循环**: 🟢 活跃
   - L1 Inline: 每次回复末尾内联检查 (+ git status)
   - L2 Heartbeat: CronCreate 每7分钟（执行轨——推进 Studio 阶段或主动扫描）
@@ -74,10 +74,10 @@ metadata:
 <!-- GOAL_ID: G-2026-06-15-002 -->
 <!-- GOAL_STATUS: active -->
 <!-- ACTIVE_GOAL: ralph-wiggum-autonomous-loop (每轮一个小工作单位，scout-scan 排序选任务) -->
-<!-- LAST_UPDATED: 2026-07-02(case-2026-07-02-200 pc_agent M-001 TOCTOU fix) -->
-<!-- LAST_WORKTREE: opt-pc_agent-1782972172 (pc_agent M-001). 待merge: opt-docs+opt-shizi+opt-fa_agent(M-004)+opt-dingtalk-auto+opt-dashboard-auth+opt-server-1782967507+opt-security-1782971766+opt-pc_agent-1782972172. Orphan: opt-tests/opt-engine-shift/opt-runtime-listeners. ⚠️GONE: opt-agentfw, opt-fusion-1782964240, opt-fusion-server-1782965668 -->
+<!-- LAST_UPDATED: 2026-07-03(case-2026-07-03-060 open-design M-003 plugin archive fetcher SSRF guard) -->
+<!-- LAST_WORKTREE: opt-open-design-1783015907 -->
 <!-- LAST_OUTCOME: done -->
-<!-- NEXT_SUGGESTION: [1]🔥派生 pc_agent M-002 fix: claude-pipeline.js image magic bytes (route-fix)。[2]M-003 multipart sanitize。[3]L-001 fail-fast client。[4]SD-007/SD-008 等授权。[5]merge worktrees -->
+<!-- NEXT_SUGGESTION: [1] Dispatch M-005 portless loopback origin bypass [2] Then M-006 OAuth callback postMessage wildcard targetOrigin [3] SD-019/SD-020 need user decision when pending_count < 5 -->
 
 | 字段 | 内容 |
 |------|------|
