@@ -22,7 +22,6 @@ autonomous-studio:watchdog.sh
 autonomous-studio:hooks/install-studio-hooks.sh
 autonomous-studio:config/settings.json.example
 autonomous-studio:config/scheduled_tasks.json.example
-autonomous-studio:.claude/hooks/__init__.py
 
 # === agent-dashboard ===
 agent-dashboard:backend/app/main.py
