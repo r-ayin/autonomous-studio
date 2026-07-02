@@ -14,15 +14,15 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-07-02T17:45Z（case-2026-07-02-188 drift repair: fusion-server audit-2026-07-02-004 4 fixes rejected-archive, cycle-complete）**
-- **活跃项目**: audit-cycle-state status=cycle-complete。**已审项目**: autonomous-studio-aone (5 modules), dingtalk-auto (deadlock-archived), agentfw (rejected-archive), fusion-server (H-001/H-002 merged-local; M-001/M-002/M-003/I-001 rejected-archive via case-188 drift repair)。**下一轮触发新全量审计**。
-- **当前阶段**: case-2026-07-02-188 drift repair round。Verified opt-fusion-1782964240 + opt-fusion-server-1782965668 worktrees+branches MISSING. Archived 4 pending-merge fixes. Transitioned fix-in-progress → cycle-complete。**audit-cycle-state status=cycle-complete, pending_count=0**。Next: 🔥新全量审计 on unaudited project (candidates: fa_agent, pc_agent, quanzhan, shizi, stagehand-analysis)。
+- **最后活跃: 2026-07-02T06:03Z（case-2026-07-02-200 pc_agent M-001 TOCTOU fix committed, audit-2026-07-02-006 fix-in-progress）**
+- **活跃项目**: audit-cycle-state status=fix-in-progress, current_audit_id=audit-2026-07-02-006 (pc_agent), pending_count=3。**已审项目**: autonomous-studio-aone (5 modules), dingtalk-auto (deadlock-archived), agentfw (rejected-archive), fusion-server (H-001/H-002 merged-local; M/I rejected-archive), fa_agent (all 8 fixes dispatched), **pc_agent (audit-2026-07-02-006: H-001 ✅merged case-2026-07-02-001; M-001 ✅committed case-2026-07-02-200 opt-pc_agent-1782972172; M-002 image magic + M-003 multipart sanitize + L-001 fail-fast → 3 pending route-fixes; I-001 → SD-008 structural)**。
+- **当前阶段**: H-001 merged, M-001 committed. 3 remaining derived fixes pending.**下轮派生 M-002**。
 - **GOAL_STATUS**: active
 - **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动；审计轮次事件驱动 audit-cycle-state + 敏感路径 audit-log 埋点）
-- **LAST_UPDATED**: 2026-07-02(case-2026-07-02-188 drift repair fusion audit-004 fixes)
-- **LAST_WORKTREE**: null(drift repair was state-only, no code commit)。待merge列表: opt-docs-1782966525(fusion PROGRESS.md)+opt-shizi-1782953491+opt-fa_agent-1782949878+opt-dingtalk-auto-1782948136(含4 commits)+opt-dashboard-auth-1782947814(H-001)。Orphan待决策: opt-tests-1782904286(rejected-archive可cleanup)+opt-engine-shift-1782901796(unmerged)+opt-runtime-listeners-1782902553(partially merged)。⚠️ GONE: opt-agentfw-1782961299, opt-fusion-1782964240, opt-fusion-server-1782965668 (all drift-repaired)。
+- **LAST_UPDATED**: 2026-07-02(case-2026-07-02-200 pc_agent M-001 TOCTOU fix)
+- **LAST_WORKTREE**: opt-pc_agent-1782972172 (pc_agent M-001)。待merge列表: opt-docs-1782966525(fusion PROGRESS.md)+opt-shizi-1782953491+opt-fa_agent-1782949878(M-004)+opt-dingtalk-auto-1782948136(含4 commits)+opt-dashboard-auth-1782947814(H-001)+**opt-server-1782967507(H-001 bcrypt + H-002 JWT fail-fast + H-003 bind-loopback + M-001 ref-whitelist + M-002 is_public-gate + M-003 auth-fail-fast + L-001 error-sanitize)**+**opt-security-1782971766(pc_agent H-001 sandbox)**+**opt-pc_agent-1782972172(pc_agent M-001 TOCTOU)**。Orphan待决策: opt-tests-1782904286+opt-engine-shift-1782901796+opt-runtime-listeners-1782902553。⚠️ GONE: opt-agentfw-1782961299, opt-fusion-1782964240, opt-fusion-server-1782965668。
 - **LAST_OUTCOME**: done
-- **NEXT_SUGGESTION**: [1]🔥下一轮触发新全量深度审计——选未审过的项目 (fa_agent/pc_agent/quanzhan/shizi/stagehand-analysis)，跳过已审的 autonomous-studio/dingtalk-auto/agentfw/fusion-server。[2]用户若仍想 merge fusion H-001/H-002（这两个曾 merged-local 但 main HEAD b55f111 不含，需核实是否真的进 main）。[3]L-001 structural debt (fusion audit-log) 仍在 structural-debt.md。[4]merge shizi+fa_agent+dingtalk+dashboard-auth+docs worktrees。[5]⚠️连续 4 个审计周期以 unmerged-archive 结束（audit-01-004/02-002/02-003/02-004），建议下下次 autonomous-studio 自审时调查 worktree 生命周期是否有 bug。
+- **NEXT_SUGGESTION**: [1]🔥派生 pc_agent M-002 fix: claude-pipeline.js fetchImageAsBase64 加 magic byte validation（route-fix, 1 file）。[2]然后 M-003 multipart filename sanitize。[3]然后 L-001 fail-fast client。[4]SD-007/SD-008 audit-log + HTTP client dedup 等用户授权。[5]merge shizi+fa_agent+dingtalk+dashboard-auth+docs+server+security+pc_agent worktrees。
 - **自主循环**: 🟢 活跃
   - L1 Inline: 每次回复末尾内联检查 (+ git status)
   - L2 Heartbeat: CronCreate 每7分钟（执行轨——推进 Studio 阶段或主动扫描）
@@ -74,10 +74,10 @@ metadata:
 <!-- GOAL_ID: G-2026-06-15-002 -->
 <!-- GOAL_STATUS: active -->
 <!-- ACTIVE_GOAL: ralph-wiggum-autonomous-loop (每轮一个小工作单位，scout-scan 排序选任务) -->
-<!-- LAST_UPDATED: 2026-07-02(case-2026-07-02-188 drift repair fusion audit-004 cycle-complete) -->
-<!-- LAST_WORKTREE: null(drift repair state-only)。待merge: opt-docs-1782966525+opt-shizi+opt-fa_agent+opt-dingtalk-auto+opt-dashboard-auth。Orphan: opt-tests/opt-engine-shift/opt-runtime-listeners。⚠️GONE: opt-agentfw, opt-fusion-1782964240, opt-fusion-server-1782965668 -->
+<!-- LAST_UPDATED: 2026-07-02(case-2026-07-02-200 pc_agent M-001 TOCTOU fix) -->
+<!-- LAST_WORKTREE: opt-pc_agent-1782972172 (pc_agent M-001). 待merge: opt-docs+opt-shizi+opt-fa_agent(M-004)+opt-dingtalk-auto+opt-dashboard-auth+opt-server-1782967507+opt-security-1782971766+opt-pc_agent-1782972172. Orphan: opt-tests/opt-engine-shift/opt-runtime-listeners. ⚠️GONE: opt-agentfw, opt-fusion-1782964240, opt-fusion-server-1782965668 -->
 <!-- LAST_OUTCOME: done -->
-<!-- NEXT_SUGGESTION: [1]🔥下一轮新全量审计 on unaudited project (fa_agent/pc_agent/quanzhan/shizi/stagehand-analysis)。[2]核实 fusion H-001/H-002 是否真进 main。[3]L-001 structural debt 待授权。[4]merge shizi+fa_agent+dingtalk+dashboard-auth+docs worktrees。[5]⚠️连续 4 审计周期 unmerged-archive，建议自审 worktree 生命周期 -->
+<!-- NEXT_SUGGESTION: [1]🔥派生 pc_agent M-002 fix: claude-pipeline.js image magic bytes (route-fix)。[2]M-003 multipart sanitize。[3]L-001 fail-fast client。[4]SD-007/SD-008 等授权。[5]merge worktrees -->
 
 | 字段 | 内容 |
 |------|------|
