@@ -14,13 +14,13 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-07-02T11:48Z（case-2026-07-02-152: 瞭望轮#63 修复audit-cycle-state同步bug，9条已合并fix标merged→cycle-complete）**
+- **最后活跃: 2026-07-02T11:50Z（case-2026-07-02-152: 瞭望轮#63修复audit-cycle-state同步bug,9条已合并fix标merged→cycle-complete）**
 - **活跃项目**: autonomous-studio (cycle-complete; audit-002全部9条fix已squash-merge进main,状态文件已同步)
 - **当前阶段**: cycle-complete ✅. 审计周期完成,下轮触发新全量审计. 卡死保护解除(根因=状态同步bug已修).
 - **GOAL_STATUS**: active
 - **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动；审计轮次事件驱动 audit-cycle-state）
 - **LAST_UPDATED**: 2026-07-02(case-2026-07-02-152: 修复audit-cycle-state同步bug,9条fix标merged,cycle-complete)
-- **LAST_WORKTREE**: none (状态文件直接编辑,无需worktree)
+- **LAST_WORKTREE**: opt-engine-audit-state-sync (状态文件直接编辑+commit)
 - **LAST_OUTCOME**: done
 - **NEXT_SUGGESTION**: [1] ⚠️ **下轮走全量审计**（status=cycle-complete触发）。选未深度审过的项目：personal-assistant(PROGRESS=3.4天stale)、shizi、sunset-prediction、wechat-main。建议 personal-assistant。[2] 长期方案：opt-worktree.sh cmd_merge 成功后自动回写 audit-cycle-state.json 对应 fix status=merged，防再次出现状态漂移。[3] opt-governance-1782967430 仍待人工 merge（AS-GOV-001+003）。
 - **自主循环**: 🟢 活跃
@@ -75,7 +75,7 @@ metadata:
 <!-- GOAL_STATUS: active -->
 <!-- ACTIVE_GOAL: ralph-wiggum-autonomous-loop (每轮一个小工作单位，scout-scan 排序选任务) -->
 <!-- LAST_UPDATED: 2026-07-02(case-2026-07-02-152: 修复audit-cycle-state同步bug,9条fix标merged,cycle-complete) -->
-<!-- LAST_WORKTREE: none (状态文件直接编辑,无需worktree) -->
+<!-- LAST_WORKTREE: opt-engine-audit-state-sync (状态文件直接编辑+commit) -->
 <!-- LAST_OUTCOME: done -->
 <!-- NEXT_SUGGESTION: [1] ⚠️ 下轮走全量审计(cycle-complete触发),建议审personal-assistant. [2] 长期:opt-worktree.sh cmd_merge自动回写audit-cycle-state防状态漂移. [3] opt-governance-1782967430仍待人工merge. -->
 
