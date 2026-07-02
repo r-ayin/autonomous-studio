@@ -1,0 +1,30 @@
+{
+  "case_id": "case-2026-07-02-173",
+  "agent_id": "ralph-wiggum-loop",
+  "timestamp": "2026-07-02T16:15:00Z",
+  "project": "agentfw",
+  "work_unit": "fix H-001: updateConfig non-atomic write",
+  "situation": "Deep audit audit-2026-07-02-003 found HIGH severity H-001: packages/afw/src/core/config.ts updateConfig() used raw writeFile instead of atomicWrite, risking config.json corruption on crash/concurrent write. Every other sensitive store (secrets.ts, access-keys.ts, masking.ts) correctly uses atomicWrite. Also lacked serialized read-modify-write chain, allowing concurrent patch clobbers.",
+  "action": "Replaced writeFile with atomicWrite (from ./atomic-file.ts). Added configWriteChain serialized promise chain mirroring mutateSecrets pattern in secrets.ts. Removed now-unused mkdir/dirname imports (atomicWrite handles mkdir internally). API signature unchanged — all 8 callers transparent.",
+  "files_changed": [
+    "packages/afw/src/core/config.ts"
+  ],
+  "worktree": "opt-agentfw-1782961299",
+  "direction": "agentfw:config-atomic-write",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit landed in opt-agentfw-1782961299. Diff: -writeFile import +atomicWrite import; -mkdir/dirname imports; updateConfig body replaced with configWriteChain.then() wrapping atomicWrite call. API signature (patch: Partial<AfwConfig>) → Promise<AfwConfig> preserved. Push to remote failed (403 read-only mirror) — non-blocking per opt-worktree.sh design.",
+  "next_suggestion": "Dispatch M-001 fix (token lookup linear scan → in-memory Map index). Then M-002 (CORS origin:* + bind address), M-003 (ReDoS protection), L-001 (pattern dedup). After all 5 route-fixes merged/rejected, audit-cycle-state transitions to cycle-complete → triggers next deep audit.",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "packages/afw/src/core/config.ts",
+      "line": 68,
+      "severity": "high",
+      "finding": "updateConfig used raw writeFile instead of atomicWrite — crash/concurrent write can corrupt config.json",
+      "remediation": "Replace with atomicWrite + add serialized write chain",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-02-003",
+  "audit_depth": "shallow"
+}

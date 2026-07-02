@@ -14,15 +14,15 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-07-02T10:05Z（case-2026-07-02-161 scout snapshot #132 + 25th consecutive blocked round,observation-only）**
-- **活跃项目**: dingtalk-auto——**BLOCKED 25+轮:等用户merge opt-dingtalk-auto-1782948136(4 commits)+opt-dashboard-auth-1782947814(H-001)**。audit-2026-07-02-002派生5 fix全pending,L-001 rejected,I-001→SD-004 structural-debt。shizi case-2026-07-02-147 opt-shizi-1782953491 pending merge。fa_agent case-2026-07-02-135 opt-fa_agent-1782949878(commit 89ecf3d3 PROGRESS.md+GATES.md)pending merge。**已修复(case-149):audit-2026-07-01-004(tests)history条目标记rejected-archive**。autonomous-studio-aone已审模块:hooks/+scripts/+runtime-listeners/+tests/+.claude/hooks/(100%)。
-- **当前阶段**: case-2026-07-02-161 scout snapshot #132 (observation-only,no code change);**audit-cycle-state status=fix-in-progress,pending_count=5(all dispatched pending merge,L-001 rejected)**。**BLOCKED 25+轮:等用户merge后触发cycle-complete→新审计**。本轮验证所有worktree状态无变化(vs case-160),确认无新可执行工作。
+- **最后活跃: 2026-07-02T16:15Z（case-2026-07-02-173 agentfw H-001 fix dispatched → opt-agentfw-1782961299）**
+- **活跃项目**: agentfw——**audit-2026-07-02-003 fix dispatch in progress: H-001 committed to opt-agentfw-1782961299 (awaiting merge), 4 route-fixes still pending (M-001/M-002/M-003/L-001)**。dingtalk-auto cycle deadlock-archived。shizi opt-shizi-1782953491 + fa_agent opt-fa_agent-1782949878 pending merge。**已审项目: autonomous-studio-aone (hooks/scripts/runtime-listeners/tests/.claude/hooks 100%), dingtalk-auto (full, deadlock-archived), agentfw (core-security+daemon-proxy+store, active fix-dispatch cycle)**。
+- **当前阶段**: case-2026-07-02-173 H-001 fix committed;**audit-cycle-state status=fix-in-progress for agentfw, pending_count=5 (1 dispatched awaiting merge, 4 awaiting dispatch)**。Next: M-001 token lookup index。dingtalk-auto 5 pending fixes 保留在 worktrees 等用户 merge。
 - **GOAL_STATUS**: active
 - **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动；审计轮次事件驱动 audit-cycle-state + 敏感路径 audit-log 埋点）
-- **LAST_UPDATED**: 2026-07-02(case-2026-07-02-161 scout-snapshot-132 observation-only)
-- **LAST_WORKTREE**: none(observation-only scout round)。待merge列表: opt-shizi-1782953491+opt-fa_agent-1782949878+opt-dingtalk-auto-1782948136(含4 commits)+opt-dashboard-auth-1782947814(H-001)。Orphan待决策: opt-tests-1782904286(rejected-archive可cleanup)+opt-engine-shift-1782901796(judge_direction_kind alias fix,unmerged)+opt-runtime-listeners-1782902553(audit-log instrumentation,partially merged via 7ebfc60 but 2 commits unmerged)。
+- **LAST_UPDATED**: 2026-07-02(case-2026-07-02-173 agentfw H-001 fix → opt-agentfw-1782961299)
+- **LAST_WORKTREE**: opt-agentfw-1782961299(agentfw H-001 config atomicWrite fix)。待merge列表: opt-agentfw-1782961299+opt-shizi-1782953491+opt-fa_agent-1782949878+opt-dingtalk-auto-1782948136(含4 commits)+opt-dashboard-auth-1782947814(H-001)。Orphan待决策: opt-tests-1782904286(rejected-archive可cleanup)+opt-engine-shift-1782901796(unmerged)+opt-runtime-listeners-1782902553(partially merged)。
 - **LAST_OUTCOME**: done
-- **NEXT_SUGGESTION**: [1]⚠️用户必须approve merge dingtalk-auto 2个opt-worktree(opt-dashboard-auth-1782947814+opt-dingtalk-auto-1782948136),merge后pending_count→0,cycle-complete触发新全量审计(下一目标:open-design/shizi/pc_agent/stagehand-analysis未深度审过)。[2]用户merge opt-shizi-1782953491+opt-fa_agent-1782949878(verified commit 89ecf3d3)。[3]SD-004 dingtalk-auto audit-log需授权direction-shift。[4]⚠️用户决策3个autonomous-studio-aone orphan worktree:merge or prune(opt-tests stale per audit-004 rejected-archive;opt-engine-shift+opt-runtime-listeners有unmerged commits)。[5]若用户部分merge使pending_count降低,立即派生剩余fix或启动新审计。
+- **NEXT_SUGGESTION**: [1]🔥派生 agentfw M-001 fix: access-keys.ts token lookup → in-memory Map index (route-fix, 1-2 files)。[2]用户merge opt-agentfw-1782961299 (H-001 verified)。[3]用户merge dingtalk-auto 2个worktree解除旧cycle。[4]用户merge shizi+fa_agent。[5]SD-005 agentfw DB encryption 需授权。[6]agentfw M-002/M-003/L-001 按序派生fix。
 - **自主循环**: 🟢 活跃
   - L1 Inline: 每次回复末尾内联检查 (+ git status)
   - L2 Heartbeat: CronCreate 每7分钟（执行轨——推进 Studio 阶段或主动扫描）
@@ -74,10 +74,10 @@ metadata:
 <!-- GOAL_ID: G-2026-06-15-002 -->
 <!-- GOAL_STATUS: active -->
 <!-- ACTIVE_GOAL: ralph-wiggum-autonomous-loop (每轮一个小工作单位，scout-scan 排序选任务) -->
-<!-- LAST_UPDATED: 2026-07-02(case-2026-07-02-161 scout-snapshot-132 observation-only) -->
-<!-- LAST_WORKTREE: none(observation-only)。待merge: opt-shizi-1782953491+opt-fa_agent-1782949878(verified 89ecf3d3)+opt-dingtalk-auto-1782948136+opt-dashboard-auth-1782947814。Orphan待决策: opt-tests/opt-engine-shift/opt-runtime-listeners(均pushed to origin,unmerged) -->
+<!-- LAST_UPDATED: 2026-07-02(case-2026-07-02-173 agentfw H-001 fix → opt-agentfw-1782961299) -->
+<!-- LAST_WORKTREE: opt-agentfw-1782961299(H-001 config atomicWrite)。待merge: opt-agentfw-1782961299+opt-shizi-1782953491+opt-fa_agent-1782949878+opt-dingtalk-auto-1782948136+opt-dashboard-auth-1782947814。Orphan: opt-tests/opt-engine-shift/opt-runtime-listeners -->
 <!-- LAST_OUTCOME: done -->
-<!-- NEXT_SUGGESTION: [1]⚠️用户merge dingtalk-auto 2个worktree→cycle-complete→新审计(open-design/shizi/pc_agent/stagehand-analysis)。[2]用户merge shizi+fa_agent(verified)。[3]SD-004 audit-log授权。[4]⚠️用户决策3个orphan worktree merge/prune。[5]pending_count降低则派生fix或新审计 -->
+<!-- NEXT_SUGGESTION: [1]🔥派生agentfw M-001 fix(token lookup→Map index,route-fix)。[2]用户merge opt-agentfw-1782961299(H-001)。[3]用户merge dingtalk-auto 2 worktree。[4]用户merge shizi+fa_agent。[5]SD-005需授权。[6]M-002/M-003/L-001按序派生 -->
 
 | 字段 | 内容 |
 |------|------|
