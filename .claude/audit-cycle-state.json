@@ -1,29 +1,18 @@
 {
   "_schema": "audit-cycle-state v1.0",
   "_description": "追踪当前全量审计周期状态。全量审计事件驱动：上次派生的 fix 全部 merge/reject 落定后才触发下一次全量审计。引擎每轮 step 0 读这个文件决定本轮是审计轮还是瞭望轮。",
-  "current_audit_id": "audit-2026-07-01-002",
-  "current_audit_started_at": "2026-07-01T03:50:00Z",
-  "current_audit_project": "autonomous-studio-aone",
-  "current_audit_module": "scripts",
-  "derived_fixes": [
-    {"fix_case_id": "case-2026-07-01-494", "audit_id": "audit-2026-07-01-002", "finding_id": "H-001", "status": "pending", "priority": 1, "note": "瞭望轮#36验证: behind=4(与fix文件无交集),merge-ready via squash"},
-    {"fix_case_id": "case-2026-07-01-495", "audit_id": "audit-2026-07-01-002", "finding_id": "H-005", "status": "pending", "priority": 2, "note": "瞭望轮#36验证: behind=4(与fix文件无交集),merge-ready via squash"},
-    {"fix_case_id": "case-2026-07-01-496", "audit_id": "audit-2026-07-01-002", "finding_id": "M-002", "status": "pending", "priority": 3, "note": "瞭望轮#36验证: behind=4(与fix文件无交集),merge-ready via squash"},
-    {"fix_case_id": "case-2026-07-01-497", "audit_id": "audit-2026-07-01-002", "finding_id": "M-001", "status": "pending", "priority": 4, "note": "瞭望轮#36验证: behind=4(与fix文件无交集),merge-ready via squash"},
-    {"fix_case_id": "case-2026-07-01-498", "audit_id": "audit-2026-07-01-002", "finding_id": "M-003", "status": "pending", "priority": 5, "note": "瞭望轮#36验证: behind=4(与fix文件无交集),merge-ready via squash"},
-    {"fix_case_id": "case-2026-07-01-499", "audit_id": "audit-2026-07-01-002", "finding_id": "M-004", "status": "pending", "priority": 6, "note": "瞭望轮#36验证: behind=4(与fix文件无交集),merge-ready via squash"},
-    {"fix_case_id": "case-2026-07-01-500", "audit_id": "audit-2026-07-01-002", "finding_id": "L-001", "status": "pending", "priority": 7, "note": "瞭望轮#36验证: behind=4(与fix文件无交集),merge-ready via squash"},
-    {"fix_case_id": "case-2026-07-01-501", "audit_id": "audit-2026-07-01-002", "finding_id": "L-002", "status": "rejected", "priority": 8, "note": "REJECTED by 瞭望轮#10 merge验证:commit 11a5f3c 写入绝对路径 home/admin/.../opt-worktree.sh(A 新增),正确路径 scripts/opt-worktree.sh 零改动。fix 复现了 L-002 bug 本身,merge 会污染 main。已由 case-519 v2 fix 替代(opt-scripts-shift-1782884741,realpath --relative-to 方案)"},
-    {"fix_case_id": "case-2026-07-01-519", "audit_id": "audit-2026-07-01-002", "finding_id": "L-002", "status": "pending", "priority": 8, "note": "瞭望轮#36验证: behind=4(与fix文件无交集),merge-ready via squash"},
-    {"fix_case_id": "case-2026-07-01-502", "audit_id": "audit-2026-07-01-002", "finding_id": "L-003", "status": "pending", "priority": 9, "note": "瞭望轮#36验证: behind=4(与fix文件无交集),merge-ready via squash"}
-  ],
-  "pending_count": 9,
-  "status": "fix-in-progress",
-  "_status_note": "audit-2026-07-01-002 (scripts module) 完成深度审计，9 条 finding (2H/4M/3L)。case-501(L-002) REJECTED;case-519 v2 fix pending。**瞭望轮#60(2026-07-01T10:11Z)**: scout快照score=0.0,git rev-list验证HEAD ahead origin/main by 5(引擎state commits);pending_count=9不变,BLOCKED on human merge。**卡死保护触发**:连续60轮无源码改动,引擎维持不rebase策略避免behind数字膨胀,等用户merge动作。",
+  "current_audit_id": null,
+  "current_audit_started_at": null,
+  "current_audit_project": null,
+  "current_audit_module": null,
+  "derived_fixes": [],
+  "pending_count": 0,
+  "status": "cycle-complete",
+  "_status_note": "瞭望轮#63(2026-07-02T11:48Z): 发现 audit-002 全部 9 条 fix (H-001/H-005/M-001~M-004/L-001~L-003) 早已 squash-merge 进 main(commit 92792fe/25a104a/cea1871/d818533/40cbdd2/a78f30b/7e47c1e/6a5b984/7b6b66a)，但状态文件未同步导致引擎误报 BLOCKED 62+ 轮。本轮修正状态→cycle-complete，下轮触发新全量审计。",
   "_status_enum": "idle | auditing | fix-in-progress | cycle-complete",
   "last_audit_completed_at": "2026-07-01T03:55:00Z",
   "last_audit_id": "audit-2026-07-01-002",
-  "next_audit_trigger_reason": null,
+  "next_audit_trigger_reason": "pending-fixes-cleared",
   "_next_audit_trigger_reason_enum": "pending-fixes-cleared | manual-trigger | first-run",
   "history": [
     {
@@ -47,8 +36,9 @@
       "findings_by_severity": {"high": 2, "medium": 4, "low": 3, "info": 0},
       "derived_route_fixes": 9,
       "derived_structural_debts": 0,
-      "fixes_merged_at": null,
-      "fixes_merged_commits": []
+      "fixes_merged_at": "2026-07-02T11:48:00Z",
+      "fixes_merged_commits": ["92792fe", "25a104a", "cea1871", "d818533", "40cbdd2", "a78f30b", "7e47c1e", "6a5b984", "7b6b66a"],
+      "_state_sync_note": "瞭望轮#63补录: 实际 merge 时间早于状态更新，引擎因未检测 squash-merge 而误报 pending 62+ 轮"
     }
   ]
 }
