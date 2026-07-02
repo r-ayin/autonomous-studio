@@ -1,20 +1,27 @@
 {
   "_schema": "audit-cycle-state v1.0",
   "_description": "追踪当前全量审计周期状态。全量审计事件驱动：上次派生的 fix 全部 merge/reject 落定后才触发下一次全量审计。引擎每轮 step 0 读这个文件决定本轮是审计轮还是瞭望轮。",
-  "current_audit_id": null,
-  "current_audit_started_at": null,
-  "current_audit_project": null,
-  "current_audit_module": null,
-  "derived_fixes": [],
+  "current_audit_id": "audit-2026-07-02-004",
+  "current_audit_started_at": "2026-07-02T16:00:00Z",
+  "current_audit_project": "fusion-server",
+  "current_audit_module": "full-project",
+  "derived_fixes": [
+    {"fix_case_id": "case-2026-07-02-181", "audit_id": "audit-2026-07-02-004", "finding_id": "H-001", "status": "merged-local", "description": "0.0.0.0 binding + no auth → default 127.0.0.1 + API key middleware"},
+    {"fix_case_id": "case-2026-07-02-182", "audit_id": "audit-2026-07-02-004", "finding_id": "H-002", "status": "merged-local", "description": "API key leak in logs → sanitize exceptions + log file mode 0o600"},
+    {"fix_case_id": "case-2026-07-02-183", "audit_id": "audit-2026-07-02-004", "finding_id": "M-001", "status": "rejected-archive", "description": "smart_proxy path traversal → whitelist allowed paths (worktree opt-fusion-1782964240 MISSING, drift-repaired case-188)"},
+    {"fix_case_id": "case-2026-07-02-184", "audit_id": "audit-2026-07-02-004", "finding_id": "M-002", "status": "rejected-archive", "description": "launcher/keepalive TOCTOU + pkill misfire → PID file (worktree opt-fusion-1782964240 MISSING, drift-repaired case-188)"},
+    {"fix_case_id": "case-2026-07-02-185", "audit_id": "audit-2026-07-02-004", "finding_id": "M-003", "status": "rejected-archive", "description": "JSON parse fail silent degradation → return 400 (worktree opt-fusion-server-1782965668 MISSING, drift-repaired case-188)"},
+    {"fix_case_id": "case-2026-07-02-186", "audit_id": "audit-2026-07-02-004", "finding_id": "I-001", "status": "rejected-archive", "description": "usage fields hardcoded 0 → aggregate from workers+judge (worktree opt-fusion-server-1782965668 MISSING, drift-repaired case-188)"}
+  ],
   "pending_count": 0,
   "status": "cycle-complete",
-  "_last_scout_at": "2026-07-02T03:32:18Z",
-  "_last_scout_case_id": "case-2026-07-02-179",
-  "_last_scout_summary": "Drift repair: agentfw opt-agentfw-1782961299 worktree missing despite 5 cases (173-177) marked succeeded. All 5 derived fixes marked rejected-archive. Cycle set to cycle-complete to unblock next full audit.",
-  "_status_note": "agentfw audit-2026-07-02-003 drift repaired 2026-07-02: worktree opt-agentfw-1782961299 was cleaned up without merge (same pattern as audit-2026-07-01-004 + audit-2026-07-02-002). All 5 fixes (H-001/M-001/M-002/M-003/L-001) archived unmerged. Status=cycle-complete → next round triggers new full audit on un-audited project.",
+  "_last_scout_at": "2026-07-02T17:45:00Z",
+  "_last_scout_case_id": "case-2026-07-02-188",
+  "_last_scout_summary": "Drift repair round. Verified opt-fusion-1782964240 and opt-fusion-server-1782965668 worktrees+branches are gone (git worktree list / git branch -a both empty for fusion). Main HEAD b55f111 has no fusion fixes. Archived 4 pending-merge fixes as rejected-archive (same pattern as audit-002/003/004-history). Transitioned status fix-in-progress → cycle-complete. Next round triggers new full audit on unaudited project.",
+  "_status_note": "audit-2026-07-02-004 fully settled via drift-repair. H-001/H-002 merged-local (case-181/182, still in main? verify next audit). M-001/M-002/M-003/I-001 all rejected-archive (worktrees cleaned without merge, case-188 drift repair). Cycle complete → next full audit eligible. Scout #1 fusion-server score=6.0 but PROGRESS.md already in opt-docs-1782966525 — skip unless user merges/deletes that worktree. Recommended next audit targets: fa_agent, pc_agent, quanzhan, shizi, stagehand-analysis (none deep-audited yet).",
   "_status_enum": "idle | auditing | fix-in-progress | cycle-complete",
-  "last_audit_completed_at": "2026-07-02T15:30:00Z",
-  "last_audit_id": "audit-2026-07-02-003",
+  "last_audit_completed_at": "2026-07-02T16:30:00Z",
+  "last_audit_id": "audit-2026-07-02-004",
   "next_audit_trigger_reason": "pending-fixes-cleared",
   "_next_audit_trigger_reason_enum": "pending-fixes-cleared | manual-trigger | first-run",
   "history": [
@@ -109,6 +116,20 @@
       "fixes_merged_at": "rejected-archive",
       "fixes_merged_commits": [],
       "_note": "case-2026-07-02-179 drift repair 2026-07-02: worktree opt-agentfw-1782961299 was cleaned up without merge (branch gone, no commits on main). All 5 derived fixes (H-001 case-173, M-001 case-174, M-002 case-175, M-003 case-176, L-001 case-177) archived unmerged. Same pattern as audit-2026-07-01-004 + audit-2026-07-02-002."
+    },
+    {
+      "audit_id": "audit-2026-07-02-004",
+      "project": "fusion-server",
+      "module": "full-project",
+      "completed_at": "2026-07-02T16:30:00Z",
+      "findings_total": 7,
+      "findings_by_severity": {"high": 2, "medium": 3, "low": 1, "info": 1},
+      "derived_route_fixes": 6,
+      "derived_direction_shifts": 0,
+      "derived_structural_debts": 1,
+      "fixes_merged_at": null,
+      "fixes_merged_commits": [],
+      "_note": "Deep audit on fusion-server. H-001 (no auth), H-002 (key leak), M-001 (path traversal), M-002 (TOCTOU), M-003 (silent degradation), I-001 (usage=0) → 6 route-fixes all dispatched. L-001 (audit-log) → structural debt. As of case-186: all 6 committed across 2 worktrees (opt-fusion-1782964240 has H-001+H-002+M-001+M-002; opt-fusion-server-1782965668 has M-003+I-001). Awaiting user merge."
     }
   ]
 }
