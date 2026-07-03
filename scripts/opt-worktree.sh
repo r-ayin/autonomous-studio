@@ -1041,12 +1041,14 @@ cmd_cleanup() {
     [[ "$name" == "_indexes" ]] && continue
     local ahead dirty status_out line
     ahead=$(git -C "$d" rev-list --count "$MAIN_BRANCH"..HEAD 2>/dev/null || echo 0)
-    # .opt-direction 是每个 worktree 的方向标记桩（untracked），非真改动，剔后再判脏。
+    # .opt-direction / .opt-lock 是 worktree 基础设施桩文件（untracked），非真改动，剔后再判脏。
+    # .opt-lock = cmd_commit 持锁防并发；.opt-direction = 方向标记。两者均不应阻止 cleanup。
     status_out=$(git -C "$d" status --porcelain 2>/dev/null || true)
     dirty=0
     while IFS= read -r line; do
       [[ -z "$line" ]] && continue
       [[ "$line" == "?? .opt-direction" ]] && continue
+      [[ "$line" == "?? .opt-lock" ]] && continue
       dirty=$((dirty + 1))
     done <<< "$status_out"
     if [[ "$ahead" != "0" || "$dirty" != "0" ]]; then
