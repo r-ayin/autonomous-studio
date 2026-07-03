@@ -123,7 +123,7 @@ def check_syntax():
             # → check_syntax 误判为语法错误触发 Stop 阻断（最多 3 次后 MAX_STRIKES
             # 放行自愈，但仍属假阳性）。case-472 security-review 修复。
             cr = subprocess.run(
-                ["python", "-m", "py_compile", "--", f],
+                [sys.executable, "-m", "py_compile", "--", f],
                 cwd=WORKSPACE_ROOT, capture_output=True, timeout=10)
             if cr.returncode != 0:
                 return False, f"语法错误: {f}"
@@ -135,7 +135,7 @@ def check_syntax():
 def check_tests_pass():
     """有测试套件则要求通过；无测试框架则放行（不强制建测试）。"""
     for cmd, label in [
-        (["python", "-m", "pytest", "--tb=no", "-q"], "pytest"),
+        ([sys.executable, "-m", "pytest", "--tb=no", "-q"], "pytest"),
         (["npm", "test", "--", "--watchAll=false"], "npm"),
         (["make", "test"], "make"),
     ]:
