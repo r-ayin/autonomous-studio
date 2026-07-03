@@ -8,6 +8,7 @@
 """
 import os
 import sys
+import shutil
 import json
 import subprocess
 
@@ -54,10 +55,11 @@ def main():
     if ext == "py":
         try:
             cr = subprocess.run(
-                ["python", "-m", "py_compile", file_path],
+                [sys.executable, "-m", "py_compile", file_path],
                 cwd=WORKSPACE_ROOT, capture_output=True, text=True, timeout=15)
             if cr.returncode != 0:
-                findings.append(f"❌ Python 语法错误: {(cr.stderr or '').strip().splitlines()[-1] if cr.stderr else ''}")
+                _elines = (cr.stderr or '').strip().splitlines()
+                findings.append(f"❌ Python 语法错误: {_elines[-1] if _elines else '(无错误详情)'}")
         except Exception as e:
             pass  # 不报错，静默跳过
 
@@ -73,7 +75,7 @@ def main():
             if os.path.exists(tf):
                 try:
                     tr = subprocess.run(
-                        ["python", "-m", "pytest", tf, "--tb=short", "-q"],
+                        [sys.executable, "-m", "pytest", tf, "--tb=short", "-q"],
                         cwd=WORKSPACE_ROOT, capture_output=True, text=True, timeout=60)
                     tail = (tr.stdout or tr.stderr or "").strip().splitlines()
                     summary = tail[-1] if tail else "(无输出)"
@@ -87,7 +89,7 @@ def main():
 
     # TypeScript/JavaScript：类型检查
     elif ext in ("ts", "tsx", "js", "jsx"):
-        if subprocess.run(["which", "npx"], capture_output=True).returncode == 0:
+        if shutil.which("npx") is not None:
             try:
                 tr = subprocess.run(
                     ["npx", "--no-install", "tsc", "--noEmit", file_path],
