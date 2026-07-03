@@ -1340,3 +1340,7 @@ scout-scan top 3 recommendations (#1 1BfrYn9G, #2 agent-dashboard, #3 agentfw) a
 scout-scan 推荐列表 top 3 全是「等合并 PROGRESS.md」——不可操作的 blocked 项。真正可做的工作（补 GATES.md、triage TODO、刷新 stale PROGRESS）被挤出推荐。根因：work_unit 用 first-match 优先级链，「PROGRESS 缺+pending」先于「GATES 真缺」命中；排序只按 score 不区分 acti
 
 **证据**: 修复前 #1-3 全是「等合并 PROGRESS.md」；修复后 #1 1BfrYn9G → 补 GATES.md（可操作），排序正确。JSON --json 输出验证 actionable=True 标志正确传递。
+- case-2026-07-01-604 | pending-worktree-merge-digest-refresh | outcome=succeeded | worktree=None | audit_type=none | findings=0
+- case-2026-07-01-605 | 瞭望轮#22-blocked-on-merge-refresh-digest | outcome=succeeded | worktree=None | audit_type=none | findings=0
+- case-2026-07-01-606 | verify-pending-worktrees-rebase-cleanliness | outcome=succeeded | worktree=None | audit_type=none | findings=0
+- case-2026-07-01-607 | 瞭望轮#79: cherry-pick 逐 commit 验证 pending worktree rebase cleanliness (独立复现 case-606 结论) | outcome=succeeded | worktree=None | audit_type=none | findings=0

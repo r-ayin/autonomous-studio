@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-07-01-596",
+  "agent_id": "ralph-wiggum-loop",
+  "timestamp": "2026-07-01T12:31:00Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "scout-snapshot-blocked-merge-review",
+  "situation": "audit-cycle-state.status=fix-in-progress, 5 derived_fixes (case-579..583 from audit-2026-07-01-004 tests module) all status=pending. Consecutive blocked rounds: 13 (case-584..596). scout-scan score=0.0 (healthy), no new merges since last round. 4 opt-* worktree branches pending human review: opt-tests-1782904286 (5 commits, b8cfba5), opt-runtime-listeners-1782902553 (4 commits, 0056380), opt-engine-shift-1782901796 (1 commit, 8f2cc8b), legacy auto/optimization (d36c522). All pushed to origin.",
+  "action": "瞭望轮：跑 scout-scan 拿健康快照，确认无新 merge、无新项目恶化。无新工作单位可派生（所有待办都卡在人工 merge）。写 case 存档 + 提醒用户。",
+  "files_changed": [],
+  "worktree": null,
+  "direction": null,
+  "outcome": "succeeded",
+  "outcome_evidence": "scout-scan exited 0, score=0.0; git worktree list shows 4 opt-* branches unchanged from case-595; no new commits on main since 79f2e6c (2h ago); audit-cycle-state.pending_count still 5.",
+  "next_suggestion": [
+    "USER ACTION REQUIRED: review & merge/reject the 4 pending opt-* worktree branches (opt-tests-1782904286 has 5 test-hardening commits from audit-004; opt-runtime-listeners-1782902553 has 4 listener fixes from audit-003; opt-engine-shift-1782901796 has 1 direction-shift from audit-003; auto/optimization is legacy cleanup). Until merged, engine stays in fix-in-progress and cannot trigger next full audit.",
+    "After merges: update audit-cycle-state.derived_fixes[].status to merged|rejected so status can transition to cycle-complete and unlock audit-2026-07-01-005 (likely target: scripts/ or hooks/ re-audit, or a different module not yet deep-audited)."
+  ],
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": null,
+  "audit_depth": "shallow"
+}

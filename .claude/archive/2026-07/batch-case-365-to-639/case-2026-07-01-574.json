@@ -1,0 +1,32 @@
+{
+  "case_id": "case-2026-07-01-574",
+  "agent_id": "autonomous-engine-main",
+  "timestamp": "2026-07-01T10:42:00Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "runtime-listeners:h001-termux-sanitization",
+  "situation": "audit-2026-07-01-003 H-001 finding: termux-listener.py accepts TCP messages and passes them unsanitized to termux-notification. Priority field not validated against whitelist; title/message not stripped of control chars (newline injection risk for termux-notification flag parsing); no length cap causes silent UTF-8 truncation on >1024B recv.",
+  "action": "Applied route-fix per audit remediation plan: (1) added VALID_PRIORITIES whitelist {default,high,low,min,max} with fallback to 'default' on mismatch; (2) added _sanitize() helper stripping \\x00-\\x1f/\\x7f + collapsing whitespace + explicit truncation at MAX_MESSAGE_LEN=500 with ellipsis marker; (3) title capped at 100 chars; (4) send_notification now checks subprocess returncode and logs non-zero exits + TimeoutExpired separately; (5) empty-after-sanitize message skipped. Single file change, no public interface contract altered.",
+  "files_changed": ["termux-listener.py"],
+  "worktree": "opt-runtime-listeners-1782902553",
+  "direction": "runtime-listeners:h001-termux-sanitization",
+  "outcome": "succeeded",
+  "outcome_evidence": "python3 -c 'import ast; ast.parse(open(\"termux-listener.py\").read())' passed syntax check; opt-worktree.sh committed to new worktree opt-runtime-listeners-1782902553 (route-fix auto-detected — runtime-listeners area not in .claude/public-interfaces.txt); branch pushed to origin/auto/opt-runtime-listeners-1782902553; commit verified via 'git log --oneline -1' in worktree shows fix message.",
+  "next_suggestion": [
+    "派生 fix #2: M-003 watchdog-boot.ps1 path parameterization (direction-shift — opens new worktree)",
+    "派生 fix #3+#4 bundle: M-001 log truncation hardening + M-002 AGE init (route-fix, same file watchdog.sh)",
+    "派生 fix #5: L-001+L-002 audit-log instrumentation for termux-listener + watchdog state transitions"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "termux-listener.py",
+      "line": "80-94",
+      "severity": "high",
+      "finding": "TCP message fields (priority/title/message) passed unsanitized to subprocess; priority not whitelisted; control chars enable termux-notification flag injection; recv(1024) silently truncates mid-UTF8",
+      "remediation": "Priority whitelist + re.sub control-char strip + explicit length cap + subprocess returncode check",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-01-003",
+  "audit_depth": "deep"
+}

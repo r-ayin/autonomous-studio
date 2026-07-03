@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-07-01-579",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-01T11:11:44Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "tests:h-001-scan-integration",
+  "situation": "audit-2026-07-01-004 (tests module) 的 H-001 finding 派生 fix。现有 test_scout_scan.py 所有健康度单测用 _rep() 合成字典直调 health_priority，绕过 scan_project 真实文件系统探测路径（staleness/count_markers/git_info/pending_*_in_worktrees）。若 scan_project 返回结构字段漂移或缺省值变化，_rep 测试不会捕获。",
+  "action": "新增 test_scan_project_to_health_priority_integration(tmp_path)：在 tmpdir 搭 broken/healthy 两个最小项目仓（.git + 可选 PROGRESS.md/GATES.md/planning/），真调 scan_project → health_priority 全链路；断言集成路径专属字段（git/markers_deferred/pending_worktrees/marker_files/symbols）存在；断言 broken 得分严格高于 healthy 且命中'缺 PROGRESS.md'+'缺 GATES.md'两条原因。tmp_path 隔离 .codebase-index 写入副作用。手动跑过 4/4 scout_scan 测试全 PASS。",
+  "files_changed": ["tests/test_scout_scan.py"],
+  "worktree": "opt-tests-1782904286",
+  "direction": "tests:h-001-scan-integration",
+  "outcome": "succeeded",
+  "outcome_evidence": "worktree commit 3a2fa96 pushed to origin/auto/opt-tests-1782904286; 4/4 scout_scan tests pass (test_missing_docs_ranks_highest, test_score_independent_of_commit_recency, test_text_output_has_recommendation_section, test_scan_project_to_health_priority_integration); Code Review URL https://code.alibaba-inc.com/qunbu/autonomous-studio/codereview/new?from=main&to=auto/opt-tests-1782904286",
+  "next_suggestion": [
+    "派生 audit-2026-07-01-004 M-001 fix：移除 test_autonomous_studio_not_excluded_from_ranking 硬编码 'autonomous-studio' 项目名断言，改用结构性完整性检查",
+    "审 opt-tests-1782904286 diff 后 merge/reject，让 derived_fixes H-001 状态落定"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-01-004",
+  "audit_depth": "shallow"
+}

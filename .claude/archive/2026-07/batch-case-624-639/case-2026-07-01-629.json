@@ -1,0 +1,32 @@
+{
+  "case_id": "case-2026-07-01-629",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-01T22:35:00Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "scout-scan + verify opt-tests worktree test health (blocked round #46)",
+  "situation": "audit-cycle-state status=fix-in-progress, 5 derived_fixes (case-579..583) all pending on opt-tests-1782904286, consecutive blocked rounds=45. scout-scan score=0.0 (healthy). No new work possible until human merges pending worktrees. Decided to verify opt-tests worktree tests still pass against current main state to detect rot.",
+  "action": "Ran scout-scan (healthy). Verified opt-tests-1782904286 test suite by direct invocation. Discovered M-001 regression: _real_workspace() helper misidentifies .opt-worktrees/autonomous-studio-aone as real workspace because worktree subdirs have .git entries. Root cause: _has_real_project checks os.path.isdir(.git) but worktree .git is a file not dir; also doesn't filter dot-prefixed entries. Wrote fix (isdir check + skip dot-prefix + env-var priority), verified 6/6 pass with AUTONOMOUS_STUDIO_WORKSPACE set. Attempted to commit via opt-worktree.sh but cp-guard correctly blocked: worktree has unmerged prior commits, cannot append. Fix deferred until opt-tests worktree merges.",
+  "files_changed": [],
+  "worktree": null,
+  "direction": "route-fix",
+  "outcome": "failed",
+  "outcome_evidence": "Fix verified locally (6/6 tests pass with env var) but could not be committed: opt-worktree.sh cp-guard rejected because opt-tests-1782904286 has 5 unmerged prior commits (b8cfba5..3a2fa96). Main working tree restored to HEAD. Fix exists only in this context's memory and must be re-applied after worktree merge.",
+  "next_suggestion": [
+    "URGENT: merge or reject opt-tests-1782904286 (5 derived fixes from audit-2026-07-01-004, blocked 46 rounds). After merge, re-apply _real_workspace fix (distinguish worktree .git=file vs real .git=dir, skip dot-prefixed entries, prioritize AUTONOMOUS_STUDIO_WORKSPACE env var).",
+    "merge or reject opt-runtime-listeners-1782902553 (4 commits from audit-2026-07-01-003)",
+    "merge or reject opt-engine-shift-1782901796 (judge_direction_kind alias fix)"
+  ],
+  "audit_type": "none",
+  "audit_findings": [
+    {
+      "file": "tests/test_scout_scan.py",
+      "line": 135,
+      "severity": "medium",
+      "finding": "_real_workspace _has_real_project returns True for .opt-worktrees parent dir because worktree subdirs contain .git entries. In worktree runtime, derived WORKSPACE resolves to .opt-worktrees/autonomous-studio-aone which has no real projects, causing 2 tests to SkipTest unnecessarily. Additionally, .git type not checked: worktree .git is file, real repo .git is dir.",
+      "remediation": "Change _has_real_project to: (1) skip dot-prefixed entries, (2) verify .git is directory not file, (3) prioritize AUTONOMOUS_STUDIO_WORKSPACE env var over derived path. Verified fix passes 6/6 tests.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": null,
+  "audit_depth": "shallow"
+}

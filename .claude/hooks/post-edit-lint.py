@@ -55,7 +55,7 @@ def main():
     if ext == "py":
         try:
             cr = subprocess.run(
-                [sys.executable, "-m", "py_compile", file_path],
+                [sys.executable, "-m", "py_compile", "--", file_path],
                 cwd=WORKSPACE_ROOT, capture_output=True, text=True, timeout=15)
             if cr.returncode != 0:
                 _elines = (cr.stderr or '').strip().splitlines()

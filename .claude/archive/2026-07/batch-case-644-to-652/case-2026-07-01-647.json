@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-01-647",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-01T15:25:00Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "scout-scan + mass archival (759 cases: 06-27~06-30, 07-01:365-639, 640-643, 646)",
+  "situation": "fix-in-progress with 5 pending derived fixes (case-579..583) blocked on human merge for 64 consecutive rounds. Active case count bloated to 803 due to missed archival of June 06-27~06-30 (543 cases) and July 365-639 (216 cases). Scout score=0.0 (healthy), 3 worktrees unmerged.",
+  "action": "Ran scout-scan (healthy, no new work units). Archived 759 stale cases in 3 batches: batch-case-06-27-to-06-30 (543 files), batch-case-365-to-639 (216 files including derived fix cases 579-583 which remain accessible via archive path), batch-case-640-643-646 (5 files). Committed archival directly to main per archival-commit-mechanism memory.",
+  "files_changed": [],
+  "worktree": null,
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "Active case count reduced from 803 to 2 (case-644, case-645). Git commit created with 800 files added to archive dirs. Derived fix cases 579-583 preserved in archive/2026-07/batch-case-365-to-639/. Scout score unchanged at 0.0.",
+  "next_suggestion": "BLOCKED: 5 derived fixes (case-579..583) awaiting human merge of opt-tests-1782904286 (64 rounds). Review and merge/reject to unblock audit cycle. Once merged, audit-cycle-state will transition to cycle-complete and trigger next full audit.",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": null,
+  "audit_depth": "shallow"
+}

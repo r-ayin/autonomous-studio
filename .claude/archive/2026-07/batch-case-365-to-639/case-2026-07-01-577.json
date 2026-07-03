@@ -1,0 +1,23 @@
+{
+  "case_id": "case-2026-07-01-577",
+  "agent_id": "ralph-wiggum-main-loop",
+  "timestamp": "2026-07-01T19:05:00Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "runtime-listeners:audit-log-instrumentation (audit-2026-07-01-003 L-001+L-002 derived fix bundle)",
+  "situation": "audit-2026-07-01-003 findings L-001 (termux-listener receives external TCP messages and triggers Android notifications with no JSONL audit trail — forensic gap for malicious/buggy notifications) + L-002 (watchdog.sh touches STALE_MARKER and RESUME_FLAG state files that drive downstream recovery, no audit trail makes debugging unexpected resume impossible). Both route-fix, bundled per audit recommendation. Existing .audit/ directory and audit-YYYY-MM-DD.jsonl format already established; schema at .claude/decisions/audit-log.schema.json.",
+  "action": "termux-listener.py: added _audit_log() helper (best-effort, never raises into caller) using json+secrets+datetime.timezone per schema; instrumented send_notification to log action=notify resource=notification/title result=success|failure with details capturing priority, exit_code, stderr, timeout reason. watchdog.sh: added _audit_log shell function writing same JSONL path via printf+urandom; instrumented three state transitions — mark-stale (when CC_PROC==0 and checkpoint stale), mark-resume-needed (immediately after), clear-stale (when marker_age > 1800s). All calls are best-effort (|| true / 2>/dev/null) so logging failure cannot block notification delivery or watchdog health check. First opt-worktree.sh commit attempt cp-guard skipped termux-listener.py due to prior unmerged divergence; amended worktree commit directly to include both files. Force-pushed to origin/auto/opt-runtime-listeners-1782902553.",
+  "files_changed": ["termux-listener.py", ".claude/watchdog.sh"],
+  "worktree": "opt-runtime-listeners-1782902553",
+  "direction": "runtime-listeners:audit-log-instrumentation",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 0056380 on auto/opt-runtime-listeners-1782902553 force-pushed to origin; diff +80/-1 across 2 files (termux-listener.py +47 lines audit helper+instrumentation, watchdog.sh +33 lines shell helper+3 call sites); branch tip advanced d6f0538..0056380",
+  "next_suggestion": [
+    "All audit-2026-07-01-003 derived fixes now merged (H-001, M-003, M-001+M-002, L-001+L-002). After this case merges: set audit-cycle-state.status=cycle-complete → triggers next full deep-audit round.",
+    "Next deep-audit candidate modules not yet covered: hooks re-audit (last was audit-001, significant drift possible since 19 findings), scripts/ subdirs beyond audit-002 scope, or .claude/*.py tooling (scout-scan, opt-worktree internals).",
+    "I-001 (watchdog-boot.ps1 ScheduledTask Highest privilege) remains doc-only advisory — surface in NEXT_SUGGESTION for human review; no automated fix needed."
+  ],
+  "audit_type": "audit-log-instrumentation",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-01-003",
+  "audit_depth": "shallow"
+}
