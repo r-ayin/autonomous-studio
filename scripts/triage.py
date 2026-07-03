@@ -87,13 +87,17 @@ def main() -> None:
         save(root, d)
         hist = root / ".pipeline" / "history"
         hist.mkdir(parents=True, exist_ok=True)
-        n = len(list(hist.glob("*.json"))) + 1
-        (hist / f"{n:04d}-{d.get('kind', 'x')}.json").write_text(
+        # ES-M003 fix: glob-count race → timestamp-prefixed filename.
+        # ended_at is ISO8601 with seconds precision; replace ':' with '-' for
+        # cross-platform filename safety (Windows disallows ':').
+        ts_prefix = d["ended_at"].replace(":", "-")
+        archive_name = f"{ts_prefix}-{d.get('kind', 'x')}.json"
+        (hist / archive_name).write_text(
             json.dumps(d, ensure_ascii=False, indent=2), encoding="utf-8")
         # missing_ok=True: 防御 load→unlink 间竞态——另一进程已先行归档并删除
         # current.json 时，本进程正常路径已过 L81-84 前置检查，到此缺失不应致崩溃。
         current_path(root).unlink(missing_ok=True)
-        print(f"change done, archived → .pipeline/history/{n:04d}-{d.get('kind')}.json")
+        print(f"change done, archived → .pipeline/history/{archive_name}")
         return
 
     if args.kind:
