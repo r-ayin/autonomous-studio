@@ -147,7 +147,8 @@ while true; do
   # 引擎静默写入错误位置或找不到停止标记。subshell 隔离后父 shell cwd 永驻启动目录。
   (
     cd "$ENGINE_DIR" || exit 1
-    # 每轮新 context（cloudcli claude 无 --max-iterations）；预算不设上限（用户 2026-06-27），靠 while 重开天然限单轮规模
+    # ESE-M02 fix: 每轮新 context；可选单轮边界由 AUTONOMOUS_MAX_TURNS / AUTONOMOUS_ROUND_TIMEOUT env vars 控制（见上方 run_round）。
+    # 预算不设上限（用户 2026-06-27），靠 while 重开天然限单轮规模。
     # bypassPermissions：不弹权限提示（否则后台卡）；安全由 hook 兜底
     #   - autonomous-commit-gate: 拦 main 提交
     #   - discovery-gate / patterns-write-gate / stop-completion-gate: 各自门禁
