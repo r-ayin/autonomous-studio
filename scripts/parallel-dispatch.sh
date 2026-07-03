@@ -12,6 +12,24 @@
 # 详见 phases/phase-dev.md ④ 并发构建模式。
 set -euo pipefail
 
+# validate_task_id: 仅允许 [A-Za-z0-9_-]，防止路径遍历 / shell 注入 / git 分支名非法
+validate_task_id() {
+  local id="$1"
+  if [[ -z "$id" ]]; then
+    echo "❌ TASK_ID 为空，跳过" >&2
+    return 1
+  fi
+  if [[ ${#id} -gt 64 ]]; then
+    echo "❌ TASK_ID 过长 (${#id}>64)，跳过: $id" >&2
+    return 1
+  fi
+  if [[ ! "$id" =~ ^[A-Za-z0-9_-]+$ ]]; then
+    echo "❌ TASK_ID 含非法字符（仅允许 [A-Za-z0-9_-]），跳过: $id" >&2
+    return 1
+  fi
+  return 0
+}
+
 PROJECT_DIR="${1:-.}"
 WAVE="${2:-1}"
 SPAWN="${3:-}"
@@ -52,6 +70,9 @@ echo "=== Wave $WAVE: $(echo "$TASKS_JSON" | python3 -c 'import json,sys; print(
 PIDS=()
 SPAWN_COUNT=0
 for TASK_ID in $(echo "$TASKS_JSON" | python3 -c 'import json,sys; [print(t) for t in json.load(sys.stdin)]'); do
+  if ! validate_task_id "$TASK_ID"; then
+    continue
+  fi
   BRANCH="parallel/${TASK_ID}"
   WT_DIR="${WORKTREE_BASE}/${TASK_ID}"
 
