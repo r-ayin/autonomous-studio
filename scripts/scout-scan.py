@@ -733,6 +733,40 @@ def main():
         if recs and recs[0]["score"] == 0:
             print("  （所有项目健康度良好，无紧迫小工作单位——可做文档润色或跳过）")
 
+        # === Public-interfaces entry existence check ===
+        # AS-INFRA-M02: public-interfaces.txt may list files that were moved/deleted.
+        # Stale entries cause opt-worktree.sh judge_direction_kind to silently misclassify
+        # (missing file → not matched → route-fix when it should be direction-shift or vice versa).
+        pi_path = os.path.join(ws, "autonomous-studio", ".claude", "public-interfaces.txt")
+        if os.path.isfile(pi_path):
+            try:
+                stale_entries = []
+                with open(pi_path, encoding="utf-8") as pf:
+                    for lineno, raw in enumerate(pf, 1):
+                        line = raw.strip()
+                        if not line or line.startswith("#"):
+                            continue
+                        if ":" not in line:
+                            continue
+                        proj, relpath = line.split(":", 1)
+                        proj = proj.strip()
+                        relpath = relpath.strip()
+                        if not proj or not relpath:
+                            continue
+                        full = os.path.join(ws, proj, relpath)
+                        if not os.path.exists(full):
+                            stale_entries.append((lineno, proj, relpath))
+                if stale_entries:
+                    print(f"\n⚠️  Public-interfaces integrity: {len(stale_entries)} entries reference missing files:")
+                    for lineno, proj, relpath in stale_entries[:10]:
+                        print(f"    - L{lineno} {proj}:{relpath}")
+                    if len(stale_entries) > 10:
+                        print(f"    ... and {len(stale_entries) - 10} more")
+                    print("  → Update autonomous-studio/.claude/public-interfaces.txt to match current tree.")
+                    print("  → Stale entries can cause opt-worktree.sh direction classification errors.")
+            except OSError:
+                pass  # Non-fatal
+
 
 if __name__ == "__main__":
     main()
