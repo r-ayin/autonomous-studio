@@ -55,8 +55,13 @@ fi
 CURRENT_OUT_FILE=""
 trap 'echo "[trap] 收到信号，终止子进程组..."; if [ -n "$CURRENT_OUT_FILE" ] && [ -e "$CURRENT_OUT_FILE" ]; then shred -u "$CURRENT_OUT_FILE" 2>/dev/null || rm -f "$CURRENT_OUT_FILE"; fi; kill 0 2>/dev/null; exit 130' INT TERM
 
-# 清掉旧的停止标记（启动时）
-rm -f "$STOP_MARKER"
+# 启动时若停止标记仍存在 → 用户已暂停。外部重启者（沙箱 .start / watchdog）会
+# 反复拉起本脚本，必须在启动处立即退出且**不擦除标记**——否则每次重启都擦掉
+# 标记后跑一轮，停止信号被击穿（打地鼠）。恢复运行：用户 rm 标记即可。
+if [[ -f "$STOP_MARKER" ]]; then
+  echo "[$(date +%H:%M:%S)] 启动时检测到停止标记，立即退出（暂停中，保留标记）"
+  exit 0
+fi
 
 PROMPT='你是 autonomous-studio 引擎的持续自治循环（Ralph Wiggum 模式，每轮新 context）。
 当前轮次：推进持久化自动开发研究管线的**一个小工作单位** 或 **一次全量深度审计**（由 audit-cycle-state 决定）。
@@ -123,10 +128,9 @@ run_round() {
 
 ITER=0
 while true; do
-  # 检查停止标记
+  # 检查停止标记（不擦除：外部重启者会反复拉起本脚本，擦除即击穿暂停）
   if [[ -f "$STOP_MARKER" ]]; then
-    echo "[$(date +%H:%M:%S)] 收到停止标记，退出循环（共 $ITER 轮）"
-    rm -f "$STOP_MARKER"
+    echo "[$(date +%H:%M:%S)] 收到停止标记，退出循环（共 $ITER 轮，保留标记供重启者识别）"
     break
   fi
   ITER=$((ITER+1))
