@@ -193,6 +193,19 @@ def staged_files(repo):
         return None
 
 
+def _unstaged_modified_files(repo):
+    """取未暂存的已跟踪修改文件名列表(H-001 fix:commit -a 会把这些自动 stage)。
+    探测失败返回 None(保守:调用方应拒绝豁免)。"""
+    try:
+        r = subprocess.run(["git", "diff", "--name-only", "-z"],
+                           cwd=repo, capture_output=True, text=True, timeout=3)
+        if r.returncode != 0:
+            return None
+        return [f for f in r.stdout.split("\0") if f]
+    except Exception:
+        return None
+
+
 def is_case_metadata_only(files):
     """豁免判定:全部已暂存文件都是归档环元数据——.claude/decisions/case-*.json 或
     .claude/memory/autonomous-state.md(后者每轮回写,见 [[archival-commit-mechanism]])。
@@ -368,6 +381,17 @@ def _eval_segment(seg):
             # 豁免:归档环元数据(case-*.json + autonomous-state.md)按先例可直提 main
             staged = staged_files(repo)
             if sub == "commit" and is_case_metadata_only(staged):
+                # H-001 fix (audit-2026-07-03-017): -a/--all/-am 会把未暂存的已跟踪修改
+                # 自动 stage,绕过 staged-only 豁免检查。检测 rest 里的 all-staging flag;
+                # 若存在,额外校验未暂存修改文件也全在豁免集内,否则拒绝豁免。
+                _ALL_FLAGS = {"-a", "--all"}
+                has_all_flag = any(t in _ALL_FLAGS for t in rest) or any(
+                    t.startswith("-a") and len(t) > 2 and not t.startswith("--") for t in rest
+                )  # covers -am, -am"msg" etc.
+                if has_all_flag:
+                    unstaged = _unstaged_modified_files(repo)
+                    if unstaged is None or not is_case_metadata_only(unstaged):
+                        return "直接 commit -a/--all 到 main/master（含非元数据未暂存修改，豁免撤销）"
                 _audit_log_exempt(seg, staged)  # 豁免埋点(DO B,对称于 _audit_log_block)
                 return None
             return f"直接 {sub} 到 main/master"
