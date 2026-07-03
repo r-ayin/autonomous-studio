@@ -235,6 +235,13 @@ def score_e4_cumulative_deviation(project_path):
             ["git", "diff", "--stat", "HEAD~5..HEAD"],
             capture_output=True, text=True, timeout=10, cwd=project_path
         )
+        if result.returncode != 0:
+            return {
+                "score": 1,
+                "detail": f"git diff 返回非零退出码 ({result.returncode})，数据不可用，给中间分并标记 unavailable",
+                "file_count": 0,
+                "unavailable": True,
+            }
         lines = result.stdout.strip().split("\n")
         file_count = max(0, len(lines) - 1)  # 最后一行是 summary
         if file_count <= 3:
@@ -248,8 +255,13 @@ def score_e4_cumulative_deviation(project_path):
             "detail": f"最近 5 次提交涉及 {file_count} 个文件",
             "file_count": file_count,
         }
-    except Exception:
-        return {"score": 2, "detail": "无法获取 git diff 统计，默认满分", "file_count": 0}
+    except Exception as e:
+        return {
+            "score": 1,
+            "detail": f"无法获取 git diff 统计 ({type(e).__name__})，数据不可用，给中间分并标记 unavailable",
+            "file_count": 0,
+            "unavailable": True,
+        }
 
 
 def score_all(project_path, spec_entities=None, data_model_entities=None, openapi_endpoints=None):
@@ -260,8 +272,19 @@ def score_all(project_path, spec_entities=None, data_model_entities=None, openap
     e3 = score_e3_external_stability(project_path)
     e4 = score_e4_cumulative_deviation(project_path)
 
+    # 动态 max_score：unavailable 维度按其实际得分计入，但扣除其"本可拿到的满分差额"，
+    # 避免 unavailable 维度拉低百分比或虚高总分。
+    dimension_maxes = {"E1": 4, "E2": 4, "E3": 2, "E4": 2}
+    dims_map = {
+        "E1": e1, "E2": e2, "E3": e3, "E4": e4,
+    }
+    max_score = sum(
+        dimension_maxes[k] for k, d in dims_map.items() if not d.get("unavailable")
+    )
+    # 若全部 unavailable（极端情况），保底 max=1 防除零
+    if max_score == 0:
+        max_score = 1
     total = e1["score"] + e2["score"] + e3["score"] + e4["score"]
-    max_score = 10
 
     return {
         "project": str(path.name),
