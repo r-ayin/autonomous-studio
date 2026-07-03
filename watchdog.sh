@@ -40,6 +40,7 @@ while true; do
     date -u '+%Y-%m-%dT%H:%M:%SZ' > "$HEARTBEAT_FILE"
 
     # ── 1. 检查点新鲜度 ──────────────────────────
+    AGE=0
     if [ -f "$LATEST" ]; then
         AGE=$(( $(date +%s) - $(stat -c %Y "$LATEST" 2>/dev/null || stat -f %m "$LATEST" 2>/dev/null || echo 0) ))
         if [ $AGE -gt 900 ]; then
@@ -69,8 +70,13 @@ while true; do
     fi
 
     # ── 4. 日志截断（保留最近 200 行）────────────
+    # M-001 hardening: cp→tail→mv 三段式避免 tail 读期间并发 append 被 mv 覆盖丢失。
+    # flock 已持 fd 200，但显式 cp 到 .bak 让 tail 读稳定快照，消除增量读边界丢行风险。
     if [ -f "$LOG_FILE" ] && [ $(wc -l < "$LOG_FILE") -gt 200 ]; then
-        tail -100 "$LOG_FILE" > "$LOG_FILE.tmp" && mv "$LOG_FILE.tmp" "$LOG_FILE"
+        cp "$LOG_FILE" "$LOG_FILE.bak" \
+            && tail -100 "$LOG_FILE.bak" > "$LOG_FILE.tmp" \
+            && mv "$LOG_FILE.tmp" "$LOG_FILE" \
+            && rm -f "$LOG_FILE.bak"
     fi
 
     sleep 300
