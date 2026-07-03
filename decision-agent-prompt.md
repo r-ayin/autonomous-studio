@@ -527,6 +527,17 @@ Q5: 行动失败的代价有多大？
       （二元枚举，不是"做得还行"这种模糊语）
   - outcome_evidence: 引用可观察事实——"pytest 3 passed"、"git diff 含 X"、"用户说'不对'"
       （不接受 LLM 散文总结，必须可验证）
+      ▸ 模板（任选其一，填具体值）：
+        • 测试类: "<test-runner> <N> passed, <M> failed in <file>::<test>"
+          例: "pytest tests/test_distill.py::test_outcome_enum -q → 3 passed in 0.42s"
+        • Diff 类: "git diff --stat HEAD~1 → <files> changed, <ins> insertions(+), <del> deletions(-)"
+          例: "git diff --stat HEAD~1 → decision-agent-prompt.md | 4 ++++ 0 ----"
+        • 命令输出类: "<cmd> exited <code>; stdout/stderr contains '<anchor>'"
+          例: "python3 scripts/distill-patterns.py --verify exited 0; stdout contains 'OK: 12 patterns validated'"
+        • 用户反馈类: "用户原话: '<verbatim quote>' @ <channel/time>"
+          例: "用户原话: '这个枚举不对，应该是 succeeded 不是 success' @ Termux 2026-07-04 09:12"
+        • 状态变更类: "<file>:<field> changed from '<old>' to '<new>' (verified by <grep/read>)"
+          例: "audit-cycle-state.json:derived_fixes[2].status changed from 'pending' to 'merged' (verified by jq)"
   - what_worked / what_to_improve: 各 ≤2 条
   - new_pattern_discovered: 签名前缀格式 "domain:action:variant"（如 "implementation:debug:fix_verify"），
       后接 " — " 再写一句话描述。**不直接写 decision-patterns.md**——由 scripts/distill-patterns.py
@@ -703,7 +714,7 @@ Step S4: 输出（★ v3.1 分两段）
   },
 
   "outcome": "success|failure|partial_success|user_rejected|aborted",
-  "outcome_evidence": "可观察事实：pytest 输出 / git diff / 用户原话",
+  "outcome_evidence": "<fill one template from §⑦ RETROSPECT: test-result / git-diff-stat / cmd-exit+anchor / user-verbatim-quote / state-change>",
 
   "retrospect": {
     "what_worked": ["做对的（≤2 条）"],
