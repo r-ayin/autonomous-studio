@@ -3,7 +3,10 @@
 
 触发: Stop (每轮结束) / SessionEnd (SSH断开保护)
 行为: 扫描所有项目仓库 → 有变更 → git add + commit + 更新 PROGRESS.md
-规则: 绝不 push，跳过 .claude/ 等内部文件，merge 冲突时跳过并告警
+规则: 子仓库(is_subrepo=True)自动 push origin；根仓库仅本地 commit。
+      跳过 .claude/、凭证/密钥等敏感文件，merge 冲突时跳过并告警。
+H-004 fix (audit-2026-07-03-017): 原 docstring "绝不 push" 与 line 394 实际行为矛盾；
+      EXCLUDED_PREFIXES 缺 secret 文件模式致凭证泄漏风险。本提交修正文档+补排除列表。
 """
 
 import os
@@ -37,10 +40,39 @@ KNOWN_REPOS = [
 ]
 
 # ── 排除规则 ──────────────────────────────────────────
+# H-004 fix (audit-2026-07-03-017): 补凭证/密钥文件模式，防 auto-push 泄漏到 origin。
+# 原列表仅排内部缓存/构建目录，未覆盖 .env/*.pem/*.key/credentials*/.npmrc/.pypirc/id_rsa*。
 EXCLUDED_PREFIXES = (
     ".claude", "node_modules", ".venv", "__pycache__",
     ".git", ".pytest_cache", "Inno Setup 6", "Telegram Desktop",
 )
+
+# Secret/credential file patterns (glob-style matched against basename).
+# Auto-push to origin combined with missing exclusions created a credential
+# leakage path (H-004). Patterns cover common env/secret/key files across
+# ecosystems; extend as new secret formats appear.
+SECRET_FILE_PATTERNS = (
+    ".env", ".env.",           # dotenv + variants (.env.local, .env.production, ...)
+    ".npmrc", ".pypirc",       # package registry creds
+    "id_rsa", "id_dsa", "id_ecdsa", "id_ed25519",  # SSH private keys
+    ".pem", ".key", ".p12", ".pfx", ".keystore",    # TLS/cert private material
+    "credentials", "secrets",  # generic cred files (credentials.json, secrets.yaml, ...)
+    ".htpasswd",               # HTTP basic auth store
+    "token",                   # token files (token.txt, token.json, ...)
+)
+
+
+def _is_secret_file(path: str) -> bool:
+    """Return True if basename matches any SECRET_FILE_PATTERNS (prefix match).
+    Used alongside EXCLUDED_PREFIXES to block credential-bearing files from
+    auto-commit + auto-push. Fail-safe: pattern match failure defaults to NOT
+    secret (permissive) so legitimate files aren't silently dropped; audit-log
+    records excluded paths for review."""
+    base = os.path.basename(path)
+    for pat in SECRET_FILE_PATTERNS:
+        if base == pat or base.startswith(pat):
+            return True
+    return False
 
 # 根仓库中属于子仓库的路径（由 _belongs_to_subrepo 动态判断）
 SUBREPO_NAMES = {r["name"] for r in KNOWN_REPOS if r["is_subrepo"]}
@@ -99,11 +131,15 @@ def _audit_log_commit(repo_name: str, result: str, detail: str = ""):
 
 
 def is_excluded(file_path: str) -> bool:
-    """检查路径是否应跳过"""
+    """检查路径是否应跳过。H-004 fix: 同时按 SECRET_FILE_PATTERNS 过滤凭证文件，
+    防 auto-push 泄漏到 origin。"""
     fp = file_path.replace("\\", "/")
     for prefix in EXCLUDED_PREFIXES:
         if fp == prefix or fp.startswith(prefix + "/"):
             return True
+    # Secret-file check (basename match; covers .env, *.pem, credentials.json, etc.)
+    if _is_secret_file(fp):
+        return True
     return False
 
 
