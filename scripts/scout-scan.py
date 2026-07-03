@@ -540,6 +540,11 @@ def health_priority(r):
             # planning/ 已在某 worktree 待合并——不加分（别再推荐补，应推合并），
             # 否则该项目会因"无 planning/"持续霸榜 #1 让引擎重做已做工作（3 轮撞盲区）
             reasons.append(f"planning/ 待合并({','.join(pend_planning)})")
+        elif r.get("has_planning_codebase"):
+            # .planning/codebase/ 事实层已存在（agents-map 产物），项目已接受 .planning 约定。
+            # 不再按"完全无 planning/"扣满分，降为提示性 +0.5，避免对已有事实层的项目误推泛泛"补 planning/"。
+            score += 0.5
+            reasons.append(".planning/codebase/ 已有，缺 roadmap")
         else:
             score += 1
             reasons.append("无 planning/")
@@ -584,6 +589,8 @@ def health_priority(r):
         unit = f"triage 前 1-2 个 TODO（标注或清掉）"
     elif not r["has_planning"] and pend_planning:
         unit = f"等合并 planning/（已在 {','.join(pend_planning)} worktree，别重做——先查 worktree log）"
+    elif not r["has_planning"] and r.get("has_planning_codebase"):
+        unit = "补 .planning/roadmap.md（事实层 codebase/ 已有，缺路线图；1 文件）"
     elif not r["has_planning"]:
         unit = "补 planning/ 目录（路线图文档，无需深读代码）"
     else:
@@ -658,6 +665,7 @@ def scan_project(p):
         "gates_exists": os.path.isfile(os.path.join(path, "GATES.md")),
         "gates_pending_wts": pending_in_opt_worktrees(path, "GATES.md"),
         "has_planning": os.path.isdir(os.path.join(path, "planning")),
+        "has_planning_codebase": os.path.isdir(os.path.join(path, ".planning", "codebase")),
         "planning_pending_wts": pending_planning_in_worktrees(path),
         "markers": m_counts,
         "markers_deferred": m_deferred,
