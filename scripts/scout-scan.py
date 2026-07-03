@@ -608,10 +608,47 @@ def health_priority(r):
     return {"score": round(score, 2), "reasons": reasons, "work_unit": unit}
 
 
+def validate_public_interfaces(path, project_name):
+    """校验 .claude/public-interfaces.txt 中属于本项目的条目是否真实存在于磁盘。
+
+    audit-2026-07-03-005 AS-INFRA-M02: opt-worktree.sh judge_direction_kind() 对缺失条目
+    静默忽略（grep -qxF miss → route-fix），导致已删除/重命名的公共接口文件仍留在清单里，
+    后续真改动同名新文件时无法触发 direction-shift、cp-guard 漏拦。本函数把"清单与磁盘
+    不一致"作为健康信号暴露到 scout 报告 + stderr WARN，让引擎/用户在瞭望轮就能发现，
+    而非等到下一次审计才挖出。
+
+    返回 (missing_entries: list[str], pi_file_present: bool)。pi_file 不存在视为项目未启用
+    该机制，不报错（向后兼容）。
+    """
+    pi_file = os.path.join(path, ".claude", "public-interfaces.txt")
+    if not os.path.isfile(pi_file):
+        return [], False
+    missing = []
+    try:
+        with open(pi_file, encoding="utf-8", errors="ignore") as fh:
+            for raw in fh:
+                line = raw.strip()
+                if not line or line.startswith("#"):
+                    continue
+                # 格式 <project>:<relpath>；只校验本项目名下条目
+                if ":" not in line:
+                    continue
+                proj, rel = line.split(":", 1)
+                if proj != project_name:
+                    continue
+                target = os.path.join(path, rel)
+                if not os.path.exists(target):
+                    missing.append(rel)
+    except Exception:
+        return [], True
+    return missing, True
+
+
 def scan_project(p):
     """扫描单个项目，返回健康报告 + 索引"""
     path = p["path"]
     m_counts, m_files, m_deferred = count_markers(path)
+    pi_missing, pi_present = validate_public_interfaces(path, p["name"])
     rep = {
         "name": p["name"],
         "path": path,
@@ -627,6 +664,8 @@ def scan_project(p):
         "marker_files": sorted(m_files),
         "triage_pending_wts": pending_triage_in_worktrees(path, m_files),
         "pending_worktrees": count_pending_worktrees(path),
+        "public_interfaces_present": pi_present,
+        "public_interfaces_missing": pi_missing,
     }
     # 文件索引（限制规模，避免大库超时）
     tree, symbols, n = file_tree_and_symbols(path)
@@ -722,6 +761,16 @@ def main():
                 if pw.get("stale", 0):
                     parts.append(f"空(可清理)={pw['stale']}")
                 print(f"  待处理 worktree: {', '.join(parts)}")
+            pi_miss = r.get("public_interfaces_missing", [])
+            if pi_miss:
+                # AS-INFRA-M02: 暴露 public-interfaces.txt stale 条目到瞭望报告。
+                # judge_direction_kind() 对缺失条目静默忽略 → direction-shift 漏判；
+                # 此处 WARN 让用户/引擎及时感知并触发清单维护（route-fix 即可）。
+                print(f"  ⚠️  public-interfaces.txt 有 {len(pi_miss)} 条 stale 条目（文件不存在）:")
+                for m in pi_miss[:10]:
+                    print(f"      - {m}")
+                if len(pi_miss) > 10:
+                    print(f"      ... 另有 {len(pi_miss) - 10} 条（JSON 报告看全）")
 
         # 推荐工作单位（按健康度排序）——给引擎确定性选材，避免自由心证总挑自己
         print("\n=== 推荐工作单位（按健康度排序，越高越该被照顾）===")
