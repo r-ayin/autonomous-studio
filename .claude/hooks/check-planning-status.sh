@@ -5,7 +5,8 @@
 TOOL_INPUT="${CLAUDE_TOOL_INPUT:-}"
 
 # Only check after Bash commands that contain "git commit"
-if ! echo "$TOOL_INPUT" | grep -q "git commit"; then
+# Use printf '%s' instead of echo to avoid flag interpretation risk (M-011)
+if ! printf '%s\n' "$TOOL_INPUT" | grep -q "git commit"; then
   exit 0
 fi
 
@@ -34,7 +35,8 @@ fi
 
 # Check if source code was committed but status.json still shows pre-development stage
 if [ -f "$STATUS_FILE" ]; then
-  CURRENT_STAGE=$(python3 -c "import json; print(json.load(open('$STATUS_FILE')).get('currentStage',''))" 2>/dev/null)
+  # H-003 fix: pass path via sys.argv[1] to avoid shell injection when $STATUS_FILE contains quotes
+  CURRENT_STAGE=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1])).get("currentStage",""))' "$STATUS_FILE" 2>/dev/null)
   CODE_COMMITTED=$(git diff --name-only HEAD~1 HEAD 2>/dev/null | grep -E "\.(tsx?|jsx?|css|html)$" | head -1)
 
   if [ -n "$CODE_COMMITTED" ] && [ "$CURRENT_STAGE" = "development" ]; then
