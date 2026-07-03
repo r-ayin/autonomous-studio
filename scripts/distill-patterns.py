@@ -35,11 +35,14 @@ def now_ts():
 
 
 def load_json_robust(path, default=None):
-    """鲁棒加载：损坏则返回 default（不抛异常）"""
+    """鲁棒加载：损坏/缺失/权限问题返回 default；不吞 KeyboardInterrupt/SystemExit/MemoryError（SCRIPTS-L04）"""
     try:
         with open(path, "r", encoding="utf-8") as f:
             return json.load(f)
-    except Exception:
+    except (OSError, ValueError, TypeError, UnicodeDecodeError):
+        # OSError 覆盖 FileNotFoundError/PermissionError/IOError；
+        # ValueError+TypeError+UnicodeDecodeError 覆盖 json.load 解析异常。
+        # 显式放过 KeyboardInterrupt/SystemExit/MemoryError，避免阻塞中断与 OOM 静默化。
         return default
 
 
@@ -355,7 +358,7 @@ def step2_llm_distill(cal, pat_cases, cases, project_dir):
             except subprocess.CalledProcessError as e:
                 op = None
                 llm_status = f"nonzero_exit:{e.returncode}"
-            except Exception as e:
+            except (subprocess.SubprocessError, OSError, TimeoutError) as e:
                 op = None
                 llm_status = f"exception:{type(e).__name__}:{str(e)[:80]}"
         proposals.append({"pattern": key, "prompt": prompt, "llm_output": op, "llm_status": llm_status})
