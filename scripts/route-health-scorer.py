@@ -172,12 +172,56 @@ def score_e2_cross_stage_consistency(project_path, data_model_entities, openapi_
 def score_e3_external_stability(project_path):
     """
     E3: 外部环境稳定性 (0-2)
-    非代码因素，主观评估。CodeGraph 可以提供辅助信息（依赖库版本变化）。
+    通过 HEAD~5..HEAD 范围内依赖声明文件的实际内容变化评估。
+    - 有版本变更 → score=1（外部依赖在动，需关注兼容性）
+    - 无版本变更 → score=2（外部依赖稳定）
+    - 无法读取依赖文件/git → score=1 + unavailable=True（不奖励不可观测状态）
     """
+    dep_files = [
+        "package.json",
+        "pyproject.toml",
+        "requirements.txt",
+        "Pipfile.lock",
+        "go.mod",
+        "Cargo.toml",
+    ]
+
+    # 先确认项目里至少有一个依赖声明文件存在；全无则视为数据缺失
+    existing = [f for f in dep_files if (Path(project_path) / f).exists()]
+    if not existing:
+        return {
+            "score": 1,
+            "detail": "未找到已知依赖声明文件，无法评估外部稳定性",
+            "unavailable": True,
+            "checked_files": [],
+        }
+
+    try:
+        result = subprocess.run(
+            ["git", "diff", "--name-only", "HEAD~5..HEAD", "--"] + existing,
+            capture_output=True, text=True, timeout=10, cwd=project_path,
+        )
+        changed = [ln.strip() for ln in result.stdout.splitlines() if ln.strip()]
+    except Exception as e:
+        return {
+            "score": 1,
+            "detail": f"git diff 失败，无法评估外部稳定性: {e}",
+            "unavailable": True,
+            "checked_files": existing,
+        }
+
+    if changed:
+        return {
+            "score": 1,
+            "detail": f"最近 5 次提交修改了依赖声明: {', '.join(changed)}",
+            "changed_dep_files": changed,
+            "checked_files": existing,
+        }
     return {
         "score": 2,
-        "detail": "E3 为外部环境主观评估，CodeGraph 无直接贡献。建议检查 package.json/pyproject.toml 版本变化。",
-        "note": "subjective",
+        "detail": f"最近 5 次提交未修改依赖声明 ({len(existing)} 个文件检查)",
+        "changed_dep_files": [],
+        "checked_files": existing,
     }
 
 
