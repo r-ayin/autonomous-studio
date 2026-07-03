@@ -11,7 +11,8 @@
 #   - 用户 kill 进程（Ctrl-C / kill）
 #   - 或 .claude/.stop_autonomous 标记存在（用户说"停"时建）
 #
-# 每轮 bounded（--max-iterations 防 claude -p 单轮卡死），但 while 无上限。
+# 每轮 bounded：cloudcli claude 无 --max-iterations flag，靠「单 prompt + while 重开新 context」
+# 天然限单轮规模；预算不设上限（用户 2026-06-27），while 本身无上限。
 #
 # 用法:
 #   autonomous-loop.sh <workspace> [engine-dir]        # 前台跑（看输出）
