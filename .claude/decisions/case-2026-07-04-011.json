@@ -1,0 +1,23 @@
+{
+  "case_id": "case-2026-07-04-011",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-04T09:30:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "fix ES-H003: atomic safe_write_json in decision-observer.py",
+  "situation": "audit-2026-07-04-001 finding ES-H003 (priority 3, route-fix): decision-observer.py L140-147 safe_write_json uses non-atomic open('w')+json.dump. Process crash/interrupt mid-write leaves partial/corrupt JSON file — same vuln pattern as stop-completion-gate case-2026-07-04-404. status.json is the primary victim (engine stage tracking).",
+  "action": "Replace safe_write_json with tempfile.mkstemp + os.fdopen + fsync + os.replace atomic pattern. Add 'import tempfile'. Mirrors the fix already applied to stop-completion-gate.py. Worktree opened new opt-decision-observer-1783099363 because opt-hooks-1783018753 had unmerged decision-observer.py changes (cp-guard correctly blocked overwrite).",
+  "files_changed": [".claude/hooks/decision-observer.py"],
+  "worktree": "opt-decision-observer-1783099363",
+  "direction": "decision-observer:atomic-safe-write",
+  "outcome": "succeeded",
+  "outcome_evidence": "python3 ast.parse confirms syntax OK; opt-worktree.sh commit succeeded and pushed to origin/auto/opt-decision-observer-1783099363; cp-guard prevented collision with opt-hooks-1783018753 unmerged commits.",
+  "next_suggestion": [
+    "merge opt-decision-observer-1783099363 after review (ES-H003 fix)",
+    "merge opt-hooks-1783018753 (5 pending fixes including ES-H001) — this will also unblock future hooks-area worktrees",
+    "after both merges, next derived fix: ES-M001 (route-health-scorer E3 score always max)"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-04-001",
+  "audit_depth": "shallow"
+}
