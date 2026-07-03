@@ -66,6 +66,9 @@ for TASK_ID in $TASKS; do
     continue
   fi
 
+  # 记录合并前 HEAD，用于测试失败时安全回滚（避免 HEAD@{1} 在有未提交 WIP 时误毁工作区）
+  PRE_MERGE_HEAD="$(git rev-parse HEAD)"
+
   # 合并
   if git merge --no-ff "$BRANCH" -m "merge: 并发构建 $TASK_ID" 2>/dev/null; then
     # 合并成功 → 跑集成测试
@@ -75,7 +78,11 @@ for TASK_ID in $TASKS; do
         MERGED+=("$TASK_ID")
       else
         echo "  ❌ 集成测试失败 — 回滚本次合并，隔离 $BRANCH"
-        git merge --abort 2>/dev/null || git reset --hard HEAD@{1} 2>/dev/null || true
+        # 优先 merge --abort；仅在 abort 不可用时退回精确 pre-merge commit
+        # （不使用 HEAD@{1}，避免 reflog 偏移或存在未提交 WIP 时误毁工作区）
+        if ! git merge --abort 2>/dev/null; then
+          git reset --hard "$PRE_MERGE_HEAD" 2>/dev/null || true
+        fi
         # 把失败分支挪到 parallel-blocked/ 命名空间备查
         git branch -m "$BRANCH" "parallel-blocked/${TASK_ID}" 2>/dev/null || true
         BLOCKED+=("$TASK_ID(test-fail)")
@@ -86,7 +93,7 @@ for TASK_ID in $TASKS; do
     fi
   else
     echo "  ❌ 合并冲突 — 回滚，隔离 $BRANCH"
-    git merge --abort 2>/dev/null || true
+    git merge --abort 2>/dev/null || git reset --hard "$PRE_MERGE_HEAD" 2>/dev/null || true
     git branch -m "$BRANCH" "parallel-blocked/${TASK_ID}" 2>/dev/null || true
     BLOCKED+=("$TASK_ID(conflict)")
   fi
