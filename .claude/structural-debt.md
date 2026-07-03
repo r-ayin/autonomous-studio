@@ -41,22 +41,35 @@ Status enum: `open | scheduled | resolved`
 - **status**: open
 - **source_finding**: I-001
 
-## SD-004 — FinanceTracker SQLCipher 端到端接线 + 既有明文库迁移（安全宣传空心支柱 #1）
-- **debt_id**: SD-004
-- **audit_id**: audit-2026-07-06-019
-- **project**: FinanceTracker
-- **description**: `DatabaseEncryption.getPassphrase()` 是死代码——全仓 grep 仅自身类 + DI 容器引用；`DatabaseModule.provideDatabase` 建 Room 时无 `openHelper`/`SupportFactory`，实际数据库为明文 SQLite。README/UI 宣称"SQLCipher 数据库加密"完全不成立，所有财务 PII 裸存磁盘。修复非"接上线"那么简单：(1) core/data/DatabaseModule 注入 DatabaseEncryption + `openHelperFactory(SupportFactory(passphrase))`；(2) 当前用户已有明文库在磁盘，直接切加密会让旧库读不出——需迁移：明文 key 打开旧库 → `ATTACH ... KEY '...'` → 逐表导出到加密库 → 替换；(3) 口令源同步改 Keystore（与 H-002/fix-010 联动）；(4) 迁移路径需测试网（与 M-004/I-002 联动）。跨 core/data + core/security + 迁移脚本 + 测试，超最小单位，需用户授权。
-- **affected_files**: core/data/.../di/DatabaseModule.kt, core/security/.../crypto/DatabaseEncryption.kt, core/data/.../db/FinanceDatabase.kt, app/build.gradle.kts
-- **severity**: high
-- **status**: open
-- **source_finding**: H-001
+## SD-PD-001 — findBatchEvent 客户端 O(N) 过滤（prod-deploy）
 
-## SD-005 — FinanceTracker 启动鉴权门端到端落地（安全宣传空心支柱 #2）
-- **debt_id**: SD-005
-- **audit_id**: audit-2026-07-06-019
-- **project**: FinanceTracker
-- **description**: 生物识别层三层全断：(1) `SettingsViewModel.toggleBiometric` 只查 `canAuthenticate()`（能力查询）就写布尔，开启动作本身不验证身份；(2) `BiometricAuthenticator.authenticate()` 全仓除自身定义处外**零调用**；(3) `MainActivity.onCreate` 直接进 `AppNavigation`，无启动鉴权屏，`biometricEnabled` 偏好无任何消费方拦截入口。README/UI"使用指纹或面部识别保护应用"为虚假宣传。修复需：(a) 新建 `feature/auth` 模块——Compose `AuthScreen` + `AuthViewModel`，启动调 `BiometricAuthenticator.authenticate`（M-001/fix-012 落地后的 DEVICE_CREDENTIAL 兜底版）；(b) `AppNavigation` 根路由加 `biometricEnabled` 守卫，开关开则启动必过鉴权才进主界面；(c) `toggleBiometric(true)` 改为先强制过一次 `authenticate()` 验证再落布尔。跨 feature/auth(新) + app/navigation + feature/settings，超最小单位，需用户授权。
-- **affected_files**: app/.../MainActivity.kt, app/.../navigation/AppNavigation.kt, feature/settings/.../SettingsViewModel.kt, feature/auth/(新建), feature/settings/src/main/AndroidManifest.xml
-- **severity**: high
+- **debt_id**: SD-PD-001
+- **audit_id**: audit-2026-07-03-013
+- **project**: autonomous-studio
+- **description**: event-client.js findBatchEvent 全量拉取所有 deploy_batch 事件再 client-side filter by batch_index。服务端 query API 不支持 batch_index 参数。10 批次部署尚可，100+ 批次会成为网络/延迟瓶颈。需推动 aone-agent-server 支持 batch_index 查询过滤，或增加客户端 LRU 缓存。
+- **affected_files**: skills/prod-deploy/scripts/lib/event-client.js
+- **severity**: low
 - **status**: open
-- **source_finding**: H-005
+- **source_finding**: PD-L004
+
+## SD-PD-002 — SKILL.md 文档与实际行为不一致（prod-deploy）
+
+- **debt_id**: SD-PD-002
+- **audit_id**: audit-2026-07-03-013
+- **project**: autonomous-studio
+- **description**: SKILL.md 标 SUNFIRE_ACCESS_ID/SECRET_KEY 为"否"（可选），但观察期 gate 实际依赖它；phases/07-batch-deploy.md L44 说"读取第 1 批事件中的 resolved_strategy.observe_minutes"，实际代码读 deploy_plan 事件。文档与实现漂移，operator 易被误导。需建立文档同步机制（如 SKILL.md 变更时自动 diff phases/）。
+- **affected_files**: skills/prod-deploy/SKILL.md, skills/prod-deploy/phases/07-batch-deploy.md
+- **severity**: info
+- **status**: open
+- **source_finding**: PD-I001, PD-I003
+
+## SD-004 — engine-skills-extracted SKILL.md model field 未校准任务复杂度
+
+- **debt_id**: SD-004
+- **audit_id**: audit-2026-07-03-006
+- **project**: engine-skills-extracted
+- **description**: 18 个 skill 的 SKILL.md model field 全部为 sonnet/haiku，无 opus；部分纯 bash 编排 skill（自主循环、隔离优化）用 sonnet 浪费，而复杂意图分类 skill（决策观察，688 行）可能需 opus。Model 分配看似随意而非基于 LLM 推理需求校准。低优先级（model field 仅影响部署建议）。
+- **affected_files**: engine-skills-extracted/*/SKILL.md (18 files)
+- **severity**: low
+- **status**: open
+- **source_finding**: ESE-L02
