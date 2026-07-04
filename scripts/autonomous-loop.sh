@@ -152,38 +152,8 @@ while true; do
     # bypassPermissions：不弹权限提示（否则后台卡）；安全由 hook 兜底
     #   - autonomous-commit-gate: 拦 main 提交
     #   - discovery-gate / patterns-write-gate / stop-completion-gate: 各自门禁
-    # 模型自适应：优先 GLM-5.2，限流回退 qwen3.7-max（见上方策略变量）
-    if (( STICKY_FALLBACK )); then
-      # 已粘到 fallback：直接 qwen3.7-max，周期性探 GLM-5.2 恢复
-      if (( PROBE_COUNTDOWN <= 0 )); then
-        echo "[$(date +%H:%M:%S)] 探测 $PRIMARY_MODEL 是否恢复..."
-        if run_round "$PRIMARY_MODEL"; then
-          echo "[$(date +%H:%M:%S)] $PRIMARY_MODEL 恢复，解除粘性回退"
-          STICKY_FALLBACK=0; GLM_FAIL_STREAK=0
-        else
-          echo "[$(date +%H:%M:%S)] $PRIMARY_MODEL 仍限流，回退 $FALLBACK_MODEL"
-          run_round "$FALLBACK_MODEL" || true
-          PROBE_COUNTDOWN=$PROBE_EVERY
-        fi
-      else
-        run_round "$FALLBACK_MODEL" || true
-        PROBE_COUNTDOWN=$((PROBE_COUNTDOWN-1))
-      fi
-    else
-      # 正常：先 GLM-5.2，限流即本轮回退 qwen3.7-max
-      if run_round "$PRIMARY_MODEL"; then
-        GLM_FAIL_STREAK=0
-      else
-        echo "[$(date +%H:%M:%S)] $PRIMARY_MODEL 限流，回退 $FALLBACK_MODEL"
-        run_round "$FALLBACK_MODEL" || true
-        GLM_FAIL_STREAK=$((GLM_FAIL_STREAK+1))
-        if (( GLM_FAIL_STREAK >= STICKY_FAIL_THRESHOLD )); then
-          echo "[$(date +%H:%M:%S)] $PRIMARY_MODEL 连续 $GLM_FAIL_STREAK 轮限流，粘到 $FALLBACK_MODEL（每 $PROBE_EVERY 轮探测恢复）"
-          STICKY_FALLBACK=1
-          PROBE_COUNTDOWN=$PROBE_EVERY
-        fi
-      fi
-    fi
+    # 单模型直调（audit-2026-07-04-016 H01：删除 dead fallback 分支）
+    run_round "$PRIMARY_MODEL" || true
     echo "[$(date +%H:%M:%S)] 轮次 $ITER 结束，提交在 opt-worktree（待人工 opt-worktree.sh show/merge）"
     # 循环末尾归档孤儿 case（case-341 未竟，多轮遗留）：跨项目轮次写的 case 滞留 AS main
     # 成 untracked→scout 误算 dirty/撞号。扫 AS main untracked case-*.json，cp 进 housekeeping
