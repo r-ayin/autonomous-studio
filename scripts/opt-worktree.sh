@@ -399,6 +399,43 @@ _validate_wt_name() {
   fi
 }
 
+# explore-log 回写（B-2 / 阶段③b EXPLORE v3.1）：探索类 worktree（direction 含 "hypothesis:"）
+# 合并/拒绝时把 hypothesis + 结论追加到 planning/explore-log.md 研究档案。
+# 修补类 worktree（无 hypothesis:）不记 explore-log，避免污染。
+# 必须在 worktree 目录被删之前调用（要读 .opt-direction）。
+# 用法: _explore_log_append <wt> <sha|空> <status> <conclusion>
+#   status: verified / falsified / inconclusive / abandoned
+_explore_log_append() {
+  local wt="$1" sha="$2" status="$3" conclusion="${4:-}"
+  local dir="$WT_BASE/$wt"
+  local direction hyp=""
+  direction=$(cat "$dir/.opt-direction" 2>/dev/null || printf '')
+  # 提取 hypothesis:direction 格式 "area:subdirection | hypothesis: <文本>"
+  case "$direction" in
+    *"|"*) hyp="${direction##*|}"; hyp="${hyp# }";;
+  esac
+  # 仅探索类（含 hypothesis:）记录；修补类直接 return
+  case "$direction" in
+    *hypothesis:*) ;;
+    *) return 0 ;;
+  esac
+  local elog="$PROJECT/planning/explore-log.md"
+  mkdir -p "$(dirname "$elog")" 2>/dev/null || true
+  local ts; ts=$(date -u +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || printf '?')
+  {
+    printf '\n## %s\n\n' "${hyp:-$direction}"
+    printf -- '- 状态: %s\n' "$status"
+    printf -- '- 时间: %s\n' "$ts"
+    if [[ -n "$sha" ]]; then
+      printf -- '- 证据: worktree=%s commit=%s\n' "$wt" "$sha"
+    else
+      printf -- '- 证据: worktree=%s（未合并）\n' "$wt"
+    fi
+    [[ -n "$conclusion" ]] && printf -- '- 结论: %s\n' "$conclusion"
+    printf -- '- 下一步: 回写 BUSINESS-INTENT.md（verified→已验证假设 / falsified→已证伪假设 / inconclusive→派生新假设）\n'
+  } >> "$elog" 2>/dev/null || true
+}
+
 # M-002 (audit-2026-07-01-002): cmd_commit 文件列表校验——拒绝绝对路径与含 .. 段的路径，
 # 防 _cp_guard "$f" "$target/$f" + rm -f "$f" 对 f=`../../etc/cron.d/evil` 写/删 worktree 外文件。
 # 纵深防御：即便引擎只传相对路径，也挡外部注入或手误。合法路径示例: scripts/foo.sh,
@@ -462,6 +499,24 @@ cmd_commit() {
     _ignore_opt_direction_marker "$target"
     created_new_wt=1
     echo "↔ direction-shift（触及公共接口文件，$cur_area → $new_area）→ 强制开新 worktree: $(basename "$target")"
+  elif [[ "$direction" == *"hypothesis:"* ]]; then
+    # ★ v3.1 探索类：direction 含 hypothesis: → 强制独立 worktree（研究方向隔离 +
+    #   .opt-direction 存含 hypothesis 的全 direction，merge/reject 时 _explore_log_append
+    #   能读到 hypothesis 回写 explore-log）。复用 optimization 会丢 hypothesis（其 .opt-direction
+    #   不随复用更新）。每个 hypothesis 各自隔离，符合"探针"语义。
+    local ts; ts=$(date +%s)
+    target="$WT_BASE/opt-$(slug "$new_area")-explore-$ts"
+    new_wt_branch="auto/opt-$(slug "$new_area")-explore-$ts"
+    mkdir -p "$target"
+    if ! git -C "$PROJECT" worktree add -b "$new_wt_branch" "$target" "$MAIN_BRANCH" 2>/dev/null; then
+      rmdir --ignore-fail-on-non-empty "$target" 2>/dev/null || true
+      echo "✗ 探索类 worktree add 失败（分支名撞？路径冲突？），已清空 husk: $(basename "$target")" >&2
+      return 1
+    fi
+    echo "$direction" > "$target/.opt-direction"
+    _ignore_opt_direction_marker "$target"
+    created_new_wt=1
+    echo "↔ 探索类（含 hypothesis，独立探针 worktree）→ 开新 worktree: $(basename "$target")"
   elif [[ "$cur_area" == "$new_area" ]]; then
     target="$WT_BASE/optimization"
   else
@@ -921,6 +976,8 @@ $(git log --oneline "$MAIN_BRANCH".."$wt_branch" 2>/dev/null | head -5)"
     # M-003: 改用 $wt_branch(symbolic-ref 拿到的真实分支名)替代 basename 拼接。
     local merge_sha; merge_sha="$(git rev-parse HEAD 2>/dev/null || printf '')"
     audit_log success "$wt" "$merge_sha" "squash-merge worktree into $MAIN_BRANCH" || true
+    # B-2 / 阶段③b EXPLORE v3.1：探索类 worktree 合并 → 回写 explore-log（verified）
+    _explore_log_append "$wt" "$merge_sha" verified "人工批准合并，假设经探针 worktree 验证并落地" || true
     echo "✓ 已 squash 合并 $wt → $MAIN_BRANCH"
     git -C "$PROJECT" worktree remove "$dir" --force 2>/dev/null || rm -rf "$dir"
     # 合并后删本 worktree 实际分支（case-322 收口 + audit-2026-07-02-002 AS-EC-001：旧
@@ -955,6 +1012,9 @@ cmd_reject() {
   _validate_wt_name "$wt"
   local dir="$WT_BASE/$wt"
   [[ -d "$dir" ]] || { echo "❌ worktree 不存在: $wt"; exit 1; }
+  # B-2 / 阶段③b EXPLORE v3.1：探索类 worktree 拒绝 → 回写 explore-log（abandoned）
+  # 必须在 worktree 目录被删之前读 .opt-direction。
+  _explore_log_append "$wt" "" abandoned "人工拒绝，假设放弃或需重设后重探" || true
   git -C "$PROJECT" worktree remove "$dir" --force 2>/dev/null || rm -rf "$dir"
   git -C "$PROJECT" branch -D "auto/$(basename "$dir")" 2>/dev/null || true
   # DO B（autonomous-constraints.md）：reject 是删除敏感路径（worktree remove + branch -D），
