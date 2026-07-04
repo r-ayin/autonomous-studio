@@ -14,7 +14,7 @@ mkdir -p "$HOOKS_DIR"
 
 # ── 1. Copy hook scripts (only if changed) ────────────────────
 CHANGED=0
-for f in studio-progress-check.sh studio-prd-validate.sh studio-auto-commit-remind.sh; do
+for f in studio-progress-check.sh studio-prd-validate.sh studio-auto-commit-remind.sh studio-lint-guard.sh; do
     SRC="$SKILL_DIR/hooks/$f"
     DST="$HOOKS_DIR/$f"
     if [[ ! -f "$DST" ]] || ! cmp -s "$SRC" "$DST"; then
@@ -40,8 +40,9 @@ else:
 
 hooks = settings.setdefault("hooks", {})
 post_tool = hooks.setdefault("PostToolUse", [])
+pre_tool = hooks.setdefault("PreToolUse", [])
 
-# Hook entries to inject
+# Hook entries to inject (PostToolUse)
 new_hooks = [
     {
         "matcher": "Write",
@@ -69,22 +70,45 @@ new_hooks = [
     },
 ]
 
-# Check which (matcher, command) pairs already exist
-existing_pairs = set()
-for entry in post_tool:
-    matcher = entry.get("matcher", "")
-    for h in entry.get("hooks", []):
-        cmd = h.get("command", "")
-        if "studio-" in cmd:
-            existing_pairs.add((matcher, cmd))
+# PreToolUse hook entries (lint guard runs BEFORE Write/Edit to reject syntax errors)
+new_pre_hooks = [
+    {
+        "matcher": "Write",
+        "hooks": [{"type": "command", "command": "bash ~/.claude/hooks/studio-lint-guard.sh", "timeout": 5, "statusMessage": "语法预检..."}]
+    },
+    {
+        "matcher": "Edit",
+        "hooks": [{"type": "command", "command": "bash ~/.claude/hooks/studio-lint-guard.sh", "timeout": 5, "statusMessage": "语法预检..."}]
+    },
+]
 
-# Only add missing ones
+def _existing_pairs(entries):
+    pairs = set()
+    for entry in entries:
+        matcher = entry.get("matcher", "")
+        for h in entry.get("hooks", []):
+            cmd = h.get("command", "")
+            if "studio-" in cmd:
+                pairs.add((matcher, cmd))
+    return pairs
+
+# Only add missing PostToolUse entries
+existing_post = _existing_pairs(post_tool)
 for hook_entry in new_hooks:
     matcher = hook_entry["matcher"]
     cmd = hook_entry["hooks"][0]["command"]
-    if (matcher, cmd) not in existing_pairs:
+    if (matcher, cmd) not in existing_post:
         post_tool.append(hook_entry)
-        existing_pairs.add((matcher, cmd))
+        existing_post.add((matcher, cmd))
+
+# Only add missing PreToolUse entries
+existing_pre = _existing_pairs(pre_tool)
+for hook_entry in new_pre_hooks:
+    matcher = hook_entry["matcher"]
+    cmd = hook_entry["hooks"][0]["command"]
+    if (matcher, cmd) not in existing_pre:
+        pre_tool.append(hook_entry)
+        existing_pre.add((matcher, cmd))
 
 with open(settings_path, "w") as f:
     json.dump(settings, f, indent=2, ensure_ascii=False)

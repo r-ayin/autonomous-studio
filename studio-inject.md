@@ -1,4 +1,4 @@
-<!-- STUDIO:BEGIN v5.4 -->
+<!-- STUDIO:BEGIN v6.1 -->
 ## Studio 研发流程（激活中）
 
 planning/status.json 存在时，所有任务遵循以下规则。

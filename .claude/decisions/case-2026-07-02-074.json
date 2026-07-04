@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-07-02-072",
+  "agent_id": "human-directed",
+  "timestamp": "2026-07-01T23:22:45.838122+00:00",
+  "project": "autonomous-studio",
+  "work_unit": "M-001 + M-002 redo: lint-guard env var safety + distill LLM status differentiation",
+  "situation": "M-001 and M-002 were salvaged as patches from the stale auto/optimization branch (rejected because 9 commits ahead with outdated base regressing 3 safety guards). M-001 patch did not apply cleanly (hooks/studio-lint-guard.sh had diverged to add Edit support). M-002 patch applied cleanly.",
+  "action": "M-001: manually adapted to current main. Key adaptations: (1) preserved Edit support (tool_name in Write/Edit) not in original patch, (2) content extraction handles both content and new_string fields, (3) same env-var-based single-python-invocation architecture as original. M-002: clean git apply, no adaptation needed. The distill-patterns.py change adds llm_status field with 5 states: ok, skipped, timeout, empty_response, nonzero_exit, exception.",
+  "files_changed": [
+    "hooks/studio-lint-guard.sh",
+    "scripts/distill-patterns.py"
+  ],
+  "worktree": "m-redo",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "bash -n syntax OK for lint-guard. py_compile OK for distill-patterns.py. Functional tests: (1) valid Python with shell metacharacters passes through correctly, (2) invalid Python (unclosed paren) blocked with PyCompileError, (3) invalid JSON blocked with JSONDecodeError, (4) Write/Edit/non-Write tools correctly filtered, (5) llm_status assignments found at 7 locations in step2_llm_distill.",
+  "next_suggestion": "Merge m-redo after human review.",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": null,
+  "audit_depth": "shallow"
+}

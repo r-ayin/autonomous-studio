@@ -72,7 +72,7 @@ async function main() {
     await updateEvent(batchEvent, null, { observation_result: observationResult });
     console.log(JSON.stringify({
       observation_result: observationResult,
-      conclusion: 'passed',
+      conclusion: 'skipped',
       skipped: true,
     }));
     return;

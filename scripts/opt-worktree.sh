@@ -144,8 +144,13 @@ judge_direction_kind() {
   if [[ ${#files[@]} -eq 0 ]]; then
     local p
     while IFS= read -r -d '' p; do
-      p="${p#???}"
-      case "$p" in *" -> "*) p="${p##* -> }";; esac
+      # AS-EC-013 fix: porcelain -z 对 rename/copy (XY[0] = R|C) 输出两条 NUL record:
+      #   "XY newpath\0oldpath\0"。原代码只剥前缀不消费 oldpath → 下一轮 read 把 oldpath
+      #   当独立 record 读入，${p#???} 截断后混入 files 数组 → grep 误判 direction-shift。
+      #   检测 XY[0] ∈ {R,C} 时额外 read -d '' 消费 oldpath record（丢弃）。
+      local _xy="${p:0:2}"
+      p="${p#???}"               # 去掉前导 "XY "（status 2 字符 + 空格）
+      case "$_xy" in R?|C?) local _oldpath; IFS= read -r -d '' _oldpath || true ;; esac
       [[ -n "$p" ]] && files+=("$p")
     done < <(git -C "$proj" status --porcelain -z 2>/dev/null)
   fi
@@ -352,16 +357,19 @@ cmd_install_ref_hooks() {
 # （历史 b8458a6/5d0ed82 连 4 commit 毁掉 d3a1a8e/b476c86/5d0ed82 守卫，至 case-063/064
 # 审计才发现）。不中止（避免误伤合法重构），把静默 revert 变可见——"审计才发现"→"提交即见"。
 _assert_no_collateral_revert() {
-  local _mb; _mb=$(git merge-base "$MAIN_BRANCH" HEAD 2>/dev/null || true)
+  # AS-EC-008 fix: 接受可选 $1 作为 git -C 目标目录，消除对 cwd 的隐式依赖。
+  # 无参时行为不变（兼容 cmd_precommit 等外部调用方）。
+  local _git_dir="${1:-}"
+  local _mb; _mb=$(git ${_git_dir:+-C "$_git_dir"} merge-base "$MAIN_BRANCH" HEAD 2>/dev/null || true)
   [[ -n "$_mb" ]] || return 0
-  local _staged; _staged=$(git diff --cached --name-only 2>/dev/null || true)
+  local _staged; _staged=$(git ${_git_dir:+-C "$_git_dir"} diff --cached --name-only 2>/dev/null || true)
   [[ -n "$_staged" ]] || return 0
   local _f _rm _add _overlap
   while IFS= read -r _f; do
     [[ -z "$_f" || "$_f" == ".opt-direction" ]] && continue
-    _rm=$(git diff --cached -- "$_f" 2>/dev/null | grep -E '^-[^-]' | sed 's/^-//' || true)
+    _rm=$(git ${_git_dir:+-C "$_git_dir"} diff --cached -- "$_f" 2>/dev/null | grep -E '^-[^-]' | sed 's/^-//' || true)
     [[ -n "$_rm" ]] || continue
-    _add=$(git diff "$_mb" HEAD -- "$_f" 2>/dev/null | grep -E '^\+[^+]' | sed 's/^+//' || true)
+    _add=$(git ${_git_dir:+-C "$_git_dir"} diff "$_mb" HEAD -- "$_f" 2>/dev/null | grep -E '^\+[^+]' | sed 's/^+//' || true)
     [[ -n "$_add" ]] || continue
     _overlap=$(grep -F -x -f <(printf '%s\n' "$_add") <(printf '%s\n' "$_rm") || true)
     if [[ -n "$_overlap" ]]; then
@@ -484,6 +492,26 @@ cmd_commit() {
     fi
   fi
 
+  # AS-EC-009 (audit-2026-07-02-002): worktree 级互斥锁——防并发 cmd_commit 同 target 损坏。
+  # 场景：两个引擎实例同时 commit 到同一 route-fix worktree（或 direction-shift 撞 ts 概率极低但
+  # optimization 持久 wt 复用常见）。无锁时 B 可能在 A 的 ①cp 之后 ③restore 之前进入，看到混合
+  # 状态；或 A/B 同时 git add+commit 致 index 竞争 / HEAD 断言误报。flock 在 $target/.opt-lock
+  # 上取排他锁，fd 9 持锁覆盖 ①-④ 整段临界区；函数返回（含 ERR trap 退出）时 fd 自动关闭释锁。
+  # wait (-w) 默认阻塞等锁；不超时避免引擎轮次卡死——调用方（autonomous-loop）已有外层超时。
+  local _lockfile="$target/.opt-lock"
+  exec 9>"$_lockfile"
+  if ! flock -x 9; then
+    echo "❌ 无法获取 worktree 锁 $(basename "$target")/.opt-lock（另一 cmd_commit 持有？）——中止，main 改动保留未动" >&2
+    exec 9>&-
+    exit 1
+  fi
+  # 锁内再次校验 target 仍是有效 worktree（等锁期间可能被 cmd_cleanup/cmd_reject 移除）
+  if [[ ! -d "$target/.git" && ! -f "$target/.git" ]]; then
+    echo "❌ 等锁期间 target worktree 已失效: $(basename "$target")——中止，main 改动保留未动" >&2
+    exec 9>&-
+    exit 1
+  fi
+
   # 把当前工作区改动同步到 target worktree 提交
   # 弃用 git stash（phantom-stash 误报根因，见 case-028/029/030/032/004 +
   #   [[opt-worktree-stash-silent-failure]]）：`git stash push -u -- <pathspec>`
@@ -495,12 +523,17 @@ cmd_commit() {
   # L-002 fix: cd $PROJECT 前将 files 规范化为相对 $PROJECT 的路径,防调用方 cwd ≠ $PROJECT 时
   # 传入的相对路径在 cd 后失效。先 realpath 到绝对(容忍调用方 cwd 相对路径),再 --relative-to
   # 折回 $PROJECT 相对路径——保证 git add/cp 在 worktree 里操作的是 scripts/foo.sh 而非绝对路径。
+  # AS-EC-018 (audit-2026-07-02-002): realpath -m 会解析符号链接，当 $PROJECT 或文件路径含 symlink
+  # 时，解析后的绝对路径与 $PROJECT 字面前缀不匹配 → --relative-to 产出含 .. 的路径 →
+  # _validate_commit_file_path 拒绝。改用 -m -s（no-symlink-resolution）仅做词法规范化，
+  # 保留对不存在文件的容忍（-m）同时避免 symlink 导致的路径错位。$PROJECT 也同步规范化确保基准一致。
+  local _proj_norm; _proj_norm="$(realpath -m -s "$PROJECT" 2>/dev/null || echo "$PROJECT")"
   local -a _files_raw=("${@:5}")
   local -a _files_norm=()
   for _f in "${_files_raw[@]}"; do
     [[ -z "$_f" ]] && continue
-    local _abs; _abs="$(realpath -m "$_f" 2>/dev/null || echo "$_f")"
-    local _rel; _rel="$(realpath -m --relative-to="$PROJECT" "$_abs" 2>/dev/null || echo "$_abs")"
+    local _abs; _abs="$(realpath -m -s "$_f" 2>/dev/null || echo "$_f")"
+    local _rel; _rel="$(realpath -m -s --relative-to="$_proj_norm" "$_abs" 2>/dev/null || echo "$_abs")"
     _files_norm+=("$_rel")
   done
   cd "$PROJECT"
@@ -632,6 +665,9 @@ cmd_commit() {
     echo "⚠️ 未指定文件列表，cp 全部改动（含用户 WIP 风险，建议显式传文件）" >&2
     local p
     while IFS= read -r -d '' p; do
+      # AS-EC-014 fix: 与 judge_direction_kind 同症——rename/copy porcelain -z 双 record，
+      # 不消费 oldpath → cp-guard 拿截断的 oldpath 当文件拷 → 要么报错、要么误拷同名文件。
+      local _xy="${p:0:2}"
       p="${p#???}"               # 去掉前导 "XY "（status 2 字符 + 空格）
       case "$p" in *" -> "*) p="${p##* -> }";; esac   # rename 取新路径
       _is_state_only_file "$p" && { echo "⏸ state-only skip: $p (直提 main)" >&2; skipped+=("$p"); continue; }
@@ -674,19 +710,42 @@ cmd_commit() {
   fi
 
   # ② worktree 内提交
-  cd "$target"
-  git add -A
+  # AS-EC-008 fix: 用 git -C 替代 cd "$target"，消除 cwd side effect。旧实现 cd 后若
+  # git commit 失败（hook 拒绝/index lock/空提交等），cwd 留在 worktree；下次 cmd_commit
+  # 从错的 cwd 起算相对路径 → stage orphaned files / 误覆盖。git -C 保证 cwd 始终在 $PROJECT。
+  git -C "$target" add -A
   # .opt-direction 是 worktree 方向标记桩（untracked 元数据，cmd_new 写入），永不进提交——
   # 恢复 5d0ed82(direction-meta-exclusion) 的剔除逻辑：b476c86(show-truncation-guard) 基于旧基座
   # 构建，其 @@ -126,10 +126,6 @@ hunk 连带删除此行。git add -A 历史上把 .opt-direction 暂存、3 次泄漏
   # 进 shizi/x-tool/opt-docs 提交需 chore 清理；此处显式从索引剔除（已 tracked 则 untrack，
   # 工作树文件保留供 cmd_show 读，未 tracked 则 --ignore-unmatch no-op）。
-  git rm -r --cached -q --ignore-unmatch -- .opt-direction 2>/dev/null || true
+  git -C "$target" rm -r --cached -q --ignore-unmatch -- .opt-direction 2>/dev/null || true
   # ⑤ 连带 revert 可见性守卫（case-063/064 根因防线，case-065 抽成共用函数）
-  _assert_no_collateral_revert
-  git -c user.name="autonomous-studio" -c user.email="syp02536326@taobao.com" commit -q -m "opt($direction): $msg
+  # AS-EC-008: 传 $target 让守卫在 worktree 上跑，不依赖 cwd。
+  _assert_no_collateral_revert "$target"
+  # AS-EC-008: commit 失败时清理已 cp 到 worktree 的文件，避免下次调用 stage orphaned content。
+  # trap 仅在本地生效，commit 成功后 unset。清理策略：reset HEAD 取消暂存 + checkout 还原 tracked
+  # 文件到 main HEAD 状态 + 删除 untracked 新文件。best-effort，失败仅 warn 不阻断报错传播。
+  local _commit_failed_cleanup=""
+  _commit_failed_cleanup='
+    echo "⚠️ [AS-EC-008 cleanup] commit 失败，清理 worktree 已 cp 文件避免 orphan..." >&2
+    git -C "$target" reset HEAD -- . >/dev/null 2>&1 || true
+    # tracked 文件还原到 main HEAD（worktree 基于 main 分出，HEAD = main HEAD）
+    git -C "$target" checkout HEAD -- . 2>/dev/null || true
+    # untracked 新文件删除（cp 过来的新增文件不在 HEAD 中，checkout 不会碰）
+    git -C "$target" clean -fd --quiet 2>/dev/null || true
+    echo "   cleanup 完成（best-effort）" >&2
+  '
+  trap "$_commit_failed_cleanup" ERR
+  if ! git -C "$target" -c user.name="autonomous-studio" -c user.email="syp02536326@taobao.com" commit -q -m "opt($direction): $msg
 
-[auto-optimization on worktree $(basename "$target") — 待人工审合并]"
+[auto-optimization on worktree $(basename "$target") — 待人工审合并]"; then
+    # trap 已触发 cleanup；此处追加审计日志后退出。set -e 下 trap ERR 先于 exit 执行。
+    audit_log failure "$(basename "$target")" "" "git commit failed after cp; orphan cleanup triggered (AS-EC-008)" commit artifact || true
+    echo "❌ worktree commit 失败（已清理 orphaned files），cwd 保持 $PROJECT。请检查 hook/index lock/commit message。" >&2
+    exit 1
+  fi
+  trap - ERR   # commit 成功，解除 cleanup trap
 
   # ③ 还原 main：tracked → checkout HEAD；untracked 新文件 → rm（已 cp 走）
   cd "$PROJECT"
@@ -706,8 +765,10 @@ cmd_commit() {
   else
     local p2
     while IFS= read -r -d '' p2; do
+      # AS-EC-014 fix (第三处): 还原循环同样需消费 rename oldpath，否则 rm/checkout 作用于截断路径
+      local _xy="${p2:0:2}"
       p2="${p2#???}"
-      case "$p2" in *" -> "*) p2="${p2##* -> }";; esac
+      case "$_xy" in R?|C?) local _oldpath; IFS= read -r -d '' _oldpath || true ;; esac
       _is_skipped "$p2" && { echo "⏸ cp-guard 跳过 $p2：保留 main 改动待重做" >&2; continue; }
       if git ls-files --error-unmatch "$p2" >/dev/null 2>&1; then
         git checkout HEAD -- "$p2" 2>/dev/null || true
@@ -769,11 +830,11 @@ cmd_list() {
     [[ -d "$d" ]] || continue
     local name; name=$(basename "$d")
     local dir; dir=$(cat "$d/.opt-direction" 2>/dev/null || echo "?")
-    local stat
-    stat=$(git -C "$d" diff --stat "$MAIN_BRANCH" 2>/dev/null | tail -1)
+    local diff_stat
+    diff_stat=$(git -C "$d" diff --stat "$MAIN_BRANCH" 2>/dev/null | tail -1)
     local commits
     commits=$(git -C "$d" rev-list --count "$MAIN_BRANCH"..HEAD 2>/dev/null || echo 0)
-    echo "  $name | 方向=$dir | $commits 提交 | ${stat:-(无 diff)}"
+    echo "  $name | 方向=$dir | $commits 提交 | ${diff_stat:-(无 diff)}"
   done
 }
 
@@ -848,11 +909,14 @@ $(git log --oneline "$MAIN_BRANCH".."$wt_branch" 2>/dev/null | head -5)"
     audit_log success "$wt" "$merge_sha" "squash-merge worktree into $MAIN_BRANCH" || true
     echo "✓ 已 squash 合并 $wt → $MAIN_BRANCH"
     git -C "$PROJECT" worktree remove "$dir" --force 2>/dev/null || rm -rf "$dir"
-    # 合并后删 auto/<wt> 分支（case-322 收口：cmd_reject/cmd_cleanup 已有此行，root live
-    # cmd_merge 亦有，AS 副本 cmd_merge 漏此行致 stale auto/* ref 残留→下轮 scout-scan
-    # 误报待合并）。2>/dev/null||true 容错：分支名解析失败/已删不阻断合并收尾。
-    git -C "$PROJECT" branch -D "auto/$(basename "$dir")" 2>/dev/null || true
-    echo "✓ worktree 清理（worktree 目录 + auto/<wt> 分支）"
+    # 合并后删本 worktree 实际分支（case-322 收口 + audit-2026-07-02-002 AS-EC-001：旧
+    # `auto/$(basename "$dir")` 假设分支名 = auto/<目录名>，但 direction-shift worktree 目录
+    # 带时间戳后缀、route-fix 复用同 area 时目录名可能与分支不完全对应——branch -D 删错
+    # 分支或静默失败致 stale auto/* ref 残留→下轮 scout-scan 误报待合并。改用 $wt_branch
+    # （上方 symbolic-ref 拿到的真实分支名；detached HEAD fallback 已保底）。best-effort
+    # 容错：分支已删/解析失败不阻断合并收尾。
+    git -C "$PROJECT" branch -D "$wt_branch" 2>/dev/null || true
+    echo "✓ worktree 清理（worktree 目录 + 分支 $wt_branch）"
     # 合并使 main 推进；standing optimization worktree 此时落后 main（差本次合并内容）。
     # 仅靠 cmd_commit 首行 ensure_main_wt 自愈（case-363）会留「merge→下次 commit」间的
     # 陈旧窗口：期间任何对 standing WT 的读取（含引擎查 pending case log）看到旧快照，

@@ -40,7 +40,12 @@ IGNORE_DIRS = {".git", "node_modules", ".venv", "__pycache__", ".pytest_cache",
 # 里 pydantic/h11/PyInstaller 的第三方 FIXME/HACK 被计入项目真债，虚高至 #1）。
 # 故任何 .venv 前缀目录一律忽略。
 IGNORE_DIR_PREFIXES = (".venv",)
-IGNORE_FILES_SUFFIX = (".pyc", ".log", ".lock", ".min.js", ".min.css", ".map")
+IGNORE_FILES_SUFFIX = (".pyc", ".log", ".lock", ".min.js", ".min.css", ".map",
+                       "_bundle.js", ".bundle.js")
+# _bundle.js / .bundle.js：第三方 vendor bundle（如 excalidraw-diagram-skill/references/
+# _excalidraw_bundle.js 含 React/Excalidraw 上游 TODO=33），非自有代码债。此前 AS
+# 计 TODO=3（实际 33，scout 有截断）致每轮推 "triage TODO" 却无可 triage 之物。
+# .min.js 已排除但 uncompressed bundle 未覆盖。
 MAX_FILE_SIZE = 2 * 1024 * 1024  # >2MB 不索引内容
 STALE_DAYS = 7
 
@@ -421,9 +426,19 @@ def count_pending_worktrees(path):
                                    cwd=entry.path, capture_output=True, text=True, timeout=10)
                 touched = [f for f in n.stdout.splitlines() if f.strip()]
                 if n.returncode == 0 and touched:
-                    d = subprocess.run(["git", "diff", "--exit-code", main_branch, "HEAD", "--", *touched],
-                                       cwd=entry.path, capture_output=True, text=True, timeout=15)
-                    if d.returncode == 0:
+                    # AS-M-003 fix: 分批 diff 防 E2BIG（touched>100 时命令行超 ARG_MAX）。
+                    # 任一批 exit-code!=0 → 非 superseded；全 0 → superseded。
+                    # 批次大小 50 ≈ 平均路径 80B × 50 = 4KB，远低于 Linux ARG_MAX 128KB。
+                    BATCH = 50
+                    all_eq = True
+                    for i in range(0, len(touched), BATCH):
+                        batch = touched[i:i + BATCH]
+                        d = subprocess.run(["git", "diff", "--exit-code", main_branch, "HEAD", "--", *batch],
+                                           cwd=entry.path, capture_output=True, text=True, timeout=15)
+                        if d.returncode != 0:
+                            all_eq = False
+                            break
+                    if all_eq:
                         superseded = True
                     # case-record-only：改动文件全集皆 case-*.json（merge-round 簿记滞后）。
                     # 仅当未 superseded（case 记录真未落 main）才标——superseded 的已落 main

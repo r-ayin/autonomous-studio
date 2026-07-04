@@ -88,6 +88,11 @@ async function main() {
     if (conclusion === 'warning') {
       console.error(`WARNING: LOW-level anomalies detected but allowing batch progression`);
     }
+  } else if (observationResult && observationResult.skipped) {
+    // M-004 fix: skipped observation should NOT be silent — emit WARNING so operators
+    // know the observation gate was bypassed due to missing credentials or API error.
+    // Does not block deployment (backward-compatible), but makes degradation visible.
+    console.error(`WARNING: Sunfire observation skipped for batch ${batchIndex} (${observationResult.reason || 'unknown reason'}). Observation gate bypassed; only time gate enforced. Consider configuring SUNFIRE_ACCESS_ID/SUNFIRE_SECRET_KEY.`);
   }
 
   console.log(JSON.stringify({

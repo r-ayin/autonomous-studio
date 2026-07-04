@@ -335,15 +335,30 @@ def step2_llm_distill(cal, pat_cases, cases, project_dir):
         )
         # 优先 claude -p（复用已配置的 GLM 鉴权）
         op = None
+        llm_status = "skipped"
         if subprocess.run(["which", "claude"], capture_output=True).returncode == 0:
             try:
                 r = subprocess.run(
                     ["claude", "-p", prompt, "--permission-mode", "plan"],
                     cwd=project_dir, capture_output=True, text=True, timeout=120)
                 op = r.stdout.strip()
-            except Exception:
+                if op:
+                    llm_status = "ok"
+                else:
+                    # claude 返回空响应：鉴权/模型拒答/无输出，区别于超时
+                    llm_status = "empty_response"
+                    if r.stderr.strip():
+                        llm_status = f"empty_response:stderr={r.stderr.strip()[:120]}"
+            except subprocess.TimeoutExpired:
                 op = None
-        proposals.append({"pattern": key, "prompt": prompt, "llm_output": op})
+                llm_status = "timeout"
+            except subprocess.CalledProcessError as e:
+                op = None
+                llm_status = f"nonzero_exit:{e.returncode}"
+            except Exception as e:
+                op = None
+                llm_status = f"exception:{type(e).__name__}:{str(e)[:80]}"
+        proposals.append({"pattern": key, "prompt": prompt, "llm_output": op, "llm_status": llm_status})
     if proposals:
         # 写提案文件（即使 LLM 没跑也留档供 agent 审）
         prop_path = os.path.join(project_dir, ".claude", "decisions", "distillation-proposals.json")
