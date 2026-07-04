@@ -73,3 +73,25 @@ Status enum: `open | scheduled | resolved`
 - **severity**: low
 - **status**: open
 - **source_finding**: ESE-L02
+
+## SD-MM-002 — moni-master RuleEngine::evaluate() P1 占位符
+
+- **debt_id**: SD-MM-002
+- **audit_id**: audit-2026-07-04-002
+- **project**: moni-master
+- **description**: RuleEngine::evaluate() 是 P1 占位符，始终返回空 Vec。通过 add() 添加的 STOP_LOSS/TAKE_PROFIT 规则被存储但从不评估，可能误导用户认为规则已生效。需要在 API 响应或规则状态中标注评估未实现，并在添加规则时 log warning。完整实现需要跨 engine/market-data/risk 模块集成，超出单轮最小 fix 范围。
+- **affected_files**: moni-rs/crates/moni-engine/src/rules.rs (L53-57), moni-rs/crates/moni-api/src/routes.rs (rule endpoints)
+- **severity**: low
+- **status**: open
+- **source_finding**: MM-I001
+
+## SD-ESE-003 — engine-skills-extracted manifest checksum verification broken
+
+- **debt_id**: SD-ESE-003
+- **audit_id**: audit-2026-07-04-012
+- **project**: engine-skills-extracted
+- **description**: `_manifest.json` 中 `自主循环/autonomous-loop.sh` 条目声称 `"live_md5_match": true`，但实际文件已 diverge 30+ 行。根因：manifest 生成于 extraction_timestamp，而 fix 引用 audit 完成晚 13 分钟——fix applied post-manifest-generation without regenerating checksums。需要建立"post-fix manifest regeneration"流程或 CI gate 防止再次 drift。
+- **affected_files**: engine-skills-extracted/_manifest.json, engine-skills-extracted/自主循环/autonomous-loop.sh
+- **severity**: medium
+- **status**: open
+- **source_finding**: ESE-RT-M02
