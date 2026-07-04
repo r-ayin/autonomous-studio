@@ -188,11 +188,17 @@ def _atomic_write_json(filepath, data):
 
     本 hook 的存在意义是 SSH 断开/kill 后恢复会话——非原子写（open('w') 截断后写）
     会在中途断开时留下半写态文件，破坏的恰是恢复入口，故必须原子写。
+
+    audit-2026-07-03-017 M-008: 加 f.flush()+os.fsync(fd) 保证数据与元数据落盘后再
+    os.replace；否则文件系统 cache 未刷盘时断电/kill，rename 后的目标仍可能为空或
+    旧版（ext4 data=ordered 默认下 metadata 先于 data 落盘的窗口）。
     """
     fd, tmp = tempfile.mkstemp(dir=os.path.dirname(filepath), suffix=".tmp")
     try:
         with os.fdopen(fd, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
+            f.flush()
+            os.fsync(f.fileno())
         os.replace(tmp, filepath)
     except Exception:
         try:

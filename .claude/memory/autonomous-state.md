@@ -14,15 +14,15 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-07-04T09:30Z（case-2026-07-04-011: ES-H003 atomic safe_write_json fix, opt-decision-observer-1783099363）**
-- **活跃项目**: autonomous-studio (decision-observer.py atomic write fix). audit-2026-07-04-001 derived fixes: 3/10 merged, 7 pending.
-- **当前阶段**: audit-cycle-state status=fix-in-progress (audit-2026-07-04-001), pending_count=7, merged_ready_count=3。Next round dispatches ES-M001.
+- **最后活跃: 2026-07-03T12:30Z（case-2026-07-03-107 fix H-001 commit-gate -a bypass; opt-hooks-1783036663; audit-2026-07-03-017 derived fix 1/8 dispatched）**
+- **活跃项目**: audit-cycle-state status=fix-in-progress. audit-2026-07-03-017 (autonomous-studio hooks) complete. H-001 dispatched (case-107, opt-hooks-1783036663). 7 remaining: H-002 checkpoint prompt injection, H-003 shell injection .sh, H-004 auto-push credential leak, M-008 fsync, M-009/M-010 atomic writes, M-011 echo flag risk.
+- **当前阶段**: fix-in-progress → 下轮派生 H-003 (trivial shell injection fix)
 - **GOAL_STATUS**: active
 - **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动；审计轮次事件驱动 audit-cycle-state + 敏感路径 audit-log 埋点）
-- **LAST_UPDATED**: 2026-07-04(case-2026-07-04-011 ES-H003-fix)
-- **LAST_WORKTREE**: opt-decision-observer-1783099363 (pushed to origin/auto/opt-decision-observer-1783099363)
+- **LAST_UPDATED**: 2026-07-03(case-2026-07-03-107 fix H-001 commit-gate -a bypass; opt-hooks-1783036663)
+- **LAST_WORKTREE**: opt-hooks-1783036663
 - **LAST_OUTCOME**: done
-- **NEXT_SUGGESTION**: [1] ES-M001 (priority 4): route-health-scorer E3 score always max → implement version change detection or unavailable flag. [2] ES-M002: E4 git diff failure defaults full score. [3] ES-M003: triage.py archive race. [4] Merge pending worktrees: opt-hooks-1783018753 (5 commits incl ES-H001) + opt-decision-observer-1783099363 (ES-H003). [5] SD-ES-001+002 structural debts await user review.
+- **NEXT_SUGGESTION**: [1] Dispatch H-003 fix (check-planning-status.sh shell injection, trivial 1-line, route-fix). [2] Batch M-008+M-009 atomic write fixes. [3] Plan H-002 direction-shift (checkpoint integrity). [4] H-004 auto-push direction-shift. Target: /home/admin/workspace/autonomous-studio.
 - **自主循环**: 🟢 活跃
   - L1 Inline: 每次回复末尾内联检查 (+ git status)
   - L2 Heartbeat: CronCreate 每7分钟（执行轨——推进 Studio 阶段或主动扫描）
@@ -74,10 +74,10 @@ metadata:
 <!-- GOAL_ID: G-2026-06-15-002 -->
 <!-- GOAL_STATUS: active -->
 <!-- ACTIVE_GOAL: ralph-wiggum-autonomous-loop (每轮一个小工作单位，scout-scan 排序选任务) -->
-<!-- LAST_UPDATED: 2026-07-04(case-2026-07-04-011 ES-H003-fix) -->
-<!-- LAST_WORKTREE: opt-decision-observer-1783099363 -->
+<!-- LAST_UPDATED: 2026-07-03(case-2026-07-03-107 fix H-001 commit-gate -a bypass; opt-hooks-1783036663) -->
+<!-- LAST_WORKTREE: opt-hooks-1783036663 -->
 <!-- LAST_OUTCOME: done -->
-<!-- NEXT_SUGGESTION: [1]ES-M001 scorer E3 always max。[2]ES-M002 E4 git diff default full。[3]ES-M003 triage race。[4]merge opt-hooks-1783018753+opt-decision-observer-1783099363。[5]SD-ES-001+002 user review. -->
+<!-- NEXT_SUGGESTION: [1] Dispatch H-003 fix (check-planning-status.sh shell injection, trivial). [2] Batch M-008+M-009 atomic writes. [3] Plan H-002 direction-shift. Target: /home/admin/workspace/autonomous-studio. -->
 
 | 字段 | 内容 |
 |------|------|

@@ -14,9 +14,35 @@
 #   Register-ScheduledTask -TaskName "x-tool-watchdog-boot" -Action $action -Trigger $trigger -Principal $principal -Settings $settings
 # =============================================================================
 
-$LogFile = "E:\x-tool\.claude\.watchdog_boot.log"
-$WatchdogScript = "/mnt/e/x-tool/.claude/watchdog.sh"
-$CronPattern = "*/5 * * * * /mnt/e/x-tool/.claude/watchdog.sh"
+# ── Base path resolution (audit-2026-07-01-003 M-003) ─────────────
+# Priority: $env:CLAUDE_PROJECT_DIR > WSL mount table auto-detect > E:\x-tool (legacy fallback)
+$BasePath = $null
+if ($env:CLAUDE_PROJECT_DIR) {
+    $BasePath = $env:CLAUDE_PROJECT_DIR
+    Write-Host "[boot] Using CLAUDE_PROJECT_DIR=$BasePath"
+} else {
+    # Auto-detect from WSL /etc/fstab or /proc/mounts: look for a line mounting a Windows drive to /mnt/<drive>/x-tool
+    try {
+        $mountLine = wsl -d Ubuntu -- bash -c "grep -E '/mnt/[a-z]/x-tool' /proc/mounts 2>/dev/null | head -1"
+        if ($mountLine -match '/mnt/([a-z])/x-tool') {
+            $driveLetter = $Matches[1].ToUpper()
+            $BasePath = "${driveLetter}:\x-tool"
+            Write-Host "[boot] Auto-detected base path from WSL mounts: $BasePath"
+        }
+    } catch {
+        # ignore detection errors, fall through to default
+    }
+}
+if (-not $BasePath) {
+    $BasePath = "E:\x-tool"
+    Write-Warning "[boot] CLAUDE_PROJECT_DIR not set and WSL auto-detect failed; falling back to legacy $BasePath. Set CLAUDE_PROJECT_DIR to silence this warning."
+}
+# Derive WSL-side path from Windows base (E:\x-tool -> /mnt/e/x-tool)
+$WslBasePath = "/mnt/$($BasePath.Substring(0,1).ToLower())/$($BasePath.Substring(3).Replace('\','/'))"
+
+$LogFile = Join-Path $BasePath ".claude\.watchdog_boot.log"
+$WatchdogScript = "$WslBasePath/.claude/watchdog.sh"
+$CronPattern = "*/5 * * * * $WslBasePath/.claude/watchdog.sh"
 
 function Write-Log($msg) {
     $ts = Get-Date -Format "yyyy-MM-ddTHH:mm:ss"

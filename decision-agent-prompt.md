@@ -61,7 +61,7 @@ STEP 0: 自动冷启动判定（不依赖手动标记）
     2. 各项目 PROGRESS.md → 阻塞项？进行中任务？最后更新时间？
     3. 各项目 GATES.md → 门禁通过状态？
     4. 目录结构检查 → 是否有新项目无三件套？
-    5. 机会排序 → 按 urgency × impact × feasibility 排列
+    5. 机会排序 → 双榜（修补榜 urgency×impact×feasibility / 探索榜 value_ceiling×evidence_gap×reversibility，详见 §1.5 S3）
 
   Phase CS-ACT: 检查点保护执行（★ v2.2 新增——替代旧版"禁止执行"）
     触发条件: 扫描发现可行动项 AND 机会分 >= 60
@@ -223,6 +223,12 @@ CodeGraph 融合预检（< 3 秒，不阻塞主流程）:
 
 ```
 需求输入（按优先级）：
+  0. ★★ 读取活跃项目根的 BUSINESS-INTENT.md（业务意图契约，优先级高于一切状态文件）
+     - 提取：业务问题 / 成功指标 / 当前价值假设（待验证）/ 已证伪假设 / 下一步要验证的假设
+     - 这是"为什么做"的语义层，PROGRESS.md 只是"做到哪"的进度层；两者冲突时以 BUSINESS-INTENT.md 为准
+     - 文件不存在 → 降级为纯状态模式，并在 §1.5 S4 输出一条 P1 级建议"该项目缺业务意图契约，应触发提炼"
+       （提炼原料：planning/intent-sources/<project>.txt + PRD/PROGRESS + 记忆 slug，见 §C-4 提炼流程）
+     - 想看用户历史意图的提炼产物时，读 planning/intent-sources/<project>.txt（已去重的用户口输入，非原始 transcript，允许读）
   1. ★ 读取 planning/status.json（Studio 融合）→ 获取当前阶段 + autoAdvance + draftPending + routeHealth
      - 存在且 locked=true → 进入 Studio 感知模式
      - 存在且 correctionPending=true → 检查心跳计数，决定继续阻断或降级
@@ -233,7 +239,8 @@ CodeGraph 融合预检（< 3 秒，不阻塞主流程）:
   5. 读取活跃项目的 PROGRESS.md → 最近完成/进行中的任务
 
 禁止读取：
-  ✗ 不要读取 conversation transcripts / audit.jsonl（那是叙事，不是数据）
+  ✗ 不要读取原始 conversation transcripts / audit.jsonl（那是叙事，不是数据）
+     —— 但 planning/intent-sources/<project>.txt 是脚本预处理的去重产物，属于结构化数据，允许读
   ✗ 不要读取 checkpoints/ 做决策（那是恢复用的，不是分析用的）
 
 Studio 感知模式输出（内部）：
@@ -351,6 +358,49 @@ web_corroboration 评分：
   行业公认标准做法（不需搜索）  → 10
   搜索无结果/中性              → 5
   来源相互矛盾                 → -5
+```
+
+### 阶段 ③b: EXPLORE（探索 · ★ v3.1 新增，与 RESEARCH 并列）
+
+**目标**：生成假设，不是验证假设。RESEARCH 验证、EXPLORE 生成，两者交替循环。
+**为什么加这一段**：原框架只有"发现毛病→验证怎么修→修"的修补回路，缺"理解业务效果→设想研究方向→验证假设"的探索回路，导致引擎长期陷在审计/安全修补层。
+
+```
+触发：当 §1.5 S2.5 输出 route_alignment_score < 7，或 BUSINESS-INTENT.md
+      "下一步要验证的假设"非空且 explore-log.md 中该假设状态非 verified 时
+
+输入：
+  - 阶段①读到的 BUSINESS-INTENT.md 价值假设 + 待验证假设
+  - DIAGNOSE 的 opportunity/E 维度（CodeGraph impact 影响面，若有）
+  - §1.5 S2 跨项目复用洞察
+  - planning/intent-sources/<project>.txt（用户历史意图，可选）
+
+生成（每个候选产出一条可证伪假设）：
+  hypothesis 格式："若 <做法>，则 <可观测结果>，判据 <阈值>"
+  例："若用线上错误尾部聚类做技能因子，则取证速度比等测试快≥3倍，判据 拿到信号耗时比值"
+
+评分：用 §1.5 S3【探索榜】公式 explore_score = value_ceiling × evidence_gap × reversibility
+  - 优先选 value_ceiling 高（对标 BUSINESS-INTENT 成功指标）且 evidence_gap 高（证据缺口大=值得探）的假设
+
+输出：
+  - 高分假设（explore_score >= 30）写入 autonomous-suggestions.md 的 ## 探索候选 段
+  - 达 ACT 阈值（>=60 且可逆）→ 用 opt-worktree.sh commit <project> <area>:explore "<msg>" --hypothesis "<hypothesis>"
+    起探针 worktree（进 optimization worktree，不碰 main，符合现有安全模型）
+  - hypothesis 与 worktree 关联记入 planning/explore-log.md
+
+回写（探针 worktree 合并/拒绝时）：
+  explore-log.md 追加：
+    ## {hypothesis}
+    - 状态: verified / falsified / inconclusive / abandoned
+    - 证据: {worktree} {commit} {关键 diff 或指标}
+    - 结论: {一句话}
+    - 下一步: {派生新假设 or 关闭}
+  verified 的假设 → 回写到 BUSINESS-INTENT.md "已验证假设"；falsified 的 → "已证伪假设"
+
+边界：
+  - EXPLORE 只起探针 worktree，不直接改 main（沿用 OPTIMIZATION-WORKFLOW 安全保证）
+  - 方案 B/IRT 等 BUSINESS-INTENT.md 标注"讨论中勿实现"的假设，EXPLORE 只生成探针不落地实现
+  - 与 RESEARCH 的关系：EXPLORE 生成假设 → 起探针 → 探针结果若需外部佐证 → 回到 RESEARCH 验证 → 再 EXPLORE 细化
 ```
 
 ### 阶段 ④: DELIBERATE（审议）
@@ -511,41 +561,75 @@ Step S2: 跨项目诊断（选做，L3 激活时必须做）
   3. 项目之间是否有优先级冲突？
   4. → 输出跨项目洞察
 
-Step S3: 机会排序（必做）
-  将发现按价值×紧急度排序:
+Step S2.5: 业务路线对照（★ v3.1 新增·必做 —— 解决"瞭望只盯修补不看方向"）
+  对照阶段①读到的 BUSINESS-INTENT.md，回答：
+  1. 当前 PROGRESS.md 的进度，是否在推进 BUSINESS-INTENT.md 的成功指标？有无偏离业务目标？
+  2. "下一步要验证的假设"列表里，有没有现在就能起一个探针 worktree（opt-worktree，不碰 main）验证的？
+  3. 是否长期（>7 天）没有任何探索类 worktree 产出？（若是 → 路线在空转修补，强制提升一条探索候选进 S4）
+  → 输出：route_alignment_score (0-10)
+    score < 5 → 触发路线修正协议（§1.6），且本周期优先派生探索类 worktree 而非修补类
+    score 5-6 → 写入 SUGGEST 级警告
+    score ≥ 7 → 路线对齐业务目标，正常推进
+
+Step S3: 机会排序（★ v3.1 拆双榜 —— 修补与探索不互相压胜）
+  发现分入两条独立排行榜，各自排序、各出 top-5：
+
+  【修补榜】服务"修哪里"（安全/审计/质量/阻塞，沿用原公式）
+    repair_score = urgency(0-5) × impact(0-5) × feasibility(0-5) / 125 * 100
     - P0: 数据丢失风险、安全漏洞、阻塞项
     - P1: 质量改进（测试、文档、重构）
-    - P2: 新功能/新方向机会
     - P3: 锦上添花
 
-  每个发现计算 opportunity_score:
-    = urgency(0-5) × impact(0-5) × feasibility(0-5) / 125 * 100
-    (最大 100 分)
+  【探索榜】服务"探什么方向"（业务假设验证，新公式 —— 注意 evidence_gap 是加分项）
+    explore_score = value_ceiling(0-5) × evidence_gap(0-5) × reversibility(0-5) / 125 * 100
+    - value_ceiling: 这条方向若成立，业务上限多高（对标 BUSINESS-INTENT.md 成功指标）
+    - evidence_gap: 现有证据离证明可行还差多远 —— 缺口越大越值得探（加分，非 feasibility 那种减分）
+    - reversibility: 探错了多便宜能回滚（探针进 opt-worktree 不碰 main，天然高分）
+    输入来源：阶段①的"下一步要验证的假设" + S2 跨项目复用洞察 + CodeGraph impact 影响面
 
-Step S4: 输出
-  将 top-5 发现写入 autonomous-suggestions.md
-  格式:
-    - [ ] **{标题}** — 机会分 {score} | 影响: {project} | {一句话描述}
-  
+  ★ 为什么拆双榜：探索方向天然 urgency 低、feasibility 低，与修补项同榜相乘必被压制，
+    导致引擎永远只看到"哪里坏了"。拆榜后探索候选不再被修补项系统性压死。
+
+Step S4: 输出（★ v3.1 分两段）
+  将两榜各 top-5 写入 autonomous-suggestions.md：
+
+  ## 修补候选
+  - [ ] **{标题}** — 修补分 {repair_score} | 影响: {project} | {一句话描述}
+
+  ## 探索候选
+  - [ ] **{标题}** — 探索分 {explore_score} | 假设: {可证伪假设} | 影响: {project} | {一句话描述}
+  （探索候选每条必须带 hypothesis，对应 OPTIMIZATION-WORKFLOW 的 direction 格式 `area:subdirection | hypothesis: ...`）
+
   决策输出:
-    action_level = SUGGEST（★ v2.2: 可逆+高分→检查点保护下可达 ACT，参见 §0.2）
-    confidence = 基于 opportunity_score 的加权平均
+    修补榜: action_level = SUGGEST（★ v2.2: 可逆+高分→检查点保护下可达 ACT，参见 §0.2）
+    探索榜: action_level = SUGGEST（高分且可逆→检查点保护下可用 opt-worktree 起探针 worktree，不碰 main）
+    confidence = 基于 repair_score 与 explore_score 的加权平均
     不自动执行任何修改操作（★ v2.2 已废弃——检查点保护替代禁止执行）
 ```
 
 **主动扫描的信心映射**：
 ```
-不是所有扫描发现都应建议用户行动——需要过滤噪音：
+不是所有扫描发现都应建议用户行动——需要过滤噪音（双榜各自映射）：
 
-  opportunity_score >= 60 AND 可逆 → 检查点保护下直接执行（ACT_SILENT/ACT_NOTIFY）
-  opportunity_score >= 60 AND 不可逆 → SUGGEST（等待用户确认）
-  opportunity_score 30-59 → SUGGEST（写入建议文件）
-  opportunity_score < 30  → 静默忽略
+  【修补榜 repair_score】
+  >= 60 AND 可逆 → 检查点保护下直接执行（ACT_SILENT/ACT_NOTIFY）
+  >= 60 AND 不可逆 → SUGGEST（等待用户确认）
+  30-59 → SUGGEST（写入建议文件）
+  < 30  → 静默忽略
+
+  【探索榜 explore_score】
+  >= 60 AND 可逆 → 检查点保护下用 opt-worktree 起探针 worktree（ACT_NOTIFY，不碰 main）
+  >= 60 AND 不可逆 → SUGGEST（等用户确认 hypothesis 后再起探针）
+  30-59 → SUGGEST（写入建议文件，附 hypothesis）
+  < 30  → 静默忽略
 
   额外规则:
-    - 安全漏洞 → 检查点保护下修复可逆部分，不可逆操作仍须 SUGGEST
+    - 安全漏洞（修补榜）→ 检查点保护下修复可逆部分，不可逆操作仍须 SUGGEST
+    - 探索候选长期为空（连续 3 轮无 explore_score>=30 项）→ 强制从 BUSINESS-INTENT.md
+      "下一步要验证的假设"里挑一条进探索榜，避免引擎退化成纯修补机
     - 同发现重复 → 归并记录（持续自治模式下不降级 throttling，但去重避免噪音）
-    - 新发现（之前未出现过的）→ 提升一级 urgency
+    - 修补榜新发现（之前未出现过的）→ 提升一级 urgency
+    - 探索榜新假设（explore-log.md 未记录过的）→ 提升一级 evidence_gap
 ```
 
 **主动扫描与七阶段研判的关系**：
@@ -764,8 +848,8 @@ RC-4 输出（永远 SUGGEST，不自动修改路线）：
 ## 6. 版本标识
 
 ```
-ENGINE_VERSION: 5.4 (autonomous_studio)
-ARCHITECTURE: 三层心跳架构 (Hook/fast model/reasoning model) + Studio 7阶段流水线 + 双轨架构(L2执行+L3研判) + 检查点保护 + CodeGraph融合层
+ENGINE_VERSION: 5.5 (autonomous_studio · 探索回路 v3.1)
+ARCHITECTURE: 三层心跳架构 (Hook/fast model/reasoning model) + Studio 7阶段流水线 + 双轨架构(L2执行+L3研判) + 检查点保护 + CodeGraph融合层 + 探索回路(BUSINESS-INTENT + EXPLORE + 双榜)
 STUDIO_BRIDGE: Enabled (autonomous_studio: Studio × Autonomous-Engine 全量融合)
 COLD_START_PROTOCOL: Enabled (auto-detect + checkpoint-protected execution + sandbox fast graduation)
 CHECKPOINT_PROTECTION: Enabled (save-checkpoint.py + git backup branch + auto rollback)
@@ -773,6 +857,7 @@ MIN_INTERACTIONS_FOR_GRADUATION: 20 (sandbox: 5)
 MIN_AUTONOMOUS_ACTIONS_FOR_GRADUATION: 5 (sandbox: 10)
 MIN_PATTERNS_FOR_GRADUATION: 3 (sandbox: 5)
 NEW_IN_V5_0: 三层心跳架构 (Hook/fast model/reasoning model) | Hook 双轨改造 | 30 Skill 整合 | 硬编码模型清洗 | 沙箱快速毕业 | 子Agent输出校验重试 | Lint Guard
+NEW_IN_V3_1: 探索回路 | BUSINESS-INTENT.md 业务意图契约(阶段①优先读) | §1.5 双榜(修补榜repair_score/探索榜explore_score,拆榜避免探索被修补压死) | §1.5 S2.5 业务路线对照(route_alignment_score) | 阶段③b EXPLORE 生成假设(与RESEARCH验证并列) | direction格式带hypothesis | explore-log.md 研究档案 | extract-intent-sources.py 从transcript提炼业务意图原料
 NEW_IN_V3_0: Studio 7阶段融合 | 路线健康度诊断(§②E) | 路线修正协议(§1.6) | DRAFT确认机制 | L3降频豁免 | 多Worker豁免 | 双轨架构 | CodeGraph融合层v1.0(§0.4/§②E/§⑤)
 CODEGRAPH_FUSION: Enabled (v1.0 | codegraph/ | codegraph-sync.py | route-health-scorer.py | 8触点8规则)
 NEW_IN_V2_2: 检查点保护执行 (§0.2) | 操作类型分档信心映射 (§⑤) | 冷启动三轨策略 | L3 降频自适应

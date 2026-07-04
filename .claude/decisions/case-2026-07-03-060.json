@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-03-060",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-03T03:15:00Z",
+  "project": "open-design",
+  "work_unit": "M-003 plugin archive fetcher SSRF guard",
+  "situation": "audit-2026-07-03-012 derived fix M-003: defaultFetcher uses redirect:'follow' with no post-redirect URL validation; attacker-controlled plugin install URL can redirect to 169.254.169.254 or internal LAN IPs, leaking reachability of internal endpoints.",
+  "action": "Added isPrivateOrLoopbackHost helper (covers RFC1918 10/172.16-31/192.168, loopback 127/8 ::1, link-local 169.254 fe80, ULA fc/fd, IPv6-mapped ::ffff). Changed defaultFetcher to redirect:'manual' with explicit hop-by-hop validation (max 5 redirects). Rejects non-http(s) protocols. Returns structured error on private IP / invalid URL / too many redirects.",
+  "files_changed": ["apps/daemon/src/plugins/installer.ts"],
+  "worktree": "opt-open-design-1783015907",
+  "direction": "open-design:plugin-ssrf-guard",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 904d774b2 on opt-open-design-1783015907. git status clean in worktree. Push 403 (external fork, known limitation — awaits human merge). cp-guard blocked re-commit from main but worktree already contains the change.",
+  "next_suggestion": "Dispatch next pending finding M-005 (portless loopback origin bypass). After all H/M findings dispatched, address L-* findings and H-006 direction-shift.",
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-03-012",
+  "audit_depth": "shallow"
+}
