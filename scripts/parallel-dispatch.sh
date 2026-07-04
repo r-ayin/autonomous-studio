@@ -67,9 +67,10 @@ mkdir -p "$WORKTREE_BASE"
 echo "=== Wave $WAVE: $(echo "$TASKS_JSON" | python3 -c 'import json,sys; print(len(json.load(sys.stdin)))') 个 task, 并发上限 $MAX_CONCURRENCY ==="
 
 # 为每个 task 建 worktree + 分支 + 写 prompt
+# AS-PERSIST-M03: NUL-delimited read to prevent word-split on task IDs with spaces/special chars; validate ID format.
 PIDS=()
 SPAWN_COUNT=0
-for TASK_ID in $(echo "$TASKS_JSON" | python3 -c 'import json,sys; [print(t) for t in json.load(sys.stdin)]'); do
+while IFS= read -r -d '' TASK_ID; do
   if ! validate_task_id "$TASK_ID"; then
     continue
   fi
@@ -131,7 +132,7 @@ PROMPT
       echo "  ⚠️ claude CLI 不可用，无法 --spawn。请控制器用 Agent 工具按本清单并发 spawn。"
     fi
   fi
-done
+done < <(echo "$TASKS_JSON" | python3 -c 'import json,sys; ids=json.load(sys.stdin); sys.stdout.buffer.write(b"\0".join(t["id"].encode() if isinstance(t,dict) else t.encode() for t in ids)+b"\0" if ids else b"")')
 
 echo ""
 echo "=== Wave $WAVE 分发完成 ==="
