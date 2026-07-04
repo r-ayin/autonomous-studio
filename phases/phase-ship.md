@@ -29,6 +29,12 @@
 - 上下文：git diff + prd-decisions.md + 项目代码风格规范
 - 评审对照 PRD 决策，不是凭感觉，确保评审有依据
 
+**代码健康度扫描**（可选，功能版本完成后推荐跑一次）：
+- Skill: `ponytail-audit`
+- 扫描全仓库，找多余代码、可简化逻辑、重复实现、未使用的抽象
+- 输出按削减量排序，每条一行，附 tag（delete/stdlib/native/yagni/shrink）
+- 发现的问题分两类处理：快速修（5 分钟内能改的当场改）、留待下版本（记入 planning/tech-debt.md）
+
 ## ⑥ 上线部署
 
 **首选 OneDay CLI 发布**（OneDay 平台项目标准方式）：
@@ -99,6 +105,7 @@ oneday publish      # 发布上线：构建 + 上传 + 出线上访问地址
 
 | Skill | 什么时候用 |
 |---|---|
+| `ponytail-audit` | 评审阶段做代码健康度扫描，找冗余/可简化/死代码 |
 | `excalidraw-diagram-skill` | PRD 阶段需要画流程图时 |
 | `devix-dingtalk-skill` | PRD 写入钉钉文档时 |
 | `agents-map` | 进入新项目需要理解全貌时 |
