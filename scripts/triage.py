@@ -44,7 +44,7 @@ def load(root: Path) -> dict | None:
     if cp.exists():
         try:
             return json.loads(cp.read_text(encoding="utf-8"))
-        except Exception:
+        except (OSError, ValueError, TypeError, UnicodeDecodeError):
             return None
     return None
 
