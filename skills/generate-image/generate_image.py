@@ -54,6 +54,9 @@ from urllib.error import HTTPError, URLError
 DEFAULT_MODEL = "web-agent/gpt-image-2-0421-global"
 DEFAULT_DUCKY_URL = "https://ducky.code.alibaba-inc.com/v1/chat"
 DEFAULT_OUTPUT_DIR = ".image_process"
+# L02 audit fix: download_image 默认大小上限（50 MB）。
+# 环境变量 DUCKY_IMAGE_MAX_BYTES 可覆盖；设为 0 表示禁用检查（不推荐）。
+DEFAULT_IMAGE_MAX_BYTES = int(os.environ.get("DUCKY_IMAGE_MAX_BYTES", str(50 * 1024 * 1024)))
 
 # download_image URL 白名单（H02 audit fix）。
 # 仅允许这些 hostname 的图片下载；IP 字面量一律拒绝（防 SSRF）。
@@ -109,12 +112,21 @@ def generate_output_path(output_dir: str, prefix: str = "gpt") -> str:
     return os.path.join(output_dir, filename)
 
 
-def download_image(url: str, save_path: str, timeout: int = 120) -> str:
+def download_image(
+    url: str,
+    save_path: str,
+    timeout: int = 120,
+    max_bytes: int | None = None,
+) -> str:
     """
     从 URL 下载图片并保存到指定路径（对应 Go 代码 DownloadURLToProcessedPath）。
 
     H02 audit fix: 仅允许白名单 hostname，拒绝 IP 字面量与非 http(s) scheme。
+    L02 audit fix: 大小上限（默认 50 MB）。优先用 Content-Length 预检；无 header 时
+    边下载边累计，超限立即中止并清理半成品文件。
     """
+    if max_bytes is None:
+        max_bytes = DEFAULT_IMAGE_MAX_BYTES
     parsed = urlparse(url)
     if parsed.scheme not in ("http", "https"):
         raise ValueError(f"download_image: disallowed scheme {parsed.scheme!r} in URL: {url}")
@@ -138,12 +150,42 @@ def download_image(url: str, save_path: str, timeout: int = 120) -> str:
     req = Request(url)
     ctx = _create_ssl_context()
     with urlopen(req, timeout=timeout, context=ctx) as resp:
-        with open(save_path, "wb") as f:
-            while True:
-                chunk = resp.read(8192)
-                if not chunk:
-                    break
-                f.write(chunk)
+        # L02: Content-Length 预检（服务端提供时可在写盘前快速失败）
+        cl = resp.headers.get("Content-Length") if resp.headers else None
+        if max_bytes and cl is not None:
+            try:
+                declared = int(cl)
+                if declared > max_bytes:
+                    raise ValueError(
+                        f"download_image: Content-Length {declared} exceeds max_bytes "
+                        f"{max_bytes} for URL: {url}"
+                    )
+            except (TypeError, ValueError) as e:
+                if "exceeds max_bytes" in str(e):
+                    raise
+                # 非数字 Content-Length → 忽略预检，走流式累计
+        written = 0
+        try:
+            with open(save_path, "wb") as f:
+                while True:
+                    chunk = resp.read(8192)
+                    if not chunk:
+                        break
+                    written += len(chunk)
+                    if max_bytes and written > max_bytes:
+                        raise ValueError(
+                            f"download_image: received {written} bytes exceeds max_bytes "
+                            f"{max_bytes} for URL: {url}"
+                        )
+                    f.write(chunk)
+        except BaseException:
+            # 超限时清理半成品文件，避免下游误读截断数据
+            try:
+                if os.path.exists(save_path):
+                    os.remove(save_path)
+            except OSError:
+                pass
+            raise
     return save_path
 
 
