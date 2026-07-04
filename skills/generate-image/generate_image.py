@@ -26,7 +26,7 @@ Ducky 是内部统一的模型调用网关，Go 代码中 gpt_image.go 通过 ll
   - 无需安装第三方库（仅使用标准库）
 
 环境变量：
-  - DUCKY_PRIVATE_TOKEN   : (可选) Ducky 服务的认证 Token，默认取 ANTHROPIC_AUTH_TOKEN
+  - DUCKY_PRIVATE_TOKEN   : (必需) Ducky 服务的认证 Token（请勿复用其他服务凭证，避免跨服务泄漏）
   - DUCKY_BASE_URL        : (可选) Ducky API 地址，默认 https://ducky.code.alibaba-inc.com/v1/chat
   - GPT_IMAGE_MODEL       : (可选) 模型名称，默认 gpt-image-1
   - IMAGE_OUTPUT_DIR      : (可选) 图片保存目录，默认为当前目录下的 .image_process 目录
@@ -219,11 +219,12 @@ def generate_image(
         ValueError: 缺少必填参数
         HTTPError: API 调用失败
     """
-    # 参数解析：优先 DUCKY_PRIVATE_TOKEN，回退到 ANTHROPIC_AUTH_TOKEN
-    token = token or os.environ.get("DUCKY_PRIVATE_TOKEN") or os.environ.get("ANTHROPIC_AUTH_TOKEN", "")
+    # 参数解析：仅接受 DUCKY_PRIVATE_TOKEN，禁止回退到其他服务凭证（防跨服务泄漏）
+    token = token or os.environ.get("DUCKY_PRIVATE_TOKEN", "")
     if not token:
         raise ValueError(
-            "Ducky Token 未提供。请设置 DUCKY_PRIVATE_TOKEN 或 ANTHROPIC_AUTH_TOKEN 环境变量，或通过 --token 参数传入。"
+            "Ducky Token 未提供。请设置 DUCKY_PRIVATE_TOKEN 环境变量，或通过 --token 参数传入。"
+            "请勿复用 ANTHROPIC_AUTH_TOKEN 等其他服务凭证，避免跨服务误用与泄漏。"
         )
 
     ducky_url = ducky_url or os.environ.get("DUCKY_BASE_URL", DEFAULT_DUCKY_URL)
@@ -297,7 +298,7 @@ def main():
     parser.add_argument(
         "--token",
         default=None,
-        help="Ducky 认证 Token (也可通过 DUCKY_PRIVATE_TOKEN 环境变量设置)",
+        help="Ducky 认证 Token (也可通过 DUCKY_PRIVATE_TOKEN 环境变量设置；请勿复用其他服务凭证)",
     )
     parser.add_argument(
         "--ducky-url",
