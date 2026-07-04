@@ -28,12 +28,15 @@ Ducky 是内部统一的模型调用网关，Go 代码中 gpt_image.go 通过 ll
 环境变量：
   - DUCKY_PRIVATE_TOKEN   : (必需) Ducky 服务的认证 Token（请勿复用其他服务凭证，避免跨服务泄漏）
   - DUCKY_BASE_URL        : (可选) Ducky API 地址，默认 https://ducky.code.alibaba-inc.com/v1/chat
+  - DUCKY_SKIP_TLS_VERIFY : (可选) 设为 "1" 禁用 TLS 证书验证（仅内部自签场景 opt-in）
+  - DUCKY_ALLOWED_IMAGE_HOSTS : (可选) 逗号分隔的额外图片下载白名单主机名
   - GPT_IMAGE_MODEL       : (可选) 模型名称，默认 gpt-image-1
   - IMAGE_OUTPUT_DIR      : (可选) 图片保存目录，默认为当前目录下的 .image_process 目录
 """
 
 import argparse
 import base64
+import ipaddress
 import json
 import os
 import ssl
@@ -52,14 +55,35 @@ DEFAULT_MODEL = "web-agent/gpt-image-2-0421-global"
 DEFAULT_DUCKY_URL = "https://ducky.code.alibaba-inc.com/v1/chat"
 DEFAULT_OUTPUT_DIR = ".image_process"
 
+# download_image URL 白名单（H02 audit fix）。
+# 仅允许这些 hostname 的图片下载；IP 字面量一律拒绝（防 SSRF）。
+# 环境变量 DUCKY_ALLOWED_IMAGE_HOSTS 可追加逗号分隔的额外主机名。
+_DEFAULT_ALLOWED_IMAGE_HOSTS = (
+    "ducky.code.alibaba-inc.com",
+    "pre-ducky.code.alibaba-inc.com",
+)
 
-# ──────────────────────────── 工具函数 ────────────────────────────
+def _get_allowed_image_hosts() -> set:
+    """返回允许下载图片的 hostname 集合（内置 + 环境变量扩展）。"""
+    hosts = set(_DEFAULT_ALLOWED_IMAGE_HOSTS)
+    extra = os.environ.get("DUCKY_ALLOWED_IMAGE_HOSTS", "").strip()
+    if extra:
+        for h in extra.split(","):
+            h = h.strip().lower()
+            if h:
+                hosts.add(h)
+    return hosts
+
 
 def _create_ssl_context() -> ssl.SSLContext:
-    """创建一个不验证证书的 SSL 上下文（内部服务场景）。"""
+    """
+    创建 SSL 上下文。默认使用系统 CA 验证（安全基线）。
+    仅在显式设置 DUCKY_SKIP_TLS_VERIFY=1 时禁用验证（内部自签场景 opt-in）。
+    """
     ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
+    if os.environ.get("DUCKY_SKIP_TLS_VERIFY", "").strip() == "1":
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
     return ctx
 
 
@@ -86,7 +110,31 @@ def generate_output_path(output_dir: str, prefix: str = "gpt") -> str:
 
 
 def download_image(url: str, save_path: str, timeout: int = 120) -> str:
-    """从 URL 下载图片并保存到指定路径（对应 Go 代码 DownloadURLToProcessedPath）。"""
+    """
+    从 URL 下载图片并保存到指定路径（对应 Go 代码 DownloadURLToProcessedPath）。
+
+    H02 audit fix: 仅允许白名单 hostname，拒绝 IP 字面量与非 http(s) scheme。
+    """
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        raise ValueError(f"download_image: disallowed scheme {parsed.scheme!r} in URL: {url}")
+    hostname = (parsed.hostname or "").lower()
+    if not hostname:
+        raise ValueError(f"download_image: empty hostname in URL: {url}")
+    # 拒绝 IP 字面量（IPv4 / IPv6 / bracketed）— 防 SSRF
+    try:
+        ipaddress.ip_address(hostname.strip("[]"))
+        raise ValueError(f"download_image: IP literal not allowed: {hostname}")
+    except ValueError as e:
+        if "IP literal" in str(e):
+            raise
+        # 不是 IP → 正常 hostname，继续
+    allowed = _get_allowed_image_hosts()
+    if hostname not in allowed:
+        raise ValueError(
+            f"download_image: hostname {hostname!r} not in allowlist. "
+            f"Allowed: {sorted(allowed)}. Set DUCKY_ALLOWED_IMAGE_HOSTS to extend."
+        )
     req = Request(url)
     ctx = _create_ssl_context()
     with urlopen(req, timeout=timeout, context=ctx) as resp:
