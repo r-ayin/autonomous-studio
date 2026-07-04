@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-02-101",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-02T04:44:19Z",
+  "project": "autonomous-studio",
+  "work_unit": "AS-GOV-001: delete phantom .claude/hooks/__init__.py entry from public-interfaces.txt",
+  "situation": "audit-2026-07-02-005 finding AS-GOV-001 (priority 1, route-fix): public-interfaces.txt line 25 lists autonomous-studio:.claude/hooks/__init__.py but the file does not exist in repo (.claude/hooks/ contains only .py hook scripts, no __init__.py). Phantom PI entry misleads judge_direction_kind — any future change to a real .claude/hooks/<foo>.py would NOT match this entry (different path), so the phantom itself is inert but pollutes governance manifest and fails audit consistency check.",
+  "action": "Delete the single phantom line from .claude/public-interfaces.txt. No other files touched. Committed via opt-worktree.sh; script judged route-fix (target file not in PI list) and opened new worktree opt-governance-1782967430 because area=governance differs from standing optimization area=engine. Branch pushed to origin/auto/opt-governance-1782967430 for human review.",
+  "files_changed": [".claude/public-interfaces.txt"],
+  "worktree": "auto/opt-governance-1782967430",
+  "direction": "governance:public-interfaces-cleanup",
+  "outcome": "succeeded",
+  "outcome_evidence": "git -C /home/admin/workspace/.opt-worktrees/autonomous-studio/opt-governance-1782967430 log -1 --stat shows 1 file changed, 1 deletion(-); diff vs main confirms only line removed is 'autonomous-studio:.claude/hooks/__init__.py'; branch pushed to origin (remote ref auto/opt-governance-1782967430 exists).",
+  "next_suggestion": "派生 fix AS-GOV-003 (route-fix, priority 3): 在 audit-cycle-state.json 头部加 _derived_fix_status_enum 注解；或 AS-GOV-004 (direction-shift, priority 4): scout-scan.py 加 structural-debt section。两者均在 derived_fixes pending。建议下轮走 AS-GOV-003（更小、不动 PI）。",
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-005",
+  "audit_depth": "shallow"
+}

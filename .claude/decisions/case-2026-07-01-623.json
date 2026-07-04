@@ -1,0 +1,36 @@
+{
+  "case_id": "case-2026-07-01-623",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-01T14:25:00Z",
+  "project": "personal-assistant",
+  "work_unit": "PA-H-002 inbox_upload 路径穿越+大小限制 fix（audit-006 priority=1）",
+  "situation": "audit-2026-07-01-006 deep audit 发现 personal_assistant/api.py:185-197 /inbox/upload 端点存在两个 HIGH 级安全问题：(1) filename query 参数直拼路径，攻击者可传 ../../etc/cron.d/x.txt 绕过目录写入任意位置；(2) await request.body() 无大小上限，可被 DoS 打爆内存/磁盘。属 audit-cycle-state.derived_fixes priority=1 pending route-fix。",
+  "action": "在 api.py inbox_upload 函数内加三层防护：① Path(filename).name 剥路径分量防穿越；② dest.resolve().relative_to(inbox.resolve()) 二次校验兜底符号链接/编码绕过；③ body 限长 50MB，超限返 413。仅改 1 个文件（修复轮最小单位纪律）。通过 opt-worktree.sh commit 提交，方向 security:inbox-upload-hardening 触发新 worktree（area 从 engine→security 分歧）。",
+  "files_changed": ["personal_assistant/api.py"],
+  "worktree": "opt-security-1782909081",
+  "direction": "security:inbox-upload-hardening",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh 输出 '✓ 提交到 opt-security-1782909081 方向=security:inbox-upload-hardening' + '✓ 已 push auto/opt-security-1782909081 → origin/auto/opt-security-1782909081'。Code Review URL: https://code.alibaba-inc.com/qunbu/personal-assistant/codereview/new?from=main&to=auto/opt-security-1782909081",
+  "next_suggestion": "下轮继续派生 audit-006 priority=2 PA-H-003（asr.py scan_once/run_loop 缩进修复），同为 route-fix，预计复用 optimization worktree 或再开新 area worktree。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "personal_assistant/api.py",
+      "line": 193,
+      "severity": "high",
+      "finding": "dest = inbox / filename 直接拼接未过滤的 query 参数，允许 ../ 路径穿越写入 inbox 外任意位置",
+      "remediation": "Path(filename).name 剥路径分量 + resolve 后 relative_to 二次校验",
+      "kind": "route-fix"
+    },
+    {
+      "file": "personal_assistant/api.py",
+      "line": 194,
+      "severity": "high",
+      "finding": "await request.body() 无大小上限，大 payload 可耗尽内存/磁盘",
+      "remediation": "加 MAX_UPLOAD_BYTES=50MB 阈值，超限返 HTTP 413",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-01-006",
+  "audit_depth": "shallow"
+}

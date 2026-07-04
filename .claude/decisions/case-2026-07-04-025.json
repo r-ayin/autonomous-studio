@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-04-025",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-04T21:15:00Z",
+  "project": "moni-master",
+  "work_unit": "MM-M009: SSRF + credential theft guard on /llm/chat and /llm/config base_url",
+  "situation": "audit-2026-07-04-002 finding MM-M009 (priority 12): api.py L1869-1884 /llm/chat accepts attacker-controlled base_url via payload.provider_override, then sends server-side HTTP request with Authorization: Bearer {api_key} header to that URL. Enables SSRF + credential exfiltration to arbitrary endpoints. /llm/config POST also stores arbitrary base_url without validation.",
+  "action": "Added _validate_llm_base_url() helper with hostname allowlist (6 known LLM providers), scheme check (http/https only), and defense-in-depth DNS resolution check rejecting private/reserved/loopback IPs. Applied validation at both /llm/chat request time and /llm/config write time. Committed to opt-moni-core-1782953414 worktree (api.py was unmodified vs master in that worktree). Pushed to origin.",
+  "files_changed": ["local_simulator/api.py"],
+  "worktree": "opt-moni-core-1782953414",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit cad3df6 in auto/opt-moni-core-1782953414 branch; pushed to origin; CR link: https://code.alibaba-inc.com/xtool/moni/codereview/new?from=master&to=auto/opt-moni-core-1782953414; diff shows +56 lines (validator function + 2 call sites); main reverted clean (grep _validate_llm_base_url returns 0)",
+  "next_suggestion": "派生 fix for MM-M010 (/agent/state/full leaks raw config including api_keys) — same file area, can stack on opt-moni-core-1782953414 after this merges. Also consider marking MM-M001 as superseded by Arc refactor in opt-moni-api-1782944898 once that worktree merges.",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-04-002",
+  "audit_depth": "shallow"
+}

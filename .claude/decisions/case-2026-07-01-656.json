@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-01-656",
+  "agent_id": "ralph-wiggum-loop",
+  "timestamp": "2026-07-01T16:55:00Z",
+  "project": "autonomous-engine",
+  "work_unit": "AE-L-001 protocol-check.py bootstrap guard",
+  "situation": "audit-2026-07-01-009 AE-L-001 finding: protocol-check.py L70 传 dummy 路径给 bootstrap.py，依赖隐式约定。深查发现更严重：bootstrap.py 整个不存在（project-protocol skill 未安装），hook 是死代码。原始 finding 描述不完整但方向正确——bootstrap_unavailable 分支缺少 stderr 警告和结构化标记，运维者无法感知此缺口。",
+  "action": "在 check_and_bootstrap() 的 bootstrap_unavailable 分支增加 sys.stderr.write 警告 + 返回值加 skill_missing:True 字段，让 hook 输出可被监控系统捕获。dummy 路径问题因 bootstrap.py 不存在而 moot，不改 L70（待未来补全 bootstrap.py 时再修）。",
+  "files_changed": [".claude/hooks/protocol-check.py"],
+  "worktree": "opt-hooks-1782916244",
+  "direction": "hooks:ae-l001-bootstrap-guard",
+  "outcome": "succeeded",
+  "outcome_evidence": "git commit 8a904d8 on auto/opt-hooks-1782916244, pushed to origin. Worktree diff shows added stderr warning + skill_missing field in bootstrap_unavailable branch.",
+  "next_suggestion": "audit-cycle-state derived_fixes 全部 pending→merged/rejected 后触发下一轮全量审计。当前 AE-L-001 已派生 fix，剩余 0 pending。等人工 merge opt-hooks-1782916244 上所有 commits (ab46750, 0625f4f, 8a904d8) 后将 status 改 cycle-complete。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": ".claude/hooks/protocol-check.py",
+      "line": 63,
+      "severity": "low",
+      "finding": "bootstrap_unavailable 分支静默返回无 stderr 警告、无结构化 skill_missing 标记，运维者无法感知 project-protocol skill 缺失",
+      "remediation": "增加 sys.stderr.write + 返回值加 skill_missing:True",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-01-009",
+  "audit_depth": "shallow"
+}

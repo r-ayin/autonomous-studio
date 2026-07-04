@@ -1,0 +1,30 @@
+{
+  "case_id": "case-2026-07-04-030",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-04T23:45:00Z",
+  "project": "moni-master",
+  "work_unit": "MM-M005: clamp partial-fill f64 precision drift at engine.rs L820",
+  "situation": "audit-2026-07-04-002 finding MM-M005 originally noted 'engine.rs L640 fill_quantity as f64 precision loss'. Code review revealed L640 cast (i64→f64 for turnover) is safe within A-share scale; actual risk is L820 `(max_quantity as f64 * fill_ratio).ceil() as i64` where f64 multiplication can round up and ceil produces value > max_quantity, allowing single-tick over-fill.",
+  "action": "Added F64_EXACT_INT_MAX (2^53-1) constant + eprintln warning when max_quantity exceeds exact-int range. Applied `.min(max_quantity)` clamp BEFORE ceil so proposed <= max_quantity invariant holds regardless of magnitude. Compile-checked via `cargo check -p moni-engine`. Committed directly in worktree per case-104 guidance (cp-guard rejects already-diverged engine.rs).",
+  "files_changed": [
+    "moni-rs/crates/moni-engine/src/engine.rs"
+  ],
+  "worktree": "opt-moni-engine-1782949388",
+  "direction": "moni-engine:fill-quantity-f64-clamp",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 96580fc on auto/opt-moni-engine-1782949388 pushed to origin. cargo check -p moni-engine passed with 0 errors. Diff: +18/-1 lines at L818-837 adding const + warning + min-clamp before ceil.",
+  "next_suggestion": "派生 fix #9: MM-M006 (engine.rs L424-433 attempt_match error path doesn't save order for partial fills). 或 MM-M008 (llm.rs silent MockLlmClient fallback).",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "moni-rs/crates/moni-engine/src/engine.rs",
+      "line": 820,
+      "severity": "medium",
+      "finding": "(max_quantity as f64 * fill_ratio).ceil() as i64 can exceed max_quantity when max_quantity approaches 2^53 due to f64 rounding + ceil compounding upward drift",
+      "remediation": "Add .min(max_quantity) clamp after ceil; emit eprintln warning when max_quantity > F64_EXACT_INT_MAX",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-04-002",
+  "audit_depth": "shallow"
+}

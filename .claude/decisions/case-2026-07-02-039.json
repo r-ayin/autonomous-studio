@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-07-02-039",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-02T03:45:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "AS-EC-007 autonomous-loop.sh temp file leak on SIGINT between mktemp and shred",
+  "situation": "audit-2026-07-02-002 finding AS-EC-007 (priority 7, route-fix): run_round() 在 line 101 mktemp 创建临时文件保存 claude -p 输出（含敏感工具结果/文件内容），line 112 shred -u 清除。两者之间的窗口（claude 执行 + tail + grep，通常数秒到数十秒）若收到 SIGINT/SIGTERM，line 26 的 trap 仅 kill 0 清理子进程组，不清理 out_file → 敏感内容泄漏到 /tmp。",
+  "action": "引入脚本级 CURRENT_OUT_FILE 变量追踪当前活跃临时文件路径；trap 触发时若该变量非空且文件存在则 shred -u + rm -f 兜底清理；run_round 内 mktemp 后立即赋值 CURRENT_OUT_FILE，shred 前清空以缩小 trap 兜底窗口。改动限定在 scripts/autonomous-loop.sh 单文件。",
+  "files_changed": [
+    "scripts/autonomous-loop.sh"
+  ],
+  "worktree": "opt-autonomous-loop-shift-1782931909",
+  "direction": "autonomous-loop:trap-cleanup",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh 检测到 direction-shift（触及公共接口 .claude/public-interfaces.txt 列出的 autonomous-loop.sh），自动开新 worktree opt-autonomous-loop-shift-1782931909 并 push 到 origin/auto/opt-autonomous-loop-shift-1782931909；commit 成功无 pre-commit 拦截；改动仅 touch 1 文件符合修复轮纪律。",
+  "next_suggestion": "继续派生 AS-EC-008 (opt-worktree.sh cmd_commit orphaned files on commit failure) — 同为 route-fix，可复用 opt-scripts-* worktree。",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-002",
+  "audit_depth": "shallow"
+}

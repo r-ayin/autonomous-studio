@@ -1,0 +1,26 @@
+{
+  "case_id": "case-2026-07-02-105",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-02T05:30:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "skills/prod-deploy HTTP client timeout (H-001+H-002)",
+  "situation": "audit-2026-07-02-006 深度审计 skills/prod-deploy 发现 H-001(task-client/event-client fetch 无 timeout) + H-002(sunfire-client https.request 无 timeout)。服务端无响应时客户端会无限挂起，阻塞部署流水线阶段推进。派生 fix 合并处理（同属 HTTP timeout 类别）。",
+  "action": "为三个 HTTP 客户端加 30s 默认超时：task-client.js/event-client.js 用 AbortController+setTimeout 包 fetch；sunfire-client.js 用 req.setTimeout。超时值可由 DEVOUT_HTTP_TIMEOUT_MS / SUNFIRE_HTTP_TIMEOUT_MS 覆盖。通过 opt-worktree.sh commit 提交到新 worktree（route-fix，新 area prod-deploy 自动开新 worktree）。",
+  "files_changed": [
+    "skills/prod-deploy/scripts/lib/task-client.js",
+    "skills/prod-deploy/scripts/lib/event-client.js",
+    "skills/prod-deploy/scripts/lib/sunfire-client.js"
+  ],
+  "worktree": "opt-prod-deploy-1782970212",
+  "direction": "prod-deploy:http-timeout",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh 输出 '✓ 提交到 opt-prod-deploy-1782970212 方向=prod-deploy:http-timeout' + '✓ 已 push auto/opt-prod-deploy-1782970212 → origin/auto/opt-prod-deploy-1782970212'。CR 链接：https://code.alibaba-inc.com/qunbu/autonomous-studio/codereview/new?from=main&to=auto/opt-prod-deploy-1782970212",
+  "next_suggestion": [
+    "下轮派生 audit-2026-07-02-006 H-003 (prod-deploy 零 audit-log 埋点, P0, 独立 fix)",
+    "H-001/H-002 fix 待人工 review + merge/reject 后同步 audit-cycle-state.derived_fixes[H-001,H-002].status"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-006",
+  "audit_depth": "shallow"
+}

@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-07-02-075",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-02T04:35:00Z",
+  "project": "skills",
+  "work_unit": "runner-exec/scripts/exec.js ws error handler timer cleanup (SK-RE-010)",
+  "situation": "audit-2026-07-02-003 finding SK-RE-010 (priority 8): exec.js:38 ws.on('error', reject) does not clearTimeout(timer) or ws.close(). If WebSocket errors after timeout timer starts, timer still fires → double-resolve on Promise + use-after-close on ws. Derived fix from deep audit of skills/runner-exec module.",
+  "action": "Replaced bare `ws.on('error', reject)` with handler that clears timer (if set), safely closes ws (try/catch to avoid throw-on-already-closed), then rejects. Committed directly on existing worktree branch auto/opt-runner-exec-1782940040 (reused per route-fix rule — no public-interface touch). Pushed to origin per 2026-07-01 policy.",
+  "files_changed": ["runner-exec/scripts/exec.js"],
+  "worktree": "opt-runner-exec-1782940040",
+  "direction": "runner-exec:fix-ws-error-handler",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit de4cb63 on auto/opt-runner-exec-1782940040 pushed to origin; git diff shows +5/-1 lines adding if(timer)clearTimeout + try{ws.close()}catch block before reject(err); main worktree restored clean via git checkout",
+  "next_suggestion": [
+    "派生 SK-RE-011 (session.js:38 timeout silently resolves — should reject or flag) 作为下一个 fix case",
+    "人工 merge opt-runner-exec-1782940040 上已提交的 SK-RE-007/008/010/018 四个 fix，让 pending_count 下降"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-003",
+  "audit_depth": "shallow"
+}

@@ -1,0 +1,27 @@
+{
+  "case_id": "case-2026-07-03-022",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-03T20:18:00Z",
+  "project": "wechat-main",
+  "work_unit": "HV-003 event-scan --output safe merge (audit-2026-07-03-011 derived fix)",
+  "situation": "audit-2026-07-03-011 HV-003 finding: hot-scanner.py event-scan 子命令直接 write_text 覆盖 --output 文件，与同文件 scan/consume 的 merge-and-dedupe 安全语义不一致。若用户误指现有选题池（如 evergreen-pool.json）会被清空。派生 route-fix。",
+  "action": "将 event-scan 的 L865-L870 写入块改为与 scan/consume 一致的 merge-and-dedupe 模式：读 existing → 非数组/JSON 损坏时备份 .bak.json 后重置 → 按 title 去重 → merge 写回；skipped 计数反馈给用户。单文件改动。",
+  "files_changed": [
+    "/home/admin/workspace/wechat-main/topic-pool/hot-scanner.py"
+  ],
+  "worktree": "opt-wechat-1783021994",
+  "direction": "wechat:hv-003-event-scan-safe-merge",
+  "outcome": "succeeded",
+  "outcome_evidence": "python3 -c ast.parse OK; opt-worktree.sh commit 成功 push 到 origin/auto/opt-wechat-1783021994 (5eda7f5..3b7829b); direction_kind=route-fix 复用既有 worktree",
+  "next_suggestion": [
+    "下一派生 MV-001 (百家姓扩充 claim_extractor.py)",
+    "MV-002 corroboration 正则收紧 (fact_checker.py)",
+    "pending 剩 6 条，继续逐个派生直到 cycle-complete"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-03-011",
+  "audit_depth": "shallow",
+  "_derived_from_finding": "HV-003",
+  "_derived_fix_synced": true
+}

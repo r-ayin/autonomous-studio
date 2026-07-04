@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-07-01-624",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-01T20:55:00Z",
+  "project": "personal-assistant",
+  "work_unit": "PA-H-003 asr.py scan_once/run_loop 缩进修复",
+  "situation": "audit-2026-07-01-006 finding PA-H-003 (HIGH): asr.py L208-224 的 scan_once 和 run_loop 方法被误嵌套在模块级函数 query_habits() 内部（缩进错位），导致 IngestionPipeline 类缺少这两个方法，任何调用方会 AttributeError。query_habits 在 L206 已 return，其后代码成为 unreachable nested def。",
+  "action": "将 scan_once 和 run_loop 从 query_habits 函数体内移出，恢复为 IngestionPipeline 类的实例方法（正确缩进到 class body，位于 _analytics 之后）。用 ast.parse 验证：IngestionPipeline.methods 包含 scan_once/run_loop；query_habits 无嵌套 def。",
+  "files_changed": [
+    "/home/admin/workspace/personal-assistant/personal_assistant/asr.py"
+  ],
+  "worktree": "opt-personal-assistant-1782909325",
+  "direction": "personal-assistant:asr-indent-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "ast.parse 验证通过：IngestionPipeline methods=['__init__', '_conn', '_init_db', '_already', 'process_file', '_analytics', 'scan_once', 'run_loop']；query_habits nested defs=[]。opt-worktree.sh commit+push 成功，branch auto/opt-personal-assistant-1782909325 已 push 到 origin。",
+  "next_suggestion": "下轮派生 PA-M-001（/chat*/memories/profile 加 Bearer token gate），priority=3。",
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-01-006",
+  "audit_depth": "shallow"
+}

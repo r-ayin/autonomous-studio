@@ -1,0 +1,33 @@
+{
+  "case_id": "case-2026-07-01-616",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-01T12:03:44Z",
+  "project": "shizi",
+  "work_unit": "SH-L-001 preprocessForVL base64 >10MB early reject (audit-005 派生 fix #7/9)",
+  "situation": "audit-005 shizi 全量深审发现 SH-L-001：preprocessForVL(base64) 入口先 atob(pure) → Uint8Array.from(...) 把整段 base64 解码成 binary buffer，再建 Blob/createImageBitmap。对 10MB+ 原图（手机直拍/电商高清），瞬时分配 ~3×rawLen 内存（atob string + Uint8Array + Blob copy）易触发 service worker OOM 崩溃，且后续 VL API 也大概率拒收。",
+  "action": "在 preprocessForVL 入口 rawLen 计算后加 >10MB 守卫：throw new Error('IMAGE_TOO_LARGE:<MB>')，跳过 atob/Blob 分配。调用方捕获此错误可提示用户裁剪/压缩后重试。单文件 route-fix（不触 public-interfaces.txt）。",
+  "files_changed": [
+    "/home/admin/workspace/shizi/src/background/vision-adapter.ts"
+  ],
+  "worktree": "auto/opt-vision-adapter-preprocess-oom-guard-1782907415",
+  "direction": "vision-adapter-preprocess-oom-guard",
+  "outcome": "succeeded",
+  "outcome_evidence": "npx tsc --noEmit 无 vision-adapter 相关错误；opt-worktree.sh commit 成功 push 到 origin/auto/opt-vision-adapter-preprocess-oom-guard-1782907415；CodeReview URL https://code.alibaba-inc.com/qunbu/shizi/codereview/new?from=main&to=auto/opt-vision-adapter-preprocess-oom-guard-1782907415",
+  "next_suggestion": [
+    "下轮派生 SH-L-002：nmsDedup results >150 时跳 editDistance，仅用 bbox IoU + exact text match",
+    "人工 review opt-vision-adapter-preprocess-oom-guard-1782907415 diff，merge/reject 后回写本 case status + audit-cycle-state.derived_fixes[SH-L-001].status"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "src/background/vision-adapter.ts",
+      "line": 293,
+      "severity": "low",
+      "finding": "preprocessForVL 未设 rawLen 上限，10MB+ base64 经 atob+Uint8Array.from 瞬时分配 ~30MB 内存，service worker 易 OOM",
+      "remediation": "rawLen >10MB early throw IMAGE_TOO_LARGE — 已修",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-01-005",
+  "audit_depth": "shallow"
+}

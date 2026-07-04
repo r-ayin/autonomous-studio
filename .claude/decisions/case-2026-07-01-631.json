@@ -1,0 +1,72 @@
+{
+  "case_id": "case-2026-07-01-631",
+  "agent_id": "autonomous-loop-qwen3.7-max",
+  "timestamp": "2026-07-01T21:45:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "AS-M-001 fix: studio-lint-guard.sh shell→env var JSON 传递修复",
+  "situation": "audit-2026-07-01-007 深审 autonomous-studio 引擎核心，发现 hooks/studio-lint-guard.sh 用 echo+python3 链式解析 hook input JSON，content 含换行/引号时 shell 转义断裂致 lint 静默失效。实测 bad python/json 全 pass（应 block）。",
+  "action": "重写为单次 python3 -c 从环境变量 _AS_HOOK_INPUT 读完整 JSON，在 python 内完成字段抽取+语法校验+JSON 输出。shell 层只做 HOOK_EVENT 早筛，不经手 content 字符串。",
+  "files_changed": ["hooks/studio-lint-guard.sh"],
+  "worktree": "optimization",
+  "direction": "engine:lint-guard-json-safety",
+  "outcome": "succeeded",
+  "outcome_evidence": "6 个测试用例全过：bad py→block(compile error), bad json→block(JSONDecodeError), good py with escapes→pass, valid json→pass, non-Write tool→pass({}), non-PreToolUse event→pass({})。修复前 T1/T2 均返回 {} 静默放行。",
+  "next_suggestion": [
+    "派生 AS-H-001 fix: autonomous-loop.sh while 循环体 subshell 隔离 cd",
+    "派生 AS-M-002 fix: distill-patterns.py LLM 超时/拒答区分",
+    "人工 review optimization worktree 待合并 diff"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "hooks/studio-lint-guard.sh",
+      "line": 38,
+      "severity": "medium",
+      "finding": "echo+python3 链式解析 hook input JSON，content 含换行/引号时 shell 转义断裂致 lint 静默失效",
+      "remediation": "改用 env var _AS_HOOK_INPUT 传完整 JSON 给 python3 -c，python 内完成全部解析+校验",
+      "kind": "route-fix"
+    },
+    {
+      "file": "scripts/autonomous-loop.sh",
+      "line": 124,
+      "severity": "high",
+      "finding": "while 循环内 cd $ENGINE_DIR 无 subshell 隔离，run_round 改 cwd 后下轮路径错乱",
+      "remediation": "循环体包进 subshell 或 run_round 内显式 cd $ENGINE_DIR 前置",
+      "kind": "route-fix"
+    },
+    {
+      "file": "scripts/distill-patterns.py",
+      "line": 338,
+      "severity": "medium",
+      "finding": "step2_llm_distill subprocess timeout 后 op=None 仍写 proposals，不可区分超时与拒答",
+      "remediation": "catch TimeoutExpired 标 llm_status=timeout；空响应标 empty_response",
+      "kind": "route-fix"
+    },
+    {
+      "file": "scripts/scout-scan.py",
+      "line": 417,
+      "severity": "medium",
+      "finding": "count_pending_worktrees git diff --exit-code main HEAD -- *touched 大文件列表 E2BIG 风险",
+      "remediation": "改为分批 diff 或 git diff --stat 行数=0 判定等价",
+      "kind": "route-fix"
+    },
+    {
+      "file": "hooks/studio-progress-check.sh",
+      "line": 5,
+      "severity": "low",
+      "finding": "heredoc python 解析 $CLAUDE_TOOL_INPUT，FILE_PATH 含特殊字符可注入",
+      "remediation": "同 AS-M-001 模式改 env var 传值",
+      "kind": "route-fix"
+    },
+    {
+      "file": "scripts/opt-worktree.sh",
+      "line": 706,
+      "severity": "low",
+      "finding": "push stderr 被 sed 前缀化，真错误信息难 grep",
+      "remediation": "只 pipe stdout，stderr 单独处理",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-01-007",
+  "audit_depth": "deep"
+}

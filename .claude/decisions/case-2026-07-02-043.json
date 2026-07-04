@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-02-043",
+  "agent_id": "autonomous-loop-ralph",
+  "timestamp": "2026-07-02T03:15:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "AS-EC-007 run_round SIGINT temp file leak fix",
+  "situation": "audit-2026-07-02-002 derived_fixes AS-EC-007 (priority 7, pending): autonomous-loop.sh run_round() mktemp→claude -p→shred 路径中，若 claude -p 执行期间收到 SIGINT/SIGTERM，外层 trap 直接 kill 0; exit 130 跳过 shred -u，导致含 claude 输出（文件内容/工具结果/敏感上下文）的临时文件泄漏到 /tmp。",
+  "action": "在 run_round 内加局部 trap 捕获 INT/TERM → 标记 _sig_received → 走完 tail/grep/shred 清理路径 → 恢复外层 trap → kill -$_sig_received $$ re-raise 信号让外层 L-001 trap 正常清理子进程组。保证无论何时收到信号，临时文件都被 shred。",
+  "files_changed": ["scripts/autonomous-loop.sh"],
+  "worktree": "opt-engine-shift-1782932950",
+  "direction": "engine:loop-sigint-cleanup",
+  "outcome": "succeeded",
+  "outcome_evidence": "bash -n syntax OK; opt-worktree.sh commit 成功 push 到 origin/auto/opt-engine-shift-1782932950; judge_direction_kind 自动判 direction-shift 开新 worktree（触及公共接口文件）；fix 隔离未动 main。",
+  "next_suggestion": "派生 AS-EC-008 (opt-worktree.sh cmd_commit orphaned files on commit failure cd side effect) — 优先级 8 pending route-fix",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-002",
+  "audit_depth": "shallow"
+}

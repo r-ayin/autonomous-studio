@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-04-009",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-04T01:15:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "AS-PERSIST-L01: outcome_evidence example template in loop prompt",
+  "situation": "audit-2026-07-03-007 finding AS-PERSIST-L01 (LOW): loop prompt requires outcome_evidence to cite observable facts but provides no example template. 7/79 recent cases wrote narrative prose instead of reproducible commands. Remediation: add example template showing git show --stat / grep -n patterns.",
+  "action": "Edited scripts/autonomous-loop.sh line 80 (PROMPT text) to append two concrete outcome_evidence example templates after the existing field description: git show --stat and grep -n patterns. Pure prompt text change, no logic modification.",
+  "files_changed": ["scripts/autonomous-loop.sh"],
+  "worktree": "opt-loop-prompt-shift-1783098652",
+  "direction": "loop-prompt:outcome-evidence-template",
+  "outcome": "succeeded",
+  "outcome_evidence": "git show --stat HEAD on auto/opt-loop-prompt-shift-1783098652 shows 1 file changed (scripts/autonomous-loop.sh); grep 'outcome_evidence' scripts/autonomous-loop.sh returns line 80 containing both example templates with git show --stat and grep -n patterns; branch pushed to origin/auto/opt-loop-prompt-shift-1783098652",
+  "next_suggestion": "AS-PERSIST-I01 (priority 6, route-fix): add comment to audit-cycle-state _schema explaining derived_fixes retention policy. Then remaining pending fix is AS-PERSIST-M01 (already committed dc74685, awaiting merge). After all pending cleared, status→cycle-complete triggers next full audit.",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-03-007",
+  "audit_depth": "shallow"
+}

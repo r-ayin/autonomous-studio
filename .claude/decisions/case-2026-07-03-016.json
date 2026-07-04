@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-03-016",
+  "agent_id": "ralph-wiggum-cycle-77",
+  "timestamp": "2026-07-03T20:45:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "AC-F003 fix: auto-commit.py TOCTOU race — fcntl SH lock spans do_commit",
+  "situation": "audit-2026-07-03-010 finding AC-F003 (HIGH): auto-commit.py line 325 os.path.exists(.autonomous_active) check and subsequent git add/commit/push (lines 362-413)之间存在 TOCTOU 窗口。并发场景下若另一进程在 check 后、commit 前删除 marker，gate bypass 直接 commit main。opt-hooks-1783018753 已含 AC-F005+PEL-001 未合并，cp-guard 阻止覆盖；本轮直接在 worktree 内叠加 AC-F003 fix（同 area route-fix，正交修改）。",
+  "action": "在 worktree opt-hooks-1783018753 内的 .claude/hooks/auto-commit.py 新增 _acquire_autonomous_active_sh_lock() helper（fcntl.flock LOCK_SH|LOCK_NB on .autonomous_active），do_commit 入口获锁后 try/finally 包裹整个 check→add→commit→push 流程，finally 中 close(fd) 释放。Windows/non-fcntl 退化回原 exists-check。同步更新 main 工作目录版本（保持一致但 main 不提交）。",
+  "files_changed": [".claude/hooks/auto-commit.py"],
+  "worktree": "opt-hooks-1783018753",
+  "direction": "hooks:auto-commit-toctou-sh-lock",
+  "outcome": "succeeded",
+  "outcome_evidence": "python3 -m py_compile 通过；dry-run T1(no-marker)→(None,False), T2(marker-exists)→(fd,True), T3(lock-release) OK；git commit 5a2ba86 push 到 origin/auto/opt-hooks-1783018753 (afa9618..5a2ba86)。worktree 现含 AC-F005 + PEL-001 + AC-F003 三笔 fix 待人工 merge。",
+  "next_suggestion": "[1] 人工 merge/reject opt-hooks-1783018753（含 AC-F005+PEL-001+AC-F003 三笔 fix）。[2] merge 后派生 AC-F002 fix（若 case-396 未覆盖 extracted 版 filtered-stage）。[3] MBP-F001~F005 sync-from-live 打包修5个bypass。[4] audit-cycle-state pending_count=7 → 继续逐轮派生直到清零触发下一全量审计。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": ".claude/hooks/auto-commit.py",
+      "line": 325,
+      "severity": "high",
+      "finding": "AC-F003: TOCTOU between os.path.exists(.autonomous_active) check (line 325) and git add/commit (lines 362-413). Concurrent marker deletion between check and act bypasses autonomous-commit-gate, allowing direct commit to main.",
+      "remediation": "fcntl.flock(LOCK_SH|LOCK_NB) on marker file spanning entire do_commit flow; try/finally release. Non-Unix degrades to exists-check.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-03-010",
+  "audit_depth": "shallow"
+}

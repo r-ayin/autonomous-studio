@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-04-008",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-04T07:30:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "ES-H002: studio-precheck.sh shell injection via bash-interpolated python3 -c",
+  "situation": "audit-2026-07-04-001 finding ES-H002 (priority 2, route-fix): studio-precheck.sh L19-25 and L43-49 embed $CAL_FILE/$STATUS_FILE bash variables directly into python3 -c string literals. Paths containing single quotes or adversarial content break Python syntax and enable arbitrary code execution.",
+  "action": "Replace both python3 -c invocations with env-var passing pattern: CAL_FILE=\"$CAL_FILE\" python3 -c '... os.environ[\"CAL_FILE\"] ...'. Eliminates interpolation entirely while preserving identical runtime semantics. Verified: bash -n syntax OK, functional tests pass for normal paths AND single-quote-containing paths (original vuln trigger).",
+  "files_changed": ["scripts/studio-precheck.sh"],
+  "worktree": "opt-precheck-1783098333",
+  "direction": "precheck:shell-injection-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "Worktree commit 2dfc99b on auto/opt-precheck-1783098333 pushed to origin. bash -n clean. Functional test: cooldown=5 path returns skip:cooldown; quoted-path /tmp/t'q with cooldown=4 returns skip:cooldown (previously would have crashed or injected). Main copy reverted by hook as expected (main never modified directly).",
+  "next_suggestion": "派生 fix #2: ES-H003 (priority 3) — decision-observer.py confirm_studio_draft non-atomic safe_write_json. Same vuln pattern as stop-completion-gate case-404.",
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-04-001",
+  "audit_depth": "shallow"
+}

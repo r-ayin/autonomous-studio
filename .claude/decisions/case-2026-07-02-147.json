@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-02-147",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-02T11:35:00Z",
+  "project": "personal-assistant",
+  "work_unit": "L-005: add_chat_log bare Exception catch swallows real errors",
+  "situation": "audit-2026-07-02-008 fix-in-progress, 1 pending finding remaining (L-005). add_chat_log() used bare 'except Exception' around INSERT to detect missing evidence column for auto-migration. This swallowed KeyboardInterrupt, sqlite3.DatabaseError subclasses (IntegrityError, ProgrammingError), json serialization failures, and other non-schema OperationalErrors (locked/busy/readonly). Last pending fix in the audit cycle — completing it transitions status to cycle-complete.",
+  "action": "Narrowed outer except to sqlite3.OperationalError with content inspection: only attempts ALTER TABLE ADD COLUMN when error message contains 'evidence' AND ('no such column' OR 'table'). All other OperationalErrors (locked/readonly/busy) re-raise immediately. Inner ALTER except also narrowed to sqlite3.OperationalError (concurrent duplicate-column is benign; other errors propagate). No behavioral change for the happy path or the legitimate migration path.",
+  "files_changed": ["personal_assistant/storage.py"],
+  "worktree": "opt-storage-1782988687",
+  "direction": "storage:l-005-bare-exception",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 3806668 on auto/opt-storage-1782988687 pushed to origin (0dc0ee4..3806668); python3 -c 'from personal_assistant import storage' imports clean; diff shows sqlite3.OperationalError + msg-content guard replacing bare Exception; main untouched (fix isolated in worktree per opt-worktree discipline).",
+  "next_suggestion": "All 16 derived fixes from audit-2026-07-02-008 now merged/rejected/superseded. Next wheel: audit-cycle-state → cycle-complete → triggers new full-depth audit. Pick next unaudited project (skip autonomous-studio-aone/autonomous-studio/personal-assistant/autonomous-engine already deep-audited; candidates: shizi, sunset-prediction, wechat-main, moni-master, 1BfrYW9R).",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-008",
+  "audit_depth": "shallow"
+}

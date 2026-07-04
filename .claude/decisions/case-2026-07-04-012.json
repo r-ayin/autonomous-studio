@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-04-012",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-04T17:42:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "route-health-scorer E3 external stability detection (ES-M001)",
+  "situation": "audit-2026-07-04-001 finding ES-M001: score_e3_external_stability() hardcoded return score=2 with no actual detection. External dependency changes invisible to route health scoring, making E3 dimension meaningless.",
+  "action": "Replaced stub with real implementation that checks package.json/pyproject.toml/requirements.txt/Pipfile.lock/go.mod/Cargo.toml for HEAD~5..HEAD changes via git diff --name-only. Returns score=1 when deps changed, score=2 when stable, score=1+unavailable:true when dep files missing or git fails. No reward for unobservable state.",
+  "files_changed": ["scripts/route-health-scorer.py"],
+  "worktree": "opt-route-health-shift-1783100529",
+  "direction": "route-health:e3-external-stability-detection",
+  "outcome": "succeeded",
+  "outcome_evidence": "syntax OK via ast.parse; smoke test on autonomous-studio (no dep files) returns score=1+unavailable:true+checked_files=[]; smoke test on personal-assistant (has requirements.txt, no recent changes) returns score=2+checked_files=['requirements.txt']; opt-worktree.sh committed and pushed to origin/auto/opt-route-health-shift-1783100529",
+  "next_suggestion": "派生 fix #2: ES-M002 (E4 git diff failure defaults to full score — same pattern as E3, should return unavailable). Then ES-M003 (triage.py archive sequence race). After pending fixes clear, trigger next full audit.",
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-04-001",
+  "audit_depth": "shallow"
+}

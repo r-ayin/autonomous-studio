@@ -12,6 +12,9 @@
 - 不 push 到 main/master 远端（reference-transaction hook 拦截；只走 opt-worktree.sh merge 走 sanctioned squash）；**但 auto/opt-* 分支自动 push 到 origin**（用户 2026-07-01 改：worktree 分支均经 opt-worktree.sh cmd_commit 内置 push 步骤自动同步远端，无需人工 push）
 - 不碰其他项目的 `.env` / 凭证 / 密钥文件
 - 不做"日常自我润色"型无意义提交（autonomous-studio 自身仅当真有结构性问题才修）
+- **引擎机械文件自指 churn 显式禁止**（2026-07-03 加，用户定）：不得对 `scripts/autonomous-loop.sh`、`scripts/scout-scan.py`、`scripts/opt-worktree.sh`、`.claude/hooks/*.py`、`scripts/*.py` 创建仅含注释/文档/常量重命名/header 注释/字段补全/拼写修正的 opt-worktree 提交。此类"自指润色"在 2026-07-03 积压 38+ worktree（16 个 opt-autonomous-loop-shift + 13 opt-scout-shift + 9 opt-scripts-shift），纯属 churn。
+  - 例外：真逻辑/安全 bug（race、注入、静默吞错、断言失效）仍可修，但**须先在 case 的 audit_findings 写明 file:line + bug 证据**，且一个文件一次只开一个 worktree（禁止 16 个 1-line 分支）。
+  - 违反时：scout-scan 应把此类 worktree 标 health=0.0 不推荐；审计轮若发现自指 churn，reject 而非 merge。
 
 ---
 

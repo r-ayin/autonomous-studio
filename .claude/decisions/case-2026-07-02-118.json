@@ -1,0 +1,53 @@
+{
+  "case_id": "case-2026-07-02-118",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-02T08:15:00Z",
+  "project": "autonomous-engine",
+  "work_unit": "sync confidence threshold tables across 3 docs to decision-agent-prompt.md v2.2 authority",
+  "situation": "AE2-H-003 (audit-2026-07-02-007): CLAUDE.md, ARCHITECTURE.md, decision-agent-prompt.md each defined mutually exclusive confidence threshold mappings. Sub-agent reads decision-agent-prompt.md as its operating manual, but users/maintainers reading CLAUDE.md see a different table. ARCHITECTURE.md SUGGEST range was 11-30 vs 31-59 in authority — off by an order of magnitude in coverage.",
+  "action": "Added authority-source declaration to top of decision-agent-prompt.md. Replaced CLAUDE.md §信心分级 table with v2.2 reversible-operation tier + pointer to authority. Replaced ARCHITECTURE.md confidence table with same v2.2 mapping + pointer. All three now consistent and self-delegating.",
+  "files_changed": [
+    ".claude/skills/autonomous-engine/decision-agent-prompt.md",
+    "autonomous-engine/CLAUDE.md",
+    "ARCHITECTURE.md"
+  ],
+  "worktree": "opt-autonomous-engine-1782975771",
+  "direction": "autonomous-engine:docs-threshold-sync",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit b39d6f2 pushed to origin/auto/opt-autonomous-engine-1782975771. opt-worktree.sh confirmed route-fix reuse (no public-interface touch). Three files modified in single commit; diff shows table replacement + authority note addition.",
+  "next_suggestion": [
+    "派生 AE2-H-002 (direction-shift: L2 heartbeat interval inconsistency touches SKILL.md public interface)",
+    "派生 AE2-M-001 (memory files Windows→Linux path rewrite, 3 files)",
+    "AE2-H-001 case-2026-07-02-116 仍 pending review，提醒用户审"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "autonomous-engine/CLAUDE.md",
+      "line": 94,
+      "severity": "high",
+      "finding": "Confidence threshold table used <40/40-59/60-70/71-84/85+ ranges conflicting with decision-agent-prompt.md v2.2 authority (0-30/31-59/60-70/71-100 for reversible ops)",
+      "remediation": "Replaced with v2.2 reversible-tier summary + authority pointer",
+      "kind": "route-fix"
+    },
+    {
+      "file": "ARCHITECTURE.md",
+      "line": 72,
+      "severity": "high",
+      "finding": "Confidence table used 0-10/11-30/31-50/51-70/71-100 ranges — SUGGEST 11-30 is order-of-magnitude mismatch vs authority 31-59",
+      "remediation": "Replaced with v2.2 reversible-tier summary + authority pointer",
+      "kind": "route-fix"
+    },
+    {
+      "file": ".claude/skills/autonomous-engine/decision-agent-prompt.md",
+      "line": 1,
+      "severity": "medium",
+      "finding": "No authority-source declaration — other docs could drift without explicit delegation",
+      "remediation": "Added ⚠️ 权威源声明 block at file top declaring this file as single source of truth for thresholds",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-02-007",
+  "audit_depth": "deep",
+  "derived_from_finding_id": "AE2-H-003"
+}

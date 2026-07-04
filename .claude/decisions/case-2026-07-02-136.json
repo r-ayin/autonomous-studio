@@ -1,0 +1,30 @@
+{
+  "case_id": "case-2026-07-02-136",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-02T10:30:00Z",
+  "project": "personal-assistant",
+  "work_unit": "H-003 direction-shift: add bearer-token auth middleware to api.py",
+  "situation": "audit-2026-07-02-008 finding H-003: POST /settings/llm accepts api_key+base_url unauthenticated — SSRF/credential theft vector. All API endpoints had zero auth; CORS was wildcard (H-002 fixed separately). Direction-shift because this introduces the first auth layer to personal-assistant.",
+  "action": "Added _AuthMiddleware (starlette BaseHTTPMiddleware) to api.py in opt-audit-1782987109 worktree (stacked on H-002 CORS fix). Middleware checks Bearer token via PA_API_TOKEN env var; falls back to localhost-only when unset so unconfigured deployments aren't wide open. Public paths (/health, /docs, /openapi.json, static mounts /web/ /android/) bypass auth. Also tightened CORS allow_headers from wildcard to Authorization+Content-Type.",
+  "files_changed": [
+    "personal_assistant/api.py"
+  ],
+  "worktree": "opt-audit-1782987109",
+  "direction": "personal-assistant:auth-layer",
+  "outcome": "succeeded",
+  "outcome_evidence": "git commit 74fa547 on auto/opt-audit-1782987109, pushed to origin. 1 file changed, 36 insertions(+), 2 deletions(-). Auth middleware added with PA_API_TOKEN bearer check + localhost fallback. CORS allow_headers tightened.",
+  "next_suggestion": "Next priority pending findings from audit-2026-07-02-008: H-004 (path traversal in POST /inbox/upload, route-fix), M-001 (verify.py _item_counter race, route-fix), M-003 (DELETE /chat-log no auth, route-fix — partially mitigated by H-003 auth middleware now). After all pending fixes merged/rejected, trigger next full audit cycle.",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "personal_assistant/api.py",
+      "line": 248,
+      "severity": "high",
+      "finding": "POST /settings/llm accepts api_key+base_url unauthenticated — SSRF/credential theft vector",
+      "remediation": "Add bearer-token auth middleware (_AuthMiddleware) with PA_API_TOKEN env; fallback to localhost-only",
+      "kind": "direction-shift"
+    }
+  ],
+  "audit_id": "audit-2026-07-02-008",
+  "audit_depth": "deep"
+}

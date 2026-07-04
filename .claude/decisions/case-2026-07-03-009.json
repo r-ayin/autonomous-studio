@@ -1,0 +1,29 @@
+{
+  "case_id": "case-2026-07-03-009",
+  "agent_id": "ralph-wiggum-cycle-70",
+  "timestamp": "2026-07-03T01:47:27Z",
+  "project": "personal-assistant",
+  "work_unit": "web:w011-pa-base-freeze",
+  "situation": "audit-2026-07-03-009 W-011 finding: window.PA_BASE 可被外部脚本（浏览器扩展/XSS payload）篡改，导致所有 fetch 请求重定向到攻击者服务器（SSRF/数据外泄）。api.js IIFE 内一次性读取 BASE 后不再验证，无 scheme/host 校验，无 freeze。kind=direction-shift（审计判定）。",
+  "action": "在 api.js IIFE 入口处增加 PA_BASE 校验与固化：(1) 正则 ALLOWED_BASE_RE 仅允许空串（同源相对路径）或 http(s)://host[:port] 形式；非法值 console.warn 并回退为空串。(2) Object.defineProperty(window, 'PA_BASE', {value: BASE, writable: false, configurable: false}) 冻结防后续篡改。(3) 去尾斜杠避免拼接异常。修复范围仅 web/api.js 一个文件。",
+  "files_changed": [
+    "web/api.js"
+  ],
+  "worktree": "opt-web-1782977902",
+  "commit_sha": "cda727c",
+  "direction": "web:w011-pa-base-freeze",
+  "direction_kind": "route-fix-in-practice (script would reuse opt-web; audit classified as direction-shift due to security boundary change but file not in public-interfaces.txt)",
+  "outcome": "succeeded",
+  "outcome_evidence": "git commit cda727c on auto/opt-web-1782977902: 1 file changed, 15 insertions(+), 1 deletion(-). cp-guard triggered when using opt-worktree.sh from main (worktree had unmerged W-002/W-006/W-007/W-008/W-009/W-010 changes); edited directly in worktree and committed. ALLOWED_BASE_RE validates scheme/host; Object.defineProperty freezes window.PA_BASE.",
+  "next_suggestion": [
+    "派生 W-012 (route-fix): bootstrap() 页面加载触发 POST /verify 写操作 → 改 GET /verify/report 只读",
+    "派生 W-013 (route-fix): MockData.jsx 半真实 PII 替换为明显虚构名",
+    "W-011 已合并到 opt-web-1782977902 但未 merge 到 main；待人工 review 后 merge"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-03-009",
+  "audit_depth": "deep",
+  "_derived_from_finding": "W-011",
+  "_note": "direction-shift per audit classification, but opt-worktree.sh would classify as route-fix (api.js not in public-interfaces.txt). Committed to existing opt-web-1782977902 worktree alongside W-002/W-006/W-007/W-008/W-009/W-010 fixes awaiting human merge."
+}

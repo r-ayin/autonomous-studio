@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-07-03-007",
+  "agent_id": "ralph-wiggum-cycle",
+  "timestamp": "2026-07-02T17:33:16Z",
+  "project": "personal-assistant",
+  "work_unit": "web/SettingsPage.jsx W-008/W-009 route-fix (audit-2026-07-03-009 derived)",
+  "situation": "全量审计 audit-2026-07-03-009 (personal-assistant/web) 派生 fix-in-progress 阶段。W-008 (high): API key 明文 HTTP POST /settings/llm，非 HTTPS 环境可被嗅探；W-009 (medium): displayKey 对短 key (<12) 暴露首尾各4位 ≈ 完整明文在 DOM。两者均为 route-fix，单文件 SettingsPage.jsx 可独立缓解（后端认证/CORS 属 structural W-001 不在本 case 范围）。前轮 W-007 (case-2026-07-03-006) 已改同文件但未合并，cp-guard 跳过 main→wt 拷贝；本地编辑直接写入 wt 文件并成功 commit+push。",
+  "action": "1) displayKey 增加长度判断：<12 字符仅显示 '****已设置'，≥12 才显示首尾各4位；2) save() 入口加 HTTPS 守卫：apiKey 非空且 protocol≠https: 且 hostname∉{localhost,127.0.0.1} → alert 阻止 + return；localhost/https 放行保持开发体验。两改动均在 SettingsPage.jsx 内，不引入新依赖、不改 api.js 公共接口。",
+  "files_changed": ["web/SettingsPage.jsx"],
+  "worktree": "opt-web-1782977902",
+  "direction": "web:settings-key-safety",
+  "outcome": "succeeded",
+  "outcome_evidence": "git -C /home/admin/workspace/.opt-worktrees/personal-assistant/opt-web-1782977902 log --oneline -1 → f373344 opt(web:settings-key-safety): W-008/W-009 fix...; push origin/auto/opt-web-1782977902 成功 (2c0f878..f373344); diff HEAD~1 确认两处修改到位 (+12/-2 lines)。",
+  "next_suggestion": "派生 W-009 已并入本 case；下一 pending 为 W-010 (low, base_url 硬编码 → 从后端 /settings/llm GET 拉取默认值)，仍 route-fix 单文件 SettingsPage.jsx；之后 W-012 (bootstrap POST→GET)、W-013 (MockData PII)、W-011 (direction-shift window.PA_BASE 固化)。待所有 pending cleared 后 status→cycle-complete 触发新一轮全量审计。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {"file": "web/SettingsPage.jsx", "line": 99, "severity": "high", "finding": "W-008: API key 明文 HTTP POST /settings/llm，无传输层加密保证", "remediation": "save() 入口加 HTTPS 守卫（非 https 且非 localhost 阻止）；后端认证属 structural W-001", "kind": "route-fix"},
+    {"file": "web/SettingsPage.jsx", "line": 82, "severity": "medium", "finding": "W-009: displayKey 对短 key 暴露近乎完整明文于 DOM", "remediation": "长度 <12 时仅显示 '****已设置'", "kind": "route-fix"}
+  ],
+  "audit_id": "audit-2026-07-03-009",
+  "audit_depth": "shallow"
+}

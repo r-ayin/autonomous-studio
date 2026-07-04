@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-07-01-663",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-01T15:20:00Z",
+  "project": "moni-master",
+  "work_unit": "moni-data/memory.rs RwLock poison recovery (audit-2026-07-01-010 MM-002 派生 fix)",
+  "situation": "audit-2026-07-01-010 finding MM-002 标记 structural（memory.rs RwLock poison recovery → 封装 PoisonSafeRwLock）。复查发现仅 5 处 .unwrap() on RwLock，单文件 162 行，可用 unwrap_or_else(|e| e.into_inner()) std 推荐模式就地修复，无需新建抽象。重分类为 route-fix 派生。",
+  "action": "把 memory.rs 内 5 处 self.quotes.read()/.write().unwrap() 改为 .unwrap_or_else(|e| e.into_inner())，cargo check + cargo test -p moni-data 全绿后 opt-worktree commit。",
+  "files_changed": [
+    "moni-rs/crates/moni-data/src/memory.rs"
+  ],
+  "worktree": "opt-moni-data-1782919076",
+  "direction": "moni-data:memory-poison-recovery",
+  "outcome": "succeeded",
+  "outcome_evidence": "cargo check -p moni-data Finished; cargo test -p moni-data 7 passed 0 failed; opt-worktree.sh push auto/opt-moni-data-1782919076 → origin/auto/opt-moni-data-1782919076 成功（remote 返回 codereview URL）",
+  "next_suggestion": "剩余 pending: MH-002 (factors/ 路径硬编码，真 structural，跨 9+ 文件需建 market_lake_common.py 公共模块) + MM-002 已本轮流转 succeeded。MH-002 短期不可拆，建议下轮瞭望 #1 skills 项目（PROGRESS.md 待合并 + 缺 GATES.md），或继续清 moni-master 待合并 worktree。所有 audit-010 route-fix 已全部 succeeded，用户批 merge 4 个 worktree 后 status→cycle-complete 触发新审计。",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-01-010",
+  "audit_depth": "shallow"
+}

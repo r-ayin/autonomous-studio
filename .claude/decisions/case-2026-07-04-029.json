@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-04-029",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-04T23:15:00Z",
+  "project": "moni-master",
+  "work_unit": "MM-H002 verify-close: confirm auth middleware already committed in opt-moni-api-1782944898, correct audit-cycle-state record",
+  "situation": "audit-cycle-state listed MM-H002 (REST endpoints lack auth) as pending with worktree opt-moni-api-1782944898 and commit 6ec2786. Investigation showed 6ec2786 is actually Arc strategy optimization, not auth fix. But git log of the worktree revealed auth middleware was already committed at 07b3c49 (opt(moni-api:auth): fix(MR-H06)). Worktree contains complete auth.rs (201 lines), routes.rs layer wiring, lib.rs export. Finding was fixed but state record pointed to wrong commit hash, keeping it falsely pending.",
+  "action": "Verified worktree contents: auth.rs implements bearer-token middleware with constant-time comparison, /health exemption, env-var MONI_API_TOKEN toggle, tracing audit_decision field. routes.rs L124 applies layer via axum::middleware::from_fn. lib.rs exports pub mod auth. No new code changes needed — fix already landed. Reverted accidental main-checkout edits from earlier investigation. Updating audit-cycle-state MM-H002 status pending→merged with correct commit hash 07b3c49.",
+  "files_changed": [],
+  "worktree": "opt-moni-api-1782944898",
+  "direction": "moni:auth-middleware",
+  "outcome": "succeeded",
+  "outcome_evidence": "git -C /home/admin/workspace/.opt-worktrees/moni-master/opt-moni-api-1782944898 log --oneline shows commit 07b3c49 'opt(moni-api:auth): fix(MR-H06): add bearer-token auth middleware for all API endpoints (exempt /health)'. Worktree files moni-rs/crates/moni-api/src/{auth.rs,routes.rs,lib.rs} contain complete implementation. Main checkout reverted to clean state (git status empty for those paths).",
+  "next_suggestion": "Continue dispatching remaining pending findings from audit-2026-07-04-002. Next priority: MM-M005 (engine.rs L640 fill_quantity f64 precision loss, route-fix, no worktree yet). After all 14 remaining pending fixes are merged/rejected, audit-cycle-state transitions to cycle-complete triggering next deep audit.",
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-04-002",
+  "audit_depth": "shallow"
+}

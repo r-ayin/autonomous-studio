@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-07-02-057",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-02T03:45:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "AS-EC-017 --bg mode process group leak fix",
+  "situation": "audit-2026-07-02-002 finding AS-EC-017 (priority 17, pending): autonomous-loop.sh line 26 uses `kill 0` in INT/TERM trap, which signals the entire process group. In --bg mode (line 38-45), nohup-spawned daemon shares PGID with parent shell; parent exit or signal cascades to daemon via PGID. Additionally, run_round runs claude -p synchronously without tracking its PID, so trap cannot target only the active child.",
+  "action": "Three-part route-fix in scripts/autonomous-loop.sh: (1) Replace top-level trap `kill 0` with tracked ACTIVE_CLAUDE_PID variable — trap now kills only the active claude -p child. (2) Add `disown $BG_PID` after nohup & in --bg bootstrap to detach daemon from parent shell job control / PGID. (3) Refactor run_round to background claude -p, capture $! into ACTIVE_CLAUDE_PID, then wait; clear PID after wait returns. bash -n syntax check passed. Committed via opt-worktree.sh which auto-judged direction-shift (script is listed in .claude/public-interfaces.txt).",
+  "files_changed": [
+    "scripts/autonomous-loop.sh"
+  ],
+  "worktree": "opt-engine-shift-1782937448",
+  "direction": "engine:loop-bg-pgid-leak",
+  "outcome": "superseded",
+  "outcome_evidence": "audit-cycle-state.json line 25 shows AS-EC-017 already merged via case-2026-07-02-056 on opt-engine-shift-1782937136 (prior context). This round's fix on opt-engine-shift-1782937448 is a duplicate; worktree pushed but redundant. No audit-cycle-state mutation performed for AS-EC-017 (already merged). Remaining pending: AS-EC-016, AS-EC-018.",
+  "next_suggestion": "派生 AS-EC-018 (opt-worktree.sh realpath -m resolves symlinks causing path rejection) — audit-cycle-state.json 最后一条 pending，完成后 status→cycle-complete 触发下一轮全量审计",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-002",
+  "audit_depth": "shallow"
+}

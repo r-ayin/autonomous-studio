@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-07-01-635",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-01T13:25:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "AS-L-001 studio-progress-check.sh heredoc 变量注入修复",
+  "situation": "audit-2026-07-01-007 finding AS-L-001 (priority 5, kind=route-fix): hooks/studio-progress-check.sh 用未加引号的 heredoc << PYEOF，bash 在传 python 前展开 $STATUS_FILE/$FILE_PATH；若路径含空格/引号/特殊字符会被分词或语法错误，hook 静默失败。派生 fix case。",
+  "action": "heredoc 改 << 'PYEOF'（单引号阻止 bash 预展开）；两个路径经 export STATUS_FILE FILE_PATH + os.environ 传入 python；bare except 收窄为 Exception。1 文件改动，route-fix（未触公共接口）。",
+  "files_changed": ["hooks/studio-progress-check.sh"],
+  "worktree": "opt-hooks-1782912165",
+  "direction": "hooks:progress-check-heredoc",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh commit 成功落 opt-hooks-1782912165；push origin/auto/opt-hooks-1782912165 OK；CR 链接 https://code.alibaba-inc.com/qunbu/autonomous-studio/codereview/new?from=main&to=auto/opt-hooks-1782912165",
+  "next_suggestion": [
+    "下轮派生 AS-L-002 (priority 6): opt-worktree.sh push stderr sed 前缀化",
+    "AS-M-001/M-002/M-003 已提交待 merge，提醒用户审 CR"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-01-007",
+  "audit_depth": "shallow"
+}

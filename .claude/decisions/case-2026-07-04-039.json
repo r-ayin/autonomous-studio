@@ -1,0 +1,68 @@
+{
+  "case_id": "case-2026-07-04-039",
+  "agent_id": "ralph-wiggum-audit",
+  "timestamp": "2026-07-04T06:30:00Z",
+  "project": "engine-skills-extracted",
+  "work_unit": "runtime-core-deep-audit",
+  "situation": "audit-cycle-state was cycle-complete (audit-2026-07-03-007 all fixes settled). Triggered new full audit per protocol. Selected engine-skills-extracted/runtime-core — previous audit (audit-2026-07-03-006) only covered archive snapshot integrity, never runtime behavior of the decision→execute→protect→feedback loop scripts.",
+  "action": "Deep-read 8 core runtime scripts (autonomous-loop.sh, triage.py, pipeline-gate.py, autonomous-commit-gate.py, stop-completion-gate.py, studio-precheck.sh, distill-patterns.py, auto-commit.py). Compared each against live AS versions via diff. Inspected _manifest.json checksum claims. Cross-referenced prior audit findings for regression tracking.",
+  "files_changed": [],
+  "worktree": null,
+  "direction": "audit-only",
+  "outcome": "succeeded",
+  "outcome_evidence": "Produced .claude/audits/audit-2026-07-04-012.md with 7 findings (2H/2M/2L/1I). Updated audit-cycle-state.json: status=fix-in-progress, 6 derived_fixes pending, current_audit_id=audit-2026-07-04-012. Updated autonomous-state.md with new LAST_UPDATED/NEXT_SUGGESTION. Key findings verified by direct diff output showing archive-live divergence in 3 script pairs.",
+  "next_suggestion": "[1] Dispatch ESE-RT-H02: fix studio-precheck.sh shell injection (live regressed vs archive env-var approach). [2] Dispatch ESE-RT-H01: merge ESE-M02 timeout/max-turns into live autonomous-loop.sh. [3] Dispatch ESE-RT-M01: backport SCRIPTS-L04 exception narrowing to archive distill-patterns.py.",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "engine-skills-extracted/心跳预检/scripts/studio-precheck.sh",
+      "line": 19,
+      "severity": "high",
+      "finding": "Live version uses $CAL_FILE shell interpolation inside python heredoc (shell injection vector); archive uses safer os.environ['CAL_FILE']. Live regressed relative to archive.",
+      "remediation": "Replace live studio-precheck.sh with archive env-var approach for CAL_FILE and STATUS_FILE python invocations.",
+      "kind": "route-fix"
+    },
+    {
+      "file": "engine-skills-extracted/自主循环/scripts/autonomous-loop.sh",
+      "line": 14,
+      "severity": "high",
+      "finding": "Archive contains ESE-M02 fix (--max-turns/ROUND_TIMEOUT env vars, lines 113-136) but live AS version lacks it entirely. Manifest claims live_md5_match=true but diff shows 30+ lines diverged.",
+      "remediation": "Merge archive ESE-M02 changes into live autonomous-studio/scripts/autonomous-loop.sh. Regenerate manifest checksums.",
+      "kind": "route-fix"
+    },
+    {
+      "file": "engine-skills-extracted/模式蒸馏/scripts/distill-patterns.py",
+      "line": 42,
+      "severity": "medium",
+      "finding": "Archive retains bare 'except Exception' in load_json_robust and subprocess handler. Live narrowed to explicit exception tuples (SCRIPTS-L04). Archive lags behind live hardening.",
+      "remediation": "Backport live SCRIPTS-L04 exception narrowing into archive distill-patterns.py copy.",
+      "kind": "route-fix"
+    },
+    {
+      "file": "engine-skills-extracted/_manifest.json",
+      "line": 0,
+      "severity": "medium",
+      "finding": "Manifest live_md5_match:true for autonomous-loop.sh contradicted by actual diff. extraction_timestamp 2026-07-03T12:21:52Z predates ESE-M02 fix application at ~12:35Z. Post-fix manifest regeneration missing from packaging workflow.",
+      "remediation": "Register as structural debt SD-ESE-001. Add post-fix manifest regeneration step to ESE packaging workflow.",
+      "kind": "structural"
+    },
+    {
+      "file": "engine-skills-extracted/自动提交/scripts/auto-commit.py",
+      "line": 389,
+      "severity": "low",
+      "finding": "Push origin runs unconditionally after successful commit. autonomous_active marker checked at function entry (L325) but not re-checked before push (L394). Race window if marker created during commit processing.",
+      "remediation": "Re-check .autonomous_active marker before executing push origin.",
+      "kind": "route-fix"
+    },
+    {
+      "file": "engine-skills-extracted/完成度门禁/scripts/stop-completion-gate.py",
+      "line": 228,
+      "severity": "low",
+      "finding": "Block reason printed to both stderr (JSON for Claude Code hook protocol) AND stdout (plain text). Stdout output leaks into conversation context as noise.",
+      "remediation": "Remove stdout print(reason) on line 228. Stderr JSON already carries the reason.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-04-012",
+  "audit_depth": "deep"
+}

@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-07-04-032",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-04T21:15:00Z",
+  "project": "moni-master",
+  "work_unit": "MM-M007: drop unused _notifications broadcast sender clone in engine spawn",
+  "situation": "engine.rs L286 cloned state.notifications (broadcast::Sender) into `_notifications` binding that was never read. The extra ref kept the sender alive past the actor loop, so recv() never observed channel-close and the 'engine actor shutdown' log could not fire when all EngineHandles were dropped. Audit finding MM-M007 (priority 10, route-fix).",
+  "action": "Removed the unused `let _notifications = state.notifications.clone();` line. Spawned task no longer holds a redundant sender copy; channel closes naturally on last handle drop.",
+  "files_changed": ["moni-rs/crates/moni-engine/src/engine.rs"],
+  "worktree": "opt-moni-engine-1782949388",
+  "direction": "moni-engine:cleanup",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 77f7f30 in auto/opt-moni-engine-1782949388: 1 file changed, 1 deletion(-). Worktree now has 7 commits (MM-M005/M006/M007 stacked). Main restored to pre-edit state via git checkout.",
+  "next_suggestion": [
+    "派生 fix MM-M008 (priority 11): llm.rs L164-179 silent fallback to MockLlmClient when DeepSeek key missing — factor mining produces fake outputs. 应加 env var guard + explicit error log。",
+    "opt-moni-engine-1782949388 已累积 7 提交（含 M005/M006/M007），建议用户审阅后 merge 以释放 cp-guard 阻塞。"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-04-002",
+  "audit_depth": "shallow"
+}

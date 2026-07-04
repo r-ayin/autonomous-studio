@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-04-031",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-04T16:15:00Z",
+  "project": "moni-master",
+  "work_unit": "MM-M006: persist error_message on partial-fill match failure in engine.rs L423-433",
+  "situation": "audit-cycle-state status=fix-in-progress, pending_count=13. Highest priority pending finding MM-M006 (priority 9): attempt_match Err branch only saves order when filled_quantity==0. When partial fills occur before a match error, the order record goes stale — no error_message, no updated_at refresh, no save_order call. Downstream reconciliation/cancel sees outdated state.",
+  "action": "Add else branch at L423-433: when filled_quantity > 0 and attempt_match returns Err, persist error_message ('部分成交后撮合异常') + updated_at via save_order without releasing resources (real trades already booked). Status stays PARTIALLY_FILLED so downstream can still cancel/reconcile. Added tracing::warn for observability.",
+  "files_changed": ["moni-rs/crates/moni-engine/src/engine.rs"],
+  "worktree": "opt-moni-engine-1782949388",
+  "direction": "moni-engine:partial-fill-error-persist",
+  "outcome": "succeeded",
+  "outcome_evidence": "cargo check -p moni-engine passed. Commit 4a94475 pushed to origin/auto/opt-moni-engine-1782949388. Diff: +14 lines in Err(e) branch adding else clause with tracing::warn + error_message + updated_at + save_order.",
+  "next_suggestion": "Next pending fix: MM-M007 (priority 10) — engine.rs L286 unused _notifications clone keeps extra broadcast sender ref preventing channel close. Same worktree opt-moni-engine-1782949388 can be reused (same area).",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-04-002",
+  "audit_depth": "shallow"
+}

@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-03-078",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-03T16:55:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "autonomous-loop.sh header doc correction (ESE-M02 derived fix)",
+  "situation": "audit-2026-07-03-006 finding ESE-M02 (pending, priority 4, route-fix): autonomous-loop.sh line 14 header claims '--max-iterations 防 claude -p 单轮卡死' but cloudcli claude has no --max-iterations flag (line 144 acknowledges this), and run_round() at line 112-127 never passes such a flag. Pure comment/code contradiction misleads future maintainers about the actual bounding mechanism.",
+  "action": "Replace misleading header line 14 with accurate description: cloudcli claude lacks --max-iterations; bounding relies on single-prompt + while-reopen-naturally-limits-each-round semantics. Single-file edit, no behavior change.",
+  "files_changed": ["scripts/autonomous-loop.sh"],
+  "worktree": "opt-autonomous-loop-shift-1783082550",
+  "direction": "autonomous-loop:header-doc",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit pushed to origin/auto/opt-autonomous-loop-shift-1783082550; opt-worktree.sh reported '✓ 提交到 opt-autonomous-loop-shift-1783082550 方向=autonomous-loop:header-doc' and '✓ 已 push'. direction-shift triggered automatically because scripts/autonomous-loop.sh is listed in .claude/public-interfaces.txt (judge_direction_kind hit). Line 14 now reads: '每轮 bounded：cloudcli claude 无 --max-iterations flag，靠「单 prompt + while 重开新 context」天然限单轮规模；预算不设上限（用户 2026-06-27），while 本身无上限。'",
+  "next_suggestion": "All audit-2026-07-03-006 derived fixes now resolved (ESE-H01 merged, ESE-H02 merged, ESE-M01 merged, ESE-M02 merged via this case). Next round: set audit-cycle-state.status=cycle-complete to trigger new full audit on a project not recently deep-audited (candidates: shizi backend/quant/data per constraints, wechat-main, personal-assistant web+android follow-up).",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-03-006",
+  "audit_depth": "shallow"
+}

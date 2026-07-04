@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-07-02-142",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-02T11:45:00Z",
+  "project": "personal-assistant",
+  "work_unit": "M-007 storage ID determinism (audit-derived, duplicate detection)",
+  "situation": "audit-2026-07-02-008 finding M-007 flagged storage.py abs(hash())%10**12 IDs as non-deterministic across processes. On inspection, this is identical to PA-L-001 from audit-2026-07-01-006, already fixed in case-2026-07-01-629 (commit afb90b8 on opt-personal-assistant-1782909325): _make_id helper with sha256+uuid4 replaced all 5 call sites. Main working tree still shows old hash() because the worktree hasn't been merged to main yet, but the fix exists and is awaiting human merge.",
+  "action": "Verified worktree fix covers all originally-flagged sites (add_memory/add_intervention/add_event/add_reminder/add_wiki_page). Reverted redundant local edits I had started on main working tree. Marked M-007 as merged in audit-cycle-state.json with cross-reference to case-629. No new code change needed.",
+  "files_changed": [],
+  "worktree": "opt-personal-assistant-1782909325",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "grep -n '_make_id' on worktree storage.py shows 5 call sites matching M-007 scope; grep 'abs(hash(' returns only docstring mention; commit afb90b8 stat: 1 file, 21 ins / 31 del; main working tree git status clean after revert.",
+  "next_suggestion": [
+    "派生 M-008 fix: POST /settings/llm plaintext api_key in config._RUNTIME — encrypt at rest or reject HTTP acceptance",
+    "人工 merge opt-personal-assistant-1782909325 (9 commits incl. afb90b8) 让 M-007 真正落到 main"
+  ],
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-008",
+  "audit_depth": "shallow"
+}

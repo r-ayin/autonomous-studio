@@ -1,0 +1,29 @@
+{
+  "case_id": "case-2026-07-03-071",
+  "agent_id": "ralph-wiggum-deep-audit",
+  "timestamp": "2026-07-03T22:30:00Z",
+  "project": "scripts",
+  "work_unit": "deep-audit-root-engine-infra-scripts",
+  "situation": "audit-cycle-state.status was fix-in-progress with pending_count=0 (all audit-2026-07-03-005 derived fixes resolved). Triggered new full audit cycle. Target: /home/admin/workspace/scripts/ — root engine infrastructure scripts never independently deep-audited.",
+  "action": "Full deep audit of 12 scripts in /workspace/scripts/: opt-worktree.sh (814L), autonomous-loop.sh (143L), parallel-dispatch.sh (125L), parallel-merge.sh (118L), distill-patterns.py, route-health-scorer.py, triage.py (137L), loop-archive-cases.sh (102L), verify-pattern.sh (96L), studio-precheck.sh (57L), index-cases.py. Sonnet sub-agents hit 402 quota; performed inline deep read. Produced audit report with 8 findings (2M/4L/2I).",
+  "files_changed": [
+    ".claude/audits/audit-2026-07-03-012.md",
+    ".claude/audit-cycle-state.json"
+  ],
+  "worktree": null,
+  "direction": "engine:deep-audit",
+  "outcome": "succeeded",
+  "outcome_evidence": "audit-2026-07-03-012.md written (8 findings, 2M/4L/2I). audit-cycle-state.json updated: status=fix-in-progress, 6 derived_fixes pending (SCRIPTS-M01/M02/L01-L04). History entry added.",
+  "next_suggestion": "Next round: dispatch SCRIPTS-M01 (parallel-dispatch.sh TASK_ID sanitization) as first derived fix from audit-2026-07-03-012. Route-fix kind → reuse existing scripts area worktree if any, else create new.",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {"file": "/home/admin/workspace/scripts/parallel-dispatch.sh", "line": 55, "severity": "medium", "finding": "TASK_ID unsanitized in branch names and filesystem paths — injection/traversal vector", "remediation": "Add validate_task_id() rejecting /, .., spaces, non-alnum except -_", "kind": "route-fix"},
+    {"file": "/home/admin/workspace/scripts/parallel-merge.sh", "line": 78, "severity": "medium", "finding": "git reset --hard HEAD@{1} fallback on test failure can destroy uncommitted WIP", "remediation": "Check for uncommitted changes before hard reset; use git revert or stash+reset", "kind": "route-fix"},
+    {"file": "/home/admin/workspace/scripts/verify-pattern.sh", "line": 21, "severity": "low", "finding": "$CAL interpolated in python -c string literal — injection if path contains quotes", "remediation": "Pass via sys.argv instead of string interpolation", "kind": "route-fix"},
+    {"file": "/home/admin/workspace/scripts/studio-precheck.sh", "line": 19, "severity": "low", "finding": "Bare except clauses swallow IOError/KeyboardInterrupt; fail-open on parse error", "remediation": "Narrow to specific exceptions; consider fail-closed on corrupt files", "kind": "route-fix"},
+    {"file": "/home/admin/workspace/scripts/autonomous-loop.sh", "line": 35, "severity": "low", "finding": "PROMPT single-quote definition fragile against future edits with apostrophes", "remediation": "Convert to heredoc for safety", "kind": "route-fix"},
+    {"file": "/home/admin/workspace/scripts/distill-patterns.py", "line": 37, "severity": "low", "finding": "load_json_robust catches all Exception including IOError, masking infra problems", "remediation": "Narrow to JSONDecodeError/FileNotFoundError/UnicodeDecodeError", "kind": "route-fix"}
+  ],
+  "audit_id": "audit-2026-07-03-012",
+  "audit_depth": "deep"
+}

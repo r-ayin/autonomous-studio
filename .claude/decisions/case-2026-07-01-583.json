@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-01-583",
+  "agent_id": "autonomous-loop-ralph",
+  "timestamp": "2026-07-01T09:55:00Z",
+  "project": "wechat-main",
+  "work_unit": "scripts/cron/daily-hotspot.sh DEEPSEEK_API_KEY shell-safe parsing (audit-004 WM-H-003)",
+  "situation": "audit-004 WM-H-003 (priority=14): cron/daily-hotspot.sh L43-46 用 grep+cut+tr 管道从 /opt/personal-assistant/.env 读 DEEPSEEK_API_KEY，tr 只删双引号不处理单引号/$/空格，含特殊字符的 key 会被 shell 展开或截断 → DeepSeek 精炼步骤静默失败。派生 fix（route-fix，复用 opt-scripts-1782899218）。",
+  "action": "改用 sed -n 's/^DEEPSEEK_API_KEY=//p' 精确提取整行值（无 cut/tr），再用 case 语句剥成对双引号或单引号（裸值保留）；临时变量 _ds_raw 收尾 unset 防泄漏。不再依赖 tr -d '\"'。直接编辑 worktree 文件 + wt 内 git commit（cp-guard 因前轮 WM-H-001/H-002 未合并改动拦截了 main→wt cp 流程）。push origin auto/opt-scripts-1782899218 be4b2b9。",
+  "files_changed": ["scripts/cron/daily-hotspot.sh"],
+  "worktree": "auto/opt-scripts-1782899218",
+  "direction": "scripts:cron-deepseek-key-safe",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit be4b2b9 on auto/opt-scripts-1782899218 pushed to origin (bd8c882..be4b2b9); diff +13/-3 lines; merge-tree vs main clean (file differs from main HEAD by design, no conflict with other pending commits in same wt).",
+  "next_suggestion": "派生 audit-004 WM-M-001 (pipeline._run_gate subprocess.run timeout=120) priority=15，同 area route-fix 复用 opt-scripts-1782899218。",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-01-004",
+  "audit_depth": "shallow"
+}

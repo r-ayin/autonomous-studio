@@ -1,0 +1,34 @@
+{
+  "case_id": "case-2026-07-01-643",
+  "agent_id": "ralph-wiggum-loop",
+  "timestamp": "2026-07-01T22:05:00Z",
+  "project": "x-tool",
+  "work_unit": "全量深度审计 x-tool 基础设施层（hooks/skills/watchdog/protocol）",
+  "situation": "audit-cycle-state.json status=cycle-complete，触发新全量审计。已审过 autonomous-studio-aone/sunset-prediction/wechat-main/shizi/personal-assistant/autonomous-studio。scout-scan 推荐 #1 skills/#2 autonomous-engine 均缺 GATES.md+planning 结构不全；选 x-tool（2000+ 文件、异构多项目工作区、从未审过、跨平台基础设施复杂度高）。",
+  "action": "深读 .claude/hooks/ 全部 6 个 hook 脚本 + watchdog.sh + bootstrap.py + PROTOCOL.md + ARCHITECTURE.md + CLAUDE.md + PROJECTS.md，抽样 4 个子项目 CLAUDE.md，grep 硬编码 Windows 路径定位跨平台污染。产出独立审计报告 audit-2026-07-01-008.md，识别 11 findings (2H/4M/3L/2I)，派生 6 条 route-fix 到 audit-cycle-state.derived_fixes（status=pending）。",
+  "files_changed": [
+    ".claude/audits/audit-2026-07-01-008.md",
+    ".claude/audit-cycle-state.json"
+  ],
+  "worktree": null,
+  "direction": "audit-only",
+  "outcome": "succeeded",
+  "outcome_evidence": "审计报告落盘 .claude/audits/audit-2026-07-01-008.md (11 findings)；audit-cycle-state.json current_audit_id→audit-2026-07-01-008, status→fix-in-progress, derived_fixes 新增 6 条 pending (XT-H-001/H-002/M-001/M-002/M-003/M-004), history 追加 audit-008 条目。",
+  "next_suggestion": "下轮派生 XT-H-001 fix（resume-checkpoint.py firmware 硬编码路径，最高优先级）。注意：所有 fix 在 x-tool 仓库内，需先确认 opt-worktree.sh 是否支持跨 repo worktree，若不支持则需人工在 /home/admin/workspace/x-tool 建 worktree 或由引擎扩展 cross-repo 能力。",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {"file": ".claude/hooks/resume-checkpoint.py", "line": 121, "severity": "high", "finding": "build_engine_firmware() 硬编码 E:/x-tool/.claude/decision-log.jsonl 和 autonomous-state.md 路径，Linux 部署下 Agent 按指令读不存在的路径 → L1 内联检查失效 → 自主决策引擎实质瘫痪", "remediation": "用 {PROJECT_DIR} f-string 插值替换硬编码路径（PROJECT_DIR 已在 line 25 计算好）", "kind": "route-fix"},
+    {"file": ".claude/hooks/decision-observer.py", "line": 262, "severity": "high", "finding": "handle_stop 反向读日志 chunk 拼接错误 + off-by-one：跨 chunk 边界的行被拆段导致 JSON 解析失败，active_project 推断可能拿到错误 project_hint", "remediation": "改用 collections.deque(maxlen=20) + 正向 tail 读法，或 subprocess tail -n 20", "kind": "route-fix"},
+    {"file": ".claude/hooks/save-checkpoint.py", "line": 81, "severity": "medium", "finding": "collect_recent_activity 硬编码 ~/.claude/audit/audit.jsonl，该路径不存在时 recent_activity 永远为空，恢复会话丢失最近活动上下文", "remediation": "增加 CLAUDE_AUDIT_LOG 环境变量覆盖 + fallback 到 .claude/decision-log.jsonl", "kind": "route-fix"},
+    {"file": ".claude/hooks/protocol-check.py", "line": 70, "severity": "medium", "finding": "bootstrap 调用传 os.path.join(project_dir, 'dummy') 作为 file_path，依赖 bootstrap.py 用 dirname 反推项目目录的隐式约定，脆弱耦合", "remediation": "直接传 project_dir 或在 bootstrap.py 增加 --project-dir 显式参数", "kind": "route-fix"},
+    {"file": ".claude/hooks/notify-phone.py", "line": 206, "severity": "medium", "finding": "send() 返回 bool 但 main() 丢弃返回值，TCP+ntfy 双后端都失败时 confirm 通知完全静默，Agent/用户僵持", "remediation": "失败时 stderr 输出 + confirm 场景写 .claude/.notify_failed 标记文件", "kind": "route-fix"},
+    {"file": ".claude/watchdog/watchdog.sh", "line": 15, "severity": "medium", "finding": "PROJECT_DIR=/mnt/e/x-tool 硬编码 WSL 路径，Linux 部署下 checkpoint 目录不存在 → exit 0 → L6 外部监控层死代码", "remediation": "改为 ${XTOOL_DIR:-/home/admin/workspace/x-tool} 或从脚本所在目录反推", "kind": "route-fix"},
+    {"file": ".claude/hooks/incremental-save.py", "line": 32, "severity": "low", "finding": "每 120s read+regex+write 整个 session-progress.md 仅为了更新一个时间戳标记，IO 不 scale", "remediation": "append-only 策略或固定长度时间戳区域原地更新", "kind": "route-fix"},
+    {"file": ".claude/hooks/decision-observer.py", "line": 150, "severity": "low", "finding": "_DECISION_RE = re.compile() 放在函数体内而非模块级常量", "remediation": "移到模块级", "kind": "route-fix"},
+    {"file": ".claude/hooks/save-checkpoint.py", "line": 192, "severity": "low", "finding": "import shutil 放在 write_checkpoint 函数内部", "remediation": "移到文件顶部", "kind": "route-fix"},
+    {"file": ".claude/config/settings.json.example", "line": 1, "severity": "info", "finding": "列出 50+ skillOverrides 多数已不存在（golembot/questboard/classify-size 等），新用户照抄会得到无效配置", "remediation": "重新生成 example 只保留当前可用 skill", "kind": "structural"},
+    {"file": "ARCHITECTURE.md", "line": 1, "severity": "info", "finding": "描述 autonomous-engine Skill 负责 L2/L3 CronCreate 心跳，但 .claude/skills/ 下无此目录（v2.2 已删），文档与实际组件漂移", "remediation": "更新 ARCHITECTURE.md 反映当前实际组件", "kind": "structural"}
+  ],
+  "audit_id": null,
+  "audit_depth": "deep"
+}

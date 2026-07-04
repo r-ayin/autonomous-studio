@@ -1,0 +1,25 @@
+{
+  "case_id": "case-2026-07-01-666",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-01T23:55:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "deep-audit: dev-server+build+smoke (全量三文件)",
+  "situation": "audit-cycle-state.status=cycle-complete → 触发新全量审计轮。1BfrYW9R 从未深度审过，scout score=0 健康但代码量小适合单轮深审。",
+  "action": "深审 build.js/dev-server.js/test/smoke.test.js 三核心源文件 + CLAUDE.md/README/package.json。追踪 HTTP req→method guard→path normalize→probe routes→static dispatch→MIME→headers 跨模块数据流；build index.html parse→inline babel regex→component count→ref resolution；smoke spawn→poll→assert。发现 5 findings：OD-001(/api/health 反代未校验上游 Content-Type, SSRF-to-XSS 风险, medium)/OD-002(反代无 body size cap, low)/OD-003(build.js 正则计数硬编码四种形态, info structural)/OD-004(/api/health 反代零测覆盖, info)/OD-005(ONEDAY_DIR env 任意路径注入, info)。派生 route-fix 2 条（合并 1 workunit），structural 1 条待登记 debt。",
+  "files_changed": [],
+  "worktree": null,
+  "direction": "audit-only (no source change this round; derived fixes dispatched next round)",
+  "outcome": "succeeded",
+  "outcome_evidence": ".claude/audits/audit-2026-07-01-011.md 已落盘含 5 findings 表；audit-cycle-state.json status=auditing→fix-in-progress 转换完成；derived_fixes 数组新增 OD-001+OD-002 合并条目 status=pending；OD-003 待下轮登记 structural-debt.md。本轮无源码改动符合审计轮契约（A 节第 2.5 条）。",
+  "next_suggestion": "[1] 下轮派生 fix：OD-001+OD-002 合并 route-fix（dev-server.js /api/health 加 upstream Content-Type 校验 + body size cap + 同步补 smoke test 负测）。[2] OD-003 structural-debt 登记（build.js AST parser 替代正则计数）。[3] USER ACTION: merge moni-master 4 worktree（opt-docs/opt-config/optimization/opt-moni-data）。[4] USER DECISION: SD-001/SD-002/SD-003 授权修复。",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {"file": "dev-server.js", "line": 100, "severity": "medium", "finding": "/api/health 反代未校验上游响应 Content-Type，body 直接透传。恶意/被替换上游返 text/html+XSS payload 时 dev-server 以自己 origin 渲染 → SSRF-to-XSS 同源策略绕过。nosniff 头只防 sniffing 不拦主动声明的 text/html。", "remediation": "upstream 'end' handler 内检查 up.headers['content-type']：非 application/json 一律 fail('upstream returned non-JSON content-type') 或强制覆写为 application/json 后再 end body。route-fix，单文件改动。", "kind": "route-fix"},
+    {"file": "dev-server.js", "line": 103, "severity": "low", "finding": "/api/health 反代 b += c 字符串拼接无 body size cap，恶意/故障上游可灌 GB 级响应耗尽 dev-server 内存。npm start 生产入口暴露此面。", "remediation": "累加 b.length，超 1MB 调 fail('upstream response too large')。与 OD-001 同文件可合并一个 workunit。", "kind": "route-fix"},
+    {"file": "build.js", "line": 45, "severity": "info", "finding": "组件计数正则为手写启发式，class/function/const arrow/React.memo 四种形态硬编码；forwardRef/memo-wrapped arrow/class field 组件等形态漏计。靠 ⑧ 文档对账兜底但文档也错时静默通过（注释自述 2026-06-30 class 漏计历史）。", "remediation": "长期方向：引入 @babel/parser 做 AST 计数取代正则。structural-debt 登记，不本轮派 fix。", "kind": "structural"},
+    {"file": "test/smoke.test.js", "line": 1, "severity": "info", "finding": "测试套件防御极强（30+ 测）但缺 /api/health 反代行为测——反代路径是当前唯一未被咬的服务端代码路径，OD-001/OD-002 零覆盖。", "remediation": "OD-001 fix 时同步补负测：mock upstream 返 text/html → 断言 dev-server 不转发该 body；mock upstream 灌 >1MB → 断言 502。", "kind": "route-fix"},
+    {"file": "dev-server.js", "line": 19, "severity": "info", "finding": "ONEDAY_DIR env 允许任意路径注入作为 serve root。本地 dev 合理；生产部署若 PaaS 误注 ONEDAY_DIR 为敏感目录（/etc /root）会把系统文件暴露给 HTTP。已有穿越防御保护 serve root 之外不泄露，但 serve root 本身可被改指。", "remediation": "文档化 ONEDAY_DIR 仅用于测试；或 NODE_ENV=production 时禁掉该 env。info 级不阻塞，仅在 NEXT_SUGGESTION 提醒。", "kind": "route-fix"}
+  ],
+  "audit_id": "audit-2026-07-01-011",
+  "audit_depth": "deep"
+}

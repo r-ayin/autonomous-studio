@@ -1,0 +1,39 @@
+{
+  "case_id": "case-2026-07-02-067",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-02T05:45:00Z",
+  "project": "skills",
+  "work_unit": "runner-exec: SK-RE-003 batch-write.js PowerShell single-quote path injection fix",
+  "situation": "audit-2026-07-02-003 finding SK-RE-003 (priority 2, pending): batch-write.js:28 interpolates f.path and parent raw into single-quoted PowerShell literals (`New-Item -Path '${parent}'`, `Set-Content -Path '${f.path}'`). Attacker-controlled paths containing ' break out of quoting → arbitrary PS injection. Same pattern as SK-RE-002 (write-file.js) which case-2026-07-02-066 fixed, but the escapePSSingleQuote helper referenced in that case's note was never actually added to write-file.js exports — only escapePS existed. batch-write.js had no escaping at all on path variables.",
+  "action": "1) Added escapePSSingleQuote(str) helper to write-file.js (strips NUL/C0 controls + doubles single quotes per PS literal rules) and exported it alongside escapePS. 2) In batch-write.js, imported escapePSSingleQuote and wrapped both parent and f.path before interpolation into single-quoted PS commands. 3) Validated node -c syntax on both files. 4) Committed via manual cp+commit to existing opt-runner-exec-1782940040 worktree (opt-worktree.sh cmd_commit blocked by ensure_main_wt pre-check failing on diverged auto/optimization branch — skill-creator fixes ahead of master prevent ff; unrelated to this route-fix). 5) Restored main to clean state for these two files; pushed worktree branch to origin.",
+  "files_changed": [
+    "skills/runner-exec/scripts/write-file.js",
+    "skills/runner-exec/scripts/batch-write.js"
+  ],
+  "worktree": "opt-runner-exec-1782940040",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "worktree commit 0d04e9f on auto/opt-runner-exec-1782940040; pushed to origin (2ffb682..0d04e9f); main restored clean for these files (git status shows only unrelated skill-creator/improve_description.py M + .audit/ ??); node -c syntax OK on both files pre-commit.",
+  "next_suggestion": "派生下一优先级 pending finding SK-RE-004 (push.js:60 same single-quote path injection pattern on f.winPath/parent) — 复用同 worktree opt-runner-exec-1782940040，同样用 escapePSSingleQuote 包裹。之后 SK-RE-005 (pull.js:41)、SK-RE-006 (creds.js:11 fs perm check)。全部 pending cleared 后 audit-cycle-state.status→cycle-complete 触发下一轮全量审计。另：ensure_main_wt 在 optimization diverged 时阻塞无关 area 的 route-fix commit，建议开 structural-debt 修这个 pre-check（应只在 cur_area==engine 时跑）。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "skills/runner-exec/scripts/batch-write.js",
+      "line": 28,
+      "severity": "high",
+      "finding": "PowerShell single-quote path injection: parent and f.path interpolated raw into '...' PS literals; attacker-controlled path with ' breaks quoting and injects arbitrary PS commands",
+      "remediation": "Wrap path variables with escapePSSingleQuote() before interpolation; helper strips NUL/controls and doubles single quotes per PS spec",
+      "kind": "route-fix"
+    },
+    {
+      "file": "skills/runner-exec/scripts/write-file.js",
+      "line": 54,
+      "severity": "medium",
+      "finding": "escapePSSingleQuote helper referenced in case-2026-07-02-066 note but never actually added/exported — only escapePS existed. Subsequent route-fixes depending on it would fail at require() time.",
+      "remediation": "Add escapePSSingleQuote implementation and export alongside escapePS",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-02-003",
+  "audit_depth": "shallow"
+}

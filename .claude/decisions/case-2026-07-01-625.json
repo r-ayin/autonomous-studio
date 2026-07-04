@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-07-01-625",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-01T21:05:00Z",
+  "project": "personal-assistant",
+  "work_unit": "PA-M-001: Bearer token gate on /chat /chat-log /memories /profile /inbox/upload",
+  "situation": "audit-2026-07-01-006 finding PA-M-001 (MEDIUM): /chat POST 接收用户消息、/chat-log GET 返回完整对话历史（含 PII），均无鉴权。结合 CORS *，任意网页可读取用户全部聊天内容。需加最小 Bearer token gate。",
+  "action": "在 config.py 新增 api_token()：优先读 PA_API_TOKEN env，未配置则 secrets.token_urlsafe(32) 一次性生成写入 _RUNTIME（进程生命周期稳定）。在 api.py 新增 _require_bearer dependency（hmac.compare_digest 常量时间比较防时序侧信道），挂到 /chat /chat-log /memories /profile /inbox/upload 五个敏感端点。/health /segments /settings/* 等保持开放。cp-guard 跳过 api.py（worktree 已有 PA-H-002 fix），手动复制 + amend commit + force-push 合并两个 fix。",
+  "files_changed": [
+    "personal_assistant/config.py",
+    "personal_assistant/api.py"
+  ],
+  "worktree": "opt-security-1782909081",
+  "direction": "security:bearer-token-gate",
+  "outcome": "succeeded",
+  "outcome_evidence": "syntax ok; api_token smoke test passed (len=43, stable=True); bearer gate applied to exactly 5 endpoints verified by source scan; git push --force-with-lease succeeded (9beaaff); worktree diff confirms both PA-H-002 and PA-M-001 fixes present.",
+  "next_suggestion": "派生 PA-M-002 (llm._post_json timeout 统一 + 错误体脱敏)，同 area route-fix 复用 opt-security-1782909081 或新开 security worktree。",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-01-006",
+  "audit_depth": "shallow"
+}

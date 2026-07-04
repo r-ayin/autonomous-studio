@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-03-103",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-03T16:55:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "ESE-M02 fix: autonomous-loop.sh header comment/code contradiction re --max-iterations",
+  "situation": "audit-2026-07-03-006 finding ESE-M02 (priority 4, route-fix): line 14 header claimed '每轮 bounded（--max-iterations 防 claude -p 单轮卡死）' but code at line 81 never passes --max-iterations to `claude -p`. Line 99 comment already acknowledged cloudcli claude has no --max-iterations flag. Misleading documentation could cause future maintainers to assume per-round budget capping exists when it does not.",
+  "action": "Rewrote header lines 14-15 to accurately describe current behavior: per-round unbounded (cloudcli claude lacks --max-iterations), loop restart naturally bounds scale, budget controlled by user directive (2026-06-27 onward unbounded), deadlock protection via run_round + STICKY_FAIL_THRESHOLD. Single-file doc-only change; no runtime behavior modified.",
+  "files_changed": ["scripts/autonomous-loop.sh"],
+  "worktree": "opt-autonomous-loop-shift-1783090564",
+  "direction": "direction-shift (autonomous-loop.sh in public-interfaces.txt)",
+  "outcome": "superseded",
+  "outcome_evidence": "commit dd53336 on branch auto/opt-autonomous-loop-shift-1783090564 (2 ins / 1 del, header-only). But ESE-M02 no longer in audit-cycle-state.json derived_fixes at time of commit — another round already resolved/archived it. Worktree valid but fix redundant; no merge needed.",
+  "next_suggestion": "Dispatch PD-L001 (audit-2026-07-03-013 priority 5, route-fix): audit-log-helper.js L84 result||'success' → result ?? 'success' to avoid falsy-value coercion. Then PD-L002, PD-H003 (direction-shift), etc.",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-03-006",
+  "audit_depth": "shallow"
+}

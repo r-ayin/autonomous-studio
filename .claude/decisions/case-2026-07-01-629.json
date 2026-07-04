@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-07-01-629",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-01T22:35:00Z",
+  "project": "personal-assistant",
+  "work_unit": "PA-L-001 ID generation stability (audit-derived)",
+  "situation": "storage.py used abs(hash(tuple))%10**12 for primary keys across memories/interventions/events/reminders/wiki_pages. Python hash() is PYTHONHASHSEED-dependent (~40bit space), causing cross-process non-idempotency and collision risk under load. INSERT OR REPLACE semantics break when the same logical record hashes differently across restarts.",
+  "action": "Added _make_id(prefix, *parts) helper using sha256(parts)[:16] hex for content-bearing inputs (stable, 64bit entropy) and uuid4 fallback for empty inputs. Replaced all 5 call sites in storage.py (add_memory/add_intervention/add_event/add_reminder/add_wiki_page). Verified stability by invoking helper twice with identical input — same output; different input — different output; empty input — unique uuid4 each call.",
+  "files_changed": ["personal_assistant/storage.py"],
+  "worktree": "opt-personal-assistant-1782909325",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit afb90b8 on auto/opt-personal-assistant-1782909325; python import test passed; main working tree restored clean",
+  "next_suggestion": [
+    "派生 PA-L-002+PA-L-003+PA-L-004 合并修复（mask_key 收紧 + verify bigram 阈值 + api.js 错误日志）— audit-2026-07-01-006 最后一个 pending finding",
+    "所有 derived_fixes 落地后把 audit-cycle-state.status 改 cycle-complete，触发下一轮全量审计"
+  ],
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-01-006",
+  "audit_depth": "shallow"
+}

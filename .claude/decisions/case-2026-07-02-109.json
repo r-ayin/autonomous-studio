@@ -1,0 +1,29 @@
+{
+  "case_id": "case-2026-07-02-109",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-02T14:13:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "prod-deploy/json-parse-safety (M-001 + L-003 merged)",
+  "situation": "audit-2026-07-02-006 findings M-001 (event-client.js deserializeEvent/findBatchEvent 裸 JSON.parse) + L-003 (report-event.js handlePreCheck/handleDeployPlan/handleDeployBatch 裸 JSON.parse) 合并派生。前序 worktree opt-prod-deploy-1782970212 仍有 case-105/106/107 待人工 review，cp-guard 阻止覆盖；本轮产出 patch 附件 + case 登记，等前序 merge 后下轮实际 apply+commit。",
+  "action": "生成 safeJsonParse/safeJsonParseCli wrapper 替换 6 处裸 JSON.parse；event-client 用同步 stderr warn（不破坏 sync call site），report-event 用 writeAuditLog 记录 malformed cli arg。Patch 存 .claude/decisions/case-2026-07-02-109.patch，main working tree 已还原干净。",
+  "files_changed": [
+    "skills/prod-deploy/scripts/lib/event-client.js",
+    "skills/prod-deploy/scripts/report-event.js"
+  ],
+  "worktree": null,
+  "worktree_note": "未实际提交——opt-prod-deploy-1782970212 cp-guard 触发（case-105/106/107 未合并）。patch 已落盘，等前序 merge 后下轮 apply+commit 到同一 worktree（route-fix）。",
+  "direction": "prod-deploy:json-parse-safety",
+  "outcome": "superseded",
+  "outcome_evidence": "cp-guard stdout: 'skills/prod-deploy/scripts/lib/event-client.js 在 worktree 与 main HEAD 不同（前轮未合并改动），跳过以避免覆盖' + '无文件被实际迁移...中止'。patch 已存 .claude/decisions/case-2026-07-02-109.patch (6582 bytes)。main working tree git status clean for these files。",
+  "next_suggestion": [
+    "人工 review opt-prod-deploy-1782970212 (case-105/106/107) → merge/reject",
+    "merge 后下轮 apply case-2026-07-02-109.patch 到同 worktree 并 commit (M-001+L-003 route-fix)",
+    "若 case-105/106/107 长期未审 (>24h)，NEXT_SUGGESTION 提醒用户"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-006",
+  "audit_depth": "shallow",
+  "derived_from_findings": ["M-001", "L-003"],
+  "patch_attachment": ".claude/decisions/case-2026-07-02-109.patch"
+}

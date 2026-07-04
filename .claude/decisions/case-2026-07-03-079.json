@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-03-079",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-03T22:45:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "parallel-merge.sh PRE_MERGE_HEAD pin (SCRIPTS-M02 derived fix)",
+  "situation": "audit-2026-07-03-012 finding SCRIPTS-M02 (pending, priority 2, route-fix): parallel-merge.sh line 78 fallback 'git reset --hard HEAD@{1}' can destroy uncommitted WIP when merge --abort fails. Scenario: merge commits successfully but integration test fails afterward — merge --abort is a no-op (no in-progress merge), falls through to reset --hard HEAD@{1}, which may reference an unrelated reflog entry if other operations occurred between merge start and test failure.",
+  "action": "Pin PRE_MERGE_HEAD=$(git rev-parse HEAD) immediately before the git merge attempt. Both rollback paths (test-fail at line 78 and conflict at line 89) now use 'git reset --hard $PRE_MERGE_HEAD' as fallback instead of HEAD@{1}. Guarantees rollback never rewinds past the pre-merge safe point regardless of reflog state.",
+  "files_changed": ["scripts/parallel-merge.sh"],
+  "worktree": "opt-parallel-merge-shift-1783082674",
+  "direction": "parallel-merge:pre-merge-head-pin",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit pushed to origin/auto/opt-parallel-merge-shift-1783082674; opt-worktree.sh reported '✓ 提交到 opt-parallel-merge-shift-1783082674 方向=parallel-merge:pre-merge-head-pin' and '✓ 已 push'. direction-shift triggered automatically because scripts/parallel-merge.sh is listed in .claude/public-interfaces.txt. PRE_MERGE_HEAD variable added at line 69; both rollback sites (lines 78 and 89) now reference $PRE_MERGE_HEAD instead of HEAD@{1}.",
+  "next_suggestion": "Continue dispatching remaining audit-2026-07-03-012 pending fixes by priority: SCRIPTS-L01 (verify-pattern.sh $CAL interpolation) → SCRIPTS-L02 (studio-precheck.sh bare except) → SCRIPTS-L03 (autonomous-loop.sh PROMPT heredoc, already has worktree opt-autonomous-studio-shift-1783079845 — verify commit status) → SCRIPTS-L04 (distill-patterns.py bare Exception, already has worktree opt-scripts-l04-1783082107 — verify commit status). After all 5 remaining pending fixes dispatched and merged/rejected → set status=cycle-complete.",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-03-012",
+  "audit_depth": "shallow"
+}

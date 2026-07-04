@@ -1,0 +1,23 @@
+{
+  "case_id": "case-2026-07-03-091",
+  "agent_id": "autonomous-loop-ralph",
+  "timestamp": "2026-07-03T21:55:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "ESE-M02: autonomous-loop.sh stale --max-iterations comment + missing per-round boundary knobs",
+  "situation": "audit-2026-07-03-006 finding ESE-M02 (priority 4, route-fix): header claims --max-iterations but code never passes it; no per-round timeout. Derived fix attempted twice in this round.",
+  "action": "Applied full ESE-M02 remediation to scripts/autonomous-loop.sh: (1) rewrote header comment to describe --max-turns + AUTONOMOUS_MAX_TURNS/AUTONOMOUS_ROUND_TIMEOUT env vars, (2) added MAX_TURNS/ROUND_TIMEOUT variable declarations, (3) refactored run_round() to conditionally pass --max-turns and wrap with timeout, (4) corrected stale inline comment at line 144. Committed via opt-worktree.sh which auto-detected direction-shift (autonomous-loop.sh is in .claude/public-interfaces.txt). Commit succeeded and pushed to remote branch auto/opt-autonomous-loop-shift-1783086872. However, main working copy was reverted by post-edit hook/linter THREE times during this round — each Edit succeeded but file state reset to pre-fix version before next edit could land. Fix lives only in the worktree branch, not in main checkout.",
+  "files_changed": ["scripts/autonomous-loop.sh"],
+  "worktree": "opt-autonomous-loop-shift-1783086872",
+  "direction": "autonomous-loop:ese-m02-full (direction-shift)",
+  "outcome": "blocked",
+  "outcome_evidence": "Commit ed12514-equivalent landed in worktree opt-autonomous-loop-shift-1783086872 and pushed to origin/auto/opt-autonomous-loop-shift-1783086872 (verified by opt-worktree.sh output showing '✓ 已 push'). But main working copy scripts/autonomous-loop.sh reverted to pre-fix state 3 consecutive times by post-edit hook/linter (system-reminder confirmed each revert). 卡死保护 triggered: same error 3x no progress on main checkout. Worktree fix intact; main merge blocked pending human review of why hook reverts autonomous-loop.sh edits.",
+  "next_suggestion": [
+    "Human: investigate why post-edit hook/linter reverts scripts/autonomous-loop.sh to pre-fix state — check hooks/post-edit-lint.py or similar for autonomous-loop.sh-specific behavior",
+    "Human: merge worktree opt-autonomous-loop-shift-1783086872 after resolving hook conflict (contains full ESE-M02 fix)",
+    "After merge: mark ESE-M02 as merged in audit-cycle-state.json derived_fixes; once all pending cleared, status→cycle-complete triggers next full audit"
+  ],
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-03-006",
+  "audit_depth": "shallow"
+}

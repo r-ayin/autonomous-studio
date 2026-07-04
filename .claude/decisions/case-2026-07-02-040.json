@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-02-040",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-02T03:15:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "AS-EC-007 fix: autonomous-loop.sh SIGINT temp file leak between mktemp and shred",
+  "situation": "audit-2026-07-02-002 finding AS-EC-007 (priority 7, route-fix): run_round() calls mktemp (line 98) then claude -p + tail + grep (lines 99-105) then shred -u (line 106). If SIGINT arrives in this window, the global INT/TERM trap (line 26) only runs `kill 0; exit 130` without cleaning out_file. Result: /tmp/tmp.XXXX leaks with full claude -p output (may contain file contents, tool results, sensitive context). H-005 fix moved output to temp file to avoid bash variable bloat but introduced this cleanup gap.",
+  "action": "Lift _CURRENT_OUT_FILE to module-scope variable. Replace inline trap string with named function _cleanup_and_exit that shreds _CURRENT_OUT_FILE before kill 0. In run_round, assign _CURRENT_OUT_FILE immediately after mktemp succeeds; clear it after normal-path shred completes. Double-safe: normal path self-cleans, trap covers all abnormal exits (signal, errexit, early return from mktemp failure). bash -n syntax validated.",
+  "files_changed": ["scripts/autonomous-loop.sh"],
+  "worktree": "opt-loop-shift-1782932250",
+  "direction": "loop:sigint-cleanup",
+  "outcome": "superseded",
+  "outcome_evidence": "Identical fix already merged in case-2026-07-02-039 (worktree opt-autonomous-loop-shift-1782931909, commit 75a0016 equivalent). This round re-applied the same _CURRENT_OUT_FILE + _cleanup_and_exit pattern after linter reverted main checkout working copy; opt-worktree committed to new worktree opt-loop-shift-1782932250 and pushed. Branch retained as redundant backup; not intended for merge since AS-EC-007 is already closed.",
+  "next_suggestion": "Continue audit-2026-07-02-002 derived_fixes queue: next pending is AS-EC-008 (opt-worktree.sh cmd_commit orphaned files on commit failure cd side effect, priority 8, route-fix). After all 12 pending fixes merged/rejected, set audit-cycle-state.status=cycle-complete to trigger next full audit.",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-002",
+  "audit_depth": "shallow"
+}

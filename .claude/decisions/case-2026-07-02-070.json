@@ -1,0 +1,24 @@
+{
+  "case_id": "case-2026-07-02-070",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-01T22:59:13Z",
+  "project": "skills",
+  "work_unit": "runner-exec/scripts/creds.js shell injection + empty catch blocks",
+  "situation": "audit-2026-07-02-003 finding SK-RE-008 (high severity): getSessionToken uses execSync with interpolated dbPath in shell command string, enabling $(cmd) injection if HOME or path is adversarial. Co-located SK-RE-018: empty catch blocks at lines 14,22,30 swallow root cause making diagnosis impossible.",
+  "action": "Derived fix from audit-2026-07-02-003. Replaced execSync(`sqlite3 \"${dbPath}\" ...`) with execFileSync('sqlite3', [dbPath, 'SELECT ...']) to bypass shell parsing entirely. Added console.warn with error code to all three empty catch blocks in getInternalSecret and getSessionToken. Added execFileSync to require destructuring.",
+  "files_changed": ["runner-exec/scripts/creds.js"],
+  "worktree": "opt-runner-exec-1782940040",
+  "direction": "runner-exec:creds-shell-injection",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 07c1327 on auto/opt-runner-exec-1782940040 pushed to origin; node --check syntax OK; git diff shows 11 insertions 5 deletions confined to creds.js",
+  "next_suggestion": "Continue dispatching pending findings from audit-2026-07-02-003: SK-RE-006 (creds.js secret file permission check), SK-RE-007 (pgrep pattern too broad), SK-RE-010 (exec.js ws error handler missing clearTimeout). All are route-fix in same runner-exec area → can batch into same worktree.",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {"file": "runner-exec/scripts/creds.js", "line": 29, "severity": "high", "finding": "SK-RE-008: execSync shell injection via interpolated dbPath", "remediation": "Use execFileSync array form to bypass shell", "kind": "route-fix"},
+    {"file": "runner-exec/scripts/creds.js", "line": 14, "severity": "low", "finding": "SK-RE-018: empty catch block swallows file read error", "remediation": "Add console.warn with error code", "kind": "route-fix"},
+    {"file": "runner-exec/scripts/creds.js", "line": 22, "severity": "low", "finding": "SK-RE-018: empty catch block swallows proc fallback error", "remediation": "Add console.warn with error code", "kind": "route-fix"},
+    {"file": "runner-exec/scripts/creds.js", "line": 30, "severity": "low", "finding": "SK-RE-018: empty catch block swallows sqlite3 error", "remediation": "Add console.warn with error code", "kind": "route-fix"}
+  ],
+  "audit_id": "audit-2026-07-02-003",
+  "audit_depth": "shallow"
+}

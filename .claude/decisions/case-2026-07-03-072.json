@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-07-03-072",
+  "agent_id": "ralph-wiggum-fix-dispatch",
+  "timestamp": "2026-07-03T23:45:00Z",
+  "project": "scripts",
+  "work_unit": "SCRIPTS-M01-parallel-dispatch-task-id-sanitize",
+  "situation": "audit-cycle-state.status=fix-in-progress with 6 pending derived fixes from audit-2026-07-03-012. SCRIPTS-M01 (priority 1): parallel-dispatch.sh uses TASK_ID from parallel-plan.json directly in git branch names and filesystem paths without validation. Malformed IDs (../, spaces, shell metacharacters) create path traversal or injection vectors.",
+  "action": "Added validate_task_id() function enforcing [A-Za-z0-9_-]{1,64} regex. Applied before branch/worktree creation in the task loop. Invalid IDs are skipped with stderr warning. Single-file change to scripts/parallel-dispatch.sh. File is in .claude/public-interfaces.txt so opt-worktree.sh auto-classified as direction-shift and created new worktree opt-scripts-shift-1783076032. Also synced fix to /workspace/scripts/ non-git copy for runtime consistency.",
+  "files_changed": [
+    "scripts/parallel-dispatch.sh"
+  ],
+  "worktree": "opt-scripts-shift-1783076032",
+  "direction": "scripts:parallel-dispatch-sanitize",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit c1db0db on auto/opt-scripts-shift-1783076032 contains validate_task_id() function (18 lines) and guard call in task loop (3 lines). bash -n syntax check passed. Pushed to origin/auto/opt-scripts-shift-1783076032. Diff verified via git diff main..auto/opt-scripts-shift-1783076032.",
+  "next_suggestion": "Next round: dispatch SCRIPTS-M02 (parallel-merge.sh L78 git reset --hard HEAD@{1} WIP destruction risk). After that SCRIPTS-L01 through L04. All 6 derived fixes from audit-2026-07-03-012 are route-fix kind; once all merged/rejected, audit-cycle-state transitions to cycle-complete triggering next full audit.",
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-03-012",
+  "audit_depth": "shallow"
+}

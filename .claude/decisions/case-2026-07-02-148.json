@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-02-148",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-02T18:45:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "AS-CP-M02 backfill derived_direction_shifts field in audit history entries",
+  "situation": "audit-cycle-state.json history array has 2 entries (audit-2026-07-01-001, audit-2026-07-01-002) missing the derived_direction_shifts field added to schema in later audits. Field absence breaks uniform aggregation and was flagged as AS-CP-M02 in audit-2026-07-02-006.",
+  "action": "Backfilled derived_direction_shifts=0 for both history entries via direct edit of audit-cycle-state.json. Value 0 is correct: both audits predate direction-shift tracking and neither produced direction-shift fixes (verified by inspecting their derived_route_fixes counts and lack of direction-shift mentions in corresponding audit reports).",
+  "files_changed": [".claude/audit-cycle-state.json"],
+  "worktree": "opt-audit-1782986990",
+  "direction": "audit:backfill-history-fields",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit d732247 pushed to auto/opt-audit-1782986990. python3 -c \"import json; d=json.load(open('.claude/audit-cycle-state.json')); missing=[h['audit_id'] for h in d['history'] if 'derived_direction_shifts' not in h]; print(len(missing))\" now returns 0 (was 2 before fix). Route-fix reused existing worktree per opt-worktree.sh direction_kind logic (no public-interfaces.txt touch).",
+  "next_suggestion": "派生 AS-CP-M03 (scout-scan.py 加 audit report integrity check) 或 AS-CP-L03 (lost_count 字段文档化/移除)。AS-CP-H01/L01/L02 已静默修复，下轮应批量标 rejected。",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-006",
+  "audit_depth": "shallow"
+}

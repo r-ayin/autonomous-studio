@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-07-01-652",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-01T14:35:00Z",
+  "project": "autonomous-engine",
+  "work_unit": "hooks:save-checkpoint-path-and-auditlog (AE-H-002 derived fix)",
+  "situation": "audit-2026-07-01-009 finding AE-H-002: save-checkpoint.py had two bugs. (1) `Path` was imported only inside `if __name__ == '__main__'` block at L215, but `find_task_files()` called from `build_checkpoint()` at module scope used `Path(PROJECT_DIR)` at L137 → NameError when hook triggers via PreCompact/Stop/SessionEnd (never reaches __main__). (2) `collect_recent_activity()` hardcoded audit log path as `~/.claude/audit/audit.jsonl` which never exists on Linux; Claude Code writes per-project logs at `~/.claude/projects/<encoded-cwd>/audit.jsonl`. Result: checkpoint recent_activity always empty, task file discovery crashed silently.",
+  "action": "Moved `from pathlib import Path` to top-level imports (L18). Replaced hardcoded legacy audit log path with scan of `~/.claude/projects/*/audit.jsonl`, picking most-recently-modified project log via mtime; falls back gracefully to [] if no logs found. Removed redundant `from pathlib import Path` in __main__ block. Validated syntax + module-level import availability before commit.",
+  "files_changed": [
+    ".claude/hooks/save-checkpoint.py"
+  ],
+  "worktree": "opt-hooks-1782916244",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "python3 -c ast.parse OK; python3 importlib load OK with Path in globals=True and find_task_files callable=True; opt-worktree.sh commit succeeded, pushed d3c34de..5204160 to origin/auto/opt-hooks-1782916244. Main working tree reverted by opt-worktree.sh post-commit cleanup (expected behavior — fix lives only in worktree pending merge).",
+  "next_suggestion": "派生 priority=3 AE-M-001 (watchdog.sh PROJECT_DIR 硬编码 /mnt/e/x-tool → Linux L6 死代码)。同 hooks area 可继续复用 opt-hooks-1782916244。",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-01-009",
+  "audit_depth": "shallow"
+}

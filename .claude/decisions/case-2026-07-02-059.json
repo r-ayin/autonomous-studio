@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-02-059",
+  "agent_id": "autonomous-loop-ralph",
+  "timestamp": "2026-07-02T04:15:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "engine:loop-bg-trap (AS-EC-017 derived fix)",
+  "situation": "audit-2026-07-02-002 finding AS-EC-017 (priority 17, pending): autonomous-loop.sh --bg mode process group leak. Line 26 installs 'kill 0' trap at script top level, before --bg bootstrap branch. When user runs --bg, parent nohup & child then exit 0; if SIGINT/SIGTERM arrives before parent exits (or shell propagates trap to backgrounded child), kill 0 sends to entire PGID → freshly-spawned background child killed alongside parent. Foreground-only long-running process should own the cleanup trap, not the transient bootstrap parent.",
+  "action": "Moved trap installation past the --bg if-block so only the actual long-running process (foreground caller OR re-executed --bg child) installs kill-0 cleanup. Bootstrap parent in --bg mode exits cleanly without trap. Added explanatory comment block referencing both L-001 and AS-EC-017. bash -n syntax check passed. opt-worktree.sh auto-judged direction-shift (autonomous-loop.sh is in public-interfaces.txt) and opened new worktree.",
+  "files_changed": ["scripts/autonomous-loop.sh"],
+  "worktree": "opt-engine-shift-1782938027",
+  "direction": "engine:loop-bg-trap",
+  "outcome": "superseded",
+  "outcome_evidence": "After commit to opt-engine-shift-1782938027 and push confirmed, re-read of audit-cycle-state.json shows AS-EC-017 already marked merged by prior parallel context via case-2026-07-02-056 on opt-engine-shift-1782937136 (different approach: _cleanup() with kill -- -$$ explicit negative PGID). This fix is functionally equivalent but redundant. Branch auto/opt-engine-shift-1782938027 exists on remote but should be rejected in favor of the earlier fix.",
+  "next_suggestion": "所有 18 个 derived_fixes 均有 fix committed（14 merged + 4 pending merge）。下轮应检查 4 个 pending（AS-EC-013/014/016/018）是否已人工合并；若全部 merged/rejected，则 audit-cycle-state.status→cycle-complete 触发新一轮全量审计。",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-002",
+  "audit_depth": "shallow"
+}

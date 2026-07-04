@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-07-02-120",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-02T07:35:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "prod-deploy/poll-pre-check M-002 cache-persist fix",
+  "situation": "audit-2026-07-02-006 finding M-002 (priority 7, route-fix): drillDownToPreCheckTask() serially traverses jobs via a1 CLI to find the '发布准入' task. After successful drill-down, the task_id was only persisted indirectly via the final updateEvent call at L213. If that updateEvent failed (network blip), next poll cycle would redundantly re-drill — wasteful (multiple a1 CLI calls) and slow (>5s per drill). Audit report recommended immediate separate updateEvent after drill-down success.",
+  "action": "Added an immediate payload-only updateEvent({task_id}) call right after drillDownToPreCheckTask() returns in main(), wrapped in try/catch so failure is non-fatal (logged as WARN, falls back to prior behavior of re-drilling next cycle). This ensures cache persistence is decoupled from the later full-payload updateEvent that carries check_items/summary/poll_time. Single-file change, no API surface modification.",
+  "files_changed": [
+    "skills/prod-deploy/scripts/poll-pre-check.js"
+  ],
+  "worktree": "opt-prod-deploy-1782970212",
+  "direction": "prod-deploy:m-002-cache-persist",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit e56c909 landed on auto/opt-prod-deploy-1782970212, pushed to origin. opt-worktree.sh confirmed route-fix (reused existing prod-deploy worktree, no direction-shift). Diff adds 9 lines (try/catch block + comment) after L169 drillDownToPreCheckTask() call.",
+  "next_suggestion": "Next pending finding by priority: L-001 (getHeaders/getBaseUrl dedup across task-client+event-client, low severity but pairs well with L-003 already merged). Alternatively AE2-M-001 (Windows paths in memory files, autonomous-engine project — different area, would open new worktree).",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-006",
+  "audit_depth": "shallow"
+}

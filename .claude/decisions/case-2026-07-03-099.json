@@ -1,0 +1,23 @@
+{
+  "case_id": "case-2026-07-03-099",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-03T15:20:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "ESE-M02: autonomous-loop.sh per-round timeout + doc correction",
+  "situation": "audit-2026-07-03-006 finding ESE-M02 (pending): autonomous-loop.sh header line 14 claims '--max-iterations' bounds each round, but cloudcli claude does not support that flag (line 144 self-admits). run_round() invoked claude -p with no timeout wrapper → single-round hang risk unmitigated.",
+  "action": "1) Rewrote header comment (line 14-15) to accurately describe the real bounding mechanism: timeout wrapper around claude -p, default 1800s, overridable via ROUND_TIMEOUT_SECS env var; explicitly notes cloudcli claude lacks --max-iterations. 2) Added ROUND_TIMEOUT_SECS variable (default 1800) above run_round(). 3) Wrapped claude -p invocation in run_round() with `timeout $ROUND_TIMEOUT_SECS`. Timeout exit code 124 flows through existing `|| true` + rate-limit grep logic → treated as round failure, triggering fallback/retry path naturally.",
+  "files_changed": [
+    "scripts/autonomous-loop.sh"
+  ],
+  "worktree": "opt-autonomous-loop-shift-1783089654",
+  "direction": "autonomous-loop:ese-m02-round-timeout",
+  "direction_kind": "direction-shift",
+  "outcome": "succeeded",
+  "outcome_evidence": "Worktree opt-autonomous-loop-shift-1783089654 committed and pushed to origin/auto/opt-autonomous-loop-shift-1783089654. Verified fix present in worktree: line 14 updated comment, line 115 ROUND_TIMEOUT_SECS var, line 122 timeout wrapper. Code review URL: https://code.alibaba-inc.com/qunbu/autonomous-studio/codereview/new?from=main&to=auto/opt-autonomous-loop-shift-1783089654",
+  "next_suggestion": "All audit-2026-07-03-006 derived_fixes now merged (H01, H02, M01, M02). Update audit-cycle-state.status to cycle-complete. Next round triggers new full audit on a project not recently deep-audited (candidates: shizi backend/quant, wechat-main pipeline, moni-master backend infra — avoid engine-skills-extracted just audited).",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-03-006",
+  "audit_depth": "shallow",
+  "_derived_from": "ESE-M02 (audit-2026-07-03-006, priority 4, kind route-fix)"
+}

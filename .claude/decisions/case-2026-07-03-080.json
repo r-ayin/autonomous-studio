@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-03-080",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-03T12:50:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "ESE-M02 fix: autonomous-loop.sh comment/code contradiction re --max-iterations",
+  "situation": "audit-2026-07-03-006 ESE-M02 finding (pending): line 14 header claims '--max-iterations 防 claude -p 单轮卡死' but line 97 comment and actual claude -p invocation (line 116) confirm cloudcli claude has no --max-iterations flag. Header is misleading; stuck claude -p hangs forever until external kill. Live main has same contradiction.",
+  "action": "Wrapped claude -p invocation in `timeout --signal=TERM --kill-after=30s 1800` (30min per-round bound with SIGTERM grace). Corrected line 14 header to describe actual timeout mechanism instead of false --max-iterations claim. Updated inline comment at former line 144 to reference run_round timeout implementation. All three comment sites now consistent with code behavior.",
+  "files_changed": ["scripts/autonomous-loop.sh"],
+  "worktree": "opt-engine-shift-1783083087",
+  "direction": "engine:autonomous-loop-timeout",
+  "outcome": "succeeded",
+  "outcome_evidence": "bash -n syntax check passed. grep confirms timeout wrapper present at line 119, all three comment sites (lines 14, 116-118, 148) updated consistently. Commit pushed to origin/auto/opt-engine-shift-1783083087. judge_direction_kind classified as direction-shift (autonomous-loop.sh likely in public-interfaces.txt); new worktree created automatically by opt-worktree.sh.",
+  "next_suggestion": "No more pending findings from audit-2026-07-03-006. Mark cycle-complete next round and trigger fresh full audit on a not-yet-deep-audited project (e.g., sunset-prediction src-core re-audit or shizi backend module).",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-03-006",
+  "audit_depth": "shallow"
+}

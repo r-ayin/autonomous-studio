@@ -1,0 +1,34 @@
+{
+  "case_id": "case-2026-07-03-073",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-03T11:00:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "scripts/parallel-merge.sh — unsafe HEAD@{1} rollback on test failure",
+  "situation": "audit-2026-07-03-012 finding SCRIPTS-M02 (priority 2, pending): parallel-merge.sh L78 uses `git merge --abort || git reset --hard HEAD@{1}` as fallback when integration test fails after a merge. HEAD@{1} resolves via reflog and can point to an unrelated prior state when the working tree has uncommitted WIP or when reflog has been rewritten, silently destroying in-progress work. Same risk applies to the conflict-path fallback at L89.",
+  "action": "Capture PRE_MERGE_HEAD=$(git rev-parse HEAD) before attempting merge. On test-failure rollback, prefer `git merge --abort`; only fall back to `git reset --hard $PRE_MERGE_HEAD` if abort is unavailable. Same pattern for the conflict path. Removes dependency on reflog positioning and makes rollback target explicit and stable regardless of working-tree dirtiness.",
+  "files_changed": [
+    "scripts/parallel-merge.sh"
+  ],
+  "worktree": "opt-scripts-shift-1783076394",
+  "direction": "scripts:parallel-merge",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh created new direction-shift worktree opt-scripts-shift-1783076394 (public-interface touch detected), committed scripts/parallel-merge.sh with PRE_MERGE_HEAD-based rollback, pushed auto/opt-scripts-shift-1783076394 to origin. Main unchanged; fix awaits human merge review.",
+  "next_suggestion": [
+    "派生 fix #2: SCRIPTS-L01 (verify-pattern.sh L21 $CAL interpolated in python -c string → use sys.argv)",
+    "派生 fix #3: SCRIPTS-L02 (studio-precheck.sh bare except → narrow exception types)",
+    "若本 case 被 merge，更新 audit-cycle-state derived_fixes SCRIPTS-M02 status→merged"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "scripts/parallel-merge.sh",
+      "line": 78,
+      "severity": "medium",
+      "finding": "git reset --hard HEAD@{1} fallback on test-failure rollback can destroy uncommitted WIP or land on wrong commit when reflog has drifted. HEAD@{1} is position-dependent, not content-addressed.",
+      "remediation": "Pin pre-merge HEAD via $(git rev-parse HEAD) before merge attempt; use that pinned SHA as reset target instead of HEAD@{1}. Prefer merge --abort first; only fall back to reset when abort unavailable.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-03-012",
+  "audit_depth": "shallow"
+}

@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-07-02-108",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-02T16:45:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "skills/prod-deploy phase 0 checkpoint recovery (M-003)",
+  "situation": "audit-2026-07-02-006 M-003 finding: Phase 0 断点恢复只查 RUNNING 事件，中断发生在某阶段 SUCCESS 后、下一阶段事件创建前时（如 deploy_plan SUCCESS 但 deploy_batch 未创建），无 RUNNING 事件导致从 Phase 1 重跑，重复创建 CR / 触发流水线。direction-shift per audit report (触及 phase 协议契约)，但 opt-worktree.sh 文件路径判定为 route-fix（phase md 不在 public-interfaces.txt）。",
+  "action": "改 phases/00-checkpoint-recovery.md：Step 1 先查 SUCCESS 事件建立已完成阶段表；Step 2 查 RUNNING 找中断点；Step 3 三级决策（有 RUNNING→从中断点续；仅 SUCCESS→从最后完成阶段的下一步续；无事件→Phase 1）。list-events.js 已支持 --status SUCCESS/RUNNING 分别查询，无需改代码。",
+  "files_changed": [
+    "skills/prod-deploy/phases/00-checkpoint-recovery.md"
+  ],
+  "worktree": "opt-prod-deploy-1782970212",
+  "direction": "prod-deploy:checkpoint-recovery",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 6dbd5e4 on auto/opt-prod-deploy-1782970212 pushed to origin; worktree HEAD shows updated 00-checkpoint-recovery.md with 3-step recovery logic and bug warning note",
+  "next_suggestion": "派生下一个 pending finding: M-001 (deserializeEvent JSON.parse 无 try/catch) + L-003 (report-event.js 多处 JSON.parse 无 try/catch) 合并为健壮性 fix case，route-fix，复用 opt-prod-deploy-1782970212",
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-006",
+  "audit_depth": "shallow"
+}

@@ -1,0 +1,35 @@
+{
+  "case_id": "case-2026-07-02-100",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-02T13:45:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "deep audit: AS .claude-governance-layer (public-interfaces / audit-cycle-state 契约 / hooks 当前态 / structural-debt)",
+  "situation": "audit-cycle-state.status=cycle-complete 触发新一轮全量审计。所有 10 个 git-backed workspace 项目均已审过至少一个模块；选 AS 元治理层做第二轮深审（之前 001-002/007 仅审 hooks+scripts/engine-core 代码行为，未审配置契约完整性）。scout-scan #1 autonomous-engine score=1.0 但已是 prior audit 覆盖项目；按 constraints A.4 分段原则选 AS 未审子模块。",
+  "action": "读 8+ 文件深度审计：autonomous-constraints.md / audit-cycle-state.json / public-interfaces.txt / case-log.schema.json / audit-log.schema.json / structural-debt.md / opt-worktree.sh judge_direction_kind / pipeline-gate.py / autonomous-loop.sh prompt。产出独立审计报告 .claude/audits/audit-2026-07-02-005.md；登记 3 条 pending derived_fixes + 1 条 structural-debt SD-004；status→fix-in-progress。本轮无代码改动。",
+  "files_changed": [],
+  "worktree": "none (audit-only round, no code changes)",
+  "direction": "engine:deep-audit-governance",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "新建 .claude/audits/audit-2026-07-02-005.md (4 findings: 0 high, 2 medium, 2 low)",
+    "audit-cycle-state.json status cycle-complete→fix-in-progress; pending_count 0→3; last_audit_id→audit-2026-07-02-005",
+    "derived_fixes 新增 3 条 pending: AS-GOV-001 (route-fix), AS-GOV-003 (route-fix), AS-GOV-004 (direction-shift)",
+    "structural-debt.md 新增 SD-004 (AS-GOV-002 history schema drift)",
+    "验证: python json.load audit-cycle-state.json 通过; top-level 字段集合差为空(14/14); public-interfaces.txt AS 条目 24/25 文件存在(1 幽灵)"
+  ],
+  "next_suggestion": [
+    "[1] 派生 AS-GOV-001 (最高优先 route-fix): 删 public-interfaces.txt:25 幽灵条目 .claude/hooks/__init__.py → opt-worktree route-fix 复用 optimization worktree",
+    "[2] 派生 AS-GOV-003 (route-fix): audit-cycle-state.json 头部加 _derived_fix_status_enum 注解",
+    "[3] 派生 AS-GOV-004 (direction-shift): scout-scan.py 加 structural-debt section → 触 PI 自动开新 worktree",
+    "[4] Legacy: review pending worktrees (moni-master 13, shizi 6, personal-assistant 4)"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {"file": ".claude/public-interfaces.txt", "line": 25, "severity": "medium", "finding": "AS-GOV-001: 幽灵条目 autonomous-studio:.claude/hooks/__init__.py 文件不存在", "remediation": "删除该行", "kind": "route-fix"},
+    {"file": ".claude/audit-cycle-state.json", "line": null, "severity": "medium", "finding": "AS-GOV-002: history[] 5 optional keys (all_rejected_at/cycle_completed_at/derived_direction_shifts/independent/reject_reason) 未在 _schema 文档化，无校验", "remediation": "加 _history_entry_schema 注解或新建独立 schema 文件", "kind": "structural"},
+    {"file": ".claude/audit-cycle-state.json", "line": null, "severity": "low", "finding": "AS-GOV-003: derived_fixes[].status 枚举未形式化 (constraints 文档 pending|merged|rejected 但 state 文件自身无注解)", "remediation": "头部加 _derived_fix_status_enum 注解", "kind": "route-fix"},
+    {"file": ".claude/structural-debt.md", "line": null, "severity": "low", "finding": "AS-GOV-004: structural-debt.md 无程序化消费者 (grep 全仓 0 命中)，靠引擎提示词记忆提醒易丢失", "remediation": "scout-scan.py 加 structural-debt section 输出 open debt count", "kind": "direction-shift"}
+  ],
+  "audit_id": "audit-2026-07-02-005",
+  "audit_depth": "deep"
+}

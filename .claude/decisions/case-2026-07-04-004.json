@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-04-004",
+  "agent_id": "autonomous-loop-ralph",
+  "timestamp": "2026-07-04T00:25:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "派生 fix PD-M004: sunfire-client.js JSON parse vs network error 区分",
+  "situation": "sunfire-client.js L105-114 querySunfireInsights 的 catch 块把 JSON.parse SyntaxError 和网络错误统一返回 {skipped:true, reason}。调用方无法区分'服务端返回非法 JSON（可能是 proxy/auth 页面或 API regression，不可重试）'vs'网络超时/DNS 失败（可重试）'。观察期决策可能因错误分类而误判。",
+  "action": "在 try 块内嵌套 JSON.parse try/catch：SyntaxError 返回 severity:'malformed-response' + rawPreview(前 200 字符)；外层 catch 保持原 reason 并附加 severity:'network'。仅改 sunfire-client.js 一个文件，route-fix 复用 opt-prod-deploy-1782970212 worktree。已 push (commit 1deb576)。",
+  "files_changed": ["skills/prod-deploy/scripts/lib/sunfire-client.js"],
+  "worktree": "opt-prod-deploy-1782970212",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "git log --oneline -3 auto/opt-prod-deploy-1782970212 shows commit 1deb576 'prod-deploy:sunfire-error-diff'; grep -n 'PD-M004\\|malformed-response\\|severity:' in worktree file confirms lines 111,116,126 present; push output '32b9db8..1deb576 HEAD -> auto/opt-prod-deploy-1782970212' confirms remote updated.",
+  "next_suggestion": "继续派生 PD-L003（priority 11, route-fix, poll-pre-check.js L65-68 extractIdFromLine regex tighten）。PD-L003 完成后当前 cycle audit-2026-07-03-013 所有 derived_fixes 处理完毕，下轮触发新全量审计。",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-03-013",
+  "audit_depth": "shallow"
+}

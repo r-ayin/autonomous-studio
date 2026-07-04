@@ -1,0 +1,25 @@
+{
+  "case_id": "case-2026-07-03-008",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-03T14:45:00Z",
+  "project": "personal-assistant",
+  "work_unit": "web:settings-baseurl-no-hardcode (W-010 derived fix)",
+  "situation": "audit-2026-07-03-009 finding W-010: web/SettingsPage.jsx line 15 hardcoded base_url='https://open.bigmodel.cn/api/paas/v4' exposes LLM provider endpoint. Combined with api key leak (separate findings), attacker can directly call vendor API. Low severity route-fix.",
+  "action": "Remove hardcoded default; add defaultUrlFor(backend) helper returning neutral per-backend placeholder ('' for openai_compat/stub, localhost for ollama, anthropic.com for anthropic_proxy, etc.). useEffect still pulls saved base_url from /settings/llm GET and falls back to per-backend default when backend returns none. Backend-switch useEffect auto-fills baseUrl only when empty (preserves user edits).",
+  "files_changed": ["web/SettingsPage.jsx"],
+  "worktree": "opt-web-1782977902",
+  "direction": "web:w-010-baseurl-no-hardcode",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 15cd65b on auto/opt-web-1782977902; git diff shows +20/-2 in web/SettingsPage.jsx; no hardcoded vendor URL remains in initial state",
+  "next_suggestion": [
+    "派生 W-011 (direction-shift): window.PA_BASE IIFE 未 freeze/CSP connect-src，需新 worktree",
+    "派生 W-012 (route-fix): bootstrap() POST /verify 页面加载触发写操作，改 GET-only",
+    "派生 W-013 (route-fix): MockData.jsx PII 替换为明显虚构名"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-03-009",
+  "audit_depth": "shallow",
+  "_derived_from_finding": "W-010",
+  "_worktree_commit": "15cd65b"
+}

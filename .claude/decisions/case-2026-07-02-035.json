@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-02-035",
+  "agent_id": "autonomous-loop-ralph",
+  "timestamp": "2026-07-02T03:15:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "engine-core/autonomous-loop.sh SIGINT temp file leak (AS-EC-007)",
+  "situation": "audit-2026-07-02-002 finding AS-EC-007: run_round() 用 local out_file=$(mktemp) 持有敏感输出，trap 仅 kill 子进程组未清理该临时文件。SIGINT/SIGTERM 落在 mktemp↔shred 窗口（claude -p 执行期间或 tail/grep/shred 之间）→ 临时文件泄漏，含完整 prompt + 工具结果 + 文件内容。",
+  "action": "提升 out_file 为全局变量 _CURRENT_OUT_FILE；trap 判非空且文件存在则 shred -u 后再 kill 0；run_round 末尾正常 shred 后置空。route-fix（仅改 scripts/autonomous-loop.sh，未触 public-interfaces.txt，但 opt-worktree judge_direction_kind 因 area=engine 命中 engine-shift 历史 worktree 命名空间开了新 shift worktree）。",
+  "files_changed": ["scripts/autonomous-loop.sh"],
+  "worktree": "opt-engine-shift-1782931318",
+  "direction": "engine:loop-sigint-tempfile-leak",
+  "outcome": "succeeded",
+  "outcome_evidence": "bash -n syntax OK; commit 00c7d53 pushed to origin/auto/opt-engine-shift-1782931318; git show HEAD:scripts/autonomous-loop.sh line 25-29 含 _CURRENT_OUT_FILE 全局声明+增强 trap，line 96-110 run_round 使用全局变量并在 shred 后置空。main 工作副本被 linter hook 还原属预期行为（opt-worktree commit 只动 worktree）。",
+  "next_suggestion": "派生 audit-2026-07-02-002 pending 队列下一个：AS-EC-008 (priority=8) opt-worktree.sh cmd_commit orphaned files on commit failure (cd side effect)。同 area=scripts 可尝试复用 opt-scripts-shift-* worktree。",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-002",
+  "audit_depth": "shallow"
+}

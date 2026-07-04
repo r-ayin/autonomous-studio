@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-01-651",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-01T14:30:57Z",
+  "project": "autonomous-engine",
+  "work_unit": "派生 fix: AE-H-001 (audit-2026-07-01-009 priority=1)",
+  "situation": "audit-2026-07-01-009 发现 resume-checkpoint.py build_engine_firmware() 三处硬编码 E:/x-tool Windows 路径 + 两处 WSL-only cron 恢复命令。Linux 部署下引擎 SessionStart 注入的固件指令指向不存在路径，导致 L1/L2/L6 全链路失效；WSL 命令在纯 Linux 下直接报错。同构 bug 在 x-tool audit-2026-07-01-008 XT-H-001 已修（commit ba9d4f3），autonomous-engine 未同步。",
+  "action": "将 build_engine_firmware() 改为接收 project_dir 参数的 f-string：(1) 用 {pd} 替换所有 E:/x-tool 硬编码路径；(2) sys.platform=='win32' 分支注入 WSL 命令，否则注入 systemd/cron 等效恢复命令；(3) 修复原代码中 {PROJECT_DIR}/{session_id} 字面量泄漏（原函数非 f-string 所以从未插值）；(4) main 块调用点显式传入 PROJECT_DIR。smoke test 断言全部通过：无 E:/x-tool 残留、无 wsl -d Ubuntu 泄漏、decision-log/autonomous-state 路径正确、{session_id} 占位符保留、Linux watchdog 恢复命令包含 systemctl+crontab fallback。",
+  "files_changed": [".claude/hooks/resume-checkpoint.py"],
+  "worktree": "opt-hooks-1782916244",
+  "direction": "hooks:resume-checkpoint-firmware",
+  "outcome": "succeeded",
+  "outcome_evidence": "python3 smoke test 7 条 assert 全过；opt-worktree commit 成功并 push 到 origin/auto/opt-hooks-1782916244；diff 仅含 .claude/hooks/resume-checkpoint.py 单文件改动；git worktree list 可见 opt-hooks-1782916244 待人工审 merge。",
+  "next_suggestion": "继续派生 audit-2026-07-01-009 priority=2 finding AE-H-002（save-checkpoint.py Path 未导入 + audit log 路径错误 → checkpoint recent_activity 恒空）。同为 route-fix 单文件改动，可复用同一 hooks worktree。",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-01-009",
+  "audit_depth": "shallow"
+}

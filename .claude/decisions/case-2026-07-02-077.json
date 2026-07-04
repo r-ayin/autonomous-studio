@@ -1,0 +1,34 @@
+{
+  "case_id": "case-2026-07-02-077",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-02T00:10:03Z",
+  "project": "skills",
+  "work_unit": "runner-exec/scripts/pull.js SK-RE-012 path traversal guard",
+  "situation": "audit-2026-07-02-003 finding SK-RE-012 (priority 10) pending without case_id: pull.js:60 remote rel path used unsanitized in path.join(localDir, rel). Attacker-controlled Windows-side file listing could inject ../ segments to write outside localDir.",
+  "action": "Added two-stage containment guard before fs.writeFileSync: (1) regex reject of any ../ segment in rel; (2) path.resolve + startsWith(resolvedLocalDir + sep) double-check. Skipped files logged with ⚠ marker and counted as fail. Reused existing opt-runner-exec-1782940040 worktree (route-fix, same area).",
+  "files_changed": [
+    "/home/admin/workspace/.opt-worktrees/skills/opt-runner-exec-1782940040/runner-exec/scripts/pull.js"
+  ],
+  "worktree": "opt-runner-exec-1782940040",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 696319d on auto/opt-runner-exec-1782940040; git push accepted; diff shows +13/-1 lines adding resolvedLocalDir computation + traversal regex + startsWith guard before write",
+  "next_suggestion": [
+    "派生 SK-RE-015 (pull.js:71 MD5→sha256, priority 12) — 同一文件，可复用同 worktree",
+    "派生 SK-RE-017 (batch-write.js:55 manifest schema validation, priority 13)",
+    "提醒用户审 opt-runner-exec-1782940040 上积压的 8 个 commit (SK-RE-004/005/007/008/010/011/012/018)"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "runner-exec/scripts/pull.js",
+      "line": 62,
+      "severity": "high",
+      "finding": "Path traversal via ../ in remote-sourced relative path — unsanitized rel fed to path.join(localDir, rel) allowing writes outside target directory",
+      "remediation": "Reject ../ segments + resolve+startsWith containment check before write",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-02-003",
+  "audit_depth": "deep"
+}

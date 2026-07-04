@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-03-015",
+  "agent_id": "ralph-wiggum-cycle-76",
+  "timestamp": "2026-07-03T19:07:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "PEL-001 fix: post-edit-lint.py path traversal guard + audit-log helper",
+  "situation": "audit-2026-07-03-010 finding PEL-001 (HIGH): post-edit-lint.py accepts file_path from tool_input and runs py_compile/tsc/pytest on it without verifying the resolved path stays within WORKSPACE_ROOT. Attacker-controlled Edit/Write with file_path='/etc/passwd' or '../../etc/passwd' would cause subprocess to read/process files outside workspace. Additionally, zero audit-log instrumentation violates constraints B节 for security-relevant hooks.",
+  "action": "在 .claude/hooks/post-edit-lint.py 的绝对化步骤后追加 os.path.realpath + startswith(real_root + os.sep) guard；越界或不可解析路径静默 deny 并记 audit-log。新增 _audit_log(action, resource, result) helper，append-only JSONL 写到 <project>/.audit/audit-YYYY-MM-DD.jsonl，schema 对齐 constraints B（id/timestamp/userId/userRole/action/resource/result/ip）。_audit_log 自身 try/except 全包，永不阻断 hook。",
+  "files_changed": [".claude/hooks/post-edit-lint.py"],
+  "worktree": "opt-hooks-1783018753",
+  "direction": "hooks:post-edit-lint-path-traversal-guard",
+  "outcome": "succeeded",
+  "outcome_evidence": "python3 -m py_compile 通过；dry-run 三组输入验证：(1) CLAUDE.md→{} 正常放行；(2) /etc/passwd→{} + audit-log path-traversal-blocked/denied；(3) ../../etc/passwd→{} + audit-log path-traversal-blocked/denied。opt-worktree.sh commit 复用 opt-hooks-1783018753 (同 area route-fix)，commit afa9618 push 到 origin/auto/opt-hooks-1783018753。",
+  "next_suggestion": "[1] 派生 AC-F003 fix: auto-commit.py TOCTOU race (自主模式检测与 commit 之间加 fcntl lock)。[2] 派生 AC-F002 fix: auto-commit.py git add -A filtered-stage 替换（若 case-396 未覆盖 extracted 版）。[3] MBP-F001~F005 sync-from-live 打包修5个bypass。[4] merge/reject opt-hooks-1783018753 after human review (含 AC-F005 + PEL-001 两笔 fix)。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": ".claude/hooks/post-edit-lint.py",
+      "line": 46,
+      "severity": "high",
+      "finding": "PEL-001: file_path from tool_input used directly in subprocess after naive abspath; no realpath resolution, no workspace-root containment check. Symlink or '..' escape lets Edit/Write trigger py_compile/tsc/pytest on attacker-controlled files outside workspace.",
+      "remediation": "Resolve via os.path.realpath, verify prefix against realpath(WORKSPACE_ROOT)+os.sep, deny silently with audit-log on mismatch.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-03-010",
+  "audit_depth": "shallow"
+}

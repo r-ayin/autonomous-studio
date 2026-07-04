@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-04-028",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-04T22:45:00Z",
+  "project": "moni-master",
+  "work_unit": "MM-M004: MemoryDataProvider RwLock poisoning recovery",
+  "situation": "audit-2026-07-04-002 finding MM-M004 (priority 7): memory.rs L28+ MemoryDataProvider uses bare .read().unwrap() / .write().unwrap() on RwLock<HashMap<String, Quote>> at 5 sites (set_quote/set_quotes/all_quotes/reduce_available_volume/get_quote/list_symbols). If any holder thread panics while holding the lock, RwLock becomes poisoned and all subsequent access unwraps fail → engine actor cascade crash. Same class as already-merged MM-M001 (StrategyRegistry Mutex, commit 985aad9) and MM-M003 (sessions.rs 8 sites, commit 593f401).",
+  "action": "Replaced all 5 unwrap() calls with unwrap_or_else(|e| { eprintln!(\"[moni-data/memory] RwLock poisoned on {read|write} ({site}), recovering: {e}\"); e.into_inner() }) to recover from poisoned state and log warning instead of panicking. Pattern identical to MM-M001/MM-M003 fixes.",
+  "files_changed": ["moni-rs/crates/moni-data/src/memory.rs"],
+  "worktree": "opt-moni-data-1782919076",
+  "direction": "moni-data:memory-rwlock-poison-recovery",
+  "outcome": "succeeded",
+  "outcome_evidence": "cargo check -p moni-data: Finished; cargo test -p moni-data: 7/7 passed; git commit 0fd703e in auto/opt-moni-data-1782919076; pushed to origin.",
+  "next_suggestion": "Continue derived fix dispatch: next pending is MM-M005 (engine.rs L640 fill_quantity f64 precision loss, priority 8) or MM-M006 (engine.rs L424-433 attempt_match error path stale order, priority 9). Both are route-fix in moni-engine area.",
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-04-002",
+  "audit_depth": "shallow"
+}

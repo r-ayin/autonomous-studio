@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-02-137",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-02T10:45:00Z",
+  "project": "personal-assistant",
+  "work_unit": "H-004 path traversal fix in POST /inbox/upload",
+  "situation": "audit-2026-07-02-008 finding H-004 (priority 4): POST /inbox/upload accepts arbitrary filename query param and concatenates directly into inbox path without sanitization. Attacker can supply ?filename=../../etc/cron.d/backdoor.txt to write arbitrary files on disk. Endpoint was previously unauthenticated; opt-security-1782909081 added bearer gate (commit 9beaaff) but the path traversal itself was never fixed despite commit 429baba claiming it.",
+  "action": "Applied defense-in-depth filename sanitization: (1) Path(filename).name strips directory components, (2) reject if stripped name differs from input (catches ../ and absolute paths), (3) is_relative_to(inbox) as final guard. Stacked as 3rd commit on existing opt-security-1782909081 worktree which already had bearer token gate + claimed-but-missing traversal fix.",
+  "files_changed": ["personal_assistant/api.py"],
+  "worktree": "opt-security-1782909081",
+  "direction": "security:inbox-upload-hardening",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 1999ffa on auto/opt-security-1782909081 pushed to origin. Diff: +8/-2 lines in api.py inbox_upload handler. Path.name strips traversal, is_relative_to double-checks. Main restored clean (git checkout -- personal_assistant/api.py).",
+  "next_suggestion": "Next pending fix by priority: M-001 (verify.py _item_counter global mutable race condition) — route-fix, 1 file. Or M-003 (DELETE /chat-log no auth/confirmation) — partially mitigated by H-003 bearer gate but still needs confirmation token for destructive op.",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "personal_assistant/api.py",
+      "line": 279,
+      "severity": "high",
+      "finding": "Path traversal: dest = inbox / filename allows ../../ escape from inbox dir",
+      "remediation": "Sanitize with Path.name + is_relative_to check",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-02-008",
+  "audit_depth": "shallow"
+}

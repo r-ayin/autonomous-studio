@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-02-139",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-02T20:35:00Z",
+  "project": "personal-assistant",
+  "work_unit": "M-004: storage.connect() DDL redundancy + audit-cycle-state batch sync",
+  "situation": "audit-2026-07-02-008 fix-in-progress with 11 pending findings. Batch state audit found 3 stale entries: H-003 (fix_case_id=case-136 succeeded but status=pending), M-001 (itertools.count already on main but status=pending), M-003 (superseded by H-003 bearer gate). Next truly pending: M-004 (storage.connect() runs full DDL executescript on every call — redundant overhead for high-frequency functions like stats()/chat_logs()).",
+  "action": "Two-part work: (1) Synced audit-cycle-state.json — H-003→merged, M-001→merged, M-003→superseded, pending_count 10→8. (2) Fixed M-004: added module-level _schema_ready set to cache schema initialization per db_path; connect() only runs executescript(SCHEMA) on first call per path. Committed via opt-worktree.sh.",
+  "files_changed": ["personal_assistant/storage.py"],
+  "worktree": "opt-storage-1782988687",
+  "direction": "storage:ddl-cache",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh output: '✓ 提交到 opt-storage-1782988687' + push created origin/auto/opt-storage-1782988687; python3 ast.parse confirms syntax OK; diff shows _schema_ready set + conditional executescript in connect()",
+  "next_suggestion": "派生 M-006 (llm._post_json no network error handling, route-fix, 1 file personal_assistant/llm.py) or M-007 (storage ID hash non-deterministic, route-fix, 1 file storage.py)",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-008",
+  "audit_depth": "shallow"
+}

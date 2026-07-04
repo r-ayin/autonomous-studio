@@ -1,0 +1,29 @@
+{
+  "case_id": "case-2026-07-03-002",
+  "agent_id": "ralph-wiggum-cycle",
+  "timestamp": "2026-07-03T08:15:00Z",
+  "project": "personal-assistant",
+  "work_unit": "web/api.js fetch error observability (audit W-002 dedup)",
+  "situation": "fix-in-progress 轮派生 W-002 route-fix。准备提交时发现 opt-web-1782977902 worktree commit 573523c 已含等效修复（recordError + console.warn for non-2xx & network errors），cp-guard 阻止重复改动以避免覆盖未合并工作。",
+  "action": "撤销 main 工作区冗余改动；确认 worktree 修复覆盖 finding 核心诉求（非 2xx status code 可观测 + 网络错误日志）；将 W-002 标记 merged（待人工 merge opt-web-1782977902）；本轮无新提交。",
+  "files_changed": [],
+  "worktree": "opt-web-1782977902 (existing, pending human review)",
+  "direction": "web:api-error-surface",
+  "outcome": "superseded",
+  "outcome_evidence": "worktree opt-web-1782977902 commit 573523c ('opt(web:api-error-surface): fix(web): api.js get/post 记录 lastError + console.warn') 实现 recordError(path,status,message) 函数并在 get/post 的 !r.ok 与 catch 分支调用，console.warn 输出 [PA] <status> on <path>，LIVE.lastError 保留最近一次错误供 UI 读取。与 W-002 remediation '至少对非 2xx 响应记录 status code 到结构化日志或 UI 错误提示' 等价。main 工作区 Edit 已 git checkout -- 还原。",
+  "next_suggestion": "继续派生 W-005 (Babel Standalone 运行时编译 → 预编译 bundle)。注意：W-005 是 medium severity、涉及构建流程改造，可能触发 direction-shift；先用 scout 评估 package.json/build 脚本现状再决定 worktree 策略。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "web/api.js",
+      "line": "9-27",
+      "severity": "medium",
+      "finding": "W-002: fetch 错误静默吞掉（catch return null, !r.ok return null），安全事件不可观测",
+      "remediation": "已在 opt-web-1782977902/573523c 修复：recordError() + console.warn + LIVE.lastError",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-03-009",
+  "audit_depth": "shallow",
+  "_dedup_note": "本 case 为派生 fix dedup 事件：finding 已被前轮同 area worktree 修复覆盖，未产生新 commit。W-002 在 audit-cycle-state.derived_fixes 标 merged（实际待人工 merge opt-web-1782977902）。"
+}

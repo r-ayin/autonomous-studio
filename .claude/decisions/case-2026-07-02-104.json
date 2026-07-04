@@ -1,0 +1,108 @@
+{
+  "case_id": "case-2026-07-02-104",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-02T05:25:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "deep-audit: skills/prod-deploy (生产部署 skill 全量安全+正确性审计)",
+  "situation": "audit-cycle-state.json status=cycle-complete (audit-2026-07-01-002 的 9 个 derived_fixes 全部 squash-merged to main)，触发新一轮全量审计。已审过项目清单覆盖 hooks/scripts/sunset-prediction/wechat-main/shizi/personal-assistant/autonomous-engine/x-tool/moni-master/1BfrYW9R/skills-runner-exec/engine-skills-extracted/.claude治理层。选中 autonomous-studio/skills/prod-deploy 作为本轮目标：高敏感（B节部署/变更单/流水线触发路径）、从未深审、是引擎触达生产环境的关键外部副作用通道。",
+  "action": "派发 sub-agent (model=sonnet) 深度读取 17 文件（11 JS 脚本 + 6 phase 文档 + SKILL.md），按五维（正确性/安全性/健壮性/可观测性/引擎契约）审计。产出 audit-2026-07-02-006.md 独立报告，登记 10 条 actionable findings 到 audit-cycle-state.derived_fixes（status=pending）。本轮不派生 fix case（约束 A 节：审计轮只产 report，下轮起逐个派生）。",
+  "files_changed": [
+    ".claude/audits/audit-2026-07-02-006.md",
+    ".claude/audit-cycle-state.json"
+  ],
+  "worktree": null,
+  "direction": null,
+  "outcome": "succeeded",
+  "outcome_evidence": "audit-2026-07-02-006.md 写入成功（12 findings: 3H/4M/3L/2I）；audit-cycle-state.json status=fix-in-progress, pending_count=10, current_audit_id=audit-2026-07-02-006; history 数组追加第三项。无 opt-worktree commit（审计轮不提交代码）。",
+  "next_suggestion": [
+    "P0 route-fix: H-001+H-002 HTTP 超时（改 lib/task-client.js + lib/event-client.js + lib/sunfire-client.js，加 AbortController/setTimeout(30000)）",
+    "P0 route-fix: H-003 audit-log 埋点（新增 .audit/audit-log-helper.js + 改 complete-task.js + report-event.js）",
+    "P1 direction-shift: M-003 Phase 0 断点恢复协议改造（需改 00-checkpoint-recovery.md + list-events.js 支持查全量事件）",
+    "P1 route-fix: M-004 observation skipped 退化告警（改 report-observation.js + resume-next-batch.js）"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "skills/prod-deploy/scripts/lib/task-client.js",
+      "line": 30,
+      "severity": "high",
+      "finding": "task-client.js 和 event-client.js 的 fetch() 调用均无超时控制（无 AbortController/signal），HTTP 请求可无限挂起导致部署流程永久阻塞",
+      "remediation": "为 apiGet/apiPost/apiPut 统一加 AbortController + setTimeout(30000)，fetch 选项中传 signal",
+      "kind": "route-fix"
+    },
+    {
+      "file": "skills/prod-deploy/scripts/lib/sunfire-client.js",
+      "line": 32,
+      "severity": "high",
+      "finding": "sunfire-client.js httpPost() 使用原生 https.request 但无请求/socket 超时，Sunfire API 无响应时 observation 轮询永久挂起",
+      "remediation": "加 req.setTimeout(30000) + socket timeout 事件处理",
+      "kind": "route-fix"
+    },
+    {
+      "file": "skills/prod-deploy/scripts/**",
+      "line": 0,
+      "severity": "high",
+      "finding": "整个 prod-deploy 模块零 audit-log 埋点，违反 autonomous-constraints.md B 节对部署/变更单/流水线触发敏感路径的强制埋点要求",
+      "remediation": "在 complete-task.js + report-event.js 关键 handler 添加 audit JSONL 写入",
+      "kind": "route-fix"
+    },
+    {
+      "file": "skills/prod-deploy/phases/00-checkpoint-recovery.md",
+      "line": 9,
+      "severity": "medium",
+      "finding": "Phase 0 断点恢复只查 RUNNING 状态事件，若中断发生在 Phase 6 后 Phase 7 前（deploy_plan SUCCESS 但 deploy_batch 未创建），无 RUNNING 事件可匹配，会从 Phase 1 重新开始导致重复创建 CR/触发流水线",
+      "remediation": "Phase 0 同时查 SUCCESS 状态事件建立已完成阶段列表，从最后已完成阶段的下一步恢复。需改 phase 协议 + list-events.js",
+      "kind": "direction-shift"
+    },
+    {
+      "file": "skills/prod-deploy/scripts/report-observation.js",
+      "line": 64,
+      "severity": "medium",
+      "finding": "Sunfire 凭证未配置或 API 出错时 conclusion 设为 'passed'，结合 resume-next-batch.js 逻辑，观察期门控退化为纯时间门控，HIGH 级别生产异常被静默放过",
+      "remediation": "skipped=true 时 conclusion 标 'skipped' 而非 'passed'，resume-next-batch.js 对 skipped 加告警日志",
+      "kind": "route-fix"
+    },
+    {
+      "file": "skills/prod-deploy/scripts/lib/event-client.js",
+      "line": 63,
+      "severity": "medium",
+      "finding": "deserializeEvent() JSON.parse(raw.payload) 未 try/catch，畸形 payload 致脚本崩溃",
+      "remediation": "加 try/catch，解析失败返回 {} 并 console.error",
+      "kind": "route-fix"
+    },
+    {
+      "file": "skills/prod-deploy/scripts/poll-pre-check.js",
+      "line": 129,
+      "severity": "medium",
+      "finding": "drillDownToPreCheckTask 串行遍历 jobId + task_id 缓存持久化时机晚（依赖后续 updateEvent），网络抖动时重复 drill-down",
+      "remediation": "drill-down 成功后立即单独 updateEvent 写入 task_id；可并行请求 job task list",
+      "kind": "route-fix"
+    },
+    {
+      "file": "skills/prod-deploy/scripts/lib/task-client.js",
+      "line": 20,
+      "severity": "low",
+      "finding": "getHeaders/getBaseUrl 在 task-client 与 event-client 完全重复实现",
+      "remediation": "抽取公共 http-base.js 模块",
+      "kind": "route-fix"
+    },
+    {
+      "file": "skills/prod-deploy/scripts/lib/event-client.js",
+      "line": 193,
+      "severity": "low",
+      "finding": "updateEvent 终态处理逻辑允许 payload 更新但 SKILL.md 文档称'终态不可再修改'，行为与文档不一致",
+      "remediation": "SKILL.md 明确终态可更新 payload 不可改 status，或 updateEvent 加注释",
+      "kind": "route-fix"
+    },
+    {
+      "file": "skills/prod-deploy/scripts/report-event.js",
+      "line": 114,
+      "severity": "low",
+      "finding": "handlePreCheck/handleDeployPlan/handleDeployBatch 多处 JSON.parse 未 try/catch，非法输入致崩溃",
+      "remediation": "批量加 try/catch + 友好错误信息 + process.exit(1)",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-02-006",
+  "audit_depth": "deep"
+}

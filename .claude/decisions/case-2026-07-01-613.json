@@ -1,0 +1,33 @@
+{
+  "case_id": "case-2026-07-01-613",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-01T19:51:00Z",
+  "project": "shizi",
+  "work_unit": "SH-M-004 background/index.ts saveHistoryItem try/catch 降级（audit-005 派生 fix #4/9）",
+  "situation": "audit-005 shizi 全量深审发现 SH-M-004：src/background/index.ts runPipeline handler 内 saveHistoryItem 在主 try 块里 await，storage 写入失败会让整个 pipeline 返回 {success:false}——但此时 countResult 已算出，UI 拿不到识别数据还要重跑。属于可恢复副作用被错置为关键路径的错误处理。",
+  "action": "把 saveHistoryItem 调用拆出独立 try/catch，catch 内 console.warn('[background] saveHistoryItem failed (non-blocking):', err)，不再 throw；外层 try 仅包裹 runPipeline 本体。单文件改动，route-fix（不触 public-interfaces.txt）。",
+  "files_changed": [
+    "/home/admin/workspace/shizi/src/background/index.ts"
+  ],
+  "worktree": "auto/opt-background-1782906692",
+  "direction": "background:save-history-nonblocking",
+  "outcome": "succeeded",
+  "outcome_evidence": "npx tsc --noEmit 无错误；opt-worktree.sh commit 成功 push 到 origin/auto/opt-background-1782906692；CodeReview URL https://code.alibaba-inc.com/qunbu/shizi/codereview/new?from=main&to=auto/opt-background-1782906692",
+  "next_suggestion": [
+    "下轮派生 SH-M-002+SH-M-003：ocr-internal.ts callOcr + segmentation.ts getModelBuffer fetch timeout (AbortController 30s) + retry 1次",
+    "人工 review opt-background-1782906692 diff，merge/reject 后回写本 case status + audit-cycle-state.derived_fixes[SH-M-004].status"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "src/background/index.ts",
+      "line": 93,
+      "severity": "medium",
+      "finding": "saveHistoryItem 在主 try 块内 await，storage 写入失败会阻塞 runPipeline success response，丢失已计算的 countResult",
+      "remediation": "拆出独立 try/catch + console.warn 降级 — 已修",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-01-005",
+  "audit_depth": "shallow"
+}

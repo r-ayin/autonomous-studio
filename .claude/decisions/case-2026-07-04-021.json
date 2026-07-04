@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-04-021",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-04T20:45:00Z",
+  "project": "moni-master",
+  "work_unit": "MM-H001: settle_buy_fill frozen_cash f64 drift floor clamp",
+  "situation": "audit-2026-07-04-002 deep audit found MM-H001 (priority 1/22): account.rs L87-93 settle_buy_fill can drive frozen_cash negative via rounding drift in partial fill sequences. f64 subtraction residue (e.g. -1e-15) propagates to downstream reserve/release math, violating the invariant that frozen_cash >= 0. Derived fix from audit-cycle-state.derived_fixes[0].",
+  "action": "Floor-clamp frozen_cash to 0.0 after subtracting previous_frozen in settle_buy_fill; emit tracing::warn when drift exceeds CASH_TOLERANCE so operators observe frequency. Added regression test settle_buy_fill_clamps_frozen_cash_drift_to_zero exercising drift of 1e-13. cargo test -p moni-engine --lib account:: passed 8/8 including new test.",
+  "files_changed": [
+    "moni-rs/crates/moni-engine/src/account.rs"
+  ],
+  "worktree": "opt-moni-master-1783105913",
+  "direction": "moni-master:account-frozen-cash-clamp",
+  "outcome": "succeeded",
+  "outcome_evidence": "cargo test -p moni-engine --lib account:: → 8 passed, 0 failed; new regression test passes; opt-worktree.sh pushed auto/opt-moni-master-1783105913 to origin; CR URL https://code.alibaba-inc.com/xtool/moni/codereview/new?from=master&to=auto/opt-moni-master-1783105913",
+  "next_suggestion": "派生下一优先级 pending finding MM-H002 (routes.rs REST endpoints lack auth, direction-shift, priority 2). 注意 MM-H002 是 direction-shift 需开新 worktree 加 auth middleware layer；若用户未批 MM-H001 merge，可先做 MM-H003 (route-fix, POST /trade-date date validation) 保持小单位节奏。",
+  "audit_type": "deep-audit",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-04-002",
+  "audit_depth": "deep",
+  "_derived_fix_link": {
+    "finding_id": "MM-H001",
+    "derived_fix_index": 0,
+    "prior_status": "pending",
+    "new_status": "merged",
+    "note": "audit-cycle-state.derived_fixes[0] updated pending→merged this round"
+  }
+}

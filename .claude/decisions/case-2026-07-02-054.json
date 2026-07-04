@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-02-054",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-02T04:15:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "AS-EC-016: cmd_list local stat shadows /usr/bin/stat",
+  "situation": "audit-2026-07-02-002 finding AS-EC-016 (priority 13, route-fix): opt-worktree.sh cmd_list() line 721 declares 'local stat' which shadows the external /usr/bin/stat command. Current function body doesn't invoke stat(1), but any future addition (e.g., stat -c %Y for mtime) would silently resolve to the empty local variable instead of the binary, causing hard-to-diagnose failures.",
+  "action": "Renamed 'local stat' → 'local diff_stat' and updated the assignment + interpolation sites within cmd_list(). Single-file route-fix touching only scripts/opt-worktree.sh.",
+  "files_changed": ["scripts/opt-worktree.sh"],
+  "worktree": "opt-scripts-shift-1782936888",
+  "direction": "scripts:cmd-list-stat-shadow",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh commit exited 0; branch auto/opt-scripts-shift-1782936888 pushed to origin (push log confirms '[new branch] HEAD -> auto/opt-scripts-shift-1782936888'); judge_direction_kind classified as direction-shift because scripts/opt-worktree.sh is listed in .claude/public-interfaces.txt.",
+  "next_suggestion": "派生 AS-EC-017 (autonomous-loop.sh --bg mode process group leak) — 下一个无 case/worktree 的 pending finding",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "scripts/opt-worktree.sh",
+      "line": 721,
+      "severity": "low",
+      "finding": "local stat shadows /usr/bin/stat command — latent hazard if future code invokes stat(1) inside cmd_list()",
+      "remediation": "rename to diff_stat (descriptive of actual content: git diff --stat output)",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-02-002",
+  "audit_depth": "shallow"
+}

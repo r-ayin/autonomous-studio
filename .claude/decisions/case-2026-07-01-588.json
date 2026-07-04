@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-01-588",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-01T10:45:00Z",
+  "project": "wechat-main",
+  "work_unit": "scripts/deepseek_refine.py as_completed race fix",
+  "situation": "audit-2026-07-01-004 finding WM-M-007 (priority=19): deepseek_refine.py line 228-230 在 cf.as_completed 循环内直接修改 items list 中的 dict（it['title']/it['digest']），多线程并发写同一数据结构存在潜在 race window。虽 CPython GIL 让单次赋值原子，但跨字段非原子且语义上依赖顺序写入，对后续渲染/审计不友好。修复为独立 updates list 收集，循环后单线程统一写回。",
+  "action": "route-fix: 在 as_completed 循环内改为 append (it, q, res) 到 updates list；refined 计数保留在循环内；循环后用 for it, q, res in updates 单线程写回 item 字段。改动 1 文件 ~15 行。opt-worktree.sh 判定未触 public-interfaces.txt → route-fix 复用 opt-scripts-1782899218。",
+  "files_changed": ["scripts/deepseek_refine.py"],
+  "worktree": "auto/opt-scripts-1782899218",
+  "direction": "scripts:deepseek-refine-collect-results",
+  "outcome": "succeeded",
+  "outcome_evidence": "python3 -c ast.parse OK; commit 2254bd5 in auto/opt-scripts-1782899218 pushed to origin; merge-tree vs main clean (no conflict); direction_kind=route-fix (未触公共接口).",
+  "next_suggestion": "下轮派生 WM-M-008 (knowledge_base JSONL append fcntl.flock LOCK_EX) priority=20，同 area scripts:* route-fix 可继续复用 opt-scripts-1782899218。pending=21→20 (WM-M-007 已派生但仍 pending 待人工 merge)。",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-01-004",
+  "audit_depth": "shallow"
+}

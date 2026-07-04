@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-07-02-061",
+  "agent_id": "autonomous-loop-ralph",
+  "timestamp": "2026-07-02T04:43:14Z",
+  "project": "autonomous-studio",
+  "work_unit": "engine/loop-bg-pgid-leak-fix",
+  "situation": "audit-2026-07-02-002 finding AS-EC-017 (priority 17, pending): autonomous-loop.sh --bg mode process group leak. Line 26 INT/TERM trap uses `kill 0` to clean up child processes, but under `nohup ... &` the backgrounded loop may inherit the launcher shell's PGID (nohup does not guarantee new session on all shells). When loop receives SIGINT/SIGTERM, `kill 0` broadcasts to entire PGID, potentially killing unrelated sibling processes in the launcher's interactive shell.",
+  "action": "Wrap --bg self-exec with setsid so the daemonized loop runs in a fresh session + new PGID. kill 0 then only targets the loop's own session. Preserves nohup (SIGHUP shield) and </dev/null (stdin detach). Minimal 1-file change; bash -n validated syntax OK.",
+  "files_changed": [
+    "scripts/autonomous-loop.sh"
+  ],
+  "worktree": "opt-engine-shift-1782938582",
+  "direction": "engine:loop-bg-pgid-leak",
+  "direction_kind": "direction-shift",
+  "outcome": "superseded",
+  "outcome_evidence": "Concurrent context already fixed AS-EC-017 via case-2026-07-02-056 on opt-engine-shift-1782937136 (kill -- -$$ explicit negative PGID approach). This setsid-based fix committed to opt-engine-shift-1782938582 is an alternative valid solution but redundant; human reviewer should pick one and reject the other. bash -n syntax OK; pushed to origin/auto/opt-engine-shift-1782938582.",
+  "next_suggestion": "派生 AS-EC-018 (opt-worktree.sh realpath -m resolves symlinks causing path rejection); pending_count will drop to 0 after that, triggering cycle-complete → next full audit on a different project (skills or autonomous-engine per scout-scan #1/#2).",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-002",
+  "audit_depth": "shallow"
+}

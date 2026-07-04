@@ -1,0 +1,23 @@
+{
+  "case_id": "case-2026-07-01-572",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-01T09:15:57Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "瞭望轮：pending fix merge-tree 健康检查 + 冲突发现",
+  "situation": "audit-cycle-state status=fix-in-progress，11 pending derived_fixes 等人工 sanctioned-merge（>18h）。scout-scan 8 项目 score=0.0 全健康。不派新 fix，做增值瞭望：逐 worktree merge-tree 干演检测 main 前进后是否产生冲突。",
+  "action": "对 autonomous-studio 7 个 worktree + sunset-prediction 2 个 worktree 跑 git merge-tree --write-tree main <branch>。发现 opt-case-1782856678 有 case-405.json 撞车冲突（main 与 worktree 各写了同名不同内容的 case JSON）。其余 8 个 worktree 全部 clean。该 worktree 不在 derived_fixes 中，不影响 audit cycle 计数，但阻塞待合并队列。",
+  "files_changed": [],
+  "worktree": null,
+  "direction": null,
+  "outcome": "succeeded",
+  "outcome_evidence": "merge-tree --write-tree 返回 tree hash=clean 的 8/9 worktree；opt-case-1782856678 输出 conflict marker（100644 ... 2 / 100644 ... 3 格式）于 .claude/decisions/case-2026-07-01-405.json。scout-scan 8 项目 score=0.0。",
+  "next_suggestion": [
+    "人工处理 opt-case-1782856678 冲突：进 worktree rebase main 或手动 resolve case-405.json（两边内容不同，需选保留哪个版本），然后 merge",
+    "继续等待 11 pending derived_fixes 的人工 sanctioned-merge（opt-scripts/opt-autonomous-loop/opt-scripts-shift/opt-server 等分支均 merge-tree clean）",
+    "若 pending_count→0，下轮触发新全量审计（建议选 moni-master 后端模块或 shizi/wechat-main/x-tool 未深审模块）"
+  ],
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": null,
+  "audit_depth": "shallow"
+}

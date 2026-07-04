@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-01-653",
+  "agent_id": "ralph-wiggum-loop",
+  "timestamp": "2026-07-01T14:38:59Z",
+  "project": "autonomous-engine",
+  "work_unit": "hooks:watchdog-project-dir",
+  "situation": "audit-2026-07-01-009 AE-M-001 finding: watchdog.sh L15 硬编码 PROJECT_DIR=\"/mnt/e/x-tool\"，Linux 原生部署下所有 $PROJECT_DIR/.claude/... 路径不存在 → L31 checkpoint missing 立即 exit 0 → L6 看门狗变 no-op。与 x-tool XT-M-004 同构（x-tool 已修 commit 892e4a0）。",
+  "action": "替换硬编码为相对推断 + 环境变量 fallback：(1) CLAUDE_PROJECT_DIR 环境变量优先；(2) 否则从脚本位置 BASH_SOURCE[0] dirname 两次到 project root。同步更新头部注释移除 WSL-only 部署说明改为通用 cron 示例。",
+  "files_changed": [".claude/watchdog.sh"],
+  "worktree": "opt-hooks-1782916244",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 0aae824 pushed to origin/auto/opt-hooks-1782916244; git diff shows 17 insertions, 6 deletions in .claude/watchdog.sh; hardcoded '/mnt/e/x-tool' fully removed and replaced with BASH_SOURCE-relative inference + CLAUDE_PROJECT_DIR env fallback.",
+  "next_suggestion": "派生 priority=4 AE-M-002 (notify-phone.py send() 返回值未消费)",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-01-009",
+  "audit_depth": "shallow"
+}

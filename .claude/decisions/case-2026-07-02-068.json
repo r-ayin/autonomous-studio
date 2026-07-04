@@ -1,0 +1,42 @@
+{
+  "case_id": "case-2026-07-02-068",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-02T05:45:00Z",
+  "project": "skills",
+  "work_unit": "runner-exec/push.js PS single-quote path injection (SK-RE-004)",
+  "situation": "audit-2026-07-02-003 finding SK-RE-004: push.js:60 interpolates parent/winPath raw inside PowerShell single-quoted strings. Paths containing apostrophes would break the command or allow injection. Same pattern as SK-RE-002/003 (write-file.js/batch-write.js) which were already fixed in opt-runner-exec-1782940040 worktree but NOT yet merged to master — meaning audit-cycle-state.json marking those as 'merged' is inaccurate.",
+  "action": "派生 fix：在现有 opt-runner-exec-1782940040 worktree（同 area=runner-exec, route-fix 复用）内修改 push.js，从 ./write-file require escapePSSingleQuote 并应用到 parent 和 f.winPath 两处单引号插值点。未在 main 直接改动；main 上临时编辑已 git checkout 还原。",
+  "files_changed": [
+    "runner-exec/scripts/push.js"
+  ],
+  "worktree": "opt-runner-exec-1782940040",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 7d3f8ca on auto/opt-runner-exec-1782940040; node -c push.js syntax OK; grep confirms both Path '${escapePSSingleQuote(parent)}' and Path '${escapePSSingleQuote(f.winPath)}' applied at line 66.",
+  "next_suggestion": [
+    "下轮继续派生 SK-RE-005 (pull.js:41 同类 PS 注入)，复用同一 worktree",
+    "人工 merge opt-runner-exec-1782940040 后回写 audit-cycle-state 把 SK-RE-002/003/004/014 状态真正标 merged",
+    "audit-cycle-state 失真问题需修正：derived_fixes.status='merged' 应只在 opt-worktree.sh merge 成功后才写入，不能提前标记"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "runner-exec/scripts/push.js",
+      "line": 60,
+      "severity": "high",
+      "finding": "PowerShell single-quote path injection: parent and f.winPath interpolated raw inside '...' strings passed to session.exec. A filename containing an apostrophe terminates the quoted string early, allowing arbitrary PS commands appended.",
+      "remediation": "Import escapePSSingleQuote from write-file.js and wrap both path interpolations.",
+      "kind": "route-fix"
+    },
+    {
+      "file": ".claude/audit-cycle-state.json",
+      "line": 9,
+      "severity": "medium",
+      "finding": "State accuracy drift: SK-RE-002/003/014 derived_fixes entries marked status='merged' but corresponding commits (2ffb682, 0d04e9f) exist only on worktree branch auto/opt-runner-exec-1782940040, not on skills/master. Status was written prematurely before actual merge.",
+      "remediation": "Next human merge of opt-runner-exec-1782940040 should be followed by audit-cycle-state update; consider adding a hook/gate that only allows status='merged' when opt-worktree.sh merge completes.",
+      "kind": "structural"
+    }
+  ],
+  "audit_id": "audit-2026-07-02-003",
+  "audit_depth": "shallow"
+}

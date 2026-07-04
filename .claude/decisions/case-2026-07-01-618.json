@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-07-01-618",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-01T13:15:00Z",
+  "project": "shizi",
+  "work_unit": "SH-L-002 nmsDedup perf guard (audit-2026-07-01-005 derived fix #8)",
+  "situation": "audit-2026-07-01-005 finding SH-L-002 (low severity, priority 8): nmsDedup 在大批量 (>150 results) 下对每对 accepted×sorted 都跑 editDistance O(n²)，导致高负载场景 OCR 后处理卡顿。原代码无 early-exit，IoU≤0.1 时也调 textSimilarity（白耗 CPU）。",
+  "action": "派生 route-fix：(1) IoU ≤0.1 时 continue 跳过所有 fuzzy 判定（最低阈值为 0.1，IoU 不达标必不重复）；(2) sorted.length >150 时设 skipFuzzy=true，内层循环仅保留 exact text match + IoU 计算，跳过 editDistance/substring/center-dist 三类 fuzzy 判定。保守降级但安全：位置重叠+完全相同文字的强去重仍生效，仅牺牲模糊子串/相似度匹配换吞吐。单文件 src/background/ocr-internal.ts 改动。复用已有 opt-background-1782906692 worktree（同 area=background route-fix）。",
+  "files_changed": [
+    "src/background/ocr-internal.ts"
+  ],
+  "worktree": "auto/opt-background-1782906692",
+  "direction": "background:nms-dedup-perf-guard",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit a8d2e3e on auto/opt-background-1782906692 pushed to origin; diff shows +14/-4 lines in nmsDedup function adding skipFuzzy flag and IoU<=0.1 early continue.",
+  "next_suggestion": "继续派生 SH-L-003 (priority 9, saveHistoryItem mutex) 到 opt-shizi-1782906261 worktree（area=background/storage 相关），完成后 audit-cycle-state pending_count→3，剩 SH-M-002+003/SH-M-005/SH-L-001 待 merge/reject 触发 cycle-complete。",
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-01-005",
+  "audit_depth": "shallow"
+}

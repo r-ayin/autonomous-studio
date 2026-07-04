@@ -1,0 +1,27 @@
+{
+  "case_id": "case-2026-07-02-123",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-02T07:58:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "prod-deploy:http-base-dedup",
+  "situation": "audit-2026-07-02-006 finding L-001 (priority 8, pending): getHeaders/getBaseUrl/apiPost/apiPut 在 task-client.js 与 event-client.js 完全重复实现，增加维护成本。前轮 H-001/H-002/M-001 fix 已落地但未合并到 main，cp-guard 阻止从 main 重拷；按 case-104 模式直编 worktree 版本后 wt 内提交。",
+  "action": "新建 skills/prod-deploy/scripts/lib/http-base.js，导出 getBaseUrl/getHeaders/apiGet/apiPost/apiPut（含 timeout+AbortController 逻辑）；task-client.js 与 event-client.js 移除本地 helper 改为 import。净减 176 行重复代码。safeJsonParse/deserializeEvent/event-specific helpers 保留在 event-client.js（仅该 client 使用）。",
+  "files_changed": [
+    "skills/prod-deploy/scripts/lib/http-base.js",
+    "skills/prod-deploy/scripts/lib/task-client.js",
+    "skills/prod-deploy/scripts/lib/event-client.js"
+  ],
+  "worktree": "opt-prod-deploy-1782970212",
+  "direction": "prod-deploy:http-base-dedup",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit c1e74a4 on auto/opt-prod-deploy-1782970212; git diff --stat shows 3 files changed, 127 insertions(+), 187 deletions(-); http-base.js created; task-client.js reduced from 194→85 lines; event-client.js reduced from 266→180 lines.",
+  "next_suggestion": [
+    "派生 fix L-002 (audit-006): updateEvent 终态逻辑与 SKILL.md 不一致 — 文档对齐（低优，可与下次 prod-deploy 改动顺带）",
+    "派生 fix AE2-M-002 (audit-007): sessions/test-{001,002,003}.json test stubs cleanup",
+    "若所有 pending fixes 落定（merged|rejected），下轮触发新全量审计"
+  ],
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-006",
+  "audit_depth": "shallow"
+}

@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-07-03-028",
+  "agent_id": "ralph-wiggum-cycle-91",
+  "timestamp": "2026-07-03T05:30:00Z",
+  "project": "wechat-main",
+  "work_unit": "MV-005: fact_checker max_queries 截断告警 + truncated_count 透传",
+  "situation": "audit-2026-07-03-011 finding MV-005 (MEDIUM): generate_search_queries 在 len(queries)>max_queries 时静默丢弃尾部低优先级查询，用户看到 total=30 以为全覆盖实际可能有 N 条被砍。需加 stderr warning + 返回 dict 增加 truncated_count 字段；verifier.py extract_and_plan 与 fact_checker.py main plan 模式均需适配新返回结构。",
+  "action": "修改 fact_checker.py L64-67：截断时计算 truncated_count、print stderr warning（含 affected priorities）、返回 {queries, truncated_count} dict 替代纯 list。修改 fact_checker.py main() plan 分支解包 result dict 并把 truncated_count 写入 JSON 输出。修改 verifier.py extract_and_plan L79 解包 result dict 并把 truncated_count 写入 search_plan。cp-guard 跳过 fact_checker.py（main working tree dirty），手动 patch apply + amend commit。",
+  "files_changed": [
+    "script-verifier/fact_checker.py",
+    "script-verifier/verifier.py"
+  ],
+  "worktree": "opt-script-verifier-1783024825",
+  "direction": "script-verifier:mv005-truncation-warning",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 65d49ff on auto/opt-script-verifier-1783024825 (2 files, +17/-3); python3 assertion test passed: truncated_count=5 for 35 claims with max_queries=30, truncated_count=0 for 1 claim; force-pushed to origin.",
+  "next_suggestion": "派生 MV-006 fix (hot-scanner.py consume 回退路径补 has_event/has_controversy/has_data 检测 + _extract_angle 调用)。完成后 derived_fixes 全部 merged → audit-cycle-state.status=cycle-complete → 下轮触发新全量审计（候选 moni-master 后端/数据层）。",
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-03-011",
+  "audit_depth": "shallow"
+}

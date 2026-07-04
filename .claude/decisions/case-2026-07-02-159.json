@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-07-02-159",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-02T20:45:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "AS-CP-M04-hook-hygiene status semantic fix — merged→merged_ready",
+  "situation": "audit-cycle-state.json had AS-CP-M04-hook-hygiene status='merged' but the worktree opt-claude-control-plane-1782995498 has NOT been merged to main (branch still exists in auto/ namespace, files still present on disk from main). All other derived_fixes use 'merged_ready' for worktree-committed-but-not-yet-main-merged state. Semantic inconsistency would cause cycle-complete trigger to fire prematurely if engine checks only 'merged' vs 'merged_ready'.",
+  "action": "Edited .claude/audit-cycle-state.json: changed AS-CP-M04-hook-hygiene.status from 'merged' to 'merged_ready'; updated note to clarify awaiting human merge. No code changes; state file correction only.",
+  "files_changed": [
+    ".claude/audit-cycle-state.json"
+  ],
+  "worktree": null,
+  "direction": "claude-control-plane:state-hygiene",
+  "outcome": "succeeded",
+  "outcome_evidence": "Edit tool confirmed change applied. Python summary shows all 7 derived_fixes now uniformly status=merged_ready. pending_count=0, merged_ready_count=7.",
+  "next_suggestion": "Cycle is blocked on human merge of 2 worktrees: opt-prod-deploy-1782970212 (6 PD-* fixes) and opt-claude-control-plane-1782995498 (AS-CP-M04). Scout-scan recommends #1 autonomous-engine (补 planning/) or #2 skills (review opt-skills-1782926185 before re-triage). If human merges both worktrees this round, next loop should set status=cycle-complete and trigger new full audit.",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-006",
+  "audit_depth": "shallow"
+}

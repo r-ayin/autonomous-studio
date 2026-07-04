@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-07-02-165",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-02T13:11:52Z",
+  "project": "autonomous-studio",
+  "work_unit": "瞭望轮#62: 发现 audit-cycle-state 9条 pending fix 全部 orphaned (autonomous-studio-aone 项目已删除, worktree 全丢失)",
+  "situation": "audit-cycle-state.json status=fix-in-progress, 9条 derived_fixes 指向 autonomous-studio-aone 项目的 worktree。scout-scan 显示该项目已不存在于 /home/admin/workspace/。逐一验证 9 个 worktree 目录全部 MISSING。这些 fix 永远无法 merge, 阻塞了审计周期推进。",
+  "action": "将 9 条 orphaned derived_fixes 全部标记 rejected (reason: project-deleted-worktree-missing), audit-cycle-state.status 改 cycle-complete, 解除审计周期阻塞。本轮不派新 fix。",
+  "files_changed": [],
+  "worktree": null,
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "9个 worktree 路径逐一 ls 确认 MISSING; autonomous-studio-aone 不在 /home/admin/workspace/ 项目列表中; audit-cycle-state.json pending_count=9→0, status=fix-in-progress→cycle-complete",
+  "next_suggestion": [
+    "下轮触发新全量审计 (status=cycle-complete), 优先选未审过的项目: 1BfrYW9R / shizi / sunset-prediction / wechat-main / moni-master",
+    "跳过 x-tool (纯工具项目) 和已审过的 autonomous-engine / personal-assistant / skills / engine-skills-extracted"
+  ],
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": null,
+  "audit_depth": "shallow"
+}

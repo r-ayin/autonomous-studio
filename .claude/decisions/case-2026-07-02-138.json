@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-02-138",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-02T18:55:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "AS-CP-H01: remove phantom .claude/hooks/__init__.py from public-interfaces.txt",
+  "situation": "audit-2026-07-02-006 finding AS-CP-H01 (priority 1): public-interfaces.txt line 25 lists autonomous-studio:.claude/hooks/__init__.py but file does not exist on disk. Phantom entry pollutes direction-shift judgment — any future edit to this non-existent path would be treated as public-interface change, triggering unnecessary new worktree.",
+  "action": "Delete the stale line from .claude/public-interfaces.txt. Verified .claude/hooks/__init__.py absent via ls; actual hooks dir contains only .py scripts (no __init__). Committed via opt-worktree.sh route-fix flow.",
+  "files_changed": [".claude/public-interfaces.txt"],
+  "worktree": "opt-autonomous-studio-1782988120",
+  "direction": "autonomous-studio:control-plane",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh printed '✓ 提交到 opt-autonomous-studio-1782988120'; branch auto/opt-autonomous-studio-1782988120 pushed to origin; main working tree restored clean.",
+  "next_suggestion": "派生 AS-CP-M01 (priority 2): PA-WA-H02 fix_case_id points to unrelated case-2026-07-02-121; set fix_case_id=null or create rejection record. Same area (control-plane), will reuse opt-autonomous-studio-1782988120.",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-006",
+  "audit_depth": "shallow"
+}

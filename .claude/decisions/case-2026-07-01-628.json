@@ -1,0 +1,23 @@
+{
+  "case_id": "case-2026-07-01-628",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-01T21:55:00+08:00",
+  "project": "personal-assistant",
+  "work_unit": "PA-M-004: duckdb analytics_init 抽取",
+  "situation": "audit-2026-07-01-006 finding PA-M-004：ingest.py、asr.py（_analytics + query_habits）三处各自 CREATE TABLE IF NOT EXISTS segment_stats + _ensure_views，schema 漂移风险。需抽到 storage.analytics_init 单一入口。",
+  "action": "新增 storage.analytics_init(con) 集中建表+视图；ingest._analytics / asr.IngestionPipeline._analytics / asr.query_habits 三处改为调用它；删除 asr._ensure_views 死代码。3 文件改动，route-fix。",
+  "files_changed": [
+    "personal_assistant/storage.py",
+    "personal_assistant/ingest.py",
+    "personal_assistant/asr.py"
+  ],
+  "worktree": "opt-refactor-1782910394",
+  "direction": "refactor:analytics-init",
+  "outcome": "succeeded",
+  "outcome_evidence": "python3 ast.parse 三文件语法通过；opt-worktree.sh commit 成功并 push 到 origin/auto/opt-refactor-1782910394；CR 链接 https://code.alibaba-inc.com/qunbu/personal-assistant/codereview/new?from=main&to=auto/opt-refactor-1782910394",
+  "next_suggestion": "派生 PA-L-001（ID 生成改 uuid4/sha256），priority=7，route-fix",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-01-006",
+  "audit_depth": "shallow"
+}

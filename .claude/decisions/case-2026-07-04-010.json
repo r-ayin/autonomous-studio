@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-07-04-010",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-04T01:15:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "AS-PERSIST-L01: outcome_evidence template in loop prompt",
+  "situation": "audit-2026-07-03-007 finding AS-PERSIST-L01 (LOW): 7/79 recent cases had outcome_evidence written as narrative prose rather than reproducible commands. Loop prompt step 5 said '引用可观察事实，不接受散文' but gave no concrete template, so engines interpreted it loosely.",
+  "action": "Edited scripts/autonomous-loop.sh line 80 step 5 outcome_evidence field description to include explicit reproducible-command examples: 'git show --stat <hash> shows N files changed, +X/-Y; cat <file>:<line> confirms <fix>' and 'python3 scripts/scout-scan.py | grep -A2 <project> returns score=N'. No code logic change — prompt-only fix.",
+  "files_changed": ["scripts/autonomous-loop.sh"],
+  "worktree": "opt-scripts-shift-1783098962",
+  "direction": "scripts:loop-prompt-evidence",
+  "outcome": "succeeded",
+  "outcome_evidence": "git log --oneline auto/opt-scripts-shift-1783098962 ^main shows 1 commit; git show auto/opt-scripts-shift-1783098962:scripts/autonomous-loop.sh | grep -A1 outcome_evidence displays new template text with 'git show --stat' and 'scout-scan.py' examples; branch pushed to origin/auto/opt-scripts-shift-1783098962",
+  "next_suggestion": [
+    "派生 AS-PERSIST-I01 (priority 6, route-fix): add derived_fixes retention policy comment to audit-cycle-state _schema",
+    "AS-PERSIST-M01 (priority 3) worktree opt-loop-prompt-shift-1783097554 still pending human merge — next scout round verify status"
+  ],
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-03-007",
+  "audit_depth": "shallow"
+}

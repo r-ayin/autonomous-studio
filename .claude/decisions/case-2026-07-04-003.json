@@ -1,0 +1,20 @@
+{
+  "case_id": "case-2026-07-04-003",
+  "agent_id": "autonomous-loop-ralph",
+  "timestamp": "2026-07-04T00:15:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "派生 fix AS-PERSIST-H02: 补录 ESE-L02 到 structural-debt.md 为 SD-004",
+  "situation": "audit-cycle-state.json structural_debts_new 引用 ESE-L02（engine-skills-extracted SKILL.md model field 未校准），但 structural-debt.md 无对应条目。债务只在 autonomous-state.md NEXT_SUGGESTION 文本中存在，无结构化追踪，state 文件覆盖即丢失。SD-003 已被 audit-2026-07-02-001 I-001 占用，故新债务编号 SD-004。",
+  "action": "追加 SD-004 条目到 .claude/structural-debt.md（debt_id/audit_id/project/description/affected_files/severity/status/source_finding 完整 schema），通过 opt-worktree.sh commit 提交到新 worktree opt-structural-debt-1783095100（route-fix，不触公共接口）。已 push 到 origin/auto/opt-structural-debt-1783095100。",
+  "files_changed": [".claude/structural-debt.md"],
+  "worktree": "opt-structural-debt-1783095100",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "git log --oneline -1 auto/opt-structural-debt-1783095100 shows commit on branch; git show --stat auto/opt-structural-debt-1783095100 confirms .claude/structural-debt.md +11 lines; push output 'new branch HEAD -> auto/opt-structural-debt-1783095100' confirms remote availability.",
+  "next_suggestion": "继续派生 AS-PERSIST-M01（direction-shift，unify outcome enum to 5 values in autonomous-loop.sh）或 AS-PERSIST-M02（route-fix，scout-scan.py add Audit Cycle Status section）。H02 已完成可标 merged。",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": null,
+  "audit_depth": "shallow",
+  "_note": "Independent structural-debt hygiene; not a derived fix from current cycle (audit-2026-07-03-013). ESE-L02 was orphaned in prior cycle's structural_debts_new."
+}

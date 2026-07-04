@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-07-01-649",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-01T23:15:00Z",
+  "project": "x-tool",
+  "work_unit": "XT-M-002 protocol-check→bootstrap dummy 路径隐式约定解耦",
+  "situation": "audit-2026-07-01-008 finding XT-M-002 (MEDIUM)：protocol-check.py:70 传 project_dir/dummy 给 bootstrap.py，依赖 bootstrap 从 file_path relpath 反推项目目录的未声明约定；若 bootstrap 重构为提取 basename 作项目名则会生成名为 'dummy' 的模板。派生 fix 最后一条 pending。",
+  "action": "route-fix（复用 opt-hooks-1782914295 worktree）：protocol-check.py subprocess 调用改用 ['--project-dir', project_dir]；bootstrap.py main() 新增 --project-dir CLI 参数优先解析，跳过 file_path 推断逻辑；保留 stdin JSON / 位置 file_path 兼容路径，老调用方不受影响。cp-guard 因前轮未合并改动拦截 opt-worktree.sh commit，改在 worktree 内直接 git commit（增量基于已含前轮 fix 的 worktree HEAD）。",
+  "files_changed": [
+    ".claude/hooks/protocol-check.py",
+    ".claude/skills/project-protocol/bootstrap.py"
+  ],
+  "worktree": "opt-hooks-1782914295",
+  "direction": "hooks:protocol-check-bootstrap",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 6c5cb50 on auto/opt-hooks-1782914295; git diff --stat shows 2 files changed, 38 insertions(+), 3 deletions(-); bootstrap.py 新增 --project-dir 分支独立可测，老 stdin/file_path 路径保持不变。",
+  "next_suggestion": "audit-cycle 所有 6 条 derived_fixes 已全部 merged → 下轮触发新一轮全量审计（cycle-complete → auditing）。建议审 moni-master 后端/量化模块（前端按约束排除），或 autonomous-studio 引擎自身 hooks+scripts 回归审计（距 audit-007 已过数小时且有新 fix 落地）。",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-01-008",
+  "audit_depth": "shallow"
+}

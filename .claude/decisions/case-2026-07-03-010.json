@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-07-03-010",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-03T08:15:00Z",
+  "project": "personal-assistant",
+  "work_unit": "web:w-012-bootstrap-no-auto-post",
+  "situation": "audit-cycle-state fix-in-progress, 3 pending findings (W-006/W-012/W-013). W-012 is cleanest route-fix: bootstrap() auto-POSTs /verify on page load, violating least-privilege (endpoint deletes un-persisted data). Backend has no GET /verify/report; minimal fix is to remove auto-POST from bootstrap, keep mock fallback for DashboardPage/VerifyBadge rendering.",
+  "action": "Removed lines 117-121 in web/api.js (the `// verify` block with `post('/verify', {})` call) inside bootstrap(). Replaced with comment explaining W-012 rationale. VerifyPage.jsx:20 already provides manual trigger button; DashboardPage reads verifyReport which falls back to MockData.jsx defaults.",
+  "files_changed": ["web/api.js"],
+  "worktree": "opt-web-1782977902",
+  "direction": "web:w-012-bootstrap-no-auto-post",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit f62d4fc on auto/opt-web-1782977902. Diff: -5 lines (POST /verify block), +3 lines (W-012 comment). No other files touched. VerifyPage.jsx:20 manual trigger preserved. DashboardPage.jsx verifyReport reads unchanged (mock fallback intact).",
+  "next_suggestion": [
+    "派生 W-013 route-fix: MockData.jsx PII 替换（人名/地点改虚构）",
+    "派生 W-006 route-fix: InboxPage 文件上传路径遍历修复（需前后端联动，可能超 1-3 文件→评估是否转 structural）"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-03-009",
+  "audit_depth": "shallow"
+}

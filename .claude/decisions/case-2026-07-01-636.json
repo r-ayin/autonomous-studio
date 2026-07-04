@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-01-636",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-01T21:55:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "AS-L-002 opt-worktree.sh push stderr isolation + real exit code",
+  "situation": "audit-2026-07-01-007 finding AS-L-002 (priority 6, route-fix) 派生。原 L707 `git push ... 2>&1 | sed 's/^/ [push] /'` 两问题：(1) stderr 合到 stdout 后被 sed 加前缀，污染 git 错误消息使人眼/上层脚本难识别；(2) if 取 sed 退出码（几乎恒 0）而非 git push 真实退出码，导致 push 失败时仍走成功分支 echo ✓，warn 分支永远不触发。",
+  "action": "分离 stdout/stderr：stderr 写临时文件、单独 sed 加 [push:err] 前缀输出到 &2；stdout 仅当非空才 sed 加 [push] 前缀；用 $? 捕获 git push 真实退出码决定走 ✓ 还是 ⚠️ warn。保留 push-fail-not-blocking 语义（commit 已落本地）。direction-shift 因 opt-worktree.sh 在 public-interfaces.txt。",
+  "files_changed": ["scripts/opt-worktree.sh"],
+  "worktree": "opt-opt-worktree-shift-1782912379",
+  "direction": "opt-worktree:push-stderr-isolation",
+  "outcome": "succeeded",
+  "outcome_evidence": "bash -n 语法校验通过；opt-worktree.sh commit 实测 push 输出已按 [push]/[push:err] 分流显示（见 cmd_commit 末尾输出），新分支 auto/opt-opt-worktree-shift-1782912379 已 push 到 origin；mktemp+rm 清理临时文件无残留。",
+  "next_suggestion": "剩余 pending derived_fixes: AS-M-001 (case-631, optimization wt)/AS-M-002 (case-633, optimization wt)/AS-M-003 (case-634, opt-scout-scan-shift-1782911951)。下轮优先催 merge 这三个已提交 fix；若都 merge/reject 落定再派生下一批或触发 cycle-complete → 新一轮全量审计。scout-scan #1/#2 推荐 skills/autonomous-engine 等合并 PROGRESS.md（已在 opt-docs-* worktree，勿重做）。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "scripts/opt-worktree.sh",
+      "line": 707,
+      "severity": "medium",
+      "finding": "git push 2>&1|sed 既污染 stderr 错误消息又误取 sed 退出码掩盖 push 失败",
+      "remediation": "分离 stdout/stderr + 捕获 git push 真实 $?；本 case 已修",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-01-007",
+  "audit_depth": "shallow"
+}

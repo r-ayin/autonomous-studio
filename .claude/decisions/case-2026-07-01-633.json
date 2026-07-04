@@ -1,0 +1,23 @@
+{
+  "case_id": "case-2026-07-01-633",
+  "agent_id": "autonomous-loop-qwen3.7-max",
+  "timestamp": "2026-07-01T22:15:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "AS-M-002 fix: distill-patterns.py LLM 超时/拒答区分",
+  "situation": "audit-2026-07-01-007 finding AS-M-002：scripts/distill-patterns.py step2_llm_distill 用 except Exception 一把吞所有异常，subprocess.TimeoutExpired、空响应（鉴权失败/模型拒答）、CalledProcessError 全部变成 op=None。proposals.json 里 llm_output=null 无法区分是超时还是拒答还是未跑，后续 agent 审提案无从判断 LLM 步健康度。",
+  "action": "在 subprocess.run 调用点拆分为 4 类状态：TimeoutExpired→llm_status='timeout'；空 stdout→'empty_response'（附 stderr 前 120 字符）；CalledProcessError→'nonzero_exit:<code>'；其他 Exception→'exception:<type>:<msg[:80]>'；正常有输出→'ok'；未装 claude CLI→'skipped'。proposals 条目新增 llm_status 字段。",
+  "files_changed": ["scripts/distill-patterns.py"],
+  "worktree": "optimization",
+  "direction": "engine:distill-llm-status",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 741c0ea 落 auto/optimization 分支；diff 仅改 step2_llm_distill 函数内 try/except 块，新增 llm_status 变量与 5 条分支赋值；proposals.append 增加 llm_status 字段；无其他文件改动。",
+  "next_suggestion": [
+    "派生 AS-M-003 fix: scout-scan.py git diff E2BIG 风险（priority 4）",
+    "派生 AS-L-001 fix: studio-progress-check.sh heredoc 变量注入（priority 5）",
+    "人工 review optimization worktree 待合并 diff（含 AS-M-001 + AS-M-002）"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-01-007",
+  "audit_depth": "shallow"
+}

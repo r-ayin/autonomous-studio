@@ -1,0 +1,33 @@
+{
+  "case_id": "case-2026-07-01-615",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-01T12:05:00Z",
+  "project": "shizi",
+  "work_unit": "SH-M-005 SidePanelApp deletedStack key 改用 VerifiedText.id（audit-005 派生 fix #6/9）",
+  "situation": "audit-005 shizi 全量深审发现 SH-M-005：SidePanelApp.tsx handleRegionsChange (line 143) 用 `${text}|${bbox}` 作 deletedStack 比对 key。VerifiedText.id 已唯一，但 refilter 后新 details 可能出现同文同框的不同 id 条目 → 被误删；handleUndoDelete 仅靠栈序恢复，id 不对应导致后续 delete/undo 错位。",
+  "action": "line 143-144 改用 `new Set(deletedStack.map(d => d.id))` + filter by `d.id`。单文件改动，route-fix（不触 public-interfaces.txt）。",
+  "files_changed": [
+    "/home/admin/workspace/shizi/src/sidepanel/SidePanelApp.tsx"
+  ],
+  "worktree": "auto/opt-sidepanel-1782907225",
+  "direction": "sidepanel:deleted-stack-id-key",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh commit 成功 push 到 origin/auto/opt-sidepanel-1782907225；CodeReview URL https://code.alibaba-inc.com/qunbu/shizi/codereview/new?from=main&to=auto/opt-sidepanel-1782907225",
+  "next_suggestion": [
+    "下轮派生 SH-L-001：preprocessForVL base64 raw length >10MB early reject",
+    "人工 review opt-sidepanel-1782907225 diff，merge/reject 后回写本 case status + audit-cycle-state.derived_fixes[SH-M-005].status"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "src/sidepanel/SidePanelApp.tsx",
+      "line": 143,
+      "severity": "medium",
+      "finding": "deletedStack 用 text+bbox 拼接作 key，refilter 后同文同框不同 id 条目会被误删；undo 栈序与 id 不对应致后续操作错位",
+      "remediation": "改用 VerifiedText.id 作 key — 已修",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-01-005",
+  "audit_depth": "shallow"
+}

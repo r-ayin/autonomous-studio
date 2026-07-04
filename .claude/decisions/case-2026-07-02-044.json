@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-02-044",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-01T19:20:04Z",
+  "project": "autonomous-studio",
+  "work_unit": "AS-EC-009 fix: opt-worktree.sh cmd_commit add flock worktree-level locking to prevent concurrent corruption",
+  "situation": "audit-2026-07-02-002 finding AS-EC-009 (priority 9): cmd_commit 的 ①cp → ②cd+commit → ③restore 三步无 worktree 级互斥锁。两个并发调用同 target（route-fix optimization 复用场景常见）时，B 可能在 A 的 cp 之后、restore 之前进入，看到混合状态；或 A/B 同时 git add+commit 致 index 竞争 / HEAD 断言误报。direction-shift 撞 ts 概率极低但优化持久 wt 复用为常态路径。",
+  "action": "在 target worktree 选定后、进入 ①cp 前，用 `exec 9>$target/.opt-lock; flock -x 9` 取排他锁，fd 9 持锁覆盖整段临界区（①cp→②commit→③restore→④assert）。函数返回（含 ERR trap 退出）时 fd 自动关闭释锁。锁内再次校验 target 仍是有效 worktree（等锁期间可能被 cmd_cleanup/cmd_reject 移除），失效则 exit 1 保留 main 改动未动。flock wait 默认阻塞等锁，不超时避免引擎轮次卡死（autonomous-loop 已有外层超时）。",
+  "files_changed": ["scripts/opt-worktree.sh"],
+  "worktree": "opt-scripts-shift-1782933592",
+  "direction": "scripts:worktree-locking",
+  "outcome": "succeeded",
+  "outcome_evidence": "bash -n syntax OK. 单调用 smoke test 成功提交到 opt-test-1782933568. 并发 smoke test：两进程同时 cmd_commit 同 target（test:area route-fix 复用），flock 串行化后 a.txt/b.txt 分别落在独立 commit dc33ee5/2cc8bf5，worktree HEAD 正确前进至 2cc8bf5，master 干净。正式提交通过 opt-worktree.sh commit 落地 auto/opt-scripts-shift-1782933592 并 push 到 origin。diff 添加 ~20 行 flock guard + 锁内 target 有效性复检，不改原有 ①-④ 逻辑。",
+  "next_suggestion": "继续 audit-2026-07-02-002 derived_fixes queue: 下一 pending 是 AS-EC-010 (watchdog.sh pgrep -c claude over-matches unrelated processes, priority 10)",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-002",
+  "audit_depth": "shallow"
+}

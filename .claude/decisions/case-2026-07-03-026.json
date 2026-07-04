@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-07-03-026",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-03T06:15:00Z",
+  "project": "x-tool",
+  "work_unit": "wanxia/prediction-engine weights snapshot (XT-WAN-M03)",
+  "situation": "Audit audit-2026-07-03-002 finding XT-WAN-M03: global mutable `weights` in prediction-engine.js:97 read on every computeSunsetScore call. If setWeights() invoked during batch, predictions within same batch silently use different weight vectors — non-deterministic output with no error signal.",
+  "action": "Modified computeSunsetScore to accept optional weightsSnapshot parameter; modified computeAllPredictions to snapshot weights once via getWeights() at batch entry and pass frozen snapshot to each computeSunsetScore call. Backward compatible — direct callers fall back to module-level weights.",
+  "files_changed": [
+    "wanxia/src/prediction-engine.js"
+  ],
+  "worktree": "opt-wanxia-1783025398",
+  "direction": "wanxia:prediction-weights-snapshot",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit b34a449 on auto/opt-wanxia-1783025398 branch. git diff --stat shows 1 file changed, 7 insertions(+), 3 deletions(-). computeAllPredictions now calls getWeights() once at entry; computeSunsetScore uses passed snapshot or falls back to module weights.",
+  "next_suggestion": "Next pending finding: XT-WAN-L01 (priority 6, route-fix) — add YYYY-MM-DD validation on /predictions date param in wanxia routes.js:111. Reuse opt-wanxia-1783025398.",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-03-002",
+  "audit_depth": "shallow"
+}

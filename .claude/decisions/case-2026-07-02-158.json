@@ -1,0 +1,25 @@
+{
+  "case_id": "case-2026-07-02-158",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-02T19:15:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "AS-CP-M04 hook hygiene — delete 5 unregistered hook scripts",
+  "situation": "audit-2026-07-02-006 finding AS-CP-M04 flagged 5 hook scripts on disk (auto-commit.py, codegraph-sync.py, incremental-save.py, resume-checkpoint.py, save-checkpoint.py) that are not registered in settings.json hooks configuration. None have git history (never committed to main). Cross-references only appear in audit reports. All are superseded by current registered hook set (autonomous-commit-gate, decision-observer, discovery-gate, notify-phone, patterns-write-gate, pipeline-gate, post-edit-lint, protocol-check, stop-completion-gate).",
+  "action": "Deleted all 5 unregistered hook scripts via opt-worktree commit. Route-fix (no public-interface files touched); reused existing claude-control-plane worktree.",
+  "files_changed": [
+    ".claude/hooks/auto-commit.py",
+    ".claude/hooks/codegraph-sync.py",
+    ".claude/hooks/incremental-save.py",
+    ".claude/hooks/resume-checkpoint.py",
+    ".claude/hooks/save-checkpoint.py"
+  ],
+  "worktree": "opt-claude-control-plane-1782995498",
+  "direction": "claude-control-plane:hook-hygiene",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh reported '✓ 提交到 opt-claude-control-plane-1782995498' and '✓ 已 push auto/opt-claude-control-plane-1782995498 → origin/auto/opt-claude-control-plane-1782995498'. Branch created and pushed to remote. 5 files deleted in worktree commit.",
+  "next_suggestion": "派生下一 pending finding AS-CP-L01（migrate case-2026-06-27-{001,002} outcome='done' → 'succeeded' + backfill missing schema fields）— 同为 route-fix，可复用同 worktree",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-006",
+  "audit_depth": "shallow"
+}

@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-04-023",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-04T22:15:00Z",
+  "project": "moni-master",
+  "work_unit": "MM-H003 trade-date validation dedup check",
+  "situation": "audit-2026-07-04-002 derived_fixes priority-3 finding MM-H003 (POST /trade-date/{date} accepts unvalidated date string) dispatched for fix. On inspection, worktree opt-moni-api-1782944898 already contains commit 6a3093d 'opt(moni-api:trade-date-validation): validate set_trade_date input with chrono (MR-M02)' which implements YYYY-MM-DD validation via chrono::NaiveDate::parse_from_str — strictly superior to the hand-rolled validator initially drafted on main.",
+  "action": "Reverted redundant local change on main (git checkout -- routes.rs). Marked MM-H003 as superseded-by-existing-work in audit-cycle-state.derived_fixes. No new worktree commit needed; fix already present in opt-moni-api-1782944898 awaiting human merge alongside MM-H002 auth layer.",
+  "files_changed": [],
+  "worktree": "opt-moni-api-1782944898",
+  "direction": "moni-api:MM-H003-trade-date-validation",
+  "outcome": "superseded",
+  "outcome_evidence": "git log -1 --oneline 6a3093d in opt-moni-api-1782944898 shows 'opt(moni-api:trade-date-validation): validate set_trade_date input with chrono (MR-M02)'; grep set_trade_date in worktree routes.rs L252-260 confirms chrono::NaiveDate::parse_from_str guard returning ApiError::bad_request on invalid format. Main reverted to clean (git status shows no routes.rs modification).",
+  "next_suggestion": "Next pending derived_fix is MM-H004 (api.py L1371-1397 **kwargs parameter injection). Requires reading engine.py method signatures for 12+ actions to build per-action key whitelists — budget as dedicated fix round (will exceed 2-file read cap if combined with other work). Alternatively, batch MM-H004 with MM-M009/MM-M010 (same api.py file, all security-class) into one api.py-hardening worktree.",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "moni-rs/crates/moni-api/src/routes.rs",
+      "line": 199,
+      "severity": "high",
+      "finding": "MM-H003: POST /trade-date/{date} originally accepted unvalidated date string. Already fixed in worktree opt-moni-api-1782944898 commit 6a3093d via chrono NaiveDate parse.",
+      "remediation": "Merge opt-moni-api-1782944898 to land both MM-H002 auth + MM-H003 date validation together.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-04-002",
+  "audit_depth": "shallow"
+}

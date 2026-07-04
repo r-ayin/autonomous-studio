@@ -1,0 +1,32 @@
+{
+  "case_id": "case-2026-07-03-107",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-03T15:28:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "PD-H003 audit-log instrumentation for poll-build.js + poll-pre-check.js (audit-2026-07-03-013 derived fix, priority 7, direction-shift)",
+  "situation": "audit-2026-07-03-013 finding PD-H003: poll-build.js and poll-pre-check.js had zero audit-log despite being pipeline-trigger / compliance-check sensitive paths (DO B violation). Every poll cycle was invisible to audit trail. Derived from deep audit of skills/prod-deploy module.",
+  "action": "Added 'pipeline-poll' and 'precheck-poll' ACTION_MAP keys to audit-log-helper.js; instrumented both pollers with writeAuditLog calls in success/failure/outer-catch paths. Result field reflects actual outcome (success on clean poll, failure on updateEvent error or outer catch), never constant-success. cp-guard initially skipped helper (diverged from prior PD-M002 unmerged commit); manually merged both keys into worktree and amended commit.",
+  "files_changed": [
+    "skills/prod-deploy/scripts/lib/audit-log-helper.js",
+    "skills/prod-deploy/scripts/poll-build.js",
+    "skills/prod-deploy/scripts/poll-pre-check.js"
+  ],
+  "worktree": "opt-prod-deploy-1782970212",
+  "direction": "prod-deploy:audit-log-poll",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit e5e5b4f on auto/opt-prod-deploy-1782970212 (amended after cp-guard merge), pushed to origin. node --check passed for all 3 files. ACTION_MAP now contains pipeline-poll (pipeline_trigger/high) + precheck-poll (compliance_check/medium). Both pollers call writeAuditLog in try/finally + outer catch with real result semantics.",
+  "next_suggestion": "Next pending derived fix: PD-M001 (priority 8, route-fix) — http-base.js L28-36 dual credential env coexistence silent; CODE_PRIVATE_TOKEN wins without warning. Add stderr WARN when both env vars set.",
+  "audit_type": "audit-log-instrumentation",
+  "audit_findings": [
+    {
+      "file": "skills/prod-deploy/scripts/lib/audit-log-helper.js",
+      "line": 40,
+      "severity": "high",
+      "finding": "ACTION_MAP missing pipeline-poll and precheck-poll keys; poll-build.js and poll-pre-check.js had no audit-log callsite at all (DO B violation for pipeline-trigger and compliance-check sensitive paths).",
+      "remediation": "Added two ACTION_MAP entries + instrumented both pollers with writeAuditLog in success/failure/outer-catch paths. Result reflects actual outcome, never constant-success.",
+      "kind": "direction-shift"
+    }
+  ],
+  "audit_id": "audit-2026-07-03-013",
+  "audit_depth": "shallow"
+}

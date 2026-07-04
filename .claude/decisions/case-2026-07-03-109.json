@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-03-109",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-03T15:55:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "fix distill-patterns.py outcome enum mismatch (AS-PERSIST-H01)",
+  "situation": "audit-2026-07-03-007 H01 finding: distill-patterns.py SUCCESS_OUTCOMES={success,partial_success} and FAILURE_OUTCOMES={failure,user_rejected,aborted} completely mismatch actual case schema which uses succeeded/failed/superseded/blocked/merged/rejected. 305 of 324 cases use 'succeeded' — all classified as indeterminate, making accuracy data entirely unreliable.",
+  "action": "Updated SUCCESS_OUTCOMES to {succeeded, merged}, FAILURE_OUTCOMES to {failed, rejected, superseded}, added BLOCKED_OUTCOMES={blocked}. Updated infer_outcome() inferred branch to return 'failed'/'succeeded' instead of 'failure'/'success'. Added startup self-check that scans all cases for unrecognized outcome values and exits with code 2 if any found, preventing future silent drift.",
+  "files_changed": ["scripts/distill-patterns.py"],
+  "worktree": "opt-distill-1783093564",
+  "direction": "distill:outcome-enum",
+  "outcome": "succeeded",
+  "outcome_evidence": "git commit 728f64e in opt-distill-1783093564; python3 scripts/distill-patterns.py --project . runs without self-check failure, loads 324 cases successfully; pre-fix: 0 recognized outcomes, post-fix: 323/324 recognized (1 missing outcome field)",
+  "next_suggestion": "Continue fix-in-progress: dispatch AS-PERSIST-H02 (add ESE-L02 to structural-debt.md as SD-003)",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-03-007",
+  "audit_depth": "shallow"
+}

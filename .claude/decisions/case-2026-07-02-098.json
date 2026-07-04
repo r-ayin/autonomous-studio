@@ -1,0 +1,71 @@
+{
+  "case_id": "case-2026-07-02-098",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-02T12:20:00Z",
+  "project": "engine-skills-extracted",
+  "work_unit": "deep-audit:分诊流水线(pipeline-gate+triage)",
+  "situation": "audit-cycle-state status=cycle-complete after skills/runner-exec fixes all merged. Triggered new full deep audit on unaudited project engine-skills-extracted, module 分诊流水线 (pipeline-gate.py + triage.py). Project is extracted skill archive containing security-critical TCB code that gates all Edit/Write/Bash operations.",
+  "action": "Deep-read pipeline-gate.py (167 lines), triage.py (136 lines), SKILL.md. Traced data flow from user input → subprocess calls → file writes. Identified 6 findings: 2 high (shell injection via shell=True+f-string in _diff_scale; path traversal in history archive via unsanitized kind field), 3 medium (silent exception swallowing in security gate; race condition in history numbering; stage regression crash on corrupt state), 1 low (SKILL.md claims .claude/ exemption but code doesn't implement it). Wrote audit report audit-2026-07-02-004.md with full remediation sketches. Updated audit-cycle-state to fix-in-progress with 6 pending derived_fixes.",
+  "files_changed": [
+    ".claude/audits/audit-2026-07-02-004.md",
+    ".claude/audit-cycle-state.json"
+  ],
+  "worktree": null,
+  "direction": "none",
+  "outcome": "succeeded",
+  "outcome_evidence": "Audit report written at .claude/audits/audit-2026-07-02-004.md with 6 findings (2H/3M/1L). audit-cycle-state.json updated: status=fix-in-progress, pending_count=6, current_audit_id=audit-2026-07-02-004, history entry appended. No code changes this round (audit-only per protocol).",
+  "next_suggestion": "Next round: derive first fix case for ESE-TP-001 (shell injection in pipeline-gate.py _diff_scale, replace shell=True+f-string with list args). Then sequentially ESE-TP-002 through ESE-TP-006. All are route-fix scope, target engine-skills-extracted/分诊流水线/scripts/. After all 6 merged/rejected, cycle-complete triggers next deep audit.",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "engine-skills-extracted/分诊流水线/scripts/pipeline-gate.py",
+      "line": 80,
+      "severity": "high",
+      "finding": "Shell injection via unsanitized root path interpolated into shell=True subprocess command in _diff_scale()",
+      "remediation": "Replace shell=True + f-string with subprocess.run(['git', '-C', str(root), 'diff', '--cached', '--numstat'], shell=False)",
+      "kind": "route-fix"
+    },
+    {
+      "file": "engine-skills-extracted/分诊流水线/scripts/triage.py",
+      "line": 91,
+      "severity": "high",
+      "finding": "Path traversal in history archive: d.get('kind') used unsanitized in filename construction, allows directory traversal if current.json manually edited",
+      "remediation": "Sanitize kind value: re.sub(r'[^a-z]', '', d.get('kind','x')) or validate against allowed set before path construction",
+      "kind": "route-fix"
+    },
+    {
+      "file": "engine-skills-extracted/分诊流水线/scripts/pipeline-gate.py",
+      "line": 50,
+      "severity": "medium",
+      "finding": "Silent exception swallowing in security gate (_load_current, _diff_scale, Stop handler) — failures open the gate instead of failing closed",
+      "remediation": "Distinguish file-missing (OK) from corruption (warn/block); log git failures; catch specific exceptions in Stop handler",
+      "kind": "route-fix"
+    },
+    {
+      "file": "engine-skills-extracted/分诊流水线/scripts/triage.py",
+      "line": 90,
+      "severity": "medium",
+      "finding": "TOCTOU race condition in history numbering: glob count + write not atomic, concurrent invocations can overwrite each other's archives",
+      "remediation": "Use timestamp-based unique filenames or O_EXCL atomic create pattern",
+      "kind": "route-fix"
+    },
+    {
+      "file": "engine-skills-extracted/分诊流水线/scripts/triage.py",
+      "line": 118,
+      "severity": "medium",
+      "finding": "Stage regression check crashes with ValueError if stored stage not in STAGES enum (corrupt current.json)",
+      "remediation": "Validate d['stage'] in STAGES before .index() lookup; handle invalid values gracefully",
+      "kind": "route-fix"
+    },
+    {
+      "file": "engine-skills-extracted/分诊流水线/scripts/pipeline-gate.py",
+      "line": 64,
+      "severity": "low",
+      "finding": "SKILL.md documents .claude/ exemption but _is_doc_or_meta() doesn't implement it — editing .claude/settings.json incorrectly triggers gate",
+      "remediation": "Add '.claude' prefix check in _is_doc_or_meta(): rel == '.claude' or rel.startswith('.claude' + os.sep)",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-02-004",
+  "audit_depth": "deep"
+}

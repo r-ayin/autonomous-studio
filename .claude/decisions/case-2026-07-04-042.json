@@ -1,0 +1,40 @@
+{
+  "case_id": "case-2026-07-04-042",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-03T22:44:16Z",
+  "project": "engine-skills-extracted",
+  "work_unit": "ESE-RT-M01/L01/L02 dispatch feasibility check (archive non-git)",
+  "situation": "audit-2026-07-04-012 derived 3 route-fix findings targeting engine-skills-extracted (ESE-RT-M01 distill bare-except backport, ESE-RT-L01 auto-commit push race, ESE-RT-L02 stop-completion-gate stdout leak). Attempted dispatch via opt-worktree.sh; discovered /home/admin/workspace/engine-skills-extracted has no .git directory — it is a static archive snapshot, not a version-controlled repo. opt-worktree.sh requires a git workdir to create optimization branches.",
+  "action": "Verified absence of .git in engine-skills-extracted root and all subdirs (find -maxdepth 3). Compared archive vs live distill-patterns.py: live already has narrowed exception tuples (SCRIPTS-L04 applied); archive retains bare except but cannot receive commits. Same non-git constraint applies to L01/L02 targets. Marked all 3 findings as rejected in audit-cycle-state.derived_fixes with reason 'archive-non-git'. No code change performed. Scout-scan run for health snapshot; top recommendation autonomous-engine (no planning/) deferred to next fix-dispatchable cycle.",
+  "files_changed": [],
+  "worktree": null,
+  "direction": null,
+  "outcome": "failed",
+  "outcome_evidence": "ls /home/admin/workspace/engine-skills-extracted/.git → 'No such file or directory'; find -maxdepth 3 -name .git → empty; diff archive/live distill-patterns.py confirms live already narrowed (L42 OSError|ValueError|TypeError|UnicodeDecodeError), archive still bare except Exception at L42. opt-worktree.sh precondition (git repo) unsatisfiable for this target.",
+  "next_suggestion": [
+    "Reclassify ESE-RT-M01/L01/L02 as structural debt: archive snapshot integrity requires separate tooling (re-snapshot script or convert archive to git repo). Add to structural-debt.md.",
+    "Monitor H01 (case-2026-07-04-041, opt-scripts-shift-1783117803) and H02 (case-2026-07-04-040, opt-scripts-shift-1783116452) for human merge/reject; once both settled, update derived_fixes status and re-evaluate cycle-complete.",
+    "Next scout round: pick autonomous-engine planning/ bootstrap (scout #1) if no higher-priority fix surfaces."
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "/home/admin/workspace/engine-skills-extracted/模式蒸馏/scripts/distill-patterns.py",
+      "line": 42,
+      "severity": "medium",
+      "finding": "Archive copy retains bare 'except Exception' while live has narrowed tuple. Backport impossible: archive dir is not a git repo.",
+      "remediation": "Either convert engine-skills-extracted to a git repo (enables opt-worktree dispatch) or accept archive as read-only reference snapshot and close these findings as wontfix.",
+      "kind": "structural"
+    },
+    {
+      "file": "/home/admin/workspace/engine-skills-extracted/_manifest.json",
+      "line": 0,
+      "severity": "low",
+      "finding": "Manifest claims live_md5_match=true for files that demonstrably differ from live (per ESE-RT-M02). Archive snapshot pipeline lacks post-fix manifest regeneration.",
+      "remediation": "Add manifest-regen step to archive rebuild script; tracked separately as SD-ESE-001.",
+      "kind": "structural"
+    }
+  ],
+  "audit_id": "audit-2026-07-04-012",
+  "audit_depth": "shallow"
+}

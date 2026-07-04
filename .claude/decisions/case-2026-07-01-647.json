@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-01-647",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-01T14:25:00Z",
+  "project": "x-tool",
+  "work_unit": "XT-M-003 notify-phone send() return value consumption",
+  "situation": "audit-2026-07-01-008 finding XT-M-003: notify-phone.py main() L206 调用 send() 但返回值被丢弃。confirm 场景下（AskUserQuestion 触发的高优先级通知）若 tunnel/ntfy 均不可达，失败完全静默，用户可能错过关键确认请求导致引擎空等。",
+  "action": "捕获 send() 返回值；当 reason==confirm 且 sent==False 时写 stderr 警告，让 hook 日志可见失败信号。不改变 stop/unknown 路径的静默语义（那些场景失败可接受）。最小单文件改动。",
+  "files_changed": [".claude/hooks/notify-phone.py"],
+  "worktree": "opt-hooks-1782914295",
+  "direction": "hooks:notify-phone-confirm-fail-silent",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 落 worktree opt-hooks-1782914295（route-fix 复用同 area），git push 403 不阻断本地 merge；main 上文件已回滚干净；fix 仅改 main() 末尾 4 行，无副作用风险。",
+  "next_suggestion": "派生 XT-M-004 fix（watchdog.sh PROJECT_DIR 硬编码 /mnt/e/x-tool → Linux L6 监控死代码）到同一 worktree opt-hooks-1782914295；或先做 XT-M-002（protocol-check.py bootstrap dummy 路径脆弱耦合）按 priority 顺序推进。",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-01-008",
+  "audit_depth": "shallow"
+}

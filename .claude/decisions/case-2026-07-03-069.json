@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-03-069",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-03T18:15:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "scout-scan: recognize .planning/codebase/ as partial planning coverage",
+  "situation": "audit-cycle-state status=fix-in-progress; all derived_fixes from audit-2026-07-03-005 resolved (4 blocked awaiting human merge, 2 merged, 1 superseded). No pending fixes to derive. Scout-scan #1 recommendation was autonomous-engine 'no planning/' score=1.0, but PROGRESS.md explicitly declares root planning/ intentionally absent and .planning/codebase/ facts layer already exists. False positive causing misdirected work unit recommendations.",
+  "action": "Added has_planning_codebase detection to scout-scan.py report builder. Modified scoring: when has_planning=False but has_planning_codebase=True, score +0.5 instead of +1.0 with reason '.planning/codebase/ 已有，缺 roadmap'. Modified work unit recommendation to suggest '补 .planning/roadmap.md' instead of generic '补 planning/ 目录'. Verified: autonomous-engine dropped from #1 score=1.0 to #2 score=0.5 with precise recommendation.",
+  "files_changed": ["scripts/scout-scan.py"],
+  "worktree": ".opt-worktrees/autonomous-studio/opt-scout-scan-shift-1783073904",
+  "direction": "scout-scan:planning-codebase-awareness",
+  "outcome": "succeeded",
+  "outcome_evidence": "scout-scan output shows autonomous-engine at #2 score=0.5 with reason '.planning/codebase/ 已有，缺 roadmap' and unit '补 .planning/roadmap.md（事实层 codebase/ 已有，缺路线图；1 文件）'. Committed to auto/opt-scout-scan-shift-1783073904, pushed to origin.",
+  "next_suggestion": "Review and merge opt-infra-shift-1783070370 (H01-H03/M01 blocked fixes) to unblock audit cycle completion. Once merged, set audit-cycle-state status=cycle-complete to trigger next full audit.",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": null,
+  "audit_depth": "shallow"
+}

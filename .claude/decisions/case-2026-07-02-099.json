@@ -1,0 +1,30 @@
+{
+  "case_id": "case-2026-07-02-099",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-02T12:45:00Z",
+  "project": "engine-skills-extracted",
+  "work_unit": "派生 ESE-TP-001 fix → 发现 source mismatch，reject 全部 6 条 derived_fixes",
+  "situation": "audit-2026-07-02-004 基于 engine-skills-extracted/分诊流水线 归档副本做深审，挖出 6 findings (2 high shell injection+path traversal, 3 medium, 1 low)。本轮按优先级派生 ESE-TP-001 fix 时发现：(1) extracted/ 不是 git 仓，opt-worktree 无法用；(2) AS 真源 .claude/hooks/pipeline-gate.py line 131-140 已在 case-392 修复 shell injection（注释明确）；(3) triage.py 不存在于 AS 仓，ESE-TP-002~006 对当前运行时无影响。审计基于过期快照做了误判。",
+  "action": "不改代码。把 audit-cycle-state.derived_fixes 全部 6 条标 rejected（reason: source-mismatch-superseded），status → cycle-complete 触发下一轮新审计。建议下次审计优先挑有 git 仓的项目，跳过纯归档目录。",
+  "files_changed": [],
+  "worktree": null,
+  "direction": null,
+  "outcome": "superseded",
+  "outcome_evidence": "AS 真源 .claude/hooks/pipeline-gate.py line 131 注释 'case-392 security-review：原 shell=True + f-string ... 改 list-form'；line 135/140 已用 ['git','-C',str(root),...] shell=False。extracted/ 无 .git 目录。AS 仓内 find -name triage.py 返回空（排除 .opt-worktrees）。",
+  "next_suggestion": [
+    "下一轮全量审计应跳过 engine-skills-extracted 这类纯归档目录（无 git、非运行时），优先审有实际部署产物的项目",
+    "audit-cycle-state 加字段标记项目是否为 git repo，避免再对归档做深审浪费 context"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-004",
+  "audit_depth": "shallow",
+  "_derived_fix_disposition": {
+    "ESE-TP-001": "rejected — AS 真源已在 case-392 修复",
+    "ESE-TP-002": "rejected — triage.py 不在 AS 仓，仅存于 extracted 归档",
+    "ESE-TP-003": "rejected — 同上（pipeline-gate 部分 AS 已有 audit_log 演进）",
+    "ESE-TP-004": "rejected — triage.py 不在 AS 仓",
+    "ESE-TP-005": "rejected — triage.py 不在 AS 仓",
+    "ESE-TP-006": "rejected — AS 真源 _is_doc_or_meta 已演进（含 .claude 检查待确认，但 extracted 版本过期）"
+  }
+}

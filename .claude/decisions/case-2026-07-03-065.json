@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-07-03-065",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-03T10:01:09Z",
+  "project": "autonomous-studio",
+  "work_unit": "AS-INFRA-M02 derived fix: scout-scan validates public-interfaces.txt entries exist on disk",
+  "situation": "audit-2026-07-03-005 finding AS-INFRA-M02 (priority 5, route-fix): opt-worktree.sh judge_direction_kind() silently ignores missing entries in .claude/public-interfaces.txt (grep -qxF miss → route-fix), so deleted/renamed public interface files linger in the manifest and future changes to same-named new files fail to trigger direction-shift. No runtime signal exposes this drift — only a future deep audit would rediscover it.",
+  "action": "Add validate_public_interfaces(project_path, project_name) to scripts/scout-scan.py that parses .claude/public-interfaces.txt, filters entries for the scanned project, checks each relative path exists on disk, and returns (missing_entries, pi_file_present). Wire into scan_project() as public_interfaces_missing / public_interfaces_present fields in the JSON report. Add text-report WARN block listing up to 10 stale entries per project so the next scout-scan loop surfaces the drift visually. Function is no-op when pi file absent (backward compat). Currently 0 stale entries across all workspace projects — validator is preventive; value accrues when files are renamed/deleted without list maintenance.",
+  "files_changed": [
+    "scripts/scout-scan.py"
+  ],
+  "worktree": "auto/opt-scout-shift-1783072858",
+  "direction": "scout:public-interfaces-validation",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh committed to auto/opt-scout-shift-1783072858 and pushed to origin (push output confirms 'new branch' + tracking set). python3 -c ast.parse reports 'syntax ok'. Direct invocation of validate_public_interfaces('/home/admin/workspace/autonomous-studio', 'autonomous-studio') returns present=True, missing=[] against current healthy manifest. Full scout-scan --workspace run completes with no regressions and no false-positive warnings (expected: 0 stale entries today). Direction-shift triggered correctly because scripts/scout-scan.py is listed in .claude/public-interfaces.txt line 14.",
+  "next_suggestion": "Derive L01 next (system prompt update re judge_direction_kind gap, route-fix). After L01+L02 land, mark cycle-complete and trigger next full audit on a not-yet-deep-audited project (e.g., autonomous-engine or engine-skills-extracted modules not yet covered).",
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-03-005",
+  "audit_depth": "shallow"
+}

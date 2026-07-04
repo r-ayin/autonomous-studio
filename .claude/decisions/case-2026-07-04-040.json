@@ -1,0 +1,26 @@
+{
+  "case_id": "case-2026-07-04-040",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-03T22:07:45Z",
+  "project": "autonomous-studio",
+  "work_unit": "scripts/studio-precheck.sh shell injection fix (ESE-RT-H02)",
+  "situation": "audit-2026-07-04-012 finding ESE-RT-H02: live studio-precheck.sh interpolates $CAL_FILE and $STATUS_FILE directly into python heredoc strings, creating a shell injection vector if paths contain quotes/backslashes. Archive version already uses safer os.environ pass-through. Live regressed relative to archive.",
+  "action": "Replaced both python heredoc blocks (calibration cooldown check L19-25, autoAdvance check L43-49) to pass file paths via env vars (CAL_FILE=\"$CAL_FILE\" python3 -c ...) and read via os.environ['CAL_FILE'] inside Python. Also narrowed bare except: to explicit (OSError, ValueError, KeyError) tuple per SCRIPTS-L04 hardening pattern.",
+  "files_changed": ["scripts/studio-precheck.sh"],
+  "worktree": "opt-scripts-shift-1783116452",
+  "direction": "scripts:precheck-shell-injection",
+  "direction_kind": "direction-shift",
+  "outcome": "succeeded",
+  "outcome_evidence": "bash -n syntax check passed; bash studio-precheck.sh /home/admin/workspace/autonomous-studio returned 'proceed' (behavior preserved); commit pushed to origin/auto/opt-scripts-shift-1783116452; worktree created with direction-shift (scripts is public interface per .claude/public-interfaces.txt).",
+  "next_suggestion": [
+    "派生 fix #2: ESE-RT-H01 autonomous-loop.sh merge-back (--max-turns/ROUND_TIMEOUT knobs from archive)",
+    "派生 fix #3: ESE-RT-M01 distill-patterns.py exception backport to archive",
+    "派生 fix #5: ESE-RT-L01 auto-commit.py push race re-check",
+    "派生 fix #6: ESE-RT-L02 stop-completion-gate.py remove stdout print"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-04-012",
+  "audit_depth": "shallow",
+  "derived_from_finding": "ESE-RT-H02"
+}

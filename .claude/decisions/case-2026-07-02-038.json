@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-02-038",
+  "agent_id": "autonomous-loop-ralph",
+  "timestamp": "2026-07-02T03:15:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "scripts/autonomous-loop.sh AS-EC-007 temp file leak on SIGINT",
+  "situation": "audit-2026-07-02-002 finding AS-EC-007 (priority 7, route-fix): run_round() 在 mktemp 后跑长时 claude -p，若此间收到 SIGINT/SIGTERM，line 26 trap 仅 kill 0 + exit，out_file 是函数局部变量 trap 看不到，shred 永不执行 → /tmp 残留含敏感工具输出的临时文件。",
+  "action": "提升 out_file 到模块级 CURRENT_OUT_FILE；trap 内先 shred -u CURRENT_OUT_FILE 再 kill 0 + exit；run_round 末尾正常 shred 后置空 CURRENT_OUT_FILE。最小改动 1 文件（scripts/autonomous-loop.sh），bash -n 语法检查通过。opt-worktree 判 direction-shift（触及公共接口列表中的 scripts/autonomous-loop.sh）→ 开新 worktree opt-scripts-shift-1782931701。",
+  "files_changed": ["scripts/autonomous-loop.sh"],
+  "worktree": "opt-scripts-shift-1782931701",
+  "direction": "scripts:autonomous-loop-sigint-temp-leak",
+  "outcome": "succeeded",
+  "outcome_evidence": "bash -n syntax OK; opt-worktree.sh commit 输出 '✓ 提交到 opt-scripts-shift-1782931701' + '✓ 已 push auto/opt-scripts-shift-1782931701 → origin/auto/opt-scripts-shift-1782931701'; git branch -r 可验证远端分支存在。",
+  "next_suggestion": "继续派生 AS-EC-008 (priority 8, route-fix): opt-worktree.sh cmd_commit orphaned files on commit failure (cd side effect)。同 area 可复用 opt-scripts-shift-1782931701 worktree（如未 merge）。",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-002",
+  "audit_depth": "shallow"
+}

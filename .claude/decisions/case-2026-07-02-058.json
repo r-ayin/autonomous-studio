@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-07-02-058",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-01T20:28:55Z",
+  "project": "autonomous-studio",
+  "work_unit": "fix AS-EC-018: opt-worktree.sh realpath -m symlink resolution causing path rejection",
+  "situation": "opt-worktree.sh cmd_commit uses realpath -m to normalize file paths before --relative-to. realpath -m resolves symlinks, so when $PROJECT or file paths contain symlinks, the resolved absolute path no longer shares a prefix with $PROJECT → --relative-to produces paths with .. segments → _validate_commit_file_path rejects them as traversal attempts. This silently drops legitimate files from commits.",
+  "action": "Changed realpath -m to realpath -m -s (no-symlink-resolution, lexical-only normalization) on lines 490-491. Also normalized $PROJECT itself with realpath -m -s to ensure consistent base for --relative-to. Preserves -m tolerance for non-existent files while avoiding symlink-induced path mismatch.",
+  "files_changed": ["scripts/opt-worktree.sh"],
+  "worktree": "opt-scripts-shift-1782937721",
+  "direction": "scripts:opt-worktree",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh commit completed successfully; new worktree opt-scripts-shift-1782937721 created (direction-shift triggered by public-interfaces.txt touch); branch auto/opt-scripts-shift-1782937721 pushed to origin",
+  "next_suggestion": [
+    "Merge remaining 3 pending fixes (AS-EC-013/014 on opt-scripts-shift-1782935637, AS-EC-016 on opt-scripts-shift-1782936888) to complete audit-2026-07-02-002 cycle",
+    "After all pending fixes merged/rejected, next cycle triggers new full audit on unaudited project"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-002",
+  "audit_depth": "shallow"
+}

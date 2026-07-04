@@ -1,0 +1,25 @@
+{
+  "case_id": "case-2026-07-04-041",
+  "agent_id": "autonomous-engine-fix-dispatcher",
+  "timestamp": "2026-07-04T06:35:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "scripts/autonomous-loop.sh ESE-M02 backport (from archive)",
+  "situation": "audit-2026-07-04-012 finding ESE-RT-H01: live scripts/autonomous-loop.sh lacks archive's ESE-M02 fix (--max-turns/ROUND_TIMEOUT env-var knobs). Live line 116 still runs bare `claude -p` with no per-round bound; header comment falsely claims --max-iterations. Archive already has the correct implementation.",
+  "action": "Backported 3 hunks from engine-skills-extracted/自主循环/scripts/autonomous-loop.sh into live AS copy: (1) replaced stale '--max-iterations' header comment with accurate --max-turns/ROUND_TIMEOUT docs + ESE-M02 attribution, (2) added MAX_TURNS/ROUND_TIMEOUT env-var declarations after PROBE_COUNTDOWN, (3) refactored run_round claude invocation to build cmd array and conditionally apply timeout/--max-turns. Default behavior unchanged (both vars empty → no bounds).",
+  "files_changed": ["scripts/autonomous-loop.sh"],
+  "worktree": "opt-scripts-shift-1783117803",
+  "direction": "scripts:autonomous-loop-ESE-RT-H01",
+  "direction_kind": "direction-shift",
+  "outcome": "succeeded",
+  "outcome_evidence": "diff live-vs-archive post-edit shows only the intended backport-comment line differs (archive lacks 'ESE-RT-H01 backport' marker); opt-worktree.sh committed to new direction-shift worktree opt-scripts-shift-1783117803 and pushed to origin/auto/opt-scripts-shift-1783117803 (CR link emitted by push remote).",
+  "next_suggestion": [
+    "Next derived_fix to dispatch: ESE-RT-M01 (priority 3) — backport distill-patterns.py bare-except hardening FROM live TO archive",
+    "ESE-RT-L01 (priority 5) — auto-commit.py push race re-check marker before push",
+    "ESE-RT-L02 (priority 6) — stop-completion-gate.py L228 remove redundant stdout print"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-04-012",
+  "audit_depth": "shallow",
+  "derived_from_finding": "ESE-RT-H01"
+}

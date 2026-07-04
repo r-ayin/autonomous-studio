@@ -1,0 +1,35 @@
+{
+  "case_id": "case-2026-07-01-659",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-01T18:15:00Z",
+  "project": "moni-master",
+  "work_unit": "MM-001 route-fix: engine.rs attempt_match 错误传播 + tracing::warn + match_error event",
+  "situation": "audit-2026-07-01-010 deep audit 发现 moni-rs/crates/moni-engine/src/engine.rs:467 update_quotes 中 `let _ = self.attempt_match(...)` 静默吞掉 Result<(), String> 错误。后果：撮合异常不入日志、客户端收不到 error event、订单卡 SUBMITTED/PARTIALLY_FILLED 无解释。Python 原版有 logging.warning。派生 fix priority #3（route-fix）。",
+  "action": "改 line 467 一处：将 `let _ = self.attempt_match(...)` 替换为 `if let Err(e) = ... { tracing::warn!(order_id, symbol, err, \"match failed on quote update\"); self.notifications.publish(EngineEvent::new(\"match_error\", json!({order_id, symbol, error, trigger}))); }`。cargo check -p moni-engine 通过。opt-worktree.sh commit 到 optimization worktree（route-fix 复用，未触 public-interfaces）。",
+  "files_changed": [
+    "/home/admin/workspace/moni-master/moni-rs/crates/moni-engine/src/engine.rs"
+  ],
+  "worktree": "optimization",
+  "direction": "engine:mm-001-match-error-propagation",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit c97e103ba8c15be5d5abc208573435d9c7926be4 in auto/optimization; diffstat: moni-rs/crates/moni-engine/src/engine.rs | 18 +++++++++++++++++- (1 file changed, 17 insertions(+), 1 deletion(-)); cargo check -p moni-engine Finished dev profile without errors.",
+  "next_suggestion": [
+    "派生 MM-003 (priority 5): config.rs:339 canonicalize 错误传播 + is_file 校验 — route-fix",
+    "派生 MM-004 (priority 6): engine.rs:298 删除恒等 map_err — route-fix",
+    "MH-002/MM-002 structural findings 已记入 structural-debt.md（若尚未写入，下轮补写）",
+    "提醒用户 merge opt-docs-1782917996 (MH-001) 和 optimization (MM-001) 到 master，以推进 audit cycle 至 cycle-complete"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "/home/admin/workspace/moni-master/moni-rs/crates/moni-engine/src/engine.rs",
+      "line": 467,
+      "severity": "medium",
+      "finding": "update_quotes 中 attempt_match 返回 Result 被 let _ = 静默吞掉，撮合异常不入日志、客户端无 error event、订单状态卡死无解释",
+      "remediation": "改为 if let Err(e) = ... { tracing::warn!; publish match_error EngineEvent }",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-01-010",
+  "audit_depth": "deep"
+}

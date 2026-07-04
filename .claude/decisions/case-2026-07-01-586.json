@@ -1,0 +1,23 @@
+{
+  "case_id": "case-2026-07-01-586",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-01T10:14:06Z",
+  "project": "wechat-main",
+  "work_unit": "scripts/bing_search.py: 复用 brave_search 重试模式（_RETRYABLE_HTTP_CODES + 指数退避）",
+  "situation": "audit-2026-07-01-004 finding WM-M-004 (priority=17)：bing_search._fetch_one 单次失败直接丢 query，无重试。长文模式下已抓页面正文也白费。brave_search 已有成熟重试模式可复用。",
+  "action": "在 bing_search.py 顶层加 _RETRYABLE_HTTP_CODES={429,500,502,503,504}、_MAX_RETRIES=2、_RETRY_BASE_SLEEP=2.0；重写 _fetch_one 为 for attempt in range(_MAX_RETRIES+1) 循环，HTTPError code 不在集合内则 break，URLError 走退避，未知 Exception 不重试。保持与 brave_search._fetch_one 同语义。",
+  "files_changed": ["scripts/bing_search.py"],
+  "worktree": "auto/opt-scripts-1782899218",
+  "direction": "scripts:bing-search-retry",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 766d1b3 pushed to origin/auto/opt-scripts-1782899218; python3 -c ast.parse OK; python3 scripts/bing_search.py --help 退出 0；merge-tree clean vs main（opt-worktree.sh push 日志确认）。",
+  "next_suggestion": [
+    "派生 WM-M-006 (bocha_search import re 移至文件顶部)",
+    "派生 WM-M-007 (deepseek_refine as_completed 结果收集)",
+    "派生 WM-M-008 (knowledge_base JSONL flock)"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-01-004",
+  "audit_depth": "shallow"
+}

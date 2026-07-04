@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-02-060",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-02T03:45:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "AS-EC-017 fix attempt (superseded)",
+  "situation": "Read audit-cycle-state.json at round start showing AS-EC-017 pending. Concurrent context had already merged AS-EC-017 via case-2026-07-02-056 on opt-engine-shift-1782937136 before this round's Edit/commit completed.",
+  "action": "Implemented alternative fix for autonomous-loop.sh --bg process group leak (CHILD_PID global + cleanup trap + bg-spawn run_round). Committed to opt-engine-shift-1782938282 (edad7f2). Post-commit state refresh revealed prior equivalent fix already merged.",
+  "files_changed": ["scripts/autonomous-loop.sh"],
+  "worktree": "opt-engine-shift-1782938282",
+  "direction": "engine:loop-signal-cleanup",
+  "outcome": "superseded",
+  "outcome_evidence": "audit-cycle-state.json line 25 shows AS-EC-017 status=merged with fix_case_id=case-2026-07-02-056 on worktree opt-engine-shift-1782937136, predating this round's commit edad7f2 on opt-engine-shift-1782938282.",
+  "next_suggestion": "下轮派生 AS-EC-013 fix（opt-worktree.sh judge_direction_kind NUL rename mishandling, worktree opt-scripts-shift-1782935637 已存在但 status 仍 pending — 确认是否需重提或仅等人工 merge）；若全部 pending 都是 awaiting-merge 状态，跑 scout-scan 瞭望快照存档",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-002",
+  "audit_depth": "shallow"
+}
