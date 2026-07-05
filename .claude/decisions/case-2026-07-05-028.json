@@ -1,0 +1,31 @@
+{
+  "case_id": "case-2026-07-05-028",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-05T05:18:24+08:00",
+  "project": "sunset-prediction",
+  "work_unit": "SP-SEC-01 derived fix: untrack committed XHS session-cookie store + broaden .gitignore glob",
+  "situation": "audit-2026-07-05-003 (deep security-review of sunset-prediction) 挖出 SP-SEC-01 (HIGH): scripts/.xhs_storage_state.json.bak (12733 bytes, 15 XHS creator-platform session cookies incl access-token-creator.xiaohongshu.com / galaxy_creator_session_id / x-user-id-creator.xiaohongshu.com / a1 / webId) 被 git tracked 且已 push 到 origin (code.alibaba-inc.com/xtool/wanxia.git, commit 32ccdb3 '同步 GitHub r-ayin/wanxia 内容' 引入)。.gitignore 第 22 行仅写 scripts/.xhs_storage_state.json 精确文件名，不匹配 .bak 变体——经典 hygiene gap。audit-cycle-state.status=fix-in-progress, pending_count=8, SP-SEC-01 优先级=1（最高 severity + 最便宜 fix）。",
+  "action": "route-fix 复用 sunset-prediction 的 opt-routes-1783141439 worktree（sunset-prediction 不在 .claude/public-interfaces.txt → opt-worktree.sh judge_direction_kind 判 route-fix 复用同 area worktree）。两步: (1) 编辑 .gitignore 第 22 行 scripts/.xhs_storage_state.json → scripts/.xhs_storage_state.json*（glob 覆盖 .bak/.tmp/.old），加注释标 SP-SEC-01 出处; (2) git rm --cached scripts/.xhs_storage_state.json.bak（仅移除 index 追踪，磁盘文件保留——它是本地登录态备份，运维需保留供 keepalive）。git check-ignore -v 验证新 glob 命中 .bak。opt-worktree.sh commit routes:gitignore-secrets 指定 .gitignore + scripts/.xhs_storage_state.json.bak 两文件提交（避免扫 WIP）。",
+  "files_changed": [".gitignore", "scripts/.xhs_storage_state.json.bak (git rm --cached, disk retained)"],
+  "worktree": "opt-routes-1783141439 (branch auto/opt-routes-1783141439)",
+  "direction": "routes:gitignore-secrets (route-fix, reuse)",
+  "commit": "8c512a6fd1159d4e3290acd53733a90b7cf786c9",
+  "outcome": "succeeded",
+  "outcome_evidence": "git show 8c512a6 --stat: .gitignore 6+- (glob rule + 注释), scripts/.xhs_storage_state.json.bak 282 deletions (整文件从 tree 移除). git ls-tree -r 8c512a6 --name-only | grep storage_state → 空（.bak 已不在 tree）。git show 8c512a6:.gitignore 第 22-26 行含 'scripts/.xhs_storage_state.json*' glob。git check-ignore -v scripts/.xhs_storage_state.json.bak → .gitignore:24:scripts/.xhs_storage_state.json* 命中。push 成功: 'd820093..8c512a6 HEAD -> auto/opt-routes-1783141439'，git ls-remote origin auto/opt-routes-1783141439 应=8c512a6。磁盘 .bak 仍存 (-rw-r--r-- 12733 bytes)，仅 untracked。注: cp-guard 警告 '.gitignore 在 worktree 与 main HEAD 不同（前轮未合并改动）'——前轮 routes SSE-heartbeat 提交 d820093 未人工 merge，本轮 .gitignore 改动 stack 在同 branch 上待一并 merge，不影响提交正确性。",
+  "next_suggestion": "下轮继续派生 SP-SEC-01 之后优先级=2 的 SP-HTTP-01 (HIGH): server.js:140 app.listen(PORT) 默认 0.0.0.0 + 全程无 auth → bind 127.0.0.1 loopback（route-fix, server.js 单文件, 复用 opt-routes worktree）。SP-SEC-01 本身待人工 merge opt-routes-1783141439 到 main（或 3 轮 wait 后 deadlock-archive）。另提醒运维（不在引擎自动化范围）: (c) 轮换 XHS session（sign out all sessions @ creator.xiaohongshu.com，泄漏 token 已在 remote history）; (d) git filter-repo --path scripts/.xhs_storage_state.json.bak --invert-paths + force-push 清 remote history。SP-SEC-02 (git remote URL 内嵌 taobao 凭证 HStZLJue84222jXR1oWW) 是运行时 git-config 操作无源文件，下下轮单独 case 跑 git remote set-url + 提醒轮换密码。",
+  "audit_type": "security-review",
+  "audit_findings": [
+    {
+      "file": "scripts/.xhs_storage_state.json.bak",
+      "line": 0,
+      "severity": "high",
+      "finding": "XHS creator-platform session cookie store (15 cookies incl access-token/galaxy_creator_session_id/x-user-id-creator/a1/webId, 12733 bytes) git-tracked + pushed to origin (commit 32ccdb3). .gitignore 原规则 scripts/.xhs_storage_state.json 不匹配 .bak 变体。",
+      "remediation": "(a) git rm --cached scripts/.xhs_storage_state.json.bak; (b) .gitignore 改 glob scripts/.xhs_storage_state.json*; (c) 运维轮换 XHS session; (d) 运维 git filter-repo 清 history。本轮做 (a)+(b)。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-003",
+  "audit_depth": "deep",
+  "derived_fix_status": "pending (dispatched, commit 8c512a6 pushed to origin/auto/opt-routes-1783141439, awaiting human merge to main)",
+  "audit_log_instrumentation": "不适用: 本 fix 是 git index hygiene 操作（.gitignore + git rm --cached），无运行时代码路径修改——不触及 autonomous-constraints.md DO B 节列出的认证/PII/凭证读写/外部调用/部署/批量删除代码路径。.gitignore 与 git index 不调用 audit logger。SP-XHS-02 (keepalive .env 0600) 等代码路径 fix 才需埋点。"
+}

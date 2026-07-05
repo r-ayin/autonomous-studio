@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-06-043",
+  "agent_id": "ralph-autonomous-engine",
+  "timestamp": "2026-07-06T22:10:00+08:00",
+  "project": "x-tool/一件重启脚本/remote_control",
+  "work_unit": "RC-PROXY-01 派生 fix：download_cloudflared HTTPS_PROXY/HTTP_PROXY env 残留修复",
+  "situation": "audit-2026-07-06-004 派生 finding RC-PROXY-01 (LOW, route-fix) — remote_control/server.py download_cloudflared() 在 try 块前无条件设 os.environ[HTTPS_PROXY]=http://127.0.0.1:10809 与 HTTP_PROXY，成功路径 return True 未恢复 env，残留代理污染后续 cloudflared tunnel 子进程（line 161 start_tunnel_thread 启动）与 Bot 进程网络请求，可能破坏隧道或泄漏请求元数据到 v2ray 代理。本轮为 audit-cycle status=fix-in-progress 下派生该 pending finding 的最小 fix（该 finding 是本审计周期最后一个 pending）。worktree opt-remote-control-1783283520 已含 case-033..042 共 11 个 RC-* stacked commit，server.py 在 wt 中已分叉于 master 85bd9e1，故走 [[opt-worktree-stack-diverged-escape-hatch]] case-104 直编 wt+wt 内 commit 通道（main x-tool checkout 仍 master 旧版，cp 路径会覆盖 stacked fix 故不可走）。",
+  "action": "直编 wt 内 一件重启脚本/remote_control/server.py 的 download_cloudflared()：(1) 在设代理前捕获 orig_https_proxy=os.environ.get('HTTPS_PROXY') / orig_http_proxy=os.environ.get('HTTP_PROXY') 原值；(2) 整体 try/except/finally 包裹——finally 块恢复原始 env（原为 None 则 os.environ.pop(...,None)，原有值则还原），覆盖成功/失败重试/全失败所有路径；(3) 异常重试分支 del os.environ[...] 改为 os.environ.pop(...,None) 防 KeyError（原代码若 env 已被外部清除会 KeyError 致重试前自崩）。wt 内 git commit（非 main，非 gated）。origin push 403（外部 fork r-ayin/x-tool，[[x-tool-external-fork-push-403]] precedent），disk + local-ref 保留待人工 merge。",
+  "files_changed": ["一件重启脚本/remote_control/server.py"],
+  "worktree": "opt-remote-control-1783283520",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "wt commit 68b9d41 (1 file changed, +22/-6)。py_compile OK (line 804 SyntaxWarning 为 pre-existing 既存 \\o escape E:\\openclaw 路径，RC-PATH-01 structural 范畴非本 commit)。行为测试 5 case ALL_PASS（输出经 server.py 模块级 sys.stdout=server.log 重定向，结果见 server.log）：A success-restores-env（成功后 HTTPS_PROXY/HTTP_PROXY 已 pop）/ B preserves-user-original-proxy（用户原设 http://user.orig:8080 成功后还原）/ C fail-then-retry-success-restores-env（首次 fail 重试 success，env 恢复 None）/ D total-failure-restores-env（两次 fail，env 恢复 None，return False）/ E failure-preserves-user-original-proxy（全失败仍还原用户原设代理）。git merge-base --is-ancestor 85bd9e1 HEAD=true（master 是 HEAD 祖先，FF-clean），rev-list 85bd9e1..HEAD=11 commit（RC-SEC-01..RC-PROXY-01 全 stack）。origin push 403（外部 fork，预期，disk 保留待人工 merge）。",
+  "next_suggestion": "本审计周期 audit-2026-07-06-004 全 15 个 derived_fixes 均 merged（RC-PROXY-01 是最后 1 个 pending，本轮回写后 status=cycle-complete）。下轮 step 0 读 audit-cycle-state.status=cycle-complete → 触发新一次全量审计：选 x-tool/一件重启脚本/remote_control 之外的未深度审过项目（看 .claude/audits/ 已有报告，避免重复）。候选：autonomous-studio 引擎自身 hooks/watchdog（autonomous-engine-reaudit skill 已存但可追新逻辑）、或 workspace 其他子项目。本 wt opt-remote-control-1783283520 11 commit 仍待 owner 人工 merge main（外部 fork 无法 auto-push）。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "一件重启脚本/remote_control/server.py",
+      "line": "115-116 (download_cloudflared HTTPS_PROXY/HTTP_PROXY 设置)",
+      "severity": "low",
+      "finding": "RC-PROXY-01: download_cloudflared 成功路径 return True (原 line 129) 未恢复 HTTPS_PROXY/HTTP_PROXY env，残留 http://127.0.0.1:10809 代理污染后续 cloudflared tunnel 与 Bot 子进程网络请求",
+      "remediation": "已修：捕获原值 + try/finally 全路径恢复（原 None→pop，原有值→还原），异常重试分支 del→pop(...,None) 防 KeyError",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-004",
+  "audit_depth": "shallow"
+}

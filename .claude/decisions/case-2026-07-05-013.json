@@ -1,0 +1,30 @@
+{
+  "case_id": "case-2026-07-05-013",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-05T02:56:43Z",
+  "project": "wechat-main",
+  "work_unit": "WM-QQ-02 direction-shift: 解耦 qq_push 跨项目凭证默认值（/opt/wanxia/.env → 本地 .wechat-env）",
+  "situation": "audit-2026-07-05-001 fix-in-progress 派生路径。16 个 derived_fixes 中 15 个已 dispatched（均 stacked 在 opt-wechat-main-1783130541，route-fix，pushed 待人工 merge）。唯一未派生 pending = WM-QQ-02（kind=direction-shift, scripts/qq_push.py:35 _DEFAULT_ENV=\"/opt/wanxia/.env\" 读取另一项目 wanxia 的凭证文件）。autonomous-constraints.md DO 节 A.5：direction-shift kind 触发新 worktree（非复用 route-fix worktree），让方向变更可独立 review/revert。WM-QQ-02 是 audit 标记的部署契约变更：旧默认耦合 wechat↔wanxia（wanxia 未装则 qq_push 默认不可用，wanxia .env 变更波及 wechat 推送），解耦意图明确。",
+  "action": "改 scripts/qq_push.py 4 处：(1) _DEFAULT_ENV 从硬编码 \"/opt/wanxia/.env\" 改为 str(_PROJECT_ROOT / \".wechat-env\")，_PROJECT_ROOT=Path(__file__).resolve().parent.parent（项目根，与 mail_push 同约定，chmod 600 不入库）。(2) 模块 docstring 更新：说明默认读本地 .wechat-env、解耦理由、显式 --env-file /opt/wanxia/.env 复用 wanxia bot。(3) _load_env 增默认缺失分支：path is None 且 p 不存在时打印 stderr 提示（创建本地 .wechat-env 或显式 --env-file /opt/wanxia/.env），不静默 fallback 到跨项目 .env（保 WM-QQ-02 解耦意图）。(4) argparse --env-file help 文本更新默认值 + wanxia 复用说明。direction-shift 强制新 worktree：opt-worktree.sh judge_direction_kind 对 qq_push.py（非 public-interfaces.txt 列出）返回 route-fix，且 area slug `wechat-main` 通配命中既有 opt-wechat-main-1783130541 会复用——故用 distinct area `qq-env:decouple`（slug `qq-env` 不匹配 opt-wechat-main-*）走 line 547 方向分歧路径开新 worktree opt-qq-env-1783191346（从 main HEAD c0534bd 分支，cp-guard cmp(new_wt==main HEAD) 通过，标准流程非 direct-edit fallback）。commit aac4683 + push origin auto/opt-qq-env-1783191346。",
+  "files_changed": ["scripts/qq_push.py"],
+  "worktree": "opt-qq-env-1783191346 (auto/opt-qq-env-1783191346, branch from main HEAD c0534bd, CR https://code.alibaba-inc.com/qunbu/wechat/codereview/new?from=main&to=auto/opt-qq-env-1783191346)",
+  "direction": "qq-env:decouple (direction-shift, distinct area 强制新 worktree；非复用 opt-wechat-main-1783130541)",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit aac4683 on auto/opt-qq-env-1783191346 (git rev-parse HEAD = aac46835aad13f4dadc3815b7cdd459f6a647ebb); git show HEAD --stat: scripts/qq_push.py 1 file changed, 22 insertions(+), 4 deletions(-); pushed origin (remote: [new branch] HEAD -> auto/opt-qq-env-1783191346); main worktree qq_push.py 经 opt-worktree step ③ 还原 HEAD（无 WIP 残留）；行为验证：python3 exec_module → _DEFAULT_ENV='/home/admin/workspace/wechat-main/.wechat-env'（本地，不含 /opt/wanxia），load_env(None) 默认缺失打印 stderr 提示返回 env 不崩，load_env('/opt/wanxia/.env') 显式路径仍工作（108 keys=os.environ）；ast.parse syntax OK。main worktree 干净（qq_push.py restored to HEAD c0534bd）。",
+  "next_suggestion": "[下轮] 全 16/16 derived_fixes 已 dispatched（15 stacked on opt-wechat-main-1783130541 + 1 on opt-qq-env-1783191346）。audit-cycle-state.status 仍 fix-in-progress（等人工 merge）。无 pending 未派生 finding → 下轮走瞭望轮（scout-scan 快照 + 检查两个 worktree merge 状态）。⚠ 强烈建议人工 merge：(a) opt-wechat-main-1783130541（10 commit: 4ba2fc6/1092685/3b77d0a/1924fc5/4c38669/ef2c1ca/73599c0/07afce9/28652b3/eaab4a2）cd /home/admin/workspace/wechat-main && bash ../autonomous-studio/scripts/opt-worktree.sh wechat-main merge opt-wechat-main-1783130541；(b) opt-qq-env-1783191346（1 commit aac4683, direction-shift 独立 review）bash ../autonomous-studio/scripts/opt-worktree.sh wechat-main merge opt-qq-env-1783191346。两个 wt merge 后 qq_push.py 两处改动（WM-QQ-01 错误体脱敏 @ opt-wechat-main-1783130541 + WM-QQ-02 默认值解耦 @ opt-qq-env-1783191346）落在不同行无冲突。全部 16 finding merged|rejected 后 status=cycle-complete → 触发下一轮全量审计（选未深审项目，wechat-main 已审不再重审）。另：runtime audit-log 埋点（qq_push token-fetch/upload/send 三处外部调用+凭证读取）仍 open，audit report B 节标为 TODO，建议下个审计周期单列 case。",
+  "audit_type": "none",
+  "audit_findings": [
+    {
+      "file": "scripts/qq_push.py",
+      "line": "35→44-45",
+      "severity": "info",
+      "finding": "WM-QQ-02 direction-shift 已派生修复（本 case）。另注：qq_push.py 的 _get_token/_upload_file/_api 三处外部 HTTP 调用 + _load_env 读取凭证 .env，按 autonomous-constraints.md DO B 节属敏感路径应补 runtime audit-log 埋点，但本 fix 仅窄范围改默认路径（WM-QQ-02 remediation scope），未新增凭证流，runtime 埋点为独立 concern（audit report B 节亦标为 TODO）。留作下个审计周期单列 case。",
+      "remediation": "后续单列 case：在 _get_token/_upload_file/_api 入口写 .audit/audit-YYYY-MM-DD.jsonl（action=external_call, resource=api identifier=qq-bot, result=success|failure, ip=local, sensitive=true），对 _load_env 写 action=credential_read resource=file identifier=<env path>。复用 wechat-main 既有 .audit/ jsonl 通道（已对齐 schema）。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-001",
+  "audit_depth": "shallow",
+  "_dispatch_method": "standard opt-worktree flow (新 worktree from main HEAD; cp-guard passed; 非 direct-edit-wt fallback)",
+  "_stack_position": "1st commit on opt-qq-env-1783191346 (独立 direction-shift 分支，非 stacked)"
+}

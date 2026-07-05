@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-04-150",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-04T12:28:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "lookout-round-20-pending-fix-blocked-check",
+  "situation": "audit-cycle-state.status=fix-in-progress with 2 pending derived_fixes from audit-2026-07-04-012 (ESE-RT-H02 case-040 worktree opt-scripts-shift-1783116452 @ c1917c6, ESE-RT-H01 case-041 worktree opt-scripts-shift-1783117803 @ 32b9101). Both verified on origin via git ls-remote round 20; neither is ancestor of origin/main HEAD c265d16. Blocked-on-human-merge ~18h since dispatch. AS at 64 worktrees / 60 pending merge; cap enforced — no new fix dispatched.",
+  "action": "Lookout round 20. Re-verified blocked worktrees still present on origin. Confirmed main HEAD unchanged (c265d16). Scout #1 autonomous-engine 'missing planning/' re-confirmed false positive (.planning/codebase/autonomous-engine.md exists per prior verification). No fix dispatched (cap). Documented state for next context.",
+  "files_changed": [],
+  "worktree": null,
+  "direction": null,
+  "outcome": "blocked",
+  "outcome_evidence": "git ls-remote origin auto/opt-scripts-shift-1783116452 → c1917c6f814a72684ea448ecfa84eb09 (present); auto/opt-scripts-shift-1783117803 → 32b9101c61885904e978de7cc53edf367ea0d992 (present); origin/main HEAD = c265d16 (unchanged since pre-fix-dispatch). Neither fix commit reachable from main. Worktrees dispatched ~18h ago, awaiting human merge approval.",
+  "next_suggestion": "Continue awaiting human merge of case-040 + case-041. When merged → update derived_fixes[].status to merged → if all settled set status=cycle-complete → trigger next full audit. Candidates by staleness when cycle completes: wechat-main (3d since last deep audit), shizi (3d), personal-assistant (2d), sunset-prediction (1.4d). If blocked >24h, consider pinging user in NEXT_SUGGESTION more prominently.",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": null,
+  "audit_depth": "shallow"
+}

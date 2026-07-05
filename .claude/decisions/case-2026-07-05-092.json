@@ -1,0 +1,39 @@
+{
+  "case_id": "case-2026-07-05-092",
+  "agent_id": "autonomous-studio-ralph",
+  "timestamp": "2026-07-05T14:40:37+08:00",
+  "project": "x-tool",
+  "work_unit": "pachong-master/web_admin notice_detail SELECT n.* → 显式列名 (PA-I-002 派生 route-fix)",
+  "situation": "audit-2026-07-05-010 (x-tool pachong-master deep audit) 派生 finding PA-I-002: web_admin/app.py:207 notice_detail 路由用 `SELECT n.*, c.raw_text, c.qualification_text, c.contact_text_masked FROM tender_notice n LEFT JOIN tender_notice_content c ...` —— `n.*` 会让未来给 tender_notice 加任何敏感列（如 raw_contact/internal_note/internal_score）自动进入 detail.html 渲染面（运营者已认证 admin 可见），列扩散致意外信息泄漏。当前无敏感列故 INFO 级，但属防御性硬化。本轮 status=fix-in-progress，PA-I-002 是 derived_fixes 里唯一既 pending 又未派发的（PA-L-003 已 case-091 派发待 merge），本轮派发 PA-I-002。",
+  "action": "把 SELECT n.* 展开为显式列名：n.id, n.title, n.purchaser, n.agency, n.budget_amount, n.purchase_method, n.province, n.city, n.notice_type, n.publish_time, n.deadline_time, n.final_score, n.recommend_level, n.rule_score, n.ai_score, n.detail_url —— 这 16 列覆盖 web_admin/templates/detail.html 实际引用的全部 tender_notice 字段（title/purchaser/agency/budget_amount/purchase_method/province/city/notice_type/publish_time/deadline_time/final_score/recommend_level/rule_score/ai_score/id/detail_url，逐字段核对 template 第 6/14-21/27/41-48/65/78 行），不选 title_embedding(vector 大字段)/normalized_hash/title_simhash/source_id/source_url/retry_count/error_message/recall_methods/semantic_score/status/currency/attachment_urls/created_at/updated_at 等非渲染面字段。c.raw_text/c.qualification_text/c.contact_text_masked 保持显式不变（audit 只针对 n.*）。未来加敏感列必须显式进 SELECT 才会进渲染面 → 列扩散泄漏面关闭。与 notice_list (:182) 显式列名风格一致。",
+  "files_changed": [
+    "x-tool/pachong-master/web_admin/app.py"
+  ],
+  "worktree": "opt-pachong-1783233062 (auto/opt-pachong-1783233062, stack: 953b7eb master → 60ee43b case-090 squash-merge → c5a4d8b PA-L-003 [case-091] → b3567d7 PA-I-002 [case-092 本轮], 2-commit stack on base=60ee43b=x-tool master post case-090, disk 保留; web_admin/app.py 非 public-interfaces (x-tool public-interfaces 标注 '无显著公共接口文件') → route-fix 复用同 area pachong worktree; origin push 同 PA-H-002..PA-L-003 先例 x-tool fork 403)",
+  "direction": "pachong:notice-detail-explicit-cols",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "git -C .opt-worktrees/x-tool/opt-pachong-1783233062 log --oneline -4: b3567d7 (本轮 PA-I-002) → c5a4d8b (PA-L-003 case-091) → 60ee43b (case-090 squash-merge master) → 953b7eb (master pre-090)",
+    "git diff HEAD~1 --stat: pachong-master/web_admin/app.py | 6 +++++- (1 file changed, 5 insertions(+), 1 deletion(-))",
+    "python3 -m py_compile pachong-master/web_admin/app.py → PY_COMPILE_OK (no syntax error)",
+    "python3 ast.parse → AST_OK",
+    "grep 'SELECT n\\.' pachong-master/web_admin/app.py → line 207 'SELECT n.id, n.title, n.purchaser, ...' (n.* 已消除)",
+    "opt-worktree.sh → '复用同 area worktree (route-fix): opt-pachong-1783233062' + '✓ 提交到 opt-pachong-1783233062 方向=pachong:notice-detail-explicit-cols'",
+    "16 列逐字段对 web_admin/templates/detail.html 核对: title(L6)/purchaser(L14)/agency(L15)/budget_amount(L16)/purchase_method(L17)/province(L18)/city(L18)/notice_type(L19)/publish_time(L20)/deadline_time(L21)/final_score(L41)/recommend_level(L42-43)/rule_score(L46)/ai_score(L47)/id(L65)/detail_url(L78) 全覆盖"
+  ],
+  "next_suggestion": "audit-2026-07-05-010 全 10 derived_fixes 现落定状态: 1 rejected (PA-H-001 false-positive case-083) + 8 merged (case-090 60ee43b) + 1 dispatched-pending-merge (PA-L-003 case-091 opt-pachong-1783233062 c5a4d8b) + 1 dispatched-pending-merge 本轮 (PA-I-002 case-092 opt-pachong-1783233062 b3567d7 stack on c5a4d8b)。下轮起: 等 opt-pachong-1783233062 人工 sanctioned squash-merge (c5a4d8b+b3567d7 两 commit 一起) → 全 10 derived_fixes merged|rejected → audit-cycle-state.status 改 cycle-complete → 下下轮触发新全量审计（挑 .claude/audits/ 未深度审过的项目；x-tool pachong-master/ota_workflow/wechat-main/personal-assistant/sunset-prediction/shizi/oneday-design/autonomous-engine 均已审过；可选 shizi 姐妹 audit 已 re-audit 过；候选: 1BfrYW9R audit-014 已审但可能再 re-audit；或挑尚未出现过的项目如 smart-training-agent / agent-dashboard re-audit / fa_agent re-audit 等）。本审计周期 PA-I-002 派发完毕，pending_count 从 2 → 1（PA-L-003 仍 pending merge + PA-I-002 现 pending merge = 2 个 awaiting merge）。注意: pending_count 定义为 'pending未派发'，PA-I-002 已派发 → 未派发数=0，但 awaiting_merge=2。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "x-tool/pachong-master/web_admin/app.py",
+      "line": 207,
+      "severity": "info",
+      "finding": "notice_detail 路由 SELECT n.*, c.raw_text, ... 用 n.* —— 未来给 tender_notice 加敏感列（raw_contact/internal_note/internal_score 等）会自动进 detail.html 渲染面，列扩散致意外信息泄漏。当前无敏感列故 INFO。",
+      "remediation": "展开为显式列名 SELECT n.id, n.title, n.purchaser, n.agency, n.budget_amount, n.purchase_method, n.province, n.city, n.notice_type, n.publish_time, n.deadline_time, n.final_score, n.recommend_level, n.rule_score, n.ai_score, n.detail_url, c.raw_text, c.qualification_text, c.contact_text_masked —— 与 notice_list 显式列名风格一致，未来加列必须显式进 SELECT 才进渲染面。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-010",
+  "audit_depth": "shallow",
+  "_audit_role_note": "本 case 是 audit-2026-07-05-010 的派生 fix case（非审计轮本身）。audit_depth=shallow 因为本轮是 fix-in-progress 派发轮（瞭望/修复轮=shallow），不是 deep audit 轮。audit_findings 复述父审计 PA-I-002 finding 供 case 自洽。"
+}

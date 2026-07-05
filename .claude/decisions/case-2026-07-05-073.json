@@ -1,0 +1,39 @@
+{
+  "case_id": "case-2026-07-05-073",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-05T11:49:00+08:00",
+  "project": "wechat-main",
+  "work_unit": "全量深度审计：godtier-deep-research skill 计算核心+幻觉检测门禁+断点续传编排（24 .py / ~2726 行）",
+  "situation": "audit-cycle-state.status==cycle-complete（audit-008 的 12 派生 fix 全 merged 落定）→ 触发新一轮全量审计。全 top-level 项目均已深审过至少一次。需选一个'未深度审过'的模块。wechat-main 的 audit-001（2026-07-05T22:30）只审了基础设施层（pipeline 编排+pipeline-gate.sh 门禁+script-verifier+bocha 搜索+qq/mail 推送），未触及 .claude/skills/godtier-deep-research/ 这个 LLM 深度研究 skill 的计算/检测/编排层（finance DCF/Monte-Carlo/WACC、stats regression/correlation、detectors 三层幻觉门禁、orchestration 断点续传）。该 skill 共 24 个 Python 文件 ~2726 行，是 wechat-main 内最大未深审模块，且为金融研究正确性关键路径（DCF/回归/幻觉门禁 bug 会产出沉默错误的研报）→ 选定深审。",
+  "action": "ultracode on + 预算解禁。先尝试 Workflow 6-cluster sonnet fan-out（finance-core/finance-scenario/stats/data/detectors/orchestration），脚本首跑因 PROMPT_TPL 末尾多余 ``` 行致 TypeError（tagged-template 误解析）→ 修复脚本重跑，6 sonnet agent 全部返回 402 Model quota exceeded（同 audit-005/007/008 失败模式）→ 回退主循环直接精读全部 24 文件。逐文件审：finance 7（dcf/wacc/multiples/monte_carlo/stress_test/scenario/sensitivity）、stats 4（regression/correlation/timeseries/descriptive）、data+alpha 5（fetcher/cleaner/validator/cross_check/residual_scanner）、detectors 4（logic/number/source/run_all）、orchestration+utils 6（state_manager/executor/audit_log/hash_input/format_output/test_executor）。追跨模块数据流：GodtierExecutor 6 阶段编排 → ResearchState checkpoint.json 断点续传 → phase4 门禁读 hallucination_report.json overall==PASS（run_all_detectors 跑 L1/L2/L3 生成）→ 计算脚本经 utils/audit_log.py 落 JSONL 审计 trail。验证前几轮硬化：CRIT-01（executor skill_dir 3 级上溯）/CRIT-02（correlation 样本协方差 ÷n-1）/MIN-01（GBM 对数正态）/MIN-02（Gordon g<wacc 守卫）/MIN-03（概率和守卫）/MIN-04（number span 去重）/MIN-05（executor 路径测试）/IMP-02（scipy 可选回退）/IMP-03（mode 透传）全持有。挖出 10 findings（1H/3M/4L/2I），8 条 route-fix 登记 derived_fixes pending。",
+  "files_changed": [
+    ".claude/audits/audit-2026-07-05-009.md (新建 deep audit report)",
+    ".claude/audit-cycle-state.json (status cycle-complete→fix-in-progress, current_audit_*→009/wechat-main/godtier-deep-research, derived_fixes 重置为 8 pending, pending_count 0→8, history 追加 audit-009 条目, last_audit_* 刷新, wait_round_count 3→0)"
+  ],
+  "worktree": "none（全量审计轮不派生 fix、不进 opt-worktree；report 落 .claude/audits/，findings 落 audit-cycle-state.derived_fixes）",
+  "direction": "audit（cycle-complete 触发新一轮全量深度审计；本 round 仅产出 report+登记 derived_fixes，不派生 fix，下轮起逐个派生）",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    ".claude/audits/audit-2026-07-05-009.md 已创建，含范围/方法/架构正面观察(9 条 CRIT/MIN/IMP 持有验证)/10 findings（GD-H-001..GD-I-002 各含 file:line+evidence+remediation+kind）/8 派生 fix 计划表/结论",
+    "python3 -c json.load('.claude/audit-cycle-state.json') → status=fix-in-progress pending_count=8 current_audit_id=audit-2026-07-05-009 derived_fixes len=8（JSON 合法）",
+    "8 derived_fixes 全 status=pending fix_case_id=null（GD-H-001 audit_log.py / GD-M-001 number_hallucination.py / GD-M-002 cross_check.py / GD-M-003 state_manager.py / GD-L-001 dcf.py / GD-L-002 monte_carlo.py / GD-L-003 timeseries.py / GD-L-004 source_hallucination.py），各 1 文件，待下轮起逐个派生",
+    "Workflow 6-cluster sonnet fan-out 全 402（transcript: subagents/workflows/wf_711bf27c-e43/）→ 主循环深读 24 文件 fallback（同 audit-005/007/008 precedent）",
+    "GD-H-001 可在线复现：python3 -c \"print(hash('x')[:16])\" → TypeError: 'int' object is not subscriptable；对照 hash_input.py:8 hashlib.sha256(...).hexdigest()[:16] 正确"
+  ],
+  "next_suggestion": "下轮 status=fix-in-progress 且 derived_fixes 有 pending → 派生最高优先级 GD-H-001（audit_log.py:14 hash()[:16] TypeError，HIGH，1 文件 route-fix，复用 opt-godtier-deep-research 或同 area worktree）。修法：import hashlib；hash(str(inputs))[:16]→hashlib.sha256(str(inputs).encode()).hexdigest()[:16]；顺带 datetime.utcnow()→datetime.now(timezone.utc)。之后按 priority 2-8 逐轮派生 GD-M-001..GD-L-004。全 8 merged|rejected 后 status→cycle-complete 触发下一轮全量审计（届时全项目含本 skill 均已审过，可考虑 re-audit 最大或最久未审项目）。",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {"file": ".claude/skills/godtier-deep-research/scripts/computation/utils/audit_log.py", "line": "14", "severity": "high", "finding": "hash(str(inputs))[:16] — hash() 返回 int，int[:16] 抛 TypeError，每次 log() 真实调用崩，计算审计 trail 全失效", "remediation": "import hashlib；改 hashlib.sha256(str(inputs).encode()).hexdigest()[:16] if inputs else None（对齐同目录 hash_input.py）；顺带 datetime.utcnow()→datetime.now(timezone.utc)", "kind": "route-fix"},
+    {"file": ".claude/skills/godtier-deep-research/detectors/number_hallucination.py", "line": "105-126", "severity": "medium", "finding": "check_reasonableness 是 no-op：加载 FINANCE_RULES 但从不把 val 与 min/max 比对，越界数字静默通过 phase4 门禁", "remediation": "按上下文分类数字选规则，越界追加 range_issue，detect() 计入 critical", "kind": "route-fix"},
+    {"file": ".claude/skills/godtier-deep-research/scripts/computation/data/cross_check.py", "line": "18-21", "severity": "medium", "finding": "avg=0 时 diff_pct=0 → 符号相反的严重分歧（如 +100 vs -100）被报为一致", "remediation": "分母改 max(abs(a),abs(b),1e-9) 或 avg==0 and diff>0 时显式 inconsistent", "kind": "route-fix"},
+    {"file": ".claude/skills/godtier-deep-research/scripts/orchestration/state_manager.py", "line": "369-380", "severity": "medium", "finding": "save() 非原子写两 state 文件，崩溃即截断 → load() JSONDecodeError → 断点续传失败（ResearchState 核心目的）", "remediation": "两写都改 temp file + os.replace（对齐 x-tool OTA-M-003/L-004 模式）", "kind": "route-fix"},
+    {"file": ".claude/skills/godtier-deep-research/scripts/computation/finance/dcf.py", "line": "45-46", "severity": "low", "finding": "value_per_share = enterprise_value/shares 把企业价值/股当股权价值/股，高估公平价值（未减 net debt）", "remediation": "改名 enterprise_value_per_share 或加 --net_debt 算 (EV-net_debt)/shares", "kind": "route-fix"},
+    {"file": ".claude/skills/godtier-deep-research/scripts/computation/finance/monte_carlo.py", "line": "37", "severity": "low", "finding": "statistics.stdev(results) 在 simulations<2 时抛 StatisticsError 未捕", "remediation": "stdev(...) if len(results)>1 else 0（对齐 descriptive.py）", "kind": "route-fix"},
+    {"file": ".claude/skills/godtier-deep-research/scripts/computation/stats/timeseries.py", "line": "27-31", "severity": "low", "finding": "cagr 对负终值 (d[-1]<0) 取分数次幂 → ValueError/复数", "remediation": "守卫加 and d[-1]>0 否则 None", "kind": "route-fix"},
+    {"file": ".claude/skills/godtier-deep-research/detectors/source_hallucination.py", "line": "59-68", "severity": "low", "finding": "check_temporal_consistency 把合法前瞻年份（预计2027…）false-fail → 阻塞 phase4 产出", "remediation": "前瞻词修饰的年份豁免，或阈值放宽到 current_year+3", "kind": "route-fix"},
+    {"file": ".claude/skills/godtier-deep-research/scripts/computation/utils/audit_log.py", "line": "11", "severity": "info", "finding": "datetime.utcnow() deprecated 返 naive，同 skill 其他文件用 datetime.now(timezone.utc)", "remediation": "并入 GD-H-001 同文件一并改", "kind": "route-fix"},
+    {"file": ".claude/skills/godtier-deep-research/scripts/computation/stats/correlation.py", "line": "26", "severity": "info", "finding": "docstring 承诺 Pearson/Spearman 但 method choices=['pearson']，Spearman 未实现", "remediation": "文档与实现对齐（改 docstring 或实现 Spearman），cosmetic 不派生 fix", "kind": "route-fix"}
+  ],
+  "audit_id": "audit-2026-07-05-009",
+  "audit_depth": "deep"
+}

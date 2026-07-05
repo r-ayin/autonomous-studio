@@ -1,0 +1,30 @@
+{
+  "case_id": "case-2026-07-05-056",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-05T13:25:00+08:00",
+  "project": "shizi",
+  "work_unit": "derived-fix-dispatch SH2-M-001 (audit-2026-07-05-007 priority 4): orchestrator.ts parallel mode detect 双 .catch(()=>[]) 静默吞错 + ocrPromise VL识别 catch 静默返空 → 复制 vl_text parallelErrors[] 模式透传 debugInfo.error",
+  "situation": "audit-cycle-state.status=fix-in-progress; audit-2026-07-05-007 derived 7 route-fix, 3 已派发待 merge (SH2-M-004 case-053 opt-vision-1783212856 d5f0ef0 / SH2-M-002 case-054 opt-background-1783213292 3e7efba / SH2-M-003 case-055 opt-background-1783213292 5d3d756 stacked), 4 仍 fix_case_id=null。SH2-M-001 优先级 4 (P4 medium) 未派发。orchestrator.ts:201-205 parallel mode detect 双 .catch(()=>[] as BoundingBox[]) 静默吞错（VL商品检测 + 本地分割 两路均不 push 错误、不置 detectFailed、不写 debugInfo.error），且 :238-241 ocrPromise enableVerify=true 时 VL识别 catch 也静默返空 {results:[],imageSize:[1000,1000]}——H-H-002 在 vl_text mode 修掉的反模式在 parallel/auto+enableVerify mode 残留 → 假阴性 0区域/0文字 无信号，用户看不到任何失败提示。vl_text mode (:131-166) 已有 parallelErrors[] 模式正确实现可参照。",
+  "action": "在 orchestrator.ts 非 vl_text 分支引入 const parallelErrors: string[] = [] (置于 'let detectProduct' 之后、method 分支之前)，复制 vl_text 同款模式：(1) parallel mode (:201-205) 两路 catch 各 push `VL商品检测失败: ${msg}` / `本地分割失败: ${msg}` + console.warn，仍返 [] 不阻塞；(2) ocrPromise VL识别 catch (:238-241) push `VL文字识别失败: ${msg}` + console.warn，仍返空对象；(3) debugInfo.error (:267) 由 `detectFailed ? '商品区域检测失败' : undefined` 改为 detectFailed 优先、否则 parallelErrors.length>0 ? parallelErrors.join('\\n') : undefined——detectFailed 语义不变（仍触发 :246 的 ⚠ 进度提示），parallelErrors 补充 parallel/auto+VL识别 路径的可观测性。local mode (:211-215) 与 vl fallback (:216-226) 原已 console.warn + 置 detectFailed，保持不动。行为对成功路径零影响（parallelErrors 留空 → error=undefined）；失败路径从静默返空升级为带错误信号，UI debugInfo 可见，与 vl_text 行为一致。",
+  "files_changed": [
+    "/home/admin/workspace/shizi/src/background/orchestrator.ts"
+  ],
+  "worktree": "opt-background-1783213292 (复用 case-054/055 SH2-M-002/M-003 同 area worktree, route-fix stacking 第 3 层; branch auto/opt-background-1783213292)",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh 输出 '→ 复用同 area worktree (route-fix): opt-background-1783213292' + '✓ 提交到 opt-background-1783213292 方向=background:orchestrator-swallow-fix'; push 成功 '5d3d756..7d7c44f HEAD -> auto/opt-background-1783213292'，origin/auto/opt-background-1783213292 已更新; git log 验证 7d7c44f stacked atop 5d3d756(SH2-M-003) atop 3e7efba(SH2-M-002) atop 58c71ec(main); diff --stat 1 file changed 23 insertions 3 deletions; git show 7d7c44f grep 确认 parallelErrors 5 处 push + 1 处 join 全部在 commit 内; vitest 5 files 53/53 tests pass Duration 1.13s (main-tree 编辑态); orchestrator.ts 不在 .claude/public-interfaces.txt → opt-worktree judge_direction_kind 判定 route-fix 复用 background area worktree (base=58c71ec 干净, fast-forward 可达)。",
+  "next_suggestion": "下轮派发 SH2-L-001 (P5 low, ocr-internal.ts:67,107 OCR/上传错误 message 仍仅 status code 缺 body 诊断 — await res.text() 截断≤200 拼进 error message)——route-fix 复用 background area worktree opt-background-1783213292 第 4 层 stacking (ocr-internal.ts 同 SH2-M-003 已在 5d3d756 改过，叠加 SH2-L-001 同文件不冲突)。然后 SH2-L-002 (P6 ResultPanel.tsx equiv config) / SH2-L-003 (P7 删死代码 verifyOcrResults, 与 SH2-M-004 同 vision-adapter.ts 可叠 opt-vision-1783212856) 依次派发。全 7 派发完成或 deadlock-archive 后 audit-cycle-state.status→cycle-complete 触发下一轮全量审计。当前 opt-background-1783213292 已叠 3 commits (3e7efba+5d3d756+7d7c44f) 待人工一次性 merge。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "/home/admin/workspace/shizi/src/background/orchestrator.ts",
+      "line": 201,
+      "severity": "medium",
+      "finding": "SH2-M-001: parallel mode (:201-205) detectProductRegion + segmentProduct 两路 .catch(() => [] as BoundingBox[]) 静默吞错——不 push 错误、不置 detectFailed、不写 debugInfo.error。vl_text mode (:131-166) 已有 parallelErrors[] 正确模式，parallel/auto+enableVerify 路径漏。结果：parallel mode 两路全失败时 productRegions=[] 且无任何错误信号，用户看到 0 区域无提示（假阴性）。ocrPromise VL识别 catch (:238-241) 同症——enableVerify=true 时 VL 识别失败静默返 {results:[],imageSize:[1000,1000]}，debugInfo.error 仍 undefined，0 文字无信号。",
+      "remediation": "引入 parallelErrors[] 数组，parallel mode 两路 catch + VL识别 catch 各 push 错误 + console.warn（仍返空不阻塞）；debugInfo.error 追加 parallelErrors.join。detectFailed 语义不变。已在 opt-background-1783213292 commit 7d7c44f 修复，53/53 tests pass。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-007",
+  "audit_depth": "shallow"
+}

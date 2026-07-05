@@ -1,0 +1,37 @@
+{
+  "case_id": "case-2026-07-05-064",
+  "agent_id": "ralph-autonomous-studio",
+  "timestamp": "2026-07-05T22:40:00+08:00",
+  "project": "x-tool",
+  "work_unit": "ota_workflow/interfaces/api.py — OTA-H-001a HTTP API 全 endpoint 无认证",
+  "situation": "audit-2026-07-05-008 (x-tool ota_workflow re-audit) finding OTA-H-001a (HIGH, priority 1/12, status=pending). interfaces/api.py 所有 endpoint (/v1/tasks/preview, /preview_structured, /execute, /execute_structured, /v1/tasks/{id}, /confirm, /cancel, /v1/capabilities, /v1/schemas/{intent}) 全无 auth dependency。/v1/tasks/execute 接收 auto_confirm body 直接触发 service.execute_text → 真实美团酒店改价。默认 bind 127.0.0.1 下本机任意进程或被攻陷的本地服务 SSRF / 恶意依赖可 POST {text:..., auto_confirm:true} 改任意房型到任意价格 (audit 举证 99999999 元)。audit-cycle-state.status=fix-in-progress, 12 derived_fixes pending, 本轮按优先级派生 #1。",
+  "action": "给 api.py 加 _require_ota_token FastAPI dependency：env OTA_API_TOKEN 为期望 token，请求须带 X-OTA-Token header，secrets.compare_digest 常量时间比较防 timing oracle；OTA_API_TOKEN 未设 → 401 fail-closed (protected API disabled) 而非放行无认证；header 缺失/不符 → 401。/health 显式豁免 (liveness probe only)。8 个 protected endpoint 全加 dependencies=[Depends(_require_ota_token)] (capabilities/schemas/preview/preview_structured/execute/execute_structured/get_task/confirm/cancel)。不动 cli.py bind (OTA-H-001b 下轮) / orchestrator.py auto_confirm guard (OTA-H-001c 下轮) — 单文件最小单位。imports 增 os/secrets/Depends/Header。",
+  "files_changed": [
+    "ota美团运营/ota_workflow/interfaces/api.py"
+  ],
+  "worktree": "opt-ota_workflow-1783171357 (复用同 area route-fix worktree, stack on 3707b89 L05 + e9b25cf M11)",
+  "direction": "ota_workflow:h001a-api-token-auth",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "opt-worktree.sh commit 输出: '✓ 提交到 opt-ota_workflow-1783171357 方向=ota_workflow:h001a-api-token-auth'",
+    "git -C opt-ota_workflow-1783171357 log --oneline: 0ca59a6 opt(ota_workflow:h001a-api-token-auth): fix(ota_workflow): OTA-H-001a ... (stack on 3707b89/e9b25cf, FF-clean)",
+    "git show --stat HEAD: 1 file changed, 35 insertions(+), 10 deletions(-) — ota美团运营/ota_workflow/interfaces/api.py",
+    "python3 ast.parse SYNTAX_OK (api.py 语法合法)",
+    "main x-tool 工作区 api.py 已被 opt-worktree restore 回 HEAD (干净, 无残留改动)"
+  ],
+  "next_suggestion": "下轮派生 OTA-H-001b (priority 2): interfaces/cli.py:113 bind host allowlist — 拒 0.0.0.0/::/非 loopback, 强制 127.0.0.1 除非显式 --allow-public。同 area ota_workflow, route-fix 复用 opt-ota_workflow-1783171357。其后 OTA-H-001c (orchestrator.py auto_confirm guard when risk.level==HIGH, 合并 OTA-M-006)。剩余 11 derived_fixes pending。",
+  "audit_type": "security-review",
+  "audit_findings": [
+    {
+      "file": "ota美团运营/ota_workflow/interfaces/api.py",
+      "line": "31-128 (create_api_app 全部 endpoint)",
+      "severity": "high",
+      "finding": "OTA-H-001a: 所有 HTTP endpoint 无 auth dependency; /v1/tasks/execute 可触发真实改价 (auto_confirm body 直传 service.execute_text)。本机任意进程/SSRF 可改任意房型到任意价格。",
+      "remediation": "加 _require_ota_token dependency (env OTA_API_TOKEN, X-OTA-Token header, secrets.compare_digest, fail-closed 401)。/health 豁免。8 protected endpoint 全加 Depends(_require_ota_token)。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-008",
+  "audit_depth": "deep",
+  "_derived_fix_update": "OTA-H-001a status pending→merged, fix_case_id=case-2026-07-05-064 (synced in audit-cycle-state.json)"
+}

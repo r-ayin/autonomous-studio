@@ -1,0 +1,41 @@
+{
+  "case_id": "case-2026-07-05-011",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-05T20:30:00Z",
+  "project": "wechat-main",
+  "work_unit": "派生 fix: WM-VER-03 verifier.py merge_retry_report 名不副实 → 重命名 finalize_retry_report + 诚实单次语义",
+  "situation": "audit-2026-07-05-001 (wechat-main 全量审计) 派生的 16 条 finding 之一，本轮前 13 条已 dispatched (8 commit stacked on opt-wechat-main-1783130541)，3 条 undispatched pending: WM-PIP-03 (moot 冗余过滤) / WM-VER-03 (verifier 名不副实) / WM-QQ-02 (direction-shift 跨项目 .env)。上轮 NEXT_SUGGESTION 指 WM-PIP-03 但标注 'moot 因无 shell'——价值低。WM-VER-03 是真·逻辑/语义 bug：merge_retry_report([report]) 永远只传单元素列表，'合并多次尝试' 名不副实；retry 流程每次把当前 report 覆盖写回同一文件，前序完整 attempt 报告无法保留，只有调用方在 _retry_history 累积的摘要 (overall/计数) 能跨尝试存活。函数内部从单元素 attempts 重建 retry_history 是误导性死代码（立即被调用方 merged['_retry_history']=history 覆写）。选 WM-VER-03 而非 WM-PIP-03：真·语义诚实修复 > 冗余过滤 cosmetic 清理。",
+  "action": "重命名 merge_retry_report → finalize_retry_report，改签名为单 report: dict（去掉误导的 attempts: list[dict] 参数），文档诚实地说明只对最近一次尝试打终态标签、多尝试摘要历史由 retry 命令在调用后写回 _retry_history。body 简化：final.pop('retries'/'retry_history'/'_retry_history') 避免臆造，status 串 PASSED→'PASSED' / 原 FAILED_AFTER_{n}_ATTEMPTS→'FAILED_AFTER_RETRIES'（retries 计数由调用方按真实值覆写）。更新 retry 命令调用点 + 注释。行为验证：(1) 单元 PASS/FAIL/empty 三 case；(2) retry CLI STOP 分支端到端 (max_retries=1, 预置 _retry_history 1 条 + FAIL report → 输出 status=FAILED_AFTER_RETRIES, retries=1, 写回 hist_len=2)。route-fix（verifier.py 非 public-interfaces.txt 列出文件 → 复用 opt-wechat-main-1783130541 worktree）。opt-worktree.sh commit 标准流被 cp-guard 阻断（9 commit stacked 未人工 merge，main HEAD c0534bd 与 wt 07afce9 分歧，且方向 verifier-rename 触发新 wt）→ 走 L639/case-104 sanctioned direct-edit-wt-fallback：直编 wt 副本 + wt 内 git commit + push。",
+  "files_changed": ["script-verifier/verifier.py"],
+  "worktree": "opt-wechat-main-1783130541",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "wt 内 commit 28652b3: '1 file changed, 23 insertions(+), 25 deletions(-)'",
+    "push 成功: '07afce9..28652b3  auto/opt-wechat-main-1783130541 -> auto/opt-wechat-main-1783130541' (9th stacked commit)",
+    "origin 远端 Code Review 链接回显 (code.alibaba-inc.com/qunbu/wechat/codereview/new?to=auto/opt-wechat-main-1783130541)",
+    "单元烟测 PASS: finalize_retry_report(PASS report).status=='PASSED'; retries/retry_history 字段被 pop 不臆造",
+    "单元烟测 FAIL: finalize_retry_report(FAIL report).status=='FAILED_AFTER_RETRIES' + recommendation 存在",
+    "单元烟测 empty: finalize_retry_report({})['overall']=='ERROR'",
+    "端到端 retry CLI: `python3 verifier.py retry /tmp/.../report.json --max-retries 1` 输出 '[STOP] 已达最大重试次数 (1)' + 'status=FAILED_AFTER_RETRIES'；写回文件 status=FAILED_AFTER_RETRIES retries=1 hist_len=2（预置 1 条 + 当前 append 1 条）",
+    "grep 确认 status 串无 gate/pipeline 下游消费（仅同 retry 命令 print 消费），改 status 串格式安全"
+  ],
+  "next_suggestion": "14/16 dispatched (9 commit stacked: 4ba2fc6/1092685/3b77d0a/1924fc5/4c38669/ef2c1ca/73599c0/07afce9/28652b3)。2 未派生 pending: WM-PIP-03 (pipeline.py:348-354 cmd_tool 冗余 dangerous-token 过滤，moot 因无 shell，route-fix) + WM-QQ-02 (qq_push.py 跨项目 /opt/wanxia/.env 默认值迁移，direction-shift 触发新 wt)。下轮建议派 WM-PIP-03（虽 moot 但清掉冗余过滤避免误导，最小 1 文件 route-fix）；或派 WM-QQ-02 direction-shift（更高价值：解耦 wechat 与 wanxia 部署，但需新 wt + 改默认值 + fallback 逻辑，工作量略大）。⚠ 强烈建议人工 merge opt-wechat-main-1783130541（9 commit stacked，将持续至 11）经 sanctioned squash；merge 后 audit-cycle-state status=cycle-complete → 触发下一未深审项目全量审计。3 条 rejected-archive 历史模式提示：久不 merge 会触发 drift-repair 归档，浪费已派 fix。",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "script-verifier/verifier.py",
+      "line": 307,
+      "severity": "medium",
+      "finding": "WM-VER-03: merge_retry_report([report]) 永远只传单元素列表，'合并多次尝试'名不副实；retry 流程覆盖写回报告文件致前序完整 attempt 报告丢失，函数内部从单元素 attempts 重建 retry_history 是误导性死代码（被调用方 merged['_retry_history']=history 立即覆写）。",
+      "remediation": "重命名 finalize_retry_report + 改单 report 签名 + 诚实文档（只对最近一次尝试打终态标签，多尝试摘要历史由调用方写回 _retry_history）。status 串简化为 PASSED/FAILED_AFTER_RETRIES（仅 retry 命令 print 消费，无 gate grep）。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-001",
+  "audit_depth": "deep",
+  "_dispatch_method": "direct-edit-wt-fallback (opt-worktree.sh L639/case-104 sanctioned; cp-guard blocked standard flow due to 9 unmerged stacked commits + direction verifier-rename triggered new wt)",
+  "_stack_position": "9th stacked commit (07afce9..28652b3)",
+  "_commit": "28652b3",
+  "_merge_state": "pushed-awaiting-human-merge"
+}

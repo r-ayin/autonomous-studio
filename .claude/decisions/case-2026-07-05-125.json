@@ -1,0 +1,47 @@
+{
+  "case_id": "case-2026-07-05-125",
+  "agent_id": "ralph-autonomous-engine",
+  "timestamp": "2026-07-05T20:25:00+08:00",
+  "project": "x-tool",
+  "work_unit": "派生 fix: OMNICS-LOG-01 冗长日志泄露 LLM 响应/axios 错误体/PDD DOM outerHTML → 裁剪+脱敏 (audit-2026-07-05-013 第11优先级 route-fix, 末位派发)",
+  "situation": "audit-2026-07-05-013 (x-tool/聚合ai客服开发 omnics-client Electron deep audit) 16 findings 中 OMNICS-LOG-01 (severity low, priority 11, 末位) 指出 XiaoHongShuAdapter.ts:106 JSON.stringify(response.data) 把 LLM 完整响应、:160 JSON.stringify(error.response?.data) 把 axios 错误响应体 (部分 provider 回显请求头/体含 apiKey) 全量打日志; pdd.ts:68 node.outerHTML 把 PDD 页面节点 (含买家消息/订单结构) 全量打 app:log. 此前 10 个 route-fix (API-01/SIDECAR-01/LLM-01/LLM-02/KB-01/PRELOAD-01/CONFIG-01/STORE-01/DB-01/INJECT-01) 已堆叠 opt-omnics-1783246236 分支待人工 merge (x-tool 外部 fork push 403 precedent), 本轮派生最后一个未派发 fix OMNICS-LOG-01. XiaoHongShuAdapter.ts 已被 case-117 (LLM-01 187afb2) + case-118 (LLM-02 8fdbff3) 在 stack 内修改 → opt-worktree cp-guard 会因 worktree 文件≠main HEAD 误判 skip; pdd.ts 虽未被前序 stacked commit 改, 但本轮回调直编 worktree 后 worktree 文件也≠main HEAD → cp-guard 同样 skip. 两文件均 cp-guard skip → opt-worktree.sh commit 会 copied=0 abort, 故采用 case-118/120/124 precedent 的 direct-worktree-commit 方法 (直编 worktree + git add/commit, case-104 sanctioned escape hatch).",
+  "action": "XiaoHongShuAdapter.ts 新增两个 private helper: (1) summarizeForLog(data, max=80) — 把任意 data JSON.stringify 后返回 'Len: {length}, Preview: {前 max 字符}' (string 类型直接用, JSON.stringify 失败回 String()); (2) maskSecrets(text) — 正则遮蔽 sk-xxx / Bearer xxx / x-api-key:xxx / api_key:xxx 四类凭证模式为 ***. [AI Response] 日志 (line 106) 由 JSON.stringify(response.data) 全量改为 'Status: {s}, Len: {n}, Preview: {前 80 字符 mask}'. LLM call failed 错误日志 (line 160) 由 JSON.stringify(error.response?.data) 全量改为 'Status: {s}, Len: {n}, Preview: {前 200 字符 mask}' (错误体给更长 200 字符因含 provider 错误诊断信息有用, 仍 mask 凭证). pdd.ts [PDD Structure] FOUND TARGET (line 68) 由 node.outerHTML 全量改为 '<{tag} class=\"{cls}\"> Preview: \"{前 50 字符 outerHTML}\"' (className 单独取出, outerHTML 截前 50 字符去换行). 行为不变, 仅日志降噪+脱敏, 不影响 AI 回复逻辑/DOM 观测逻辑.",
+  "files_changed": [
+    "聚合ai客服开发/src/main/core/adapters/XiaoHongShuAdapter.ts",
+    "聚合ai客服开发/src/preload/platforms/pdd.ts"
+  ],
+  "worktree": "opt-omnics-1783246236 (复用, route-fix, branch auto/opt-omnics-1783246236, stacked on 321838d case-124 OMNICS-CONFIG-01)",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "git commit ed0f0c2 on auto/opt-omnics-1783246236 (2 files changed, 29 insertions(+), 4 deletions(-)). git log --oneline -3 确认 ed0f0c2 stack on 321838d (case-124) on 19dfc61 (case-123) — 11-commit stack FF-clean base=85bd9e1=master. git push origin auto/opt-omnics-1783246236 → 403 'git push is not allowed' (x-tool 外部 fork r-ayin/x-tool, 同 audit-008/010/011/012 + audit-013 前 10 fix precedent — 11-commit stack 完整保留 disk 待人工 merge). 新增 summarizeForLog/maskSecrets 为 private 方法, 无新依赖, 不改公共接口. 无本地 tsc (聚合ai客服开发 无 node_modules), 视觉校验 TS 语法自洽 (template literal + optional chaining on HTMLElement.outerHTML 在 instanceof HTMLElement narrow 后安全).",
+  "next_suggestion": "下轮: audit-013 全 11 route-fix 已 dispatched (case-115..125), 全 _awaiting_merge=true (x-tool 外部 fork push 403, stack 保留 disk 待人工 merge). 进入 wait 轮: 第 1 轮 scout-scan 瞭望快照 + 记 wait_round (probed master vs branch HEAD, 0/11 merged). 预期 3 连续 wait 轮 0 merged → deadlock-archive (同 audit-005/006/007/008/010/011/012 precedent) → cycle-complete → 触发下一轮全量审计. 全量审计候选 (从未深审): 聚合ai客服开发 2987py / wanxia 500节点 / xia 499节点 — 优先 2987py (客服相关 Python 后端, 攻击面大). 已审不重审: x-tool monorepo (audit-016/008/013) / wechat-main / personal-assistant / sunset-prediction / shizi / autonomous-engine / oneday-design / kaoqin / 1BfrYn9G / quanzhan / agentfw / fusion-server / fa_agent / pc_agent / agent-dashboard / huiyis / stagehand / browser-use / dingtalk-auto.",
+  "audit_type": "security-review",
+  "audit_findings": [
+    {
+      "file": "聚合ai客服开发/src/main/core/adapters/XiaoHongShuAdapter.ts",
+      "line": 106,
+      "severity": "low",
+      "finding": "OMNICS-LOG-01: [AI Response] 日志 JSON.stringify(response.data) 把 LLM 完整响应 (含生成话术/商品检索结果/可能的 PII) 全量写日志文件",
+      "remediation": "summarizeForLog 改记 Len + 前 80 字符 Preview, maskSecrets 遮蔽凭证模式",
+      "kind": "route-fix"
+    },
+    {
+      "file": "聚合ai客服开发/src/main/core/adapters/XiaoHongShuAdapter.ts",
+      "line": 160,
+      "severity": "low",
+      "finding": "OMNICS-LOG-01: LLM call failed 错误日志 JSON.stringify(error.response?.data) 把 axios 错误响应体全量打日志 — 部分 provider (如 open.bigmodel.cn/Anthropic) 在 4xx 错误体回显请求头/请求体, 含 Authorization Bearer apiKey / x-api-key",
+      "remediation": "summarizeForLog(error.response?.data, 200) 改记 Len + 前 200 字符 Preview + maskSecrets 遮蔽 sk-/Bearer/x-api-key/api_key",
+      "kind": "route-fix"
+    },
+    {
+      "file": "聚合ai客服开发/src/preload/platforms/pdd.ts",
+      "line": 68,
+      "severity": "low",
+      "finding": "OMNICS-LOG-01: [PDD Structure] FOUND TARGET 日志 node.outerHTML 全量打 app:log — PDD 页面节点 outerHTML 含买家消息文本/订单结构/商品信息, 全量进日志文件泄露用户数据",
+      "remediation": "改记 <tag class=cls> + outerHTML 前 50 字符 Preview, 不全量 dump",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-013",
+  "audit_depth": "shallow"
+}

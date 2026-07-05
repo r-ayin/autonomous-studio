@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-05-083",
+  "agent_id": "ralph-wiggum-autonomous-studio",
+  "timestamp": "2026-07-05T13:20:46+08:00",
+  "project": "x-tool",
+  "work_unit": "派生 PA-H-001 fix → 调查后 disproven，rejected（false positive）",
+  "situation": "audit-cycle-state.status=fix-in-progress (audit-2026-07-05-010 pachong-master deep audit 10 derived route-fix 全 pending)。本轮按派生路径取 priority=1 的 PA-H-001 (pipeline/ai_ranker.py:114, AI_PROMPT.format(raw_text) 含{} 致 KeyError 被 score_worker:74 except 静默吞 → AI 精排失效)。读 audit-010 report + ai_ranker.py 全文确认 finding 描述后，准备按 remediation 改 str.format→string.Template.safe_substitute。",
+  "action": "动手前先验证 bug 真实性：从 git HEAD 取原始 ai_ranker.py，stub 掉 openai/structlog，exec 出原始 AI_PROMPT 模板（含 {title}..{raw_text} 占位符 + 5 处 {{...}} 转义 JSON 示例），对 9 组对抗性 raw_text 值跑原始 .format(title=,purchaser=,budget=,purchase_method=,deadline_time=,qualification_text=,raw_text=) 调用：[ '{\"a\":1}' / 'function f(){ return 1; }' / 'price { unknown' / 'css{.a{color:red}}' / '{title}' / '{0}' / '{1}' / '{{not_escaped_in_value}}' / 25 个单括号 placeholder-shaped 连缀 ]。结果：9/9 全 0 raise，且 JSON 示例仍正确渲染为单括号 {\"recommend_level\":...}。证明 PA-H-001 的前提（'str.format 把 raw_text 中任意 {} 当占位符替换 → KeyError'）在事实上错误：str.format 是单遍扫描模板，字段值插入后不重扫，raw_text 值内的 {} 原样保留不触发占位符查找。原 .format 调用对所有 raw_text 输入都不抛、AI 正常被调用、无静默吞错。本想按 remediation 改 safe_substitute，但改后输出与原 format 逐字节相同（{{→{ 占位符→值，safe_substitute 同样产单括号+值）= 纯 refactor 无行为变化，命中 autonomous-constraints.md 自指 churn 禁令（'仅含注释/常量/refactor 的 opt-worktree 提交'）。遂 git checkout HEAD -- ai_ranker.py 回滚编辑，不派生 fix，PA-H-001 标 rejected(false-positive)。",
+  "files_changed": [],
+  "worktree": null,
+  "direction": "route-fix(rejected)",
+  "outcome": "succeeded",
+  "outcome_evidence": "(1) git status pachong-master/pipeline/ai_ranker.py 干净（编辑已回滚，未进任何 worktree/commit，无 churn）。(2) 验证脚本输出：'format raised on 0/9 adversarial raw_text values' + 'CONCLUSION: PA-H-001 bug is FALSE POSITIVE — str.format never re-parses substituted values'，9 组含 JSON/JS块/单括号/嵌套括号/placeholder-shaped/positional-shaped/doubled 全 0 raise，且 assert '{\"recommend_level\":\"直接投\",\"score\":92}' in p 通过（JSON 示例渲染正确）。(3) Python 语义复核：string.Formatter.vformat 单遍解析模板收集 literal+field replacement，field 值直接拼入输出，不再 scan → 值内 {} 不可能是占位符。PA-H-01 finding 前提事实错误。(4) audit-cycle-state.json derived_fixes[PA-H-001].status pending→rejected、fix_case_id=case-2026-07-05-083、pending_count 10→9，json.load 校验通过。本 case 无 worktree/commit（disproof 不需要代码变更，恰恰避免 churn）。",
+  "next_suggestion": "下轮 status 仍 fix-in-progress (pending_count=9) → 派生 PA-H-002 (priority 2, pipeline/notifier.py:106, _render_html f-string 无 html.escape 存储型 XSS — 此 finding 真实可复现，detail_url/title/purchaser 直接拼 <a href>/<td>) 为最小 route-fix case 走 opt-worktree（pachong 不在 public-interfaces.txt → 复用 opt-pachong-* worktree）。继而 PA-M-001 (crawl_scheduler.py:63 config_dir NameError — 真实 NameError 可复现)。注：PA-H-001 的 false-positive 提示 audit-010 个别 finding 推理有误，但 PA-H-002/PA-M-001 等其余 9 条 file:line+evidence 仍独立可验，照常派生。全 10 (现 1 rejected + 9 pending) merged|rejected 后 cycle-complete 触发下一轮全量审计。",
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-05-010",
+  "audit_depth": "shallow"
+}

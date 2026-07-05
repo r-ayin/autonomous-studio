@@ -1,0 +1,39 @@
+{
+  "case_id": "case-2026-07-05-100",
+  "agent_id": "ralph-autonomous",
+  "timestamp": "2026-07-05T15:51:58+08:00",
+  "project": "x-tool/AB system/python-agent-hub",
+  "work_unit": "派生 audit-2026-07-05-011 PAH-L-001: BrowserManager.initialize async 初始化竞态修复（asyncio.Lock double-checked locking）",
+  "situation": "audit-cycle-state.json status=fix-in-progress, current_audit_id=audit-2026-07-05-011（x-tool python-agent-hub 深度审计）。derived_fixes 7 条：case-095~099（PAH-H-001/H-002/M-001/M-002/M-003）已派生并 commit 进各自 worktree，均因 x-tool fork origin push 403 标 _awaiting_merge=true 待人工 merge；case-100（PAH-L-001 BrowserManager 竞态）与 case-101（PAH-L-002 /invoke 异常泄露）未派生。本轮派生 case-100。PAH-L-001：BrowserManager 单例 initialize() 检 `if self._browser is None` 后 `await uc.start()`（耗时起 Chrome，event loop 让出），两个并发 new_context（如同时 invoke 两个爬虫工具）可同时过 None 检查、各起一个 Chrome → 双浏览器泄漏（资源浪费、句柄累积）。new_context 内 `if self._browser is None: await self.initialize()` 二次检查但不解决竞态（两并发都可能 browser 已 None 才进 initialize）。真并发逻辑 bug，命中自指 churn 禁令的'真 bug'例外（file:line + bug 证据已写明）。",
+  "action": "1) Read browser_manager.py L1-119 全文确认竞态点 L52-58 (initialize) 与 L60-74 (new_context 二次检查)。2) Edit：BrowserManager 类加 class attr `_init_lock: Optional[asyncio.Lock] = None`；initialize() 懒初始化锁（`if self._init_lock is None: self._init_lock = asyncio.Lock()`——check→assign 无 await，单线程 event loop 原子安全；__new__ 单例无 __init__，不能在 __init__ 建锁否则每次 BrowserManager() 调用重置锁丢失竞争语义），随后 `async with self._init_lock:` 锁内二次 None 检查（double-checked locking）才 uc.start——前一持锁者可能已建好 browser，避免重复起 Chrome。3) py_compile 通过。4) 隔离并发测试：stub nodriver + 计数 uc.start，5-way asyncio.gather(initialize()) → uc.start 恰 1 次（pre-fix 会 5 次）；第二波 browser 已存在 → 仍 1 次（幂等）；all returned same browser object。5) opt-worktree.sh x-tool commit browser:race-lock，area=browser 新 area → 开新 worktree opt-browser-1783237918（route-fix 新 area，非 direction-shift：x-tool 无 .claude/public-interfaces.txt，browser_manager.py 非公共接口）。6) main 工作区被 opt-worktree 还原至 HEAD clean，fix 仅存 worktree 分支。",
+  "files_changed": [
+    "x-tool/AB system/python-agent-hub/src/agent_hub/tools/browser_manager.py"
+  ],
+  "worktree": "opt-browser-1783237918 (auto/opt-browser-1783237918, base=85bd9e1=x-tool master post opt-pachong-1783233062 merge; 1-commit dc28e9b PAH-L-001 [case-100 本轮]; route-fix 新 area browser → opt-worktree.sh 自动开新 worktree; origin push 走 opt-worktree 内置 push 步骤——x-tool 为 r-ayin 外部 fork，预期 403 同 case-095~099/audit-005~011 precedent，本地 wt+commit 完整保留 disk 待人工 sanctioned squash-merge)",
+  "direction": "browser:race-lock",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "opt-worktree.sh → '↔ 方向分歧（engine → browser，route-fix 新 area），开新 worktree: opt-browser-1783237918' + '✓ 提交到 opt-browser-1783237918  方向=browser:race-lock'",
+    "git -C .opt-worktrees/x-tool/opt-browser-1783237918 log --oneline -1: dc28e9b opt(browser:race-lock): fix(pah-l-001): BrowserManager.initialize async 竞态... (audit-2026-07-05-011 PAH-L-001 / case-2026-07-05-100)",
+    "git diff HEAD~1 --stat: browser_manager.py +20/-9 (1 file, 20 insertions, 9 deletions)",
+    "grep PAH-L-001/_init_lock/async with self._init_lock browser_manager.py → L44/L48/L58/L60/L61/L62 已落",
+    "python3 -m py_compile browser_manager.py → SYNTAX OK",
+    "隔离并发测试（stub nodriver.uc.start 计数）: 5-way asyncio.gather(initialize()) → uc.start invocations: 1（pre-fix 会 5x=bug，post-fix 1x=正确）；all(r is results[0] for r in results) → 返回同一 browser 对象；第二波 3-way initialize()（browser 已存在）→ uc.start 总计仍 1（幂等）✓",
+    "main 工作区: git -C x-tool status --short browser_manager.py → 空（opt-worktree cp+commit+restore 舞步还原 main 至 HEAD clean，改动仅存 worktree 分支）",
+    "branch auto/opt-browser-1783237918 HEAD=dc28e9b (local; origin push 403 外部 fork 不允许 push — 同 case-095~099 + audit-005~011 同模式，worktree+commit 完整保留 disk 待人工 merge)"
+  ],
+  "next_suggestion": "下轮：派生 case-101（PAH-L-002, /invoke error=str(e) 异常泄露，routers/agent.py:63-67，白名单异常返回 str(e) 其余固定 internal error: {type}）——audit-011 最后一条未派生 route-fix。派完 case-101 后 audit-011 的 7 条 derived_fixes 全部 _awaiting_merge=true（待人工 merge x-tool fork），audit-cycle-state.status 维持 fix-in-progress；待用户人工 merge 或 reject 任一分支后逐步推进至 cycle-complete 触发下一次全量审计。注意：x-tool fork origin push 403 是结构性阻塞，7 条 fix 本地 wt+commit 均完整保留 disk，需用户在 sanctioned squash-merge 窗口批量处理或配置可 push 远端。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "x-tool/AB system/python-agent-hub/src/agent_hub/tools/browser_manager.py",
+      "line": "52-58, 60-74",
+      "severity": "low",
+      "finding": "PAH-L-001: BrowserManager.initialize 单例 + 可见性检查无锁。`if self._browser is None: self._browser = await uc.start(...)`——await 让出 event loop 期间另一并发 new_context 可同时过 None 检查、各起一个 Chrome → 双浏览器泄漏（资源浪费、句柄累积）。new_context 内 `if self._browser is None: await self.initialize()` 二次检查不解决竞态（两并发均可能在 browser 仍 None 时进 initialize）。FastAPI async 多路由可并发进入。",
+      "remediation": "已修：加 class attr _init_lock: Optional[asyncio.Lock]=None；initialize 懒初始化锁（check→assign 无 await 原子）后 async with self._init_lock 锁内二次 None 检查（double-checked locking）才 uc.start。懒初始化避 __new__ 单例无 __init__ 的重置陷阱。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-011",
+  "audit_depth": "shallow"
+}

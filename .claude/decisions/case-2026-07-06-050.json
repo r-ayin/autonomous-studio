@@ -1,0 +1,63 @@
+{
+  "case_id": "case-2026-07-06-050",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-06T07:42:30+08:00",
+  "project": "dataworks-dev-assistant",
+  "work_unit": "派生 fix 批量: HTTPAU-01/02/03/04+AUDITT-04 (audit-2026-07-06-005) — bff_client.py 4 LOW findings 合 1 worktree：.env 权限检查 + endpoint URL 校验 + http 警告 + _log 脱敏",
+  "situation": "audit-cycle-state.status=fix-in-progress，audit-2026-07-06-005 派生 21 条 route-fix。HIGH SQLEXE-01 / MEDIUM DATAAN-01+06 / MEDIUM AUDITT-01 / MEDIUM WRITEO-02 已 merged（case-046/047/048/049），剩 16 条全 LOW pending。本轮按 case-049 next_suggestion 取 HTTPAU 批量（4 条同文件 core/bff_client.py，合 1 wt 高效）：HTTPAU-03（.env 凭证文件权限检查，line 89-98）/ HTTPAU-02（BFF_ENDPOINT 无 URL 校验，env/.env 投毒可重定向 token，line 241-258）/ HTTPAU-01（endpoints.json 全 http:// + Referer http://，Bearer token 明文传，line 226/438，内网降 LOW）/ HTTPAU-04+AUDITT-04（_log 完整 request params/data/json_body + response.data 写盘无脱敏，line 394-416，近重复合 1 fix）。4 条同文件 → route-fix 复用 opt-dataworks-1783293099 wt，stack 于 3a26ec7 WRITEO-02 之上。",
+  "action": "1 文件最小改动（route-fix，复用 dataworks area worktree opt-dataworks-1783293099，stack 于 3a26ec7 之上）：skills/dataworks-dev-assistant/core/bff_client.py。(1) HTTPAU-03: 新增 _ensure_env_perms(path) 方法，__init__ 的 .env 加载循环每个 _p 调一次——os.stat 取 mode，若 mode & 0o077（group/world 可读）打印警告 + os.chmod 600 收紧。try/except OSError 容错（文件不存在/无 chmod 权限静默）。(2) HTTPAU-01+02: 新增 _validate_endpoint(ep) 方法（urllib.parse.urlparse），_resolve_endpoint 的 3 个 return 点（BFF_ENDPOINT env / profile.auth.endpoint / endpoints.json BFF_ENV 解析）都经它校验：strip 空白→非空；显式 scheme 必须是 http/https（拦 file:/javascript:/data: 等异型 scheme 投毒）；无 scheme 的 bare host 补 http://；hostname 必须非空（拦 http:// 和 //no-scheme-host）；http:// 警告 token 明文传输（内网可接受，HTTPAU-01 提醒）。非法返回 None → 调用方降级到下一优先级 endpoint。(3) HTTPAU-04+AUDITT-04: 新增模块级 _LOG_SENSITIVE_KEYS frozenset（token/authorization/bff_token/password/secret/cookie/apikey/api_key/accesskey/access_key/sessionid）+ _redact_for_log(obj, depth) 递归方法——dict 敏感键值整体替换 ***REDACTED*** + 嵌套深度 >4 折叠 + 列表 >20 项折叠 + 字符串 >500 字符截断；_log 的 log_entry.request.params/data/json_body 与 response.data 全部经 _redact_for_log 后写盘。response 保留原 4-key 结构（code/data/message/requestId），仅 data 字段脱敏。",
+  "files_changed": [
+    "skills/dataworks-dev-assistant/core/bff_client.py"
+  ],
+  "worktree": "opt-dataworks-1783293099",
+  "direction": "dataworks:bff-client-hardening (route-fix, 复用 dataworks area wt, stack 于 3a26ec7 WRITEO-02 / 7100503 AUDITT-01 / dfca487 DATAAN-01+06 之上)",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "opt-worktree.sh 输出: → 复用同 area worktree (route-fix): opt-dataworks-1783293099；✓ 提交到 opt-dataworks-1783293099 方向=dataworks:bff-client-hardening；[push] 3a26ec7..223c6b1 HEAD -> auto/opt-dataworks-1783293099（origin 远端已同步，Code Review 链接已生成）",
+    "wt HEAD=223c6b12d173a6f2a309f8731dff8d8003975301，分支 auto/opt-dataworks-1783293099",
+    "py_compile / ast.parse 通过（syntax OK）",
+    "redact 单测（stub runtime/pagination/output/audit_log 隔离 BFFClient）：sample={BFF_TOKEN:sk-secret-xyz, Authorization:Bearer abc, name:'x'*600, list:[1,2,3], nested:{password:p,ok:1}} → 输出 BFF_TOKEN/Authorization/password 全 ***REDACTED***；name 截断为 500 chars + '...<+100 chars>'；list/nested 保留结构",
+    "validate_endpoint 单测：'https://bff.dw.alibaba-inc.com'→原值返回；'http://...'→原值返回 + 打印 http 明文警告；'file:///etc/passwd'→None + 警告 scheme 非法(file)；'javascript:alert(1)'→None + 警告 scheme 非法(javascript)；'//no-scheme-host'→None + 警告缺 hostname；'http://'→None + 警告缺 hostname；'bff.dw.alibaba-inc.com'（bare host）→'http://bff.dw.alibaba-inc.com' + http 警告；'' / '   '→None（静默）",
+    "_ensure_env_perms('/tmp/nonexistent') → None（OSError 容错，无崩溃）"
+  ],
+  "next_suggestion": "audit-cycle-state 派生 fix 队列剩 12 条 pending（全 LOW）。建议下轮继续派生「非原子写」族：AUDITT-03（telemetry_upload.py rotate_local 非原子，并发 append 丢数据）+ AUDITT-06（workspace_memory.py _save_yaml 非原子写，崩溃致截断）+ RUNTIM-03（runtime.py save_tool_result session_state.json 非原子写）+ RUNTIM-06（runtime.py save_tool_result 裸 except pass 静默吞错，与 RUNTIM-03 同函数可合 1 wt）——这几条性质同族（原子写 / 静默吞错），可考虑按文件聚合 1-2 wt。或 DATAAN-03/04（duckdb_loader.py _extract_schema f-string 拼 information_schema 应参数化 + /tmp 可预测路径，但 DATAAN-04 已被 case-047 _bonus_mitigated，须先确认是否仍 open）。全 12 pending 派发完 → status cycle-complete → 下轮触发新全量审计（候选 fbi-dev-assistant 19k loc / xia 499 nodes，均未深审）。另：副本漂移未解——live ~/.claude/skills/dataworks-dev-assistant/ 缺 core/audit_log.py 且 bff_client.py 旧 49 行，本 fix 与 case-046/047/048/049 在 live 均 ImportError 或缺失，需重新发布 dist 同步 dev→live，否则审计修复在用户实际环境仍未生效。",
+  "audit_type": "audit-log-instrumentation",
+  "audit_findings": [
+    {
+      "file": "skills/dataworks-dev-assistant/core/bff_client.py",
+      "line": "89-98",
+      "severity": "low",
+      "finding": "HTTPAU-03 (parent audit-2026-07-06-005): .env 凭证文件由用户 `cat >` 创建，继承 umask 常为 0644，group/world 可读 → 同机其他用户可 cat 读 BFF_TOKEN。本 fix 已修：__init__ 加载每个 .env 后调 _ensure_env_perms，mode & 0o077 时 chmod 600 收紧。",
+      "remediation": "_ensure_env_perms(path)：os.stat 取 mode，group/world 可读则打印警告 + os.chmod 0o600；OSError 容错。",
+      "kind": "route-fix"
+    },
+    {
+      "file": "skills/dataworks-dev-assistant/core/bff_client.py",
+      "line": "231-259 (_resolve_endpoint) + 新增 _validate_endpoint",
+      "severity": "low",
+      "finding": "HTTPAU-02 (parent audit-2026-07-06-005): _resolve_endpoint 直接返回 BFF_ENDPOINT/profile endpoint/endpoints.json 值无 URL 校验，env/.env 投毒可把 Bearer token 重定向到 file:/javascript:/data: 等异型 scheme 或空 host 目的地。本 fix 已修：3 个 return 点都经 _validate_endpoint 校验 scheme∈{http,https}+hostname 非空，非法返回 None 降级。",
+      "remediation": "_validate_endpoint(ep)：strip→非空→urlparse→显式 scheme 必须 http/https→无 scheme 补 http://→hostname 必须非空；http:// 警告明文传输。",
+      "kind": "route-fix"
+    },
+    {
+      "file": "skills/dataworks-dev-assistant/core/bff_client.py",
+      "line": "226 / 438",
+      "severity": "low",
+      "finding": "HTTPAU-01 (parent audit-2026-07-06-005): endpoints.json 全 http://、Referer header 用 http://，Bearer token 明文传输（内网环境，降 LOW）。本 fix 已修：_validate_endpoint 对 http:// scheme 打印 stderr 警告提醒明文风险（不强转 https，避免破坏内网 http 服务）。",
+      "remediation": "_validate_endpoint 在 scheme==http 时打印明文传输警告（HTTPAU-01 提醒，非阻塞）。",
+      "kind": "route-fix"
+    },
+    {
+      "file": "skills/dataworks-dev-assistant/core/bff_client.py",
+      "line": "388-416 (_log) + 新增 _redact_for_log + _LOG_SENSITIVE_KEYS",
+      "severity": "low",
+      "finding": "HTTPAU-04+AUDITT-04 (parent audit-2026-07-06-005): _log 把完整 request params/data/json_body + response.data 写盘 dw_bff_calls.log 无脱敏，.log 长期累积，凭证/PII 易外泄。两条 finding 指向同一 _log 方法（近重复），合 1 fix。本 fix 已修：log_entry.request.params/data/json_body 与 response.data 全部经 _redact_for_log 后写盘。",
+      "remediation": "_redact_for_log(obj, depth)：dict 敏感键（token/authorization/secret/password/cookie/apikey 等 10 个）整体 ***REDACTED*** + 深度 >4 折叠 + 列表 >20 折叠 + 字符串 >500 截断；response 保留 4-key 结构仅 data 脱敏。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-005",
+  "audit_depth": "shallow",
+  "_derived_fixes_updated": "audit-cycle-state.derived_fixes 4 条 status pending→merged: HTTPAU-01 / HTTPAU-02 / HTTPAU-03 / HTTPAU-04-AUDITT-04，全部 fix_case_id=null→case-2026-07-06-050, merged_worktree=opt-dataworks-1783293099, merged_commit=223c6b1, merged_at=2026-07-06T07:42:30+08:00; pending_count 16→12",
+  "_design_rationale": "4 条 LOW finding 同文件 core/bff_client.py，合 1 wt 1 commit 高效（避免 4 个 1-line 分支 churn，符合 autonomous-constraints.md 反 churn 纪律）。_validate_endpoint 不强转 http→https：内网 endpoints.json 全 http、强转 https 会破坏所有内网服务连接，故只警告不阻断（与 audit 降 LOW 一致）。_redact_for_log 保留 response 4-key 结构（code/data/message/requestId）仅 data 字段脱敏：保持日志可读性同时拦凭证/PII，code/message/requestId 非敏感。bare host 补 http://：用户常写 BFF_ENDPOINT=bff.dw.alibaba-inc.com 不带 scheme，原代码直接拼接 f'{ep}{path}' 会产出 'bff.dw.alibaba-inc.com/path' 无 scheme 无法发请求——补 http:// 既校验又修正历史用法。live 副本缺 audit_log.py 的发布漂移问题不属代码 fix，记 next_suggestion。"
+}

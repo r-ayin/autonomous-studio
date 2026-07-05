@@ -1,0 +1,31 @@
+{
+  "case_id": "case-2026-07-06-026",
+  "agent_id": "ralph-wiggum-glm-5.2",
+  "timestamp": "2026-07-06T16:10:00+08:00",
+  "project": "x-tool/xia",
+  "work_unit": "全量深度审计轮（audit-only）：审 x-tool/xia 山夏 chat 子系统（chat-worker.js CF Worker 179 LOC + chat-widget.js 前端 308 LOC），产出独立 deep audit report + 7 actionable findings 登记 audit-cycle-state derived_fixes。",
+  "situation": "audit-cycle-state.status=cycle-complete（audit-2026-07-06-002 personal-assistant 12/12 derived fixes 全 dispatched+pushed）→ 本轮走全量审计路径。所有 workspace 顶级项目均已 ≥1 次深审，按「项目太大审不完可分段续审 module」协议选从未单独成 finding 的 x-tool/xia 山夏 chat 子系统（鉴权/并发/D1/DeepSeek 出站边界，最高 ROI 面）。",
+  "action": "直接深读 chat-worker.js 全 179 行 + chat-widget.js 全 308 行 + package.json（3 文件全文）。逐行追信任边界：客户端→Worker token 门→DeepSeek Bearer 出站→D1 写。挖出 7 actionable route-fix + 1 info：(1) XIA-CHAT-01 HIGH CHAT_TOKEN 明文硬编码 chat-widget.js:11 (b6227973c87099bb34cdb9848ff1300cd78b2ed327bab0b7) ship 给所有访客 → worker :95 token 门形同虚设，任何人可 drain DeepSeek 预算/占满 3 并发槽/向 D1 注任意行；(2) XIA-CHAT-02 MED disconnect sendBeacon 无法设自定义头 → worker :95 token 401 拦在 :104 disconnect 分支之前 → 槽释放路径生产不可达 → 3-session 槽泄漏至 120s 超时 → 合法客户撞 503 busy（可用性 bug，确认证据：worker POST 处理顺序 line 95 鉴权先于 line 104 disconnect 分支 + sendBeacon 无 header API）；(3) XIA-CHAT-03 MED 客户端全控 messages 数组只校验 Array.isArray 不校验 role/长度 → 提示注入(role:'system') + 预算 drain；(4) XIA-CHAT-04 MED assistant 回复写 D1 fire-and-forget .catch(()=>{}) 无 ctx.waitUntil → 流取消时静默丢消息+吞错；(5) XIA-CHAT-05 LOW admin token 可经 URL query ?token= 传入 → CF 边缘日志/Referer 泄漏；(6) XIA-CHAT-06 LOW token 比较非常量时间 !== → ADMIN_TOKEN 定时侧信道；(7) XIA-CHAT-07 LOW admin GET 端点不调 checkRateLimit → 无限次猜 token；(8) XIA-CHAT-08 INFO CORS 放行任意 localhost 端口（dev 便利可接受，不修）。全 7 条 route-fix（chat-worker.js + chat-widget.js 两文件内最小改动），无 structural debt。写 report .claude/audits/audit-2026-07-06-003.md。重置 audit-cycle-state.json derived_fixes 为 7 pending，status→fix-in-progress，pending_count=7。本轮不派生 fix（协议：审计轮产 report+登记，下轮起逐个派生）。",
+  "files_changed": [
+    ".claude/audits/audit-2026-07-06-003.md (new, audit report)",
+    ".claude/audit-cycle-state.json (current_audit_* → audit-2026-07-06-003, derived_fixes 重置 7 pending, status cycle-complete→fix-in-progress, pending_count 0→7, _last_audit_* / next_audit_trigger_reason 更新)"
+  ],
+  "worktree": null,
+  "direction": "none (audit-only round, no code change, no worktree)",
+  "outcome": "succeeded",
+  "outcome_evidence": "(1) Report 落盘 .claude/audits/audit-2026-07-06-003.md (Write 成功，含 8 findings 全字段 file/line/severity/impact/remediation_sketch/kind)；(2) audit-cycle-state.json python3 json.load 校验通过：status=fix-in-progress, pending_count=7, current_audit_id=audit-2026-07-06-003, derived_fixes 数组 len=7 全 status=pending (XIA-CHAT-01..07)，旧 audit-002 12 merged 条目已替换归档（history 数组仍记 audit-002 summary 不丢）；(3) 7 finding 均有 file:line 证据引用（chat-widget.js:11 / chat-worker.js:95,104,121-135,163-166,73,74,71-89），非散文；(4) XIA-CHAT-02 顺序 bug 经 sed -n '91,108p' chat-worker.js 实证 token 鉴权(line 95) 先于 disconnect 分支(line 104)。",
+  "next_suggestion": "下轮 status=fix-in-progress → 派生 XIA-CHAT-01 (HIGH, 2 文件: chat-widget.js 删 CHAT_TOKEN 常量+send() headers 删 X-Chat-Token / chat-worker.js 删 :93-95 token 鉴权段，POST 靠 IP 限速+3-session 并发门+max_tokens:500 兜底) 走 opt-worktree route-fix 通道（opt-worktree.sh 自动判 direction_kind，两文件若不在 public-interfaces.txt 则复用同 area wt）。之后按 XIA-CHAT-02(前置 disconnect)/03(filter msgs)/04(ctx.waitUntil) 堆叠 chat-worker.js 同 wt，XIA-CHAT-05/06/07 堆叠第二栈。全 7 merged|rejected 后 status→cycle-complete 触发下轮新审计（候选：x-tool/dongxiao 前端 watercolor-fx 1391 LOC 或 x-tool/tools/termux-listener.py，均未审）。",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {"file": "x-tool/xia/山夏/chat-widget.js", "line": 11, "severity": "high", "finding": "CHAT_TOKEN 明文硬编码 (b6227973c87099bb34cdb9848ff1300cd78b2ed327bab0b7) ship 前端 JS → worker :95 token 门形同虚设，任何人可 drain DeepSeek 预算/占满并发槽/注 D1", "remediation": "widget 删 CHAT_TOKEN 常量 + send() headers 删 X-Chat-Token；worker 删 :93-95 token 鉴权段，靠 IP 限速+3-session 并发+max_tokens:500 兜底", "kind": "route-fix"},
+    {"file": "x-tool/xia/山夏/chat-worker.js", "line": 95, "severity": "medium", "finding": "disconnect sendBeacon 无法设 X-Chat-Token 头 → :95 token 401 拦在 :104 disconnect 分支之前 → 槽释放路径生产不可达 → 3-session 槽泄漏至 120s 超时 → 合法客户撞 503 busy", "remediation": "body.json() 解析 + disconnect 分支前置到 token 鉴权之前（disconnect 无副作用不需鉴权）", "kind": "route-fix"},
+    {"file": "x-tool/xia/山夏/chat-worker.js", "line": 121, "severity": "medium", "finding": "客户端全控 messages 数组只校验 Array.isArray 不校验 role/内容长度 → 提示注入(role:'system') + DeepSeek 预算 drain(10×100KB 输入)", "remediation": "filter(role∈{user,assistant} && typeof content==='string' && length<=2000).slice(-10)，剥除客户端 system/任意 role", "kind": "route-fix"},
+    {"file": "x-tool/xia/山夏/chat-worker.js", "line": 163, "severity": "medium", "finding": "assistant 回复写 D1 fire-and-forget .catch(()=>{}) 无 ctx.waitUntil → 流被取消时静默丢消息 + 吞错（用户消息 await 写但 assistant 回复可能丢 → D1 对话残缺）", "remediation": "ctx.waitUntil(Promise.all([db.prepare(...).run(), db.prepare(...).run()]).catch(e=>console.error('D1 assistant write:',e)))（ctx 已是 fetch 第三参数）", "kind": "route-fix"},
+    {"file": "x-tool/xia/山夏/chat-worker.js", "line": 73, "severity": "low", "finding": "admin token 可经 URL query ?token= 传入 → CF 边缘访问日志/浏览器历史/Referer 泄漏", "remediation": "删 || url.searchParams.get('token') 分支，强制 admin token 只走 X-Admin-Token 头", "kind": "route-fix"},
+    {"file": "x-tool/xia/山夏/chat-worker.js", "line": 74, "severity": "low", "finding": "token 比较非常量时间 (!==) → 定时侧信道（CHAT_TOKEN 已公开无意义，但 ADMIN_TOKEN 仍是真密钥，远程定时逐字节探测）", "remediation": "引入常量时间比较 ctEq(a,b) 替换 :74 与 :95 两处 !==", "kind": "route-fix"},
+    {"file": "x-tool/xia/山夏/chat-worker.js", "line": 71, "severity": "low", "finding": "admin GET 端点不调 checkRateLimit → 无限次猜 ADMIN_TOKEN，叠加 XIA-CHAT-06 侧信道放大", "remediation": "GET 路径开头加 if(!checkRateLimit(ip)) return json({error:'slow down'},429,corsOrigin) 复用既有限速", "kind": "route-fix"},
+    {"file": "x-tool/xia/山夏/chat-worker.js", "line": 26, "severity": "info", "finding": "CORS isLocalhost 放行任意 localhost 端口 + 反射 origin → dev 便利，生产无风险（token 已公开此路冗余）", "remediation": "不修（dev 便利合理，记 info 备查）", "kind": "route-fix"}
+  ],
+  "audit_id": "audit-2026-07-06-003",
+  "audit_depth": "deep"
+}

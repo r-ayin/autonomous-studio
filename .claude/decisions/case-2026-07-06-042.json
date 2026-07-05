@@ -1,0 +1,30 @@
+{
+  "case_id": "case-2026-07-06-042",
+  "agent_id": "ralph-autonomous-studio",
+  "timestamp": "2026-07-06T21:50:00+08:00",
+  "project": "x-tool/一件重启脚本/remote_control",
+  "work_unit": "RC-ROBUST-01 derived fix: 4 个 POST 端点 try 之外 json.loads 致畸形 JSON 连接断，集中 _parse_json_body + 兜底 400",
+  "situation": "audit-2026-07-06-004 (x-tool/一件重启脚本/remote_control 深审) 派生的 pending route-fix 第 12 优先级 (LOW)。/restart /update_config /add_preset /delete_preset 四 POST 端点在 try 块之外直接 int(self.headers['Content-Length']) + json.loads(post_data)：缺 Content-Length→KeyError、非整数→ValueError、畸形/截断 JSON→JSONDecodeError，异常未捕获致 handler 抛出、连接断开、无 400 响应（客户端只见连接断）。audit-cycle-state fix-in-progress，pending_count=2 (RC-ROBUST-01/RC-PROXY-01)，本条 priority 12 优先于 RC-PROXY-01 (13)。",
+  "action": "stack 在既有 opt-remote-control-1783283520 worktree (HEAD=77c8437=case-041 RC-ATOMIC-01) 之上直编 server.py。新增 _parse_json_body() 方法（save_presets 之后、do_GET 之前）：Content-Length 用 self.headers.get('Content-Length',0) 防 KeyError；int()/self.rfile.read()/json.loads()/decode() 四步包 try/except (KeyError|ValueError|UnicodeDecodeError)；失败时 send_response(400)+json {\"success\":false,\"message\":\"bad request\"}+end_headers+wfile.write，返回 (None, True)；成功返回 (data, False)。4 处 inline 3 行解析块（/restart /update_config /add_preset /delete_preset）统一替换为 data,bad=self._parse_json_body();if bad:return。走 case-104 直编 wt+wt 内 commit 通道（server.py 已在 wt 分叉，opt-worktree.sh cp-guard 跳过，per [[opt-worktree-stack-diverged-escape-hatch]]）。py_compile OK (line 788 SyntaxWarning 为 pre-existing 既存 \\o escape 'E:\\openclaw' 非本 commit)。行为测试 5 case ALL_PASS。origin push 403 (外部 fork r-ayin/x-tool, [[x-tool-external-fork-push-403]] precedent, 预期) → disk+local-ref 保留待人工 merge。",
+  "files_changed": [
+    "一件重启脚本/remote_control/server.py"
+  ],
+  "worktree": "opt-remote-control-1783283520",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "wt commit 665eeda (stacked on 77c8437, base=85bd9e1=master, `git merge-base --is-ancestor 85bd9e1 HEAD` → FF_CLEAN_OK). diff: 1 file changed, 34 insertions(+), 12 deletions(-) — 仅 server.py。`python3 -m py_compile` → PY_COMPILE_OK (line 788 \\o SyntaxWarning pre-existing 非 commit). 行为测试 (StubHandler 直调 _parse_json_body): CASE1 valid JSON {\"pin\":\"1234\",\"base_url\":\"\"} Content-Length=28 → (data={'pin':'1234','base_url':''}, bad=False, no 400) PASS; CASE2 malformed '{bad}' → (None,True,400,b'{\"message\":\"bad request\",\"success\":false}') PASS; CASE3 missing Content-Length → (None,True,400) PASS; CASE4 non-integer 'abc' → (None,True,400) PASS; CASE5 truncated (CL=5 vs 28-byte body) → (None,True,400) PASS. ALL_ASSERTS_PASS (exit 0). `git push origin auto/opt-remote-control-1783283520` → 403 'git push is not allowed' (r-ayin/x-tool external fork, 预期). disk+local-ref HEAD=665eeda 完整保留待人工 merge.",
+  "next_suggestion": "下轮派生 RC-PROXY-01 (LOW priority 13, server.py:55-69 download_cloudflared 成功后 HTTPS_PROXY 残留污染 cloudflared tunnel/Bot 子进程 → try/finally 恢复原 env)，stack 同 opt-remote-control-1783283520 wt (HEAD=665eeda)。派完后 pending_count→0，audit-cycle-state.status→cycle-complete，下轮触发新全量审计 (挑未深审项目)。⚠ 仍提醒 owner: opt-remote-control-1783283520 (10 commit stack 550baaf..665eeda) + 其他 opt-* wt 待人工 merge to master；须轮换 yunyi.cfd 两 key + gateway token 4ee4af6a.. (历史 push 外部 fork 仍含)；须 set REMOTE_CONTROL_PIN env；structural-debt.md SD-RC-01 跨文件 E:\\openclaw 路径重构值得 triage。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "一件重启脚本/remote_control/server.py",
+      "line": "604-607,625-628,686-689,724-727 (wt 坐标, do_POST 四分支 inline 解析块)",
+      "severity": "low",
+      "finding": "RC-ROBUST-01: /restart /update_config /add_preset /delete_preset 四 POST 端点在 try 块之外直接 int(self.headers['Content-Length']) + self.rfile.read(content_length) + json.loads(post_data.decode('utf-8'))。缺 Content-Length header → KeyError；非整数 → ValueError；畸形/截断 JSON → json.JSONDecodeError。异常未捕获，BaseHTTPRequestHandler handler 抛出致连接断开，客户端无 400 响应只见 EOF。/update_config 与 /delete_preset 后续有 try 但只覆盖业务逻辑不覆盖解析；/restart /add_preset 全程无 try。",
+      "remediation": "新增 _parse_json_body() 集中解析+兜底：headers.get 防 KeyError，int/read/loads/decode 包 try/except (KeyError|ValueError|UnicodeDecodeError)，失败 send_response(400) + json {\"success\":false,\"message\":\"bad request\"}，返回 (data,bad)。4 处 inline 块替换为 data,bad=self._parse_json_body();if bad:return。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-004",
+  "audit_depth": "shallow"
+}

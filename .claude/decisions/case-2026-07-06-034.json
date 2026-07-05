@@ -1,0 +1,36 @@
+{
+  "case_id": "case-2026-07-06-034",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-06T20:55:00+08:00",
+  "project": "x-tool/一件重启脚本/remote_control",
+  "work_unit": "派生 audit-2026-07-06-004 RC-SEC-02 (HIGH): GET / 无鉴权回显 live apiKey — 不在初始 HTML 嵌入 apiKey/primary_model/base_url，闭合『一次 GET 即得 live key』通道",
+  "situation": "audit-cycle-state status=fix-in-progress, audit-2026-07-06-004 derived 15 route-fix, 2 已 merged (RC-SEC-01+RC-LEAK-01 via case-033 wt=opt-remote-control-1783283520 HEAD=550baaf). 本轮取 priority=2 RC-SEC-02 (HIGH) 派生。server.py do_GET('/') 全程无 PIN 校验，原把 clawdbot.json 的 primary_model/base_url/apiKey 直接填入 <input value=\"{...}\">；preset 列表 safe_json=json.dumps(p) 原样含 api_key 嵌入 onclick 属性 → curl https://xxx.trycloudflare.com/ 一次即得 live apiKey (AH7ZKSSM-...). 比 RC-SEC-01 (git 入库泄漏) 更直接的公网泄漏通道。",
+  "action": "在既有 opt-remote-control-1783283520 worktree 上 stack 第二个 commit (case-104 直编 wt+wt 内 commit 通道，cp-guard 对已分叉文件跳过 cmd_commit 的拷贝舞步)。三处改动同文件 server.py:\n1. line 444/448/452: <input value=\"{primary_model}\">/value=\"{base_url}\">/value=\"{api_key}\"> → value=\"\" (不再把 live 配置回显进初始 HTML)\n2. line 203 preset 循环: safe_json 改为 p_public = {k:v for k,v in p.items() if k!='api_key'} 的 json.dumps — preset 列表对任何命中隧道 URL 的访客可见，原 safe_json 含完整 api_key，是 input value 之外的第二条泄漏通道，一并闭合才算真止住『一次 GET 即得 live apiKey』\n3. line 306 applyPreset JS: document.getElementById('api_key').value = preset.api_key → preset.api_key || '' (preset 剔除 api_key 后守卫 undefined，避免写入字面 'undefined')\n回归安全: 后端 /update_config (server.py:515-525) 已有 if new_primary/if new_base_url/if new_api_key 守卫 + 整体在 if new_primary 块内，空值不覆盖既有 clawdbot.json 配置; owner 仍可手动输入或 applyPreset 填 primary_model/base_url 后手输 api_key 保存。primary_model/base_url/api_key 计算变量 (line 182-196) 现未在 f-string 渲染但保留 (harmless, 后续 commit 可清)。无新增 endpoint, 无 JS 重构, 1 文件 route-fix。",
+  "files_changed": ["一件重启脚本/remote_control/server.py"],
+  "worktree": "opt-remote-control-1783283520",
+  "direction": "remote-control:sec",
+  "outcome": "succeeded",
+  "outcome_evidence": "wt commit f3bcff2 stacked on 550baaf (base=85bd9e1=master), 1 file changed 8 insertions 5 deletions. `git -C <wt> log --oneline origin/master..HEAD` 显示 f3bcff2→550baaf 两 commit 在分支 auto/opt-remote-control-1783283520. python3 ast.parse 通过 (line 624 pre-existing SyntaxWarning E:\\openclaw 非本 commit 引入, RC-PATH-01 structural territory). 功能验证: 模拟 redaction 逻辑跑 presets=[{api_key:AH7ZKSSM-...}, {api_key:ollama}] 渲染, 输出 HTML grep 'AH7ZKSSM' = 0 命中 (real key 已剔除), input value=\"\" 三处. push origin auto/opt-remote-control-1783283520 → 403 'git push is not allowed' (x-tool origin=外部 fork r-ayin/x-tool, [[x-tool-external-fork-push-403]] precedent, 预期) → wt+2-commit stack 完整保留 disk 待人工 merge. 后端空值守卫已确认 (server.py:515,522,524) → 无覆盖回归.",
+  "next_suggestion": "下轮继续派生 audit-2026-07-06-004 priority=3 RC-SEC-03 (HIGH, 硬编码 PIN '1234' + 公网隧道无速率限制/锁定, server.py:26,84-129,714) — 与 RC-CTIME-01 (hmac.compare_digest 替换 4 处 !=) + RC-LOG-01 (删 line 714 print Default PIN) 同文件可 stack 同一 opt-remote-control-1783283520 worktree (现 HEAD=f3bcff2, FF-clean on stack). 全部 15 route-fix 派发+merged|rejected 后 audit-cycle-state.status→cycle-complete 触发下一轮全量审计. x-tool 外部 fork 11 待合并 worktree 全部需人工 merge (push 不可达).",
+  "audit_type": "security-review",
+  "audit_findings": [
+    {
+      "file": "一件重启脚本/remote_control/server.py",
+      "line": "444,448,452",
+      "severity": "high",
+      "finding": "RC-SEC-02: do_GET('/') 无 PIN 校验, <input value=\"{primary_model}\">/value=\"{base_url}\">/value=\"{api_key}\"> 把 clawdbot.json live 配置 (含 apiKey AH7ZKSSM-...) 直接回显进初始 HTML; curl 隧道 URL 一次即得 live key",
+      "remediation": "三处 value=\"\" — 不在初始 HTML 嵌入敏感配置; 后端 /update_config 已有非空守卫不覆盖",
+      "kind": "route-fix"
+    },
+    {
+      "file": "一件重启脚本/remote_control/server.py",
+      "line": "203",
+      "severity": "high",
+      "finding": "RC-SEC-02 第二泄漏通道: preset 循环 safe_json=json.dumps(p) 原样含 api_key 嵌入 <button onclick=\"applyPreset({safe_json})\"> — 与 input value 同属 GET / 无鉴权回显 live apiKey (audit 原证据仅列 input value, 本派生补登 preset 通道, 否则 fix 不闭合 stated impact)",
+      "remediation": "p_public 剔除 api_key 后 json.dumps; applyPreset 加 || '' 守卫 undefined",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-004",
+  "audit_depth": "deep"
+}

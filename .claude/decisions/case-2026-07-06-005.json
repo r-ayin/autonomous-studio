@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-06-005",
+  "agent_id": "ralph-autonomous-engine",
+  "timestamp": "2026-07-06T05:25:00+08:00",
+  "project": "autonomous-studio (runner-exec)",
+  "work_unit": "派生 fix audit-2026-07-05-017 finding RE-PATH-01 — runner-exec/scripts/push.js walkDir 跳过符号链接防本地文件外泄至远程 Runner",
+  "situation": "audit-cycle-state.json current_audit_status=fix-in-progress, audit-2026-07-05-017 (runner-exec/scripts) 派生 7 条 route-fix finding，前 6 条 (RE-CMDI-01/RE-EXEC-02/RE-EXEC-01/RE-MANIFEST-01/RE-SECRET-01/RE-CRED-01) 已 case-2026-07-05-153 + case-2026-07-06-001~004 派发 merged；剩 RE-PATH-01 (pending, low) 是本轮最后一个未派 finding。RE-PATH-01 证据：push.js walkDir 用 fs.readdirSync({withFileTypes:true}) 枚举 localDir，fs.readFileSync 默认跟随符号链接——localDir 内若含指向 /etc/passwd 或 ~/.ssh/id_rsa 的符号链接，readFileSync 读其 target 内容并经 WebSocket 推送至远程 Windows Runner → 本地文件外泄（低概率，需本地可放符号链接，但零成本修）。",
+  "action": "直编 opt-security-1783266296 worktree 的 runner-exec/scripts/push.js（push.js 已因 RE-CMDI-01 escapePSPath 在 wt 分歧，按 [[opt-worktree-stack-diverged-escape-hatch]] memory 走 case-104 直编 wt + wt 内 git commit + push origin 通道，不走 opt-worktree.sh cmd_commit cp-guard——cp-guard 会因 target push.js ≠ main HEAD push.js 跳过）。改 walkDir：在 `if (entry.name.startsWith('.')) continue;` 后加 `if (entry.isSymbolicLink()) continue;`，跳过文件符号链接与目录符号链接（Dirent.isSymbolicLink() 可靠识别链接不论 target 类型）。readFileSync 仅作用于 walkDir 返回集，跳过即封堵外泄面。加 7 行注释说明根因与修复理由（对齐文件已有 escapePSPath 注释密度）。模块导出与 push 主流程不变。",
+  "files_changed": ["runner-exec/scripts/push.js"],
+  "worktree": "opt-security-1783266296",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "wt 内 commit b38b50eb06e285821d5bb3328fc509d848929ff1 (1 file changed, 9 insertions(+)) base=5701858。git push origin auto/opt-security-1783266296 成功，远端 5701858..b38b50e，返回 Code Review 链接 https://code.alibaba-inc.com/qunbu/autonomous-studio/codereview/new?from=main&to=auto/opt-security-1783266296。node -c runner-exec/scripts/push.js 语法 OK。功能测试：mktemp 目录建 regular-a.txt + sub/regular-b.txt + evil-hostname-link→/etc/hostname + evil-passwd-link→/etc/passwd + evil-dir-link→sub，复用所编 walkDir 逻辑跑出 walked=[\"regular-a.txt\",\"sub/regular-b.txt\"]（仅 2 项，无 evil*），且 walked 集无一文件可读到 /etc/passwd 内容（root:/bin/sh 不可达）→ NO-LEAK。RE-PATH-01 status pending→merged 后 audit-cycle-state.json derived_fixes 全 merged → current_audit_status fix-in-progress→cycle-complete（下轮触发新全量审计）。",
+  "next_suggestion": "audit-2026-07-05-017 全部 7 条派生 route-fix 已 merged（RE-CMDI-01/RE-EXEC-02/RE-EXEC-01/RE-MANIFEST-01/RE-SECRET-01/RE-CRED-01/RE-PATH-01），剩 1 条 structural SD-RE-01 (token in WS URL query) 入 structural-debt.md 不派 fix（需 cloud-cli server 侧协议升级）。本轮把 audit-cycle-state.status 改 cycle-complete → 下一轮 step-0 应触发新全量审计：选一个未深度审过的项目（看 .claude/audits/ 已有报告，已审：autonomous-engine hooks+watchdog、generate-image、devix-automation-skill、runner-exec/scripts；候选未审：dataworks-dev-assistant / fbi-dev-assistant / sunfire-cli / normandy-cli / a1 CLI / prod-deploy / zujianfuyon 等 skill 仓的 scripts）。另：opt-security-1783266296 worktree 累积 7+ audit-017 派生 fix commit 未合并 main，建议人工 review 后 opt-worktree.sh merge 收口（或继续堆叠至全 cycle-complete 再批量合）。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "runner-exec/scripts/push.js",
+      "line": "19-28 (walkDir)",
+      "severity": "low",
+      "finding": "RE-PATH-01: walkDir 用 entry.isDirectory() 判定递归，fs.readFileSync 默认跟随符号链接。localDir 内含指向 /etc/passwd 或 ~/.ssh/id_rsa 的符号链接时，readFileSync 读 target 内容并推送至远程 Runner → 本地文件外泄。",
+      "remediation": "walkDir 加 entry.isSymbolicLink() 跳过（文件链接 + 目录链接均跳过），readFileSync 仅作用于返回集即封堵。已修：commit b38b50e。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-017",
+  "audit_depth": "deep"
+}

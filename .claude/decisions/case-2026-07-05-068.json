@@ -1,0 +1,26 @@
+{
+  "case_id": "case-2026-07-05-068",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-05T23:20:00+08:00",
+  "project": "x-tool",
+  "work_unit": "ota_workflow: OTA-M-002 monitor 恢复告警一次性 (recovered event 永不清理) + OTA-L-002 DiscordNotifier 部分发送重发 (后续块失败 mark event 走冷却而非每轮重发已发块) (stacked, same file monitor.py)",
+  "situation": "audit-2026-07-05-008 derived fix #5 (priority 5, severity medium, kind=route-fix) + #10 (priority 10, severity low, kind=route-fix), same file monitor.py → stacked in one commit. OTA-M-002: _record_service_health (monitor.py:510-513) on down→up transition calls _send_alert(event_key=`service:{name}:recovered`, repeat=False); _should_send_event(repeat=False) returns True only when no event entry exists; after first recovery _mark_event_sent writes the recovered event into state.events, and it is NEVER cleared thereafter → second down→up recovery: _should_send_event finds the stale recovered event → returns False → recovery alert silently dropped forever. OTA-L-002: DiscordNotifier.send (monitor.py:131-139) loops chunks calling _post_message which raises on raise_for_status; if chunk N>1 fails the exception propagates out of send → _send_alert catches in `except Exception`, sent stays False → _mark_event_sent NOT called → event stays unsent → next monitor round _should_send_event returns True again → resend ALL chunks including already-sent chunk 1 → users get duplicate chunk-1 spam every round until the failing chunk succeeds.",
+  "action": "1) OTA-M-002: in _record_service_health, added a `down`-transition cleanup block right before constructing the `service:{name}:down` event_key — pop `service:{service_name}:recovered` from state.events (and write back the dict) so the next down→up recovery re-triggers _should_send_event(repeat=False)=True. Comment explains the repeat=False one-shot semantics. 2) OTA-L-002: rewrote DiscordNotifier.send to catch per-chunk exceptions with a sent_count counter: if the FIRST chunk (the one carrying attachments) fails → re-raise (full failure, _send_alert does NOT mark event, next round retries the whole alert cleanly); if a LATER chunk fails after sent_count>=1 → log a partial-failure warning via module logger and return True (partial success) so _send_alert marks the event → next round for repeat=True events respects repeat_alert_minutes cooldown instead of rebroadcasting already-sent chunks every round. Single-file change, route-fix → reused opt-ota_workflow-1783171357 worktree (stacked on 124853a = OTA-M-001+OTA-L-003).",
+  "files_changed": [
+    "/home/admin/workspace/x-tool/ota美团运营/ota_workflow/monitor.py"
+  ],
+  "worktree": "opt-ota_workflow-1783171357",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh reported '→ 复用同 area worktree (route-fix): opt-ota_workflow-1783171357' and '✓ 提交到 opt-ota_workflow-1783171357 方向=ota_workflow:monitor-recovery'. git -C opt-ota_workflow-1783171357 log --oneline shows new HEAD 1ed036b stacked directly on 124853a (OTA-M-001+OTA-L-003) on 9bfff05 (OTA-H-001c+M-004) on 9424759 (OTA-H-001b) on 0ca59a6 (OTA-H-001a). python3 ast.parse on monitor.py → 'syntax OK'. Main checkout restored to pre-edit baseline by opt-worktree cp/restore (expected; fix lives on branch auto/opt-ota_workflow-1783171357 HEAD=1ed036b, pushed to origin automatically by cmd_commit). Fix verified on worktree: _record_service_health down-branch now pops `service:{name}:recovered` before building down event_key; DiscordNotifier.send uses sent_count counter, re-raises on first-chunk failure, returns True on later-chunk failure after >=1 sent, returns sent_count>0 on full success.",
+  "next_suggestion": "下轮派生 OTA-M-003 (priority 6, monitor_state.py:39-40 _save_json 非原子 write_text — 崩溃即 state.json 截断 → load_state 返空 → 全部告警去重丢失; fix: temp file + os.replace 原子替换, 覆盖 save_state/save_routes/write_review/write_last_run). 同 area route-fix, 复用 opt-ota_workflow-1783171357 stack (HEAD=1ed036b). OTA-L-004 (storage.py:27 FileTaskStore.save 非原子写, 同类) 不同文件需独立 worktree commit 但同 area 可同 stack. 之后 OTA-M-005 (meituan.py verify_result.ok 未校验) / OTA-L-001 (hermes_runtime.py 硬编码 .env 路径). pending_count 6→4 后此轮. 全部 12 derived merged|rejected 后 audit-cycle-state.status→cycle-complete 触发下一轮全量审计.",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-05-008",
+  "audit_depth": "shallow",
+  "_derived_fix_ids": ["OTA-M-002", "OTA-L-002"],
+  "_derived_fix_status_transition": "OTA-M-002 pending → merged; OTA-L-002 pending → merged (both dispatched to worktree stack commit 1ed036b)",
+  "_parent_audit_kind": "route-fix",
+  "_stacked_on_commit": "124853a",
+  "_new_head_commit": "1ed036b"
+}

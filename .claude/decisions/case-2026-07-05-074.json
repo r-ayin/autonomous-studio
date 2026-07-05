@@ -1,0 +1,42 @@
+{
+  "case_id": "case-2026-07-05-074",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-05T11:58:00+08:00",
+  "project": "wechat-main",
+  "work_unit": "godtier-deep-research audit_log.py hash TypeError fix",
+  "situation": "audit-2026-07-05-009 (wechat-main godtier-deep-research deep audit) 挖出 GD-H-001 HIGH: audit_log.py:14 `hash(str(inputs))[:16]` — Python hash() 返回 int，int 不支持切片，每次 log() 调用必抛 TypeError，整个计算审计 trail 静默失效。同文件 line 11 datetime.utcnow() 已 deprecated (GD-I-001)。derived_fixes[0] priority=1 severity=high kind=route-fix。本轮派生最小 fix。",
+  "action": "改 .claude/skills/godtier-deep-research/scripts/computation/utils/audit_log.py: (1) import hashlib; (2) hash(str(inputs))[:16] → hashlib.sha256(str(inputs).encode()).hexdigest()[:16] (对齐同目录 hash_input.py); (3) datetime.utcnow() → datetime.now(timezone.utc)。验证: python3 -c import + log() 调用成功, input_hash=16字符hex, timestamp含+00:00 tz, inputs=None 路径仍返 None。opt-worktree commit 到 route-fix 新 area worktree opt-godtier-deep-research-1783223962, push origin FF-clean。",
+  "files_changed": [
+    ".claude/skills/godtier-deep-research/scripts/computation/utils/audit_log.py"
+  ],
+  "worktree": "opt-godtier-deep-research-1783223962",
+  "direction": "godtier-deep-research:audit-log-hash-typeerror",
+  "outcome": "succeeded",
+  "outcome_evidence": "python3 verify: log('test_op', {'a':1,'b':2}, ...) returned entry with input_hash='3dffaea891e5dbad' (16-char hex), timestamp='2026-07-05T03:58:18.826753+00:00' (tz-aware). log('noop', None, ...) returned input_hash=None. No TypeError. Worktree opt-godtier-deep-research-1783223962 HEAD committed + pushed origin/auto/opt-godtier-deep-research-1783223962.",
+  "next_suggestion": [
+    "下轮派生 GD-M-001 (priority=2): number_hallucination.py check_reasonableness no-op, FINANCE_RULES 死代码, 越界数字静默过 phase4 门禁",
+    "剩余 6 pending: GD-M-002 cross_check avg=0 / GD-M-003 state_manager 非原子写 / GD-L-001..L-004 (dcf/monte_carlo/timeseries/source_hallucination)",
+    "scout-scan 推荐 #1 autonomous-engine planning/ 文档补全 — 但当前 fix-in-progress 优先消化 audit-009 derived fixes"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": ".claude/skills/godtier-deep-research/scripts/computation/utils/audit_log.py",
+      "line": 14,
+      "severity": "high",
+      "finding": "GD-H-001: hash(str(inputs))[:16] — hash() returns int, int[:16] raises TypeError, every log() call crashes silently, computation audit trail completely non-functional",
+      "remediation": "Replace with hashlib.sha256(str(inputs).encode()).hexdigest()[:16] (matches sibling hash_input.py implementation)",
+      "kind": "route-fix"
+    },
+    {
+      "file": ".claude/skills/godtier-deep-research/scripts/computation/utils/audit_log.py",
+      "line": 11,
+      "severity": "info",
+      "finding": "GD-I-001: datetime.utcnow() deprecated since Python 3.12, returns naive datetime without tz info",
+      "remediation": "Replace with datetime.now(timezone.utc) for tz-aware ISO timestamps",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-009",
+  "audit_depth": "deep"
+}

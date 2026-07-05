@@ -1,0 +1,40 @@
+{
+  "case_id": "case-2026-07-06-025",
+  "agent_id": "ralph-autonomous-studio",
+  "timestamp": "2026-07-06T15:25:00+08:00",
+  "project": "personal-assistant",
+  "work_unit": "PA-SPK-01 (audit-2026-07-06-002 derived route-fix #12/12): personal_assistant/speaker.py:62 `self._embed = self._pipe.to_audio.embeddings if False else None` 死赋值——self._embed 恒 None 且全类无读点；类/方法 docstring 承诺 'embedding 存 SQLite'/'注册表匹配'/'先查注册表 embedding' 但 _identify 从不读 self._embed、只做 re.search(我是X)。audit 判 INFO 诚信修复（非实现 embedding 匹配——后者属 structural）",
+  "situation": "audit-2026-07-06-002 deep audit 派生 fix #12/12（PA-SPK-01 INFO P4，最后一个 pending）。audit-cycle-state status=fix-in-progress, pending_count=1（仅 PA-SPK-01 pending，前 11 已 dispatched+pushed 待人工 merge）。本轮派生 PA-SPK-01 后 audit-2026-07-06-002 全 12 dispatched → 下轮进 wait/deadlock-archive 轮 → cycle-complete → 触发新全量审计。speaker.py 在 main HEAD 580c4aa 存在（git cat-file -t 580c4aa:personal_assistant/speaker.py = blob）→ opt-worktree.sh cmd_commit 走正常路径（非 case-104 直编 wt 通道）。speaker.py 不在 .claude/public-interfaces.txt → judge_direction_kind 判 route-fix，但 area=speaker 与主 wt area engine 分歧 → 新开 opt-speaker-{ts} wt。audit remediation 明确列两 option: (1) 诚实移除 if False 死赋值 + 修 docstring 去掉 embedding 承诺（route-fix 1 文件）(2) 实现 embedding 余弦相似匹配注册表（structural）。按 audit 意图走 option(1) 诚信修复——让代码与 docstring 一致，不假装已具备 embedding 注册表匹配能力（PA-ASR-01 教训：prior fix 伪成功声明让 bug 隐形于审计追踪）。",
+  "action": "1) 读 .claude/autonomous-constraints.md 全文（DO NOT 排除项 + DO 审计指令 A/B/C/D）+ .claude/audit-cycle-state.json 确认本轮类型=fix-in-progress（PA-SPK-01 pending）。2) 跑 scout-scan.py --workspace /home/admin/workspace 拿项目健康快照（personal-assistant 待合并 wt 列表 + autonomous-engine score=1.0 排 #1 但本轮已锁定 PA-SPK-01 派生路径不取 scout #1）。3) 读 audit-2026-07-06-002.md PA-SPK-01 finding（line 128-134）确认 evidence（line 62 if False else None / _identify 81-88 不读 _embed / docstring line 5+50+82 三处承诺）+ remediation option(1) 诚信移除。4) 读 speaker.py 全文 96 行确认: self._embed 仅出现于 __init__ line 54（=None）+ _ensure line 62（if False else None）两处赋值，全类无读点（grep self._embed 无第三个命中）→ 删字段安全。5) 设计 5 处编辑: (a) 模块 docstring 删 line 4 'SpeakerRegistry：enroll/identify，embedding 存 SQLite。'（该类不存在）+ 加诚信注 '注册表 embedding 匹配未实现（self._embed 已移除）'；(b) PyannoteDiarizer docstring line 50 '注册表匹配' → '注册表 embedding 匹配未实现'；(c) __init__ 删 self._embed=None；(d) _ensure 删 line 62 if False 死赋值；(e) _identify docstring line 82 '先查注册表 embedding' → '不查注册表 embedding（未实现）'。6) 5 次 Edit（第 2 次因 docstring 含 'lazy import。' 后缀未匹配，重读 line 48-67 确认 exact text 后重做成功）。7) 验证: python3 -m py_compile speaker.py OK；grep 'if False\\|self._embed' 仅命中 docstring 诚信注（非代码）；ast walk PyannoteDiarizer methods=[__init__,_ensure,attribute,_identify] 完整，__init__ 仅 assigns self._pipe。8) opt-worktree.sh commit: 首次以 autonomous-studio 为 CWD 传相对路径 personal_assistant/speaker.py → M-002 路径守卫拒绝（文件被以 caller CWD 解析成 ../autonomous-studio/personal_assistant/speaker.py，[[opt-worktree-absolute-file-path]] 教训）；cd /home/admin/workspace/personal-assistant 后以 . 为 project 重传 → 成功开 opt-speaker-1783279465 + commit 92bfe77 + push origin auto/opt-speaker-1783279465。9) 验证 wt: git log --oneline -3 wt → 92bfe77 stacked on 580c4aa=main HEAD FF-clean；git show --stat → 1 file +3/-5；grep wt speaker.py 无 if False/self._embed attr（仅 docstring 诚信注）；main speaker.py git status clean（opt-worktree 已 cp 改动入 wt + 还原 main）。10) 回写 audit-cycle-state.json: PA-SPK-01 pending→merged(dispatch_case_id=case-025/worktree=opt-speaker-1783279465/commit=92bfe77/note)、pending_count 1→0、_awaiting_merge_count 11→12、status fix-in-progress→cycle-complete、_status_note + next_audit_trigger_reason 更新。",
+  "files_changed": [
+    "personal_assistant/speaker.py"
+  ],
+  "worktree": "opt-speaker-1783279465",
+  "direction": "speaker:embedding-honest-cleanup",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "wt commit 92bfe77: 'opt(speaker:embedding-honest-cleanup): fix(speaker): PA-SPK-01 移除 if False 死赋值(self._embed 恒 None 全类无读点)+__init__ 死属性,3 处 docstring 诚信化... (1 file changed, 3 insertions(+), 5 deletions(-))'",
+    "python3 -m py_compile personal_assistant/speaker.py → OK（语法干净）",
+    "grep -n 'if False\\|self._embed' wt speaker.py → 仅命中 line 5 docstring 诚信注 'self._embed 已移除'，无任何代码级 self._embed 赋值/读点/ if False 表达式",
+    "ast 验证: PyannoteDiarizer methods=[__init__, _ensure, attribute, _identify]（4 方法完整未误删）；__init__ body 仅 Assign(self._pipe)，无 self._embed 赋值",
+    "wt HEAD=92bfe77092aec6b7d56e2d5b20b6bffc984b4d81, base=HEAD~1=580c4aae71eb3e69f0b0388d4025f02658e76b76=main HEAD → FF-clean，单 commit 无 stack",
+    "git ls-remote origin auto/opt-speaker-1783279465 → pushed（origin tip=92bfe77，remote 返 Code Review 创建链接 https://code.alibaba-inc.com/qunbu/personal-assistant/codereview/new?from=main&to=auto/opt-speaker-1783279465）",
+    "main checkout speaker.py git status --short → 空（opt-worktree cp 改动入 wt + 还原 main 至 580c4aa 干净基线，main 永远安全）",
+    "docstring 诚信化 3 处确认: 模块 docstring 删 'SpeakerRegistry：enroll/identify，embedding 存 SQLite。' + 加 '注册表 embedding 匹配未实现（self._embed 已移除）'；PyannoteDiarizer docstring '注册表匹配' → '注册表 embedding 匹配未实现'；_identify docstring '先查注册表 embedding,再用文字线索' → '文字线索命名；不查注册表 embedding（未实现），无匹配则回退 cluster' —— 代码与 docstring 现一致（PA-ASR-01 伪成功教训：不让 docstring 承诺代码不提供的能力）",
+    "audit-cycle-state.json 回写: PA-SPK-01 status pending→merged dispatch_commit=92bfe77; pending_count 1→0; _awaiting_merge_count 11→12; status fix-in-progress→cycle-complete; JSON round-trip 校验 OK"
+  ],
+  "next_suggestion": "PA-SPK-01 派完 → audit-2026-07-06-002 全 12/12 derived fix dispatched+pushed。下轮 audit-cycle-state.status=cycle-complete → 触发新全量审计：挑 .claude/audits/ 未深审项目（已审: autonomous-studio-aone hooks/scripts/runtime/tests、dingtalk-auto、agentfw、fusion-server、fa_agent、pc_agent、agent-dashboard、huiyis、stagehand-analysis、browser-use、shizi×2、open-design、kaoqin、1BfrYn9G、quanzhan、x-tool×2、autonomous-studio hooks+scripts、wechat-main、personal-assistant×5、sunset-prediction、autonomous-engine×2、oneday-design、prod-deploy）。候选未深审: moni-master（用户定 DO NOT 排除，跳过）、wanxia-edit、skills（纯配置跳过）、engine-skills-extracted。⚠ 12 个 opt-* wt（opt-speaker-1783279465 新增 + 11 旧）积压待人工 merge to main——建议用户批量审 diff + merge/reject；3 连续 wait 轮 0 merged 会触发 deadlock-archive（同 audit-005/006/007 precedent，wt 完整保留 disk+origin 不删待人工后 merge）。提醒: PA-ASR-01 死代码回归（prior case-131 伪成功）的诚信缺陷已在 audit-2026-07-06-002 case-015 修复，未来 fix case 的 outcome_evidence 须含 bug-specific 验证（grep/ast 证 bug 实际消除），不接受仅 'ast.parse OK + commit 成功'。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "personal_assistant/speaker.py",
+      "line": 62,
+      "severity": "info",
+      "finding": "self._embed = self._pipe.to_audio.embeddings if False else None —— if False else None 使 self._embed 恒 None；__init__ line 54 self._embed=None 与 line 62 两处赋值，全类无读点（_identify 81-88 只 re.search(我是X)，从不读 self._embed）。类 docstring 承诺 'embedding 存 SQLite'/'prod 声纹聚类+注册表匹配'/_identify docstring 承诺 '先查注册表 embedding' 均未实现——非 dead code 破坏而是从未写。诚信缺陷同 PA-ASR-01 模式：docstring 承诺代码不提供的能力。",
+      "remediation": "诚实移除 if False 死赋值 + __init__ self._embed 死属性 + 3 处 docstring 诚信化（模块/PyannoteDiarizer/_identify 去掉 embedding 注册表匹配承诺，改标注 '未实现'）。不实现 embedding 匹配（后者属 structural，未授权不主动修）。已实现（case-025 commit 92bfe77）。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-002",
+  "audit_depth": "deep"
+}

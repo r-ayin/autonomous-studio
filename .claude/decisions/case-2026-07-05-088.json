@@ -1,0 +1,43 @@
+{
+  "case_id": "case-2026-07-05-088",
+  "agent_id": "ralph-wiggum-autonomous-studio",
+  "timestamp": "2026-07-05T15:35:00+08:00",
+  "project": "x-tool",
+  "work_unit": "PA-L-001 raw_text 落库前 PIIMasker.mask 脱敏（派生自 audit-2026-07-05-010 finding PA-L-001）",
+  "situation": "audit-2026-07-05-010 (x-tool/pachong-master deep audit) finding PA-L-001: parser/html_parser.py:28 parse_notice_html 仅对 _extract_contact(text) 跑 PIIMasker.mask，但 raw_text: text[:30000] 整段原文（含投标人手机/邮箱/身份证/银行卡）原样落 tender_notice_content.raw_text。score_worker 读 raw_text 喂 AI，web_admin notice_detail SELECT c.raw_text 渲染到 detail.html → PII 明文入库 + admin UI 可见。contact_text 已脱敏而 raw_text 未脱敏，标准不一致；DB 备份/泄漏时 PII 裸奔。severity=low，kind=route-fix，单文件最小单位。",
+  "action": "1 行 fix：parser/html_parser.py:28 把 `\"raw_text\": text[:30000]` 改为 `\"raw_text\": PIIMasker.mask(text[:30000])`，复用已 import 的 PIIMasker（同文件 line 9 已 import，line 23 已用于 contact_masked）。加 3 行注释说明 PA-L-001 来源 + 与 contact_text 一致性 + 不另存原始正文。raw_text 落库前即脱敏，score_worker 喂 AI 与 web_admin 展示都用 masked 版，与 contact_text_masked 标准统一。",
+  "files_changed": [
+    "x-tool/pachong-master/parser/html_parser.py"
+  ],
+  "worktree": "opt-pachong-1783229257 (auto/opt-pachong-1783229257, 6-commit stack: 953b7eb master → f112b45 PA-H-002 → cd04b73 PA-M-001 → 106a035 PA-M-002 → ee6446f PA-M-003+PA-I-001 → 5f1739d PA-L-001 [新], disk 保留; html_parser.py 不在 public-interfaces.txt → route-fix 复用同 area worktree, opt-worktree direction_kind 判定 route-fix 一致)",
+  "direction": "pachong:pa-l-001-raw-text-pii-masking (route-fix, 复用 opt-pachong-1783229257)",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "opt-worktree.sh commit 输出: '✓ 提交到 opt-pachong-1783229257  方向=pachong:pa-l-001-raw-text-pii-masking'",
+    "git log opt-pachong-1783229257 HEAD=5f1739d 'opt(pachong:pa-l-001-raw-text-pii-masking): PA-L-001 ... raw_text 落库前 PIIMasker.mask 脱敏' 堆叠在 ee6446f(PA-M-003+I-001)/106a035(PA-M-002)/cd04b73(PA-M-001)/f112b45(PA-H-002)/953b7eb(master) 之上 = 6-commit stack",
+    "git diff HEAD~1 --stat: pachong-master/parser/html_parser.py | 5 ++++− (1 file changed, 4 insertions, 1 deletion) — 仅触及声明文件，无 scope 蔓延",
+    "验证 importlib 直载 parser/pii_masker.py（绕 bs4 沙箱缺失）: PIIMasker.mask('投标人联系电话 13912345678，邮箱 zhangsan@example.com，身份证 110101199003071234，开户行 6228480402564891234。座机 010-87654321。') = '投标人联系电话 139****5678，邮箱 z***@example.com，身份证 110101********1234，开户行 6228********1234。座机 ****4321。' — 5 类 PII 全 mask; assert 13912345678/zhangsan@example.com/110101199003071234/6228480402564891234 全不在结果中 PASS",
+    "30000-char 截断+mask 性能验证: 178500-char 重复文本取 [:30000] 再 mask，len(masked)=27228，assert 原 PII 不在结果 PASS — regex 在 30k 长文本上无回溯爆炸",
+    "fix 语义验证: PIIMasker.mask(text[:30000]) 与 fix 行字面一致 — importlib 验证即 fix 行为"
+  ],
+  "next_suggestion": "下轮派 PA-L-002 (priority 7, low, crawler/robots_checker.py:12,30 _cache dict 无界无 TTL → 改 dict[str,tuple[float,RobotFileParser]]+24h TTL 或 TTLCache；scheduler 长跑内存单调增长 + robots.txt 变更不刷新)。再下轮 PA-L-003 (browser_crawler --disable-web-security) → PA-I-002 (web_admin/app.py:207 SELECT n.* 显式列名)。全 10 derived fix 派完且 merged|rejected 后 audit-cycle-state.status=cycle-complete → 下轮触发新全量审计（挑未深审项目：huiyis/stagehand-analysis/agent-dashboard/fa_agent/pc_agent 等历史 deadlock-archive 项目可 re-audit 验证人工 merge 后状态，或审新项目）。注意 PA-H-002/PA-M-001/PA-M-002/PA-M-003+I-001/PA-L-001 已派 5 个 stacked 在 opt-pachong-1783229257 全 0 merged（x-tool fork origin push 403 同先例），_awaiting_merge_count=6，须人工 merge to master；3 连续 wait 轮后 deadlock-archive 同 precedent。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "x-tool/pachong-master/parser/html_parser.py",
+      "line": 28,
+      "severity": "low",
+      "finding": "PA-L-001: parse_notice_html 仅对 _extract_contact(text) 跑 PIIMasker.mask (line 23 contact_masked)，但 raw_text: text[:30000] 整段原文（含投标人手机/邮箱/身份证/银行卡）原样落库 tender_notice_content.raw_text；score_worker 读 raw_text 喂 AI (score_worker.py:51)、web_admin notice_detail SELECT c.raw_text 渲染 detail.html (app.py:207) → PII 明文入库 + admin UI 可见。contact_text 已脱敏而 raw_text 未脱敏，标准不一致。",
+      "remediation": "raw_text 落库前 PIIMasker.mask(text[:30000])，与 contact_text 一致；保留 masked 版供检索/展示，原始正文不另存。本 case 已实施此 remediation。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-010",
+  "audit_depth": "shallow",
+  "_derived_fix_sync": {
+    "finding_id": "PA-L-001",
+    "fix_case_id": "case-2026-07-05-088",
+    "status": "pending",
+    "note": "已派生 route-fix case-088 到 opt-pachong-1783229257 (HEAD=5f1739d stacked)，status 仍 pending 待人工 merge to master；audit-cycle-state.json derived_fixes[PA-L-001] 同步 fix_case_id=case-2026-07-05-088 + _dispatched_at + _dispatch_worktree + status pending(未 merge)。pending_count 9→9 (派生不降 pending，merge/reject 才降)。_awaiting_merge_count 5→6。"
+  }
+}

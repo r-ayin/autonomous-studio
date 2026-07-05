@@ -1,0 +1,41 @@
+{
+  "case_id": "case-2026-07-05-101",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-07-05T16:05:00+08:00",
+  "project": "x-tool",
+  "work_unit": "PAH-L-002 /invoke error=str(e) 内部异常文本泄露修复 + audit-log 埋点",
+  "situation": "audit-2026-07-05-011 派生 fix #7 (PAH-L-002, priority 7, severity low). routers/agent.py:63-67 except Exception as e: return error=str(e) 把任意工具 handler 抛出的内部异常文本原样回给调用方, 泄露实现细节/堆栈/路径/SQL/凭证片段. /invoke 是 agent 工具调用 dispatch 面 (scrape/ComfyUI/LLM insight 等工具 handler 在此后执行, 含 HTTP 出站+subprocess), 命中 autonomous-constraints.md §B external-call dispatch 敏感路径 → 须同步补 audit-log 埋点.",
+  "action": "1) 新增 core/audit_log.py 单文件 append-only JSONL writer (threading.Lock 互斥, secrets.token_hex 随机 id, ISO8601 UTC, AGENT_HUB_AUDIT_DIR 可配, best-effort 不抛). 2) routers/agent.py: import logging + ValidationError; 定义 _SAFE_ERROR_TYPES=(ValidationError,ValueError,KeyError,TypeError,HTTPException) 白名单; /invoke try 块重写: HTTPException → audit failure+re-raise (让 FastAPI 映射 status_code); 白名单类型 → audit failure + 返回 str(e); 其余 → logger.exception 服务端日志 + audit failure + 返回固定 'internal error: {type}' 掩码; 成功路径也 audit success. 所有 audit 条目 resource=tool_name, detail 含 error_type.",
+  "files_changed": [
+    "x-tool/AB system/python-agent-hub/src/agent_hub/routers/agent.py",
+    "x-tool/AB system/python-agent-hub/src/agent_hub/core/audit_log.py"
+  ],
+  "worktree": "opt-security-1783235416",
+  "direction": "security:invoke-error (route-fix, 复用同 area worktree, stacked on PAH-H-001 78a5f14 + PAH-M-002 1424c50)",
+  "commit": "377d0d1",
+  "branch": "auto/opt-security-1783235416",
+  "direction_kind": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "git -C /home/admin/workspace/.opt-worktrees/x-tool/opt-security-1783235416 log --oneline -1 → 377d0d1 opt(security:invoke-error): fix(pah-l-002)...",
+    "git show --stat HEAD → 2 files changed, 120 insertions(+), 3 deletions(-): core/audit_log.py +69, routers/agent.py +54/-3",
+    "python3 ast.parse both files → OK: both files parse (语法验证通过)",
+    "worktree 复用判定: opt-worktree.sh 输出 '→ 复用同 area worktree (route-fix): opt-security-1783235416' (routers/agent.py 不在 public-interfaces.txt → route-fix 自动判定)",
+    "origin push 403 (x-tool 外部 fork 不允许 push, 同 audit-008/010/011 模式), worktree+commit 377d0d1 完整保留 disk 待人工 merge"
+  ],
+  "next_suggestion": "PAH-L-002 派发完毕 → audit-2026-07-05-011 全 7/7 derived_fixes 已派发 (5 awaiting_merge on 3 worktree + 本轮 377d0d1 + PAH-L-001 dc28e9b opt-browser). 下轮起 3 连续 wait 轮观察人工 merge; 若 0 merged 触发 deadlock-archive → cycle-complete → 下轮触发新全量审计 (挑未深审项目: candidates = fusion-server/agentfw/fa_agent/pc_agent/agent-dashboard/huiyis/stagehand-analysis/kaoqin/1BfrYn9G/quanzhan/oneday-design/autonomous-studio/hooks 已审但 audit-017 派发未落, 或 monotonic 找 planning/ 缺失项目).",
+  "audit_type": "audit-log-instrumentation",
+  "audit_findings": [
+    {
+      "file": "x-tool/AB system/python-agent-hub/src/agent_hub/routers/agent.py",
+      "line": 63,
+      "severity": "low",
+      "finding": "PAH-L-002: except Exception as e: return ToolInvokeResponse(error=str(e)) 把内部异常文本原样返回调用方, 泄露实现细节 (路径/SQL/堆栈/凭证片段), 且 /invoke dispatch 面无 audit-log 埋点违反 §B external-call 敏感路径要求.",
+      "remediation": "白名单异常 (ValidationError/ValueError/KeyError/TypeError/HTTPException) 返回 str(e), 其余 logger.exception + 固定 'internal error: {type}' 掩码; 新增 core/audit_log.py 单文件 append-only JSONL, /invoke success/failure 全记录 (action=tool_invoke, resource=tool_name, result, detail.error_type).",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-011",
+  "audit_depth": "deep",
+  "parent_finding_id": "PAH-L-002"
+}

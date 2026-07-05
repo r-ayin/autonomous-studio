@@ -1,0 +1,47 @@
+{
+  "case_id": "case-2026-07-05-154",
+  "agent_id": "ralph-autonomous-studio",
+  "timestamp": "2026-07-06T04:30:00+08:00",
+  "project": "autonomous-studio (runner-exec)",
+  "work_unit": "RE-EXEC-02 派生 fix — exec.js/session.js 静默超时改 reject，对齐 write-file/batch-write {ok:false,error:'timeout'} 契约",
+  "situation": "audit-2026-07-05-017 RE-EXEC-02 [MEDIUM, route-fix]: exec.js:24 与 session.js:41-46 超时分支 resolve(部分输出)，无 ok/error 标记，调用方无法区分成功完成与截断。CLI 分支 `console.log(out)` 把截断输出当成功打印；push.js 的 `await session.exec()` 在 try/catch 外不计 fail，把超时计为成功。write-file.js:30 / batch-write.js:34 已用 {ok:false,error:'timeout'} 契约，exec.js/session.js 不一致。",
+  "action": "exec.js execOnRunner: 超时 setTimeout 回调由 resolve(output) 改为 reject(new Error('timeout'))，并把部分输出挂在 e.output 上供调用方取用（成功路径 resolve(output) 不变，CLI .catch 与 push.js try/catch 已天然处理 reject）。session.js exec(): Promise executor 增加 reject 形参，超时回调由 resolve(result) 改为 reject(Error('timeout') 带 e.output)；成功路径 resolve(result) 不变。选择 reject 而非 resolve({ok,error}) 是为保持现有 string 返回契约、零调用方改写（exec.js CLI 与 push.js 均已 catch reject），且仅触及 finding 声明的 exec.js+session.js 两文件范围，不外溢到 push.js（RE-PATH-01 的地盘）。",
+  "files_changed": [
+    "runner-exec/scripts/exec.js",
+    "runner-exec/scripts/session.js"
+  ],
+  "worktree": "opt-security-1783266296",
+  "direction": "security:re-exec-timeout",
+  "direction_kind": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "node --check runner-exec/scripts/exec.js → SYNTAX_OK",
+    "node --check runner-exec/scripts/session.js → SYNTAX_OK",
+    "opt-worktree.sh commit 复用同 area worktree opt-security-1783266296（route-fix，runner-exec 非 .claude/public-interfaces.txt 公共接口）",
+    "commit 8be0bb6c6a7ba9f8ab509126ab71fafec87620d3 push 到 origin/auto/opt-security-1783266296（ff5cd06..8be0bb6）",
+    "git show HEAD:runner-exec/scripts/exec.js 在 worktree 内确认 timeout 分支已为 `const e = new Error('timeout'); e.output = output; reject(e)`",
+    "session.js Promise executor 已带 reject 形参且超时分支 reject"
+  ],
+  "next_suggestion": "下轮继续派生 audit-017 pending fix（按 priority 顺序）：RE-EXEC-01（exec.js+session.js+write-file.js+batch-write.js 输出无界累积 → 加 MAX_OUTPUT cap；与 RE-EXEC-02 同 exec.js/session.js 文件，但 RE-EXEC-02 已 merge 进 opt-security-1783266296 未合 main，新 fix 应基于 main 开新 worktree 或等 merge 后复用——见 audit 派发计划 batch-write.js: RE-CMDI-01+RE-EXEC-01+RE-MANIFEST-01 堆叠）。建议下轮先 merge opt-security-1783266296 到 main 再派 RE-EXEC-01，避免 exec.js/session.js 同文件两 worktree 撞 cp-guard。",
+  "audit_type": "none",
+  "audit_findings": [
+    {
+      "file": "runner-exec/scripts/exec.js",
+      "line": "24",
+      "severity": "medium",
+      "finding": "RE-EXEC-02: 超时 setTimeout 静默 resolve(output)，调用方无法区分成功完成与截断；与 write-file/batch-write {ok:false,error:'timeout'} 契约不一致",
+      "remediation": "超时改 reject(new Error('timeout'))，部分输出挂 e.output；成功路径不变",
+      "kind": "route-fix"
+    },
+    {
+      "file": "runner-exec/scripts/session.js",
+      "line": "41-46",
+      "severity": "medium",
+      "finding": "RE-EXEC-02: exec() Promise executor 仅 resolve 形参，超时静默 resolve(result) 部分 buf，push.js try/catch 把超时计为成功",
+      "remediation": "Promise 加 reject 形参，超时 reject(Error('timeout') 带 e.output)；成功 resolve 不变",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-017",
+  "audit_depth": "shallow"
+}

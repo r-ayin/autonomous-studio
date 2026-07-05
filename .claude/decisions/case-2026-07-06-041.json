@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-06-041",
+  "agent_id": "ralph-autonomous-studio",
+  "timestamp": "2026-07-06T21:35:00+08:00",
+  "project": "x-tool/一件重启脚本/remote_control",
+  "work_unit": "RC-ATOMIC-01 derived fix: save_config 原子写 (tmp + os.replace) 防崩溃致 clawdbot.json 损坏",
+  "situation": "audit-2026-07-06-004 (x-tool/一件重启脚本/remote_control 深审) 派生的 pending route-fix 第 10 优先级 (MEDIUM)。save_config 直接 open(CONFIG_PATH,'w')+json.dump 覆写 clawdbot.json，写中途断电/taskkill 致文件截断损坏、Bot 启动失败。同文件 save_presets 已由 RC-ATOMIC-02 (case-036/3299f27) 修过同模式。本轮派生此条。audit-cycle-state fix-in-progress，pending_count=3 (RC-ATOMIC-01/RC-ROBUST-01/RC-PROXY-01)，本条优先级最高。",
+  "action": "stack 在既有 opt-remote-control-1783283520 worktree (HEAD=b4d4938=case-040 RC-PIN-01) 之上直编 server.py save_config (line 240-247)，加 tmp_path=CONFIG_PATH+'.tmp' + open(tmp_path,'w') + json.dump + os.replace(tmp_path, CONFIG_PATH)，镜像 save_presets (RC-ATOMIC-02) 既修模式。失败分支留注释：残留 .tmp 无害（下次覆写），不指向 CONFIG_PATH 故不会损坏主文件。走 case-104 直编 wt+wt 内 commit 通道（server.py 已在 wt 分叉，opt-worktree.sh cp-guard 会跳过，per [[opt-worktree-stack-diverged-escape-hatch]]）。py_compile OK (line 766 SyntaxWarning 为 pre-existing 既存 \\o escape 非本 commit)。origin push 403 (外部 fork r-ayin/x-tool, [[x-tool-external-fork-push-403]] precedent, 预期) → disk+local-ref 保留待人工 merge。",
+  "files_changed": ["一件重启脚本/remote_control/server.py"],
+  "worktree": "opt-remote-control-1783283520",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "wt commit 77c8437 (stacked on b4d4938, base=85bd9e1=master, `git merge-base --is-ancestor 85bd9e1 HEAD` → FF_CLEAN_OK). diff: 1 file changed, 6 insertions(+), 1 deletion(-) — 仅 save_config 区块。`python3 -m py_compile server.py` → PY_COMPILE_OK (line 766 \\o SyntaxWarning pre-existing 非 commit). `git push origin auto/opt-remote-control-1783283520` → 403 'git push is not allowed' (r-ayin/x-tool external fork, 预期). disk+local-ref HEAD=77c8437 完整保留待人工 merge.",
+  "next_suggestion": "下轮派生 RC-ROBUST-01 (LOW priority 12, server.py:494-496,542-544,580-582 — /update_config & /add_preset 在 try 之外 json.loads，畸形 JSON 致连接断) 或 RC-PROXY-01 (LOW priority 13, server.py:55-69 — download_cloudflared 后 HTTPS_PROXY 残留)。两者均 stack 同 opt-remote-control-1783283520 wt。派完后 pending_count→0，audit-cycle-state.status→cycle-complete，下轮触发新全量审计 (挑未深审项目)。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "一件重启脚本/remote_control/server.py",
+      "line": "240-247 (原 240-247, save_config)",
+      "severity": "medium",
+      "finding": "RC-ATOMIC-01: save_config 直接 open(CONFIG_PATH,'w')+json.dump 覆写 clawdbot.json，非原子写。写中途断电/taskkill/进程崩溃 → 文件截断/损坏，Bot 启动失败。对比 sync-ai-config.py 至少做了 os.rename 备份，save_presets 已由 RC-ATOMIC-02 改原子写，save_config 仍是裸覆写。",
+      "remediation": "写临时文件 CONFIG_PATH+'.tmp' 后 os.replace(tmp, CONFIG_PATH) 原子替换（os.replace 在同文件系统原子）。失败时残留 .tmp 不指向主路径故无损坏风险。镜像 save_presets 既修模式。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-004",
+  "audit_depth": "shallow"
+}

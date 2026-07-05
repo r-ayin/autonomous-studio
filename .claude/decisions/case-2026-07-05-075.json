@@ -1,0 +1,34 @@
+{
+  "case_id": "case-2026-07-05-075",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-05T12:10:00+08:00",
+  "project": "wechat-main",
+  "work_unit": "godtier-deep-research number_hallucination.check_reasonableness no-op fix (GD-M-001)",
+  "situation": "audit-2026-07-05-009 (wechat-main godtier-deep-research deep audit) derived_fixes[1] GD-M-001 medium: detectors/number_hallucination.py:105-126 check_reasonableness 是 no-op——加载 FINANCE_RULES (pe_ratio 0-500 / revenue_growth_pct -100..1000 / market_cap_B 0-10000 / percentage -100..100) 但函数体只把 val parse 写回 num['numeric_value'] 后 continue，从不与 min/max 比对，规则字典是死代码。数据流后果：run_all_detectors → executor.phase4_complete 读 hallucination_report overall=='PASS' 作 phase4 门禁；L1 越界检查 no-op → 'PE=99999'/'营收增长5000%'/'市值99999B' 这类 LLM 幻觉越界数字静默过门禁，phase4 must_pass 门形同虚设。priority=2 severity=medium kind=route-fix。本轮派生最小 fix（继 GD-H-001 case-074 之后第 2 个派生）。",
+  "action": "改 .claude/skills/godtier-deep-research/detectors/number_hallucination.py: (1) 新增 _classify_and_normalize(num) 辅助——按文本+上下文保守分类数字：%→percentage；货币符号或 BMK/万亿/亿/万后缀→market_cap_B（统一换算到十亿：万亿×1000、亿÷10、万÷1e5、M÷1000、K÷1e6、B 原值）；上下文含 PE/市盈/P/E→pe_ratio；含 增长/营收/growth/同比→revenue_growth_pct；无法明确分类→(None,val) 不套规则。(2) 重写 check_reasonableness：调 _classify_and_normalize，写 numeric_value/rule_key，选规则后 val<min or val>max 则 num['range_issue']=f'{rule_key}={val} 越出合理范围 [{lo},{hi}]'；mode 下无该 rule_key（如 general 只有 percentage）则跳过避免误杀。(3) detect() 新增第二段循环：含 range_issue 的 num 计入 critical（即便有来源也拦，因为是事实性幻觉）。opt-worktree route-fix 复用同 area worktree opt-godtier-deep-research-1783223962（与 GD-H-001 同 worktree 累积），push origin FF-clean。",
+  "files_changed": [
+    ".claude/skills/godtier-deep-research/detectors/number_hallucination.py"
+  ],
+  "worktree": "opt-godtier-deep-research-1783223962",
+  "direction": "godtier-deep-research:number-range-gate",
+  "outcome": "succeeded",
+  "outcome_evidence": "worktree HEAD=1f609a7 'opt(godtier-deep-research:number-range-gate): GD-M-001...' committed + pushed origin/auto/opt-godtier-deep-research-1783223962 (45f26d3..1f609a7 FF)。验证 detect('PE 99999，营收增长 5000%，市值 $99999B。', mode='finance') → passed=False, critical_count=5, issues 含 'pe_ratio=99999.0 越出合理范围 [0, 500]' / 'percentage=5000.0 越出合理范围 [-100, 100]' / 'market_cap_B=99999.0 越出合理范围 [0, 10000]'（+2 条 source-URL）。benign 用例 detect('PE 15，营收增长 20%，市值 $1.5B，净利率 35%。') → 0 range_issue（3 条 critical 全为预存 source-URL 检查，非本次 range 误杀）。general 模式 detect('PE 99999，市值 $99999B，增长 5000%，利润率 -200%') → PE/market_cap 不被套规则（general 仅 percentage），仅 5000%/-200% 触发 percentage range，符合 IMP-03 mode 透传语义。中文亿后缀 detect('市值 99999亿') → market_cap_B=9999.9 (99999/10) 恰 < 10000 边界未触发（rule-consistent；B 后缀用例 99999B 触发，即审计 remediation 示例已覆盖）。",
+  "next_suggestion": [
+    "下轮派生 GD-M-002 (priority=3): cross_check.py:18-21 avg=0 时 diff_pct=0 → 符号相反严重分歧被报一致。分母改 max(abs(a),abs(b),1e-9)",
+    "剩余 5 pending: GD-M-003 state_manager 非原子写 / GD-L-001 dcf value_per_share EV/shares / GD-L-002 monte_carlo stdev<2 崩 / GD-L-003 timeseries cagr 负终值 / GD-L-004 source_hallucination 前瞻年份 false-fail",
+    "全部 7 derived fixes merge/reject 落定后 audit-cycle-state.status→cycle-complete，触发下一轮全量审计（挑未深审项目，候选：sunset-prediction / x-tool / shizi / skills 中未审模块）"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": ".claude/skills/godtier-deep-research/detectors/number_hallucination.py",
+      "line": 105,
+      "severity": "medium",
+      "finding": "GD-M-001: check_reasonableness loads FINANCE_RULES but never compares val to min/max — pure no-op. Out-of-range hallucinated numbers (PE 99999, growth 5000%, marketcap 99999B) silently pass phase4 gate via run_all_detectors→executor.phase4_complete overall==PASS check.",
+      "remediation": "Classify each number by context (% / currency+suffix→market_cap_B normalized to billions / PE-context→pe_ratio / growth-context→revenue_growth_pct), compare to rule min/max, append range_issue; detect() counts range_issue nums as critical. general mode only applies percentage rule to avoid false-fail.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-009",
+  "audit_depth": "deep"
+}

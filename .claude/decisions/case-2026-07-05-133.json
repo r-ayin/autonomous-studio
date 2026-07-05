@@ -1,0 +1,36 @@
+{
+  "case_id": "case-2026-07-05-133",
+  "agent_id": "ralph-autonomous",
+  "timestamp": "2026-07-05T23:50:00+08:00",
+  "project": "wanxia-edit",
+  "work_unit": "WANXIA-XHS-NO-SANDBOX-01 派生 route-fix：Chromium --no-sandbox 仅在 root 运行时加，非 root 恢复真沙箱",
+  "situation": "audit-2026-07-05-014 finding WANXIA-XHS-NO-SANDBOX-01：social-scraper.js:26-33 chromium.launch 始终带 --no-sandbox。容器内 Playwright 默认即加此 flag，但若 cron 以 root 跑（常见），seccomp/sandbox 全失，小红书页面含第三方 JS，渲染引擎漏洞可提权到 root。属低优先但非零攻击面。kind=route-fix，可最小单位修。",
+  "action": "把 --no-sandbox 改为条件加：新增 isRunningAsRoot()（process.getuid()===0，含 typeof guard 防 non-Linux 崩），launchArgs 默认只含 --disable-blink-features=AutomationControlled + --disable-dev-shm-usage；仅 isRunningAsRoot() 为真时 push --no-sandbox（root 下 SUID sandbox 无法初始化，--no-sandbox 是 Chromium 能启动的前提，不可直接删）。非 root 运行恢复 Chromium 真沙箱/seccomp。注释标明 audit id + 建议降权跑 cron。",
+  "files_changed": [
+    "/home/admin/workspace/wanxia-edit/social-scraper.js"
+  ],
+  "worktree": "n/a (wanxia-edit 非 git 仓，SD-WANXIA-01；fix 直接落 live 工作文件，与 case-130/SSRF-01 同模式)",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "node --check social-scraper.js → SYNTAX_OK（ESM 顶层 import + 新增 helper 解析通过）",
+    "isRunningAsRoot(): typeof process.getuid === 'function' guard，non-Linux/受限 env 不崩",
+    "非 root：launchArgs=[--disable-blink-features=AutomationControlled, --disable-dev-shm-usage]（无 --no-sandbox，Chromium 真沙箱生效）",
+    "root：launchArgs 追加 --no-sandbox（SUID sandbox 在 root 下无法初始化，需此 flag 才能启动，行为与改动前等价）",
+    "git status: fatal not a git repository → 沿用 case-130 模式不进 opt-worktree，落 live 文件"
+  ],
+  "next_suggestion": "WANXIA-DEAD-01/02（structural）仍 pending，需 owner 澄清 wanxia-edit 正式布局（src/ monolith vs 4 脚本松散）后治本；当前不派 fix，挂 structural-debt.md。本周期 6 条 derived_fixes 现已 5 merged/rejected 落定（SSRF-01/SMTP-01/ENV-01/XHS-NO-SANDBOX-01 merged + DEAD-01/02 留 structural pending）。考虑：将 DEAD-01/02 标 status=rejected（structural 转入 structural-debt 队列即等价 reject 派生 fix），使 audit-cycle-status → cycle-complete，下轮触发新全量审计（候选未深审项目）。",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "/home/admin/workspace/wanxia-edit/social-scraper.js",
+      "line": 26,
+      "severity": "low",
+      "finding": "WANXIA-XHS-NO-SANDBOX-01: chromium.launch 始终带 --no-sandbox，root 运行时 seccomp/sandbox 全失，第三方 XHS JS 渲染漏洞可提权 root",
+      "remediation": "已修（本 case）：--no-sandbox 改为 isRunningAsRoot() 条件加，非 root 恢复真沙箱；root 保留 --no-sandbox（启动前提）+ 注释建议降权",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-014",
+  "audit_depth": "deep"
+}

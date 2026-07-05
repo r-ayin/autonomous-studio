@@ -1,0 +1,26 @@
+{
+  "case_id": "case-2026-07-05-072",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-05T23:58:00+08:00",
+  "project": "x-tool",
+  "work_unit": "ota_workflow: OTA-L-004 storage.py FileTaskStore.save 非原子 write_text — confirm_task:169 终态 save 中途崩溃即 task 文件截断 → 任务状态丢失 (已生效改价无记录/可能重试). Fix: tempfile.mkstemp + os.replace 原子写, 失败清理 tmp. 同 OTA-M-003 monitor_state 原子写模式.",
+  "situation": "audit-2026-07-05-008 derived fix #12 (priority 12, severity low, kind=route-fix, finding_id OTA-L-004). storage.py:27 FileTaskStore.save 单行 path.write_text(json.dumps(...)) 非原子 — write_text 内部 open+write 若进程崩溃/掉电/SIGKILL 在 write 中途, task JSON 文件留下截断内容. 后果: confirm_task (orchestrator.py:169) 在改价已生效后最终 save 终态, 此时崩溃 → 下次 load_task json.loads 抛 JSONDecodeError → 任务记录丢失 (已生效改价无记录, monitor/retry 无据). 同类 OTA-M-003 (monitor_state _save_json 非原子, case-069 已修). 这是 audit-008 最后一个 pending 派生 fix, 派生后 pending_count 1→0, cycle→cycle-complete.",
+  "action": "改 storage.py: (1) import 加 os + tempfile; (2) FileTaskStore.save 从单行 write_text 改为: 序列化 payload → path.parent.mkdir(exist_ok) → tempfile.mkstemp(prefix=f'.{task_id}.', suffix='.tmp', dir=path.parent) 同目录保证 os.replace 同文件系统原子 → os.fdopen 写 payload + close → os.replace(tmp, path) → except BaseException 清理 tmp 再 raise (不吞错). route-fix 同 area → opt-worktree.sh 判定复用 opt-ota_workflow-1783171357 (HEAD=530c13b), stacked 第 9 commit (audit-008 末条).",
+  "files_changed": [
+    "/home/admin/workspace/x-tool/ota美团运营/ota_workflow/storage.py"
+  ],
+  "worktree": "opt-ota_workflow-1783171357",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh (PROJECT=/home/admin/workspace/x-tool) reported '→ 复用同 area worktree (route-fix): opt-ota_workflow-1783171357' and '✓ 提交到 opt-ota_workflow-1783171357 方向=ota_workflow:l04-storage-atomic-write'. git -C .opt-worktrees/x-tool/opt-ota_workflow-1783171357 log --oneline -3 shows new HEAD 4190352 'opt(ota_workflow:l04-storage-atomic-write): L04: storage.py FileTaskStore.save 改原子写...' stacked directly on 530c13b (OTA-L-001) on 2b71b75 (OTA-M-005). git diff HEAD~1 -- storage.py: +import os/tempfile, save() 从 1 行 write_text 改为 15 行原子写 (mkstemp + fdopen write + os.replace + BaseException cleanup unlink, +16/-1). python3 -c ast.parse: 'OK syntax'. Main checkout storage.py restored to pre-edit (write_text) baseline by opt-worktree cp/restore (expected; fix lives on branch auto/opt-ota_workflow-1783171357 HEAD=4190352, auto-pushed to origin by cmd_commit per constraints). audit-cycle-state OTA-L-004 pending→merged, pending_count 1→0, status fix-in-progress→cycle-complete → 下轮触发新一轮全量审计.",
+  "next_suggestion": "audit-2026-07-05-008 全 12 派生 fix 已落 worktree branch auto/opt-ota_workflow-1783171357 (HEAD=4190352, 9-commit stack: 0ca59a6→9424759→9bfff05→124853a→1ed036b→42c4a30→2b71b75→530c13b→4190352) 待人工 merge 到 master (fast-forward 干净). 本轮派生完最后一条 → audit-cycle-state.status = cycle-complete, pending_count=0. 下轮 (status=cycle-complete) 触发新一轮全量审计: 全工作区项目均已审过一轮 + 部分 re-audit (autonomous-engine/x-tool ota_workflow/shizi 等); 候选下轮审计目标 — (a) 对已积压 deadlock-archive 的项目 (wechat-main/personal-assistant/sunset-prediction/oneday-design/shizi-reaudit 等) 这些 worktree 全保留在 disk+origin 待人工 merge, 不应重审避免重复; (b) 选仍存结构性债务未决的项目做 structural-debt 复核 (SD-AE-01/SD-OD-01/02/SD-PA-01/02/SD-SP-01/02 仍 open); (c) 对 x-tool ota_workflow 本身做 post-fix 验证审计 (本 stack merge 后). 建议下轮先跑 scout-scan 看 worktree 积压趋势, 再决定审计目标 — 但 audit-cycle-state.status=cycle-complete 强制下轮走审计路径.",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-05-008",
+  "audit_depth": "shallow",
+  "_derived_fix_ids": ["OTA-L-004"],
+  "_derived_fix_status_transition": "OTA-L-004 pending → merged (dispatched to worktree stack commit 4190352); audit-008 全 12 派生 fix 落定 → cycle-complete",
+  "_parent_audit_kind": "route-fix",
+  "_stacked_on_commit": "530c13b",
+  "_new_head_commit": "4190352"
+}

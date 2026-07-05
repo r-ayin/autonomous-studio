@@ -1,0 +1,29 @@
+{
+  "case_id": "case-2026-07-06-040",
+  "agent_id": "ralph-autonomous-engine",
+  "timestamp": "2026-07-06T21:20:00+08:00",
+  "project": "x-tool/一件重启脚本/remote_control",
+  "work_unit": "RC-PIN-01 derived fix (audit-2026-07-06-004 priority 9): /restart PIN 明文走 URL query → 改 POST JSON body，消除浏览器历史/Referer/Cloudflare edge log/server.log 泄漏通道",
+  "situation": "audit-2026-07-06-004 finding RC-PIN-01 (severity medium, route-fix, server.py:371 前端 + :474 后端) pending dispatch. restartBot() 前端 fetch('/restart?pin='+encodeURIComponent(pin)) 把 PIN 放 GET query；后端 do_GET /restart 分支用 query_params.get('pin') 取 PIN。query 泄漏通道：浏览器历史、Referer、Cloudflare edge log、server.log（SimpleHTTPRequestHandler.log_message 输出 stdout=server.log line 20-22 重定向）、代理日志。PIN 虽已 env 化+常量时间+per-IP 锁定 (RC-SEC-03 case-035 已修)，但走 URL query 仍泄漏明文 PIN 本身。",
+  "action": "1) 读 audit-2026-07-06-004.md RC-PIN-01 段 + worktree opt-remote-control-1783283520 server.py 当前态 (line 475-600 restartBot 前端 + do_GET /restart + do_POST /update_config 示范读法). 2) 编辑 worktree 内 server.py 直编 (case-104 直编 wt+wt 内 commit 通道; cmd_commit cp-guard 对已分叉 server.py 跳过——worktree server.py 含 case-034..039 七个 stack commit 与 main HEAD 85bd9e1 不同→cmp differ→skip→cmd_commit 必 '无内容可提交' 中止, 故走 [[opt-worktree-stack-diverged-escape-hatch]] 直编 wt 通道, 同 case-035/036/037/038/039 既定方法). 三处协同编辑: (A) 前端 restartBot() fetch('/restart?pin='+encodeURIComponent(pin)).then(text) → fetch('/restart',{method:POST,headers:Content-Type:application/json,body:JSON.stringify({pin:pin})}).then(response=>response.text()).then(text).catch(err=>alert('请求错误')+console.error) — POST+JSON body 同 saveConfig(/update_config) 一致, 补 .catch 因 POST 无 catch 静默失败; (B) do_POST 开头新增 /restart 分支: content_length+post_data=json.loads+verify_pin(data.get('pin')) (复用 case-035 verify_pin 常量时间+per-IP 锁定) → 403 'PIN 码错误' / 200 'OK' + threading.Thread(target=restart_sequence).start(); (C) do_GET 删除原 elif parsed_path.path=='/restart' 分支 (line 584-600, query_params.get('pin') 通道), do_GET 末尾收为 self.wfile.write(html_content). 3) 验证: python3 -m py_compile OK (line 761 SyntaxWarning \\o 为 pre-existing E:\\openclaw 既存行非本 commit); grep 'restart?pin|encodeURIComponent(pin)|query_params.get(\\'pin\\'' = NO_RESIDUAL; /restart 仅见于 line 485 前端 POST fetch + line 599 do_POST 分支. 4) 行为测试 (REMOTE_CONTROL_PIN 随机): 构造 FakeHandler 子类 (重写 send_response/send_header/end_headers/log_request 避开 BaseHTTPRequestHandler.requestline 依赖 + 设 client_address 供 verify_pin per-IP 计数) → RIGHT_PIN(via JSON body)→200 'OK' / WRONG_PIN→403 'PIN 码错误' / GET /restart?pin=<correct>→无响应 codes=[] body_len=0 bare_OK=False (GET 不再触发 restart). 'Starting restart sequence...' + 'Error starting bot: E:\\\\openclaw' 为 restart_sequence 线程在 Linux 上触 Windows 路径的预期噪声 (thread 内捕获, 非 test 失败). ALL_PASS. 5) wt 内 git add+commit b4d4938 (FF-clean stack on aa41963, base=85bd9e1=master). 6) git push origin auto/opt-remote-control-1783283520 → 403 (external fork r-ayin/x-tool, [[x-tool-external-fork-push-403]] precedent, 预期) → disk+local-ref 保留待人工 merge.",
+  "files_changed": ["一件重启脚本/remote_control/server.py"],
+  "worktree": "opt-remote-control-1783283520",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit b4d4938 [auto/opt-remote-control-1783283520]: '1 file changed, 35 insertions(+), 20 deletions(-)' stacked FF-clean on aa41963 (base=85bd9e1=master); git log HEAD shows b4d4938→aa41963→b2a4faa. py_compile OK. grep NO_RESIDUAL for 'restart?pin'/'encodeURIComponent(pin)'/\"query_params.get('pin'\". 行为测试 ALL_PASS: RIGHT_PIN→200 'OK', WRONG_PIN→403 'PIN 码错误', GET /restart?pin=<correct>→bare_OK=False (restart 未触发). origin push 403 (external fork, expected) — disk+local-ref retained. server.py:485 前端 fetch('/restart',{method:POST,...,body:JSON.stringify({pin:pin})}); server.py:599 do_POST if parsed_path.path=='/restart' branch; do_GET 原 /restart query 分支已删.",
+  "next_suggestion": "下轮派生 RC-ATOMIC-01 (priority 10, server.py:140-147 save_config 非原子写 tmp+os.replace, medium) — 同 worktree opt-remote-control-1783283520 stack, 同 case-104 直编 wt 通道 (server.py 已分叉). 后续 RC-ROBUST-01 (priority 12) / RC-PROXY-01 (priority 13) 同样 stack. 3 条 pending 全派发 merged|rejected 后 audit-2026-07-06-004 cycle→cycle-complete, 触发下一轮全量审计 (挑未深审项目). owner 动作待办: 轮换已泄漏的 2 yunyi.cfd key (RC-SEC-01) + gateway token (RC-LEAK-02) + set REMOTE_CONTROL_PIN env (RC-SEC-03) + 人工 merge opt-remote-control-1783283520 (8 commit stack 550baaf..b4d4938) 进 x-tool master.",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "一件重启脚本/remote_control/server.py",
+      "line": "483(frontend fetch) + 584-600(do_GET /restart) → 现 485(POST fetch) + 599(do_POST /restart)",
+      "severity": "medium",
+      "finding": "RC-PIN-01: /restart 把 PIN 放 GET URL query (前端 fetch('/restart?pin='+encodeURIComponent(pin)) + 后端 query_params.get('pin')). query 泄漏通道: 浏览器历史/Referer/Cloudflare edge log/server.log/代理日志. PIN 虽已 env 化+常量时间+per-IP 锁定, 但走 query 仍泄漏明文 PIN 本身.",
+      "remediation": "已修: /restart 从 do_GET 迁 do_POST, PIN 走 JSON body (同 /update_config). 前端 fetch POST + JSON.stringify({pin}) + .catch; 后端 do_POST 新增 /restart 分支 (read body + json.loads + verify_pin + 200/OK + thread restart); do_GET 删原 query 分支. commit b4d4938.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-004",
+  "audit_depth": "shallow",
+  "_stack_context": "case-104 直编 wt+wt 内 commit 通道 (cp-guard 对已分叉 server.py 跳过→cmd_commit 中止, 故直编). stack on case-039 (aa41963). 第 8 个 commit b4d4938 (base=85bd9e1=master, FF-clean). opt-remote-control-1783283520 共 8 commit: 550baaf(RC-SEC-01+RC-LEAK-01)/f3bcff2(RC-SEC-02)/163f202(RC-SEC-03+RC-CTIME-01+RC-LOG-01)/3299f27(RC-XSS-01+RC-ATOMIC-02)/d9bf64d(RC-CFG-01)/b2a4faa(RC-BUG-01)/aa41963(RC-LEAK-02)/b4d4938(RC-PIN-01)."
+}

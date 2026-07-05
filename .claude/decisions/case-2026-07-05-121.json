@@ -1,0 +1,30 @@
+{
+  "case_id": "case-2026-07-05-121",
+  "agent_id": "autonomous-engine-ralph-main-loop",
+  "timestamp": "2026-07-05T19:22:30+08:00",
+  "project": "x-tool",
+  "work_unit": "OMNICS-STORE-01 派生 route-fix: ProcessedMessageStore mem Set 无界 + persistFile 非原子写",
+  "situation": "audit-2026-07-05-013 (x-tool omnics-client 全量深度审计) 派生 finding OMNICS-STORE-01 (severity=low, kind=route-fix)。问题: sqlite 模式 init 失败回退 file 模式时, mem Set 只在 persistFile 落盘时 slice(-50_000) 裁剪写盘内容, mem Set 本身无上限 → 高消息量长期运行 OOM; persistFile 直接 writeFileSync 覆盖, 崩溃中途写出截断 JSON, 下次 init JSON.parse 抛错回退 catch 静默吞 → 全量丢失去重历史。本轮 fix-in-progress, 派生该 pending finding 为最小 fix (1 文件)。",
+  "action": "1) 新增模块常量 MAX_MEM_ENTRIES=50_000 (与 persistFile slice 容量对齐); 2) 新增 private trimMem() — mem.size 超上限时按 Set 插入序丢弃最早 (size-MAX) 项 (sqlite 模式下 mem 仅热缓存, 丢弃不影响正确性, has() 未命中回查 DB); 3) add() 末尾调 trimMem(); 4) persistFile 改原子写: 先写 ${filePath}.tmp 再 fs.renameSync 替换, 防崩溃截断。file 模式下 mem 是唯一真源, trimMem 仍保 50k 上限与落盘一致。改动 1 文件 22+ 行。",
+  "files_changed": [
+    "x-tool/聚合ai客服开发/src/main/core/services/ProcessedMessageStore.ts"
+  ],
+  "worktree": "opt-omnics-1783246236",
+  "direction": "omnics:store-mem-bound-atomic-write",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh x-tool commit 输出 '✓ 提交到 opt-omnics-1783246236 方向=omnics:store-mem-bound-atomic-write' (route-fix 复用同 area worktree, 未触 public-interfaces.txt); git -C opt-omnics-1783246236 log 显示 commit 147e86f 'opt(omnics:store-mem-bound-atomic-write): fix(ProcessedMessageStore): OMNICS-STORE-01 ...'; git show HEAD --stat 显示 'ProcessedMessageStore.ts | 23 +++++++++++++++++++++- 1 file changed, 22 insertions(+), 1 deletion(-)'; main 工作区已 restore (cp/commit/restore 舞步), 待人工审 merge。",
+  "next_suggestion": "audit-cycle-state 还有 4 个未派生 pending finding: OMNICS-CONFIG-01 (apiKey 明文落盘, ConfigManager.ts, low, 可叠加 OMNICS-LLM-02 已修同文件——需 safeStorage.encryptString, 触凭证敏感路径需同步补 audit-log 埋点)、OMNICS-DB-01 (better-sqlite3 verbose:console.log 泄 SQL, db.ts, low)、OMNICS-INJECT-01 (CSS selector 字符串插值, InputSimulator.ts+PddAdapter.ts, low)、OMNICS-LOG-01 (LLM 响应/axios 错误体/PDD outerHTML 冗长日志泄敏, XiaoHongShuAdapter.ts+pdd.ts, low)。下轮优先 OMNICS-DB-01 (单文件最简) 或 OMNICS-CONFIG-01 (凭证安全价值高但需 audit-log 埋点)。另: opt-omnics-1783246236 worktree 已累积 7 个 route-fix commit 待人工 merge, 提醒用户审 diff 后 merge 或 reject 以推动 cycle-complete → 下一轮全量审计。",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "x-tool/聚合ai客服开发/src/main/core/services/ProcessedMessageStore.ts",
+      "line": 19,
+      "severity": "low",
+      "finding": "OMNICS-STORE-01: mem Set 无上限, file 模式长期运行 OOM; persistFile writeFileSync 非原子, 崩溃截断 JSON 致 init 静默吞错全量丢历史",
+      "remediation": "MAX_MEM_ENTRIES=50k 上限 + trimMem() 按插入序丢弃最早项; persistFile 改 tmp+rename 原子写",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-013",
+  "audit_depth": "deep"
+}
