@@ -37,12 +37,16 @@ class RunnerSession {
 
   exec(cmd, timeoutMs = 30000) {
     const marker = `__X${Date.now()}${Math.random().toString(36).slice(2, 8)}__`;
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
+      // 超时不再静默 resolve 部分输出（push.js 的 try/catch 会把截断误计为成功）；
+      // 改为 reject 并把部分输出挂在 error.output 上，与 write-file/batch-write 的 {ok:false,error:'timeout'} 契约对齐。
       const timer = setTimeout(() => {
         const result = this.buf;
         this.buf = '';
         this._onData = null;
-        resolve(result);
+        const e = new Error('timeout');
+        e.output = result;
+        reject(e);
       }, timeoutMs);
 
       this._onData = () => {

@@ -21,7 +21,9 @@ async function execOnRunner(command, timeoutMs = 30000) {
       const msg = JSON.parse(raw.toString());
       if (msg.type === 'started') {
         ws.send(JSON.stringify({ type: 'input', data: `${command}\r\necho "${MARKER}"\r\n` }));
-        timer = setTimeout(() => { ws.close(); resolve(output); }, timeoutMs);
+        // 超时不再静默 resolve 部分输出（会令调用方误判命令成功完成）；
+        // 改为 reject 并把已收到的部分输出挂在 error.output 上，与 write-file/batch-write 的 {ok:false,error:'timeout'} 契约对齐。
+        timer = setTimeout(() => { ws.close(); const e = new Error('timeout'); e.output = output; reject(e); }, timeoutMs);
       }
       if (msg.type === 'output') {
         output += msg.data;
