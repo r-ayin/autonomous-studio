@@ -54,6 +54,13 @@ from audit_log import record as _audit_write
 
 __version__ = _read_skill_version()
 
+# HTTPAU-04/AUDITT-04 (audit-2026-07-06-005): _log 把完整 request params/data/json_body
+# + response.data 写盘无脱敏。.log 文件长期累积，凭证/PII 易外泄。脱敏敏感键 + 截断长值。
+_LOG_SENSITIVE_KEYS = frozenset({
+    "token", "authorization", "bff_token", "password", "passwd", "secret",
+    "cookie", "apikey", "api_key", "accesskey", "access_key", "sessionid",
+})
+
 # 再导出：保持 from bff_client import xxx 的兼容性
 __all__ = [
     "BFFClient", "WriteOperationError",
@@ -96,6 +103,9 @@ class BFFClient(PaginationMixin, OutputMixin):
             for key, value in _load_env_file(_p).items():
                 if key not in os.environ:
                     os.environ[key] = value
+            # HTTPAU-03 (audit-2026-07-06-005): .env 含 BFF_TOKEN 凭证，
+            # group/world 可读时收紧 600，防同机其他用户 cat 泄露 token。
+            self._ensure_env_perms(_p)
 
         # Token：根据 profile 决定是否必填
         self.token = os.getenv("BFF_TOKEN")
@@ -173,6 +183,24 @@ class BFFClient(PaginationMixin, OutputMixin):
 
     # ── Profile & Endpoint ──
 
+    def _ensure_env_perms(self, path):
+        """检查 .env 文件权限，group/world 可读则警告并尝试收紧到 600。
+
+        HTTPAU-03 (audit-2026-07-06-005): .env 由用户 `cat >` 创建，继承 umask
+        常为 0644，同机其他用户可读 → BFF_TOKEN 泄露。chmod 600 收紧。
+        """
+        try:
+            st = os.stat(path)
+        except OSError:
+            return
+        if st.st_mode & 0o077:
+            print(f"⚠️ {path} 权限过宽（{oct(st.st_mode & 0o777)}），含凭证建议 600；尝试收紧",
+                  file=sys.stderr)
+            try:
+                os.chmod(path, 0o600)
+            except OSError:
+                pass
+
     def _load_profile(self, skill_dir=None):
         """加载 profile.json（build 产物，只读）
 
@@ -237,15 +265,23 @@ class BFFClient(PaginationMixin, OutputMixin):
              例如 alibaba profile 下测预发 `pre-bff.dw.alibaba-inc.com`。）
           2. profile.auth.endpoint —— 环境硬编码（如 alibaba）
           3. BFF_ENV → endpoints.json 字典查找
+
+        HTTPAU-01/02 (audit-2026-07-06-005): 每条候选都经 _validate_endpoint 校验
+        scheme ∈ {http,https} + host 非空；非法则降级到下一优先级，防 env/.env 投毒
+        把 Bearer token 重定向到 file:///javascript: 等异型 scheme 或空 host。
         """
         # 1. BFF_ENDPOINT 最高优先级（env var 或 .env 文件）
         ep = os.getenv("BFF_ENDPOINT")
         if ep:
-            return ep
+            ep = self._validate_endpoint(ep)
+            if ep:
+                return ep
 
         # 2. profile 硬编码 endpoint
         if auth_cfg.get("endpoint"):
-            return auth_cfg["endpoint"]
+            ep = self._validate_endpoint(auth_cfg["endpoint"])
+            if ep:
+                return ep
 
         # 3. endpoints.json 字典查找
         if auth_cfg["endpoint_source"] == "endpoints_json":
@@ -253,10 +289,42 @@ class BFFClient(PaginationMixin, OutputMixin):
             if bff_env:
                 ep = self._resolve_endpoint_from_env(bff_env)
                 if ep:
-                    print(f"ℹ️ BFF_ENV={bff_env} → endpoint={ep}", file=sys.stderr)
-                return ep
+                    ep = self._validate_endpoint(ep)
+                    if ep:
+                        print(f"ℹ️ BFF_ENV={bff_env} → endpoint={ep}", file=sys.stderr)
+                    return ep
 
         return None
+
+    def _validate_endpoint(self, ep):
+        """校验 endpoint URL（HTTPAU-01/02 audit-2026-07-06-005）。
+
+        要求 scheme ∈ {http,https} 且 hostname 非空；http:// 警告 token 明文传输
+        （内网可接受，HTTPAU-01 提醒）。返回规范化后的 ep（合法）或 None（非法，调用方降级）。
+        """
+        from urllib.parse import urlparse
+        if not ep or not isinstance(ep, str):
+            return None
+        ep = ep.strip()
+        if not ep:
+            return None
+        parsed = urlparse(ep)
+        # 显式 scheme 必须是 http/https：拦 javascript:/file:/data: 等异型 scheme 投毒
+        if parsed.scheme and parsed.scheme not in ("http", "https"):
+            print(f"⚠️ BFF_ENDPOINT scheme 非法（{parsed.scheme}），拒用: {ep}",
+                  file=sys.stderr)
+            return None
+        # 无 scheme（如 bare host）→ 补 http:// 再解析 host
+        if not parsed.scheme:
+            ep = f"http://{ep}"
+            parsed = urlparse(ep)
+        if not parsed.hostname:
+            print(f"⚠️ BFF_ENDPOINT 缺 hostname，拒用: {ep}", file=sys.stderr)
+            return None
+        if parsed.scheme == "http":
+            print("⚠️ BFF_ENDPOINT 为 http://，Bearer token 将明文传输（内网可接受，HTTPAU-01 提醒）",
+                  file=sys.stderr)
+        return ep
 
     def _load_endpoints_dict(self, skill_dir):
         """加载 endpoint 字典（endpoints.json）"""
@@ -385,11 +453,38 @@ class BFFClient(PaginationMixin, OutputMixin):
 
         return " ".join(parts)
 
+    def _redact_for_log(self, obj, depth=0):
+        """递归脱敏日志：mask 敏感键值 + 截断长字符串 + 限深度/列表长度。
+
+        HTTPAU-04/AUDITT-04 (audit-2026-07-06-005): _log 写盘的 request params/data/
+        json_body 与 response.data 可能含 token/凭证/PII，长期累积于 .log 文件。
+        敏感键（token/authorization/secret 等）整体替换；长字符串截断到 500 字符；
+        嵌套深度 >4 或列表 >20 项折叠，防巨型响应撑爆日志。
+        """
+        if depth > 4:
+            return "<truncated:depth>"
+        if isinstance(obj, dict):
+            return {
+                k: ("***REDACTED***" if str(k).lower() in _LOG_SENSITIVE_KEYS
+                    else self._redact_for_log(v, depth + 1))
+                for k, v in obj.items()
+            }
+        if isinstance(obj, list):
+            if len(obj) > 20:
+                return [self._redact_for_log(obj[0], depth + 1), f"...<{len(obj)} items>"]
+            return [self._redact_for_log(x, depth + 1) for x in obj]
+        if isinstance(obj, str):
+            return obj if len(obj) <= 500 else (obj[:500] + f"...<+{len(obj) - 500} chars>")
+        return obj
+
     def _log(self, path, method, params, data, json_body, response, cost_ms):
         """记录 API 调用日志
 
         文件写入包 try/except（与 _log_warn 一致）：_do_request 是 HTTP chokepoint，
         调试日志的磁盘/权限异常不应阻断真实 API 调用（case-420 审计修复 F3）。
+
+        HTTPAU-04/AUDITT-04 (audit-2026-07-06-005): request/response 经 _redact_for_log
+        脱敏后写盘，防凭证/PII 落 .log 文件。
         """
         log_entry = {
             "timestamp": datetime.now().isoformat(),
@@ -397,15 +492,15 @@ class BFFClient(PaginationMixin, OutputMixin):
             "request": {
                 "path": path,
                 "method": method,
-                "params": params,
-                "data": data,
-                "json_body": json_body
+                "params": self._redact_for_log(params),
+                "data": self._redact_for_log(data),
+                "json_body": self._redact_for_log(json_body)
             },
             "response": {
-                "code": response.get("code"),
-                "data": response.get("data"),
-                "message": response.get("message"),
-                "requestId": response.get("requestId")
+                "code": response.get("code") if isinstance(response, dict) else None,
+                "data": self._redact_for_log(response.get("data")) if isinstance(response, dict) else None,
+                "message": response.get("message") if isinstance(response, dict) else None,
+                "requestId": response.get("requestId") if isinstance(response, dict) else None,
             }
         }
         try:
