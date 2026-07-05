@@ -15,7 +15,7 @@
 
 import { parseArgs } from 'node:util';
 import { findBatchEvent, findEvent } from './lib/event-client.js';
-import { deriveConclusion } from './lib/sunfire-client.js';
+import { deriveConclusion, dedupByRuleNewest } from './lib/sunfire-client.js';
 
 const { values } = parseArgs({
   options: {
@@ -73,12 +73,9 @@ async function main() {
   if (observationResult && !observationResult.skipped) {
     const conclusion = deriveConclusion(observationResult.checks);
     if (conclusion === 'failed') {
-      // Dedup to find which HIGH-level rules are still failing
-      const byRule = new Map();
-      for (const item of (observationResult.checks || [])) {
-        if (item.insightRule) byRule.set(item.insightRule, item);
-      }
-      const failedHighRules = [...byRule.values()]
+      // PD-CONCL-01: dedup by insightRule keeping newest status per rule
+      // (timestamp-desc sort) to find which HIGH-level rules are still failing.
+      const failedHighRules = dedupByRuleNewest(observationResult.checks)
         .filter(item => item.status !== 'RECOVER' && item.insightLevel === 'HIGH')
         .map(item => item.insightRule);
 
