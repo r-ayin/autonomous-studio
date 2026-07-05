@@ -2,7 +2,7 @@
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
-const { execSync } = require('child_process');
+const { execFileSync } = require('child_process');
 
 const SERVER = 'http://127.0.0.1:58596';
 const WS_HOST = 'ws://127.0.0.1:58596';
@@ -11,7 +11,7 @@ function getInternalSecret() {
   try {
     const p = path.join(process.env.HOME || '/home/admin', '.aone-cloud-cli', 'internal-rpc-secret');
     if (fs.existsSync(p)) return fs.readFileSync(p, 'utf-8').trim();
-  } catch {}
+  } catch (e) { /* keep fallback to pgrep path; file read failure non-fatal */ }
   try {
     const pid = execSync("pgrep -f 'node.*cloud-cli.*server'", { encoding: 'utf-8' }).trim().split('\n')[0];
     if (pid) {
@@ -26,8 +26,8 @@ function getInternalSecret() {
 function getSessionToken() {
   const dbPath = path.join(process.env.HOME || '/home/admin', '.aone-cloud-cli', 'auth.db');
   try {
-    return execSync(`sqlite3 "${dbPath}" "SELECT token FROM active_tokens ORDER BY created_at DESC LIMIT 1;"`, { encoding: 'utf-8' }).trim();
-  } catch {}
+    return execFileSync('sqlite3', [dbPath, 'SELECT token FROM active_tokens ORDER BY created_at DESC LIMIT 1;'], { encoding: 'utf-8' }).trim();
+  } catch (e) { throw new Error('无法获取 session token: ' + e.message); }
   throw new Error('无法获取 session token');
 }
 
