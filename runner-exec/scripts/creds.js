@@ -4,8 +4,12 @@ const fs = require('fs');
 const path = require('path');
 const { execFileSync } = require('child_process');
 
-const SERVER = 'http://127.0.0.1:58596';
-const WS_HOST = 'ws://127.0.0.1:58596';
+// 可由部署环境通过 CLOUDCLI_API_BASE_URL 覆盖（precedent: devix-automation-skill SKILL.md commit 2560c9b）。
+// 未设置时回退到本地 cloud-cli server 默认端口，保持原有行为。
+const DEFAULT_API_BASE = 'http://127.0.0.1:58596';
+const API_BASE = process.env.CLOUDCLI_API_BASE_URL || DEFAULT_API_BASE;
+const SERVER = API_BASE.replace(/\/+$/, ''); // 去尾部斜杠，避免拼路径出现双斜杠
+const WS_HOST = SERVER.replace(/^http/, 'ws'); // http(s):// → ws(s)://
 
 function getInternalSecret() {
   try {
