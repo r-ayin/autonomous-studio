@@ -6,6 +6,15 @@ function escapePS(str) {
   return str.replace(/`/g, '``').replace(/\$/g, '`$').replace(/"/g, '`"').replace(/\r?\n/g, '`n');
 }
 
+// Escape a path for safe interpolation into a PowerShell *single-quoted* string.
+// In PS single-quote context the only special character is ' itself; the standard
+// escape is doubling (' -> ''). escapePS above is for double-quote -Value context
+// and does NOT escape single quotes, so -Path '${path}' was injectable (audit-017
+// RE-CMDI-01). Use this for every -Path '...' interpolation.
+function escapePSPath(p) {
+  return String(p).replace(/'/g, "''");
+}
+
 async function writeFile(windowsPath, content, timeoutMs = 30000) {
   const secret = getInternalSecret();
   const runnerId = await getRunnerID(secret);
@@ -24,8 +33,8 @@ async function writeFile(windowsPath, content, timeoutMs = 30000) {
     ws.on('message', (raw) => {
       const msg = JSON.parse(raw.toString());
       if (msg.type === 'started') {
-        const parent = windowsPath.replace(/\\[^\\]+$/, '');
-        const cmd = `chcp 65001 > $null\r\nNew-Item -ItemType Directory -Force -Path '${parent}' > $null\r\nSet-Content -Path '${windowsPath}' -Value "${escapePS(content)}" -Encoding UTF8\r\necho "${MARKER}"\r\n`;
+        const parent = escapePSPath(windowsPath.replace(/\\[^\\]+$/, ''));
+        const cmd = `chcp 65001 > $null\r\nNew-Item -ItemType Directory -Force -Path '${parent}' > $null\r\nSet-Content -Path '${escapePSPath(windowsPath)}' -Value "${escapePS(content)}" -Encoding UTF8\r\necho "${MARKER}"\r\n`;
         ws.send(JSON.stringify({ type: 'input', data: cmd }));
         timer = setTimeout(() => { ws.close(); resolve({ ok: false, error: 'timeout' }); }, timeoutMs);
       }
@@ -51,4 +60,4 @@ if (require.main === module) {
   writeFile(winPath, content).then(r => console.log(r.ok ? '✓' : `✗ ${r.error}`)).catch(e => { console.error('ERROR:', e.message); process.exit(1); });
 }
 
-module.exports = { writeFile, escapePS };
+module.exports = { writeFile, escapePS, escapePSPath };

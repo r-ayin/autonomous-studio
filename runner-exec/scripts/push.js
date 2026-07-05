@@ -8,6 +8,14 @@ function escapePS(str) {
   return str.replace(/`/g, '``').replace(/\$/g, '`$').replace(/"/g, '`"').replace(/\r?\n/g, '`n');
 }
 
+// Escape a path for safe interpolation into a PowerShell *single-quoted* string.
+// In PS single-quote context the only special character is ' itself; escape by
+// doubling (' -> ''). escapePS above is for double-quote -Value context and does
+// NOT escape single quotes, so -Path '${path}' was injectable (audit-017 RE-CMDI-01).
+function escapePSPath(p) {
+  return String(p).replace(/'/g, "''");
+}
+
 function walkDir(dir) {
   const results = [];
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -54,10 +62,10 @@ async function push(localDir, winDir) {
 
   let ok = 0, fail = 0;
   for (const f of changed) {
-    const parent = f.winPath.replace(/\\[^\\]+$/, '');
+    const parent = escapePSPath(f.winPath.replace(/\\[^\\]+$/, ''));
     try {
       await session.exec(
-        `New-Item -ItemType Directory -Force -Path '${parent}' > $null; Set-Content -Path '${f.winPath}' -Value "${escapePS(f.content)}" -Encoding UTF8`
+        `New-Item -ItemType Directory -Force -Path '${parent}' > $null; Set-Content -Path '${escapePSPath(f.winPath)}' -Value "${escapePS(f.content)}" -Encoding UTF8`
       );
       process.stdout.write(`  ${f.rel.padEnd(55)} ✓\n`);
       ok++;

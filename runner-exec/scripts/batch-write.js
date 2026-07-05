@@ -2,7 +2,7 @@
 const fs = require('fs');
 const WebSocket = require('./vendor/ws');
 const { getInternalSecret, getSessionToken, getRunnerID, WS_HOST } = require('./creds');
-const { escapePS } = require('./write-file');
+const { escapePS, escapePSPath } = require('./write-file');
 
 async function batchWrite(files, timeoutMs = 60000) {
   const secret = getInternalSecret();
@@ -24,9 +24,9 @@ async function batchWrite(files, timeoutMs = 60000) {
       if (msg.type === 'started') {
         const cmds = ['chcp 65001 > $null'];
         for (const f of files) {
-          const parent = f.path.replace(/\\[^\\]+$/, '');
+          const parent = escapePSPath(f.path.replace(/\\[^\\]+$/, ''));
           cmds.push(`New-Item -ItemType Directory -Force -Path '${parent}' > $null`);
-          cmds.push(`Set-Content -Path '${f.path}' -Value "${escapePS(f.content)}" -Encoding UTF8`);
+          cmds.push(`Set-Content -Path '${escapePSPath(f.path)}' -Value "${escapePS(f.content)}" -Encoding UTF8`);
           cmds.push(`echo "  ${f.path.split('\\').pop()} OK"`);
         }
         cmds.push(`echo "${MARKER}"`);
