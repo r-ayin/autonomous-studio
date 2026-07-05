@@ -181,7 +181,7 @@ while true; do
     # 循环末尾归档孤儿 case（case-341 未竟，多轮遗留）：跨项目轮次写的 case 滞留 AS main
     # 成 untracked→scout 误算 dirty/撞号。扫 AS main untracked case-*.json，cp 进 housekeeping
     # worktree 提交、main 还原。自测守卫已在脚本内；失败不阻断主循环（|| true）。
-    bash "$ENGINE_DIR/scripts/loop-archive-cases.sh" autonomous-studio || true
+    bash "$ENGINE_DIR/scripts/loop-archive-cases.sh" "$ENGINE_DIR" || true
   )
   sleep 2  # 短暂喘息，避免空转打爆 API
 done
