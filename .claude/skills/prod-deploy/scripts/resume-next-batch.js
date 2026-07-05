@@ -47,8 +47,14 @@ async function main() {
   const observeMinutes = planPayload.resolved_strategy?.observe_minutes ?? 5;
 
   // ── Gate 1: Time gate ─────────────────────────────────────────────
-  // updated_at from server is an ISO string; convert to ms
-  const successTime = new Date(batchEvent.updated_at).getTime();
+  // PD-TIME-01: prefer payload.success_at (stamped when the batch hit SUCCESS) over
+  // updated_at, because report-observation writes observation_result into the same event
+  // every tick, bumping updated_at and making the gate never pass. Fall back to updated_at
+  // for in-flight batches stamped before this fix.
+  const successAt = batchEvent.payload?.success_at;
+  const successTime = successAt != null
+    ? new Date(successAt).getTime()
+    : new Date(batchEvent.updated_at).getTime();
   const elapsedMs = Date.now() - successTime;
   const requiredMs = observeMinutes * 60 * 1000;
 

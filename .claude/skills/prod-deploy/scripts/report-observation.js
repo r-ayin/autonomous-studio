@@ -10,8 +10,9 @@
  *   node report-observation.js --task-id <id> --batch-index <N> \
  *     --app-name <app> [--start-time <epoch_ms>] [--analysis <text>]
  *
- * If --start-time is omitted, uses batch event's updated_at timestamp
- * (when the batch became SUCCESS) as the observation start time.
+ * If --start-time is omitted, uses the batch event's payload.success_at timestamp
+ * (stamped when the batch became SUCCESS) as the observation start time, falling
+ * back to updated_at for batches stamped before the success_at fix (PD-TIME-01).
  *
  * Output (JSON):
  *   { observation_result: {...}, conclusion: "passed"|"warning"|"failed", skipped?: boolean }
@@ -54,9 +55,13 @@ async function main() {
   }
 
   // 2. Determine observation time window
+  // PD-TIME-01: prefer payload.success_at (stamped when the batch hit SUCCESS) over
+  // updated_at, which this script bumps every tick via updateEvent. Fall back to updated_at
+  // for in-flight batches stamped before this fix.
+  const successAt = batchEvent.payload?.success_at;
   const startTime = values['start-time']
     ? parseInt(values['start-time'], 10)
-    : new Date(batchEvent.updated_at).getTime();
+    : (successAt != null ? new Date(successAt).getTime() : new Date(batchEvent.updated_at).getTime());
   const endTime = Date.now();
 
   // 3. Query Sunfire — querySunfireInsights handles missing credentials gracefully
