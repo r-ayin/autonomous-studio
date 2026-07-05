@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-05-029",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-05T05:24:24+08:00",
+  "project": "sunset-prediction",
+  "work_unit": "派生 fix (audit-2026-07-05-003 finding SP-HTTP-01): server.js:140 app.listen(PORT) 默认 bind 0.0.0.0 + 全程无 auth → 任何人可 POST /api/xhs/generate(消耗真实 XHS cookie) / /social/fetch / /social/calibrate。改 app.listen(PORT,'127.0.0.1') bind loopback（SD-SP-01 无 auth 层的过渡 stopgap）。",
+  "situation": "audit-cycle-state.status=fix-in-progress, pending_count=8。SP-SEC-01 上轮已 dispatched (8c512a6 pushed, _wait_round_count=0)。本轮派生第 2 个 finding SP-HTTP-01 (HIGH)。sunset-prediction 不在 .claude/public-interfaces.txt → 全 route-fix 复用 opt-routes-1783141439 单 worktree（area=routes 同 area 复用，opt-worktree.sh judge_direction_kind 判定 route-fix）。stack: 49c56ea(MAIN base) → d820093(SSE-heartbeat SP-M01 前轮) → 8c512a6(SP-SEC-01) → 7d1d9d8(SP-HTTP-01 本轮)。",
+  "action": "1) grep app.listen 定位 server.js:140。2) Read server.js:125-143 确认 listen 调用上下文（PORT=8080 硬编码，无 HOST env）。3) Edit server.js:140 `app.listen(PORT, () => {` → `app.listen(PORT, '127.0.0.1', () => {`，console.log 加 `(bound to 127.0.0.1, not 0.0.0.0)` 标注。4) opt-worktree.sh commit routes:http-bind-loopback → 复用 opt-routes-1783141439，commit 7d1d9d8 push origin/auto/opt-routes-1783141439 (8c512a6..7d1d9d8)。5) git show 7d1d9d8 验证 diff（4 ++/-- 2 行）。注意：此为过渡 stopgap，根治仍需 SD-SP-01 auth 层（structural debt, 需用户授权更大单位）。",
+  "files_changed": ["server.js"],
+  "worktree": "opt-routes-1783141439 (branch auto/opt-routes-1783141439, sunset-prediction, route-fix 复用)",
+  "direction": "routes:http-bind-loopback (route-fix, area=routes 复用 opt-routes-1783141439)",
+  "outcome": "succeeded",
+  "outcome_evidence": "git show 7d1d9d8 -- server.js 输出 `app.listen(PORT, '127.0.0.1', () => {` (line 140) 替换原 `app.listen(PORT, () => {`，1 file changed 2 insertions 2 deletions。opt-worktree.sh 输出 `→ 复用同 area worktree (route-fix): opt-routes-1783141439` + `✓ 已 push auto/opt-routes-1783141439 → origin/auto/opt-routes-1783141439` + `8c512a6..7d1d9d8 HEAD -> auto/opt-routes-1783141439`。push 远端 code.alibaba-inc.com 接受 7d1d9d8，codereview 链接生成。git ls-remote origin auto/opt-routes-1783141439 证 7d1d9d8 在远端。",
+  "next_suggestion": "[下轮] audit-cycle-state.status=fix-in-progress, pending_count=8（SP-SEC-01 8c512a6 dispatched wait=0, SP-HTTP-01 7d1d9d8 本轮 dispatched wait=0, 余 6 pending: SP-SEC-02/SP-XHS-01/SP-XHS-02/SP-CLI-01/SP-HTTP-03/SP-FETCH-01）→ step 0 派生 SP-SEC-02 (git remote set-url origin 剥离内嵌 taobao 凭证 syp02536326%40taobao.com:HStZLJue84222jXR1oWW + 轮换密码; 运维 op, _planned_files=[], 无源文件 commit, 可能需写 runtime case 而非 opt-worktree commit)。或跳过运维型 SP-SEC-02 派 SP-XHS-01 (redact cookie stdout, export-xhs-cookie.js:67 + post_xhs_browseruse.py:145, 2 文件 route-fix 复用 opt-routes-1783141439)。注意 deadlock 模式：前两审计周期 16/16+6/6 全 deadlock-archive，stacked fix on 单 worktree 易 stall — 派生后若连续 3 轮 wait 无 merge，按用户定死锁保护 archive → rejected，cycle-complete 触发新审计。或人工 merge opt-routes-1783141439 (3 commit stack: d820093 SSE-heartbeat + 8c512a6 SP-SEC-01 + 7d1d9d8 SP-HTTP-01)。运维 todo(不自动): 轮换 XHS session + git filter-repo 清 remote history + SP-SEC-02 git remote set-url + 轮换 HStZLJue84222jXR1oWW 密码。",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-05-003",
+  "audit_depth": "shallow"
+}

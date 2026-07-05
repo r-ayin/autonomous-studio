@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-05-131",
+  "agent_id": "ralph-autonomous-engine",
+  "timestamp": "2026-07-05T23:58:00+08:00",
+  "project": "wanxia-edit",
+  "work_unit": "WANXIA-SMTP-01 派生 fix: mail_push.py SMTP_PORT int() 未包 try/except，非数字/越界值导致 cron 推送以晦涩 ValueError 堆栈崩溃",
+  "situation": "audit-2026-07-05-014 派生 finding WANXIA-SMTP-01 (severity=low, kind=route-fix)。mail_push.py:94 `port = int(os.environ.get(\"SMTP_PORT\", \"465\"))` 无异常处理：若 cron source 的 .wechat-env 里 SMTP_PORT 被设成空串/非数字/越界（如 '587 ' 带空格或被误改成 ' smtp'），int() 抛 ValueError 直接崩到 stderr 堆栈，cron 静默失败，晚霞预报当日邮件漏发且无人告警。wanxia-edit 非 git 仓 (SD-WANXIA-01)，opt-worktree 不可用 → 沿 case-130 precedent 直接落 live 工作文件（cron 调用的同一文件）。",
+  "action": "把 line 94 的 bare int() 改为 try/except ValueError 包裹：非数字 → 打印 `SMTP_PORT=<raw>!r 非整数` 到 stderr 并 return 1（与既有 `SMTP_HOST/USER/PASS/MAIL_TO 未配置` 同一退出语义）；新增 1<=port<=65535 越界校验，越界同样 return 1。保留默认值 465 与既有 port==465 走 SMTP_SSL / 否则走 SMTP+starttls 分支不变。最小改动，单文件 1 处。",
+  "files_changed": ["/home/admin/workspace/wanxia-edit/mail_push.py"],
+  "worktree": "none (wanxia-edit non-git, SD-WANXIA-01 — 直接落 live 文件，等价 merged；同 case-130 WANXIA-SSRF-01 precedent)",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "SMTP_PORT=notanumber → `⚠️ SMTP_PORT='notanumber' 非整数...` rc=1（此前为未捕获 ValueError 堆栈 + rc=1 但无清晰 message）；SMTP_PORT=99999 → `⚠️ SMTP_PORT=99999 越界（需 1-65535）` rc=1；SMTP_HOST 空 → 保留既有 `SMTP_HOST/USER/PASS/MAIL_TO 未配置` rc=1（回归未破）。三用例 stdout/stderr 实测符合预期。",
+  "next_suggestion": "下轮派生 WANXIA-ENV-01 (env.js .env 路径不一致，route-fix) 或 WANXIA-XHS-NO-SANDBOX-01 (chromium --no-sandbox，low)。DEAD-01/02 (structural) 需 owner 澄清 server.js/social-scraper.js 布局后治本，挂 structural-debt。5 derived_fixes 全 merge/reject 后 audit-014 cycle-complete → 触发下次全量审计（候选未深审: xia 499 / personal-assistant re-audit / wechat-main re-audit）。",
+  "audit_type": "none",
+  "audit_findings": [
+    {
+      "file": "/home/admin/workspace/wanxia-edit/mail_push.py",
+      "line": 94,
+      "severity": "low",
+      "finding": "WANXIA-SMTP-01: `port = int(os.environ.get('SMTP_PORT', '465'))` 未包 try/except，SMTP_PORT 非数字/越界时 cron 推送以 ValueError 堆栈崩溃，当日邮件漏发且无告警",
+      "remediation": "try/except ValueError + 1<=port<=65535 越界校验，非数字/越界 return 1 + 清晰 stderr message（对齐既有未配置退出语义）",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-014",
+  "audit_depth": "shallow"
+}

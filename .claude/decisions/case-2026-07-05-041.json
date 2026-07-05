@@ -1,0 +1,36 @@
+{
+  "case_id": "case-2026-07-05-041",
+  "agent_id": "ralph-autonomous-studio",
+  "timestamp": "2026-07-05T06:57:50+08:00",
+  "project": "autonomous-engine",
+  "work_unit": "派生 fix (audit-2026-07-05-005 priority 5+6 同栈堆): notify-phone.py AE-M-002 (main() L206 丢弃 send() 返回值 → confirm 级 AskUserQuestion 通知失败静默丢失，用户在 Termux 永远等不到提醒) + AE-NEW-003 (notify_via_tunnel L69-78 finally sock.close() 在 socket.socket() 抛 OSError(EMFILE) 时 sock 未绑定 → UnboundLocalError 覆盖 except return False 向上传播，破坏 hook 静默契约)",
+  "situation": "audit-cycle-state.status=fix-in-progress, derived_fixes 仍有 5 个 pending-dispatch (priority 5..10)。已派 5/10: AE-H-001 (case-038 d801343) + AE-H-002/AE-NEW-001 (case-039 677cdb8) + AE-M-001/AE-NEW-002 (case-040 9b747ff) 全部堆在 opt-hooks-1783203936 待人工 merge。本轮按 priority 5 派生 AE-M-002，同文件 priority 6 = AE-NEW-003 同栈堆到同一 hooks worktree（同 .py 文件 .claude/hooks/notify-phone.py）。两 finding 均为真逻辑 bug（静默失败/异常吞没契约破坏），符合 2026-07-03 反 churn 例外条款。notify-phone.py 是 Termux 通知 hook：confirm 级通知是 AskUserQuestion 触发的高优先级提醒，发送失败静默 = 用户在手机端永远等不到回复提醒；finally UnboundLocalError 会让整个 hook 进程以非零退出爆栈，破坏 hook 静默契约（hook 应永远静默 exit 0 不阻塞主流程）。",
+  "action": "改单文件 .claude/hooks/notify-phone.py 两处: (1) AE-NEW-003 notify_via_tunnel L69-78: 原 try: sock=socket.socket(...); ... finally: sock.close()。当 socket.socket() 自身抛 OSError(如 EMFILE 文件符耗尽) 时 sock 未绑定，finally 的 sock.close() 触发 UnboundLocalError，该异常覆盖 except 的 return False 向上传播 → hook 进程非零退出。改 sock=None 前置 + finally `if sock is not None: try: sock.close() except OSError: pass` 守卫，确保任意失败路径返回 False 而非抛异常。(2) AE-M-002 main() L206: 原 `send(title, message, reason, priority)` 丢弃返回值。改 `success = send(...)`; `if not success and reason == \"confirm\":` 写 stderr + .last_phone_notify_failed 标记文件（ISO8601 时间戳）供上层观测 confirm 级通知失败。stop/unknown 级失败仍静默（去抖逻辑本就允许跳过 stop）。",
+  "files_changed": [".claude/hooks/notify-phone.py"],
+  "worktree": "opt-hooks-1783203936",
+  "direction": "hooks:notify-phone-failure-surfacing",
+  "outcome": "succeeded",
+  "outcome_evidence": "1) python3 -m py_compile .claude/hooks/notify-phone.py → OK syntax（worktree HEAD 5a5e77e 上验证通过）。2) opt-worktree.sh commit 复用同 area worktree opt-hooks-1783203936 (route-fix, 触及文件 autonomous-engine:.claude/hooks/notify-phone.py 不在 public-interfaces.txt——清单无 autonomous-engine 段)，commit 5a5e77e 落地于 9b747ff 之上。3) push 成功 9b747ff..5a5e77e HEAD -> auto/opt-hooks-1783203936，origin 已同步（remote 创建 codereview 链接 https://code.alibaba-inc.com/xtool/autonomous-engine/codereview/new?from=master&to=auto/opt-hooks-1783203936）。4) worktree git log 栈堆确认: 985aa36 (base) → d801343 (AE-H-001) → 677cdb8 (AE-H-002+AE-NEW-001) → 9b747ff (AE-M-001+AE-NEW-002) → 5a5e77e (AE-M-002+AE-NEW-003)，5 commit 干净栈堆待人工合并。5) sed -n '69,90p' 确认 notify_via_tunnel 已是 sock=None 前置 + finally if sock is not None 守卫；main() L206 区域确认 success=send(...) + confirm 失败写 stderr+.last_phone_notify_failed 标记。两处均落地 worktree。",
+  "next_suggestion": "下轮继续派生 priority 7 = AE-M-003 (decision-observer.py handle_stop L263-288 反向读日志 chunk 拼接 off-by-one → 跨边界行 JSON parse 失败 → active_project 间歇 unknown) + 同文件 priority 8 = AE-NEW-004 (decision-observer STATE_FILE L343+L363 非原子写 → 崩溃中途 autonomous-state.md 残缺) 同栈堆到 opt-hooks-1783203936（同 .py 文件 .claude/hooks/decision-observer.py）。opt-hooks-1783203936 当前已堆 5 commit (d801343/677cdb8/9b747ff/5a5e77e) 待人工 merge；若再 3 轮瞭望后仍 0 merge → 触发 deadlock-archive reject (同 sunset-prediction/personal-assistant/wechat-main 模式，整栈 5 commit 一并 reject/merge)。派生进度 7/10: AE-H-001/AE-H-002/AE-NEW-001/AE-M-001/AE-NEW-002/AE-M-002/AE-NEW-003 已派；剩 3 pending-dispatch (AE-M-003/AE-NEW-004/AE-L-001)。",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": ".claude/hooks/notify-phone.py",
+      "line": "206",
+      "severity": "medium",
+      "finding": "AE-M-002: main() L206 `send(title, message, reason, priority)` 丢弃返回值。send() 返回 bool 表示通知是否成功送达（隧道+ntfy 两后端均失败则 False）。confirm 级（PostToolUse+AskUserQuestion，需要用户在 Termux 端回复）通知发送失败时静默丢失 → 用户在手机端永远等不到提醒，AskUserQuestion 阻塞无感知。x-tool 姊妹 XT-M-003 已修。",
+      "remediation": "改 success=send(...); if not success and reason=='confirm': 写 stderr + .last_phone_notify_failed 标记文件供上层观测。stop/unknown 级失败仍静默。",
+      "kind": "route-fix"
+    },
+    {
+      "file": ".claude/hooks/notify-phone.py",
+      "line": "69-78",
+      "severity": "low",
+      "finding": "AE-NEW-003: notify_via_tunnel try: sock=socket.socket(...); ... finally: sock.close()。socket.socket() 自身可能抛 OSError（如 EMFILE 文件符耗尽、AF_INET 不可用），此时 sock 名字未绑定 → finally 的 sock.close() 触发 UnboundLocalError。Python 语义：finally 块抛出的异常会覆盖 try/except 的 return False，向上传播 → hook 进程非零退出 → 破坏 hook 静默契约（hook 应永远静默 exit 0 不阻塞主流程）。",
+      "remediation": "sock=None 前置 + finally `if sock is not None: try: sock.close() except OSError: pass` 守卫，确保任意失败路径返回 False。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-005",
+  "audit_depth": "deep"
+}

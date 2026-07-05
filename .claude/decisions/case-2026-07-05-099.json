@@ -1,0 +1,40 @@
+{
+  "case_id": "case-2026-07-05-099",
+  "agent_id": "ralph-wiggum-autonomous-engine",
+  "timestamp": "2026-07-05T15:43:00+08:00",
+  "project": "x-tool",
+  "work_unit": "PAH-M-003 _tasks 全局 dict 无界增长修复 — routers/tasks.py 改 OrderedDict + MAX_TASKS 10000 容量 cap + 24h TTL 惰性淘汰 + LRU move_to_end；create_task/update_task 死代码标 TODO 未接线",
+  "situation": "audit-2026-07-05-011 (x-tool/AB system/python-agent-hub 首审) 派生 7 route-fix。PAH-H-001 case-095 / PAH-H-002 case-096 / PAH-M-001 case-097 / PAH-M-002 case-098 共 4 fix 已派发 awaiting_merge（4 连续轮 0 merged，但 worktree+commit 完整保留 disk 待人工 merge，未触 deadlock 3 连续上限）。本轮按 priority 续派发 #5 PAH-M-003。routers/tasks.py:11 `_tasks: dict[str, dict[str, Any]] = {}` 是进程级模块全局，create_task 只增不删、update_task 只改不删、get_task_status 无淘汰 → 长跑 FastAPI(uvicorn reload) 累积任务条目内存单调增长 (OOM 风险)。更严重: grep -rn 'create_task|update_task' src/ tests/ 仅命中定义处本身 (tasks.py:32/44)，无任何调用方 → 这两个函数是死代码，/tasks/{id} 永远 not_found，任务跟踪能力实际未接线。审计定性 medium (内存资源泄漏 + 功能未接线，非直接安全漏洞，但长跑进程稳定性缺陷)。",
+  "action": "1) _tasks 类型 dict→OrderedDict (保插入序供 LRU popitem(last=False) 淘汰最旧)。2) 加模块常量 MAX_TASKS=10000 + TASK_TTL_SECONDS=86400(24h)。3) 新增 _evict_expired(now_ts=None): 先收集 expired key 再 pop (迭代中删键不安全)，再 while len>MAX_TASKS: popitem(last=False) 容量清理。4) 新增 _task_age_ts(task): 优先 updated_at 回退 created_at，datetime.fromisoformat().timestamp()，解析失败返 0.0(无时间戳=视为陈旧立即淘汰，安全默认)。5) get_task_status 头部调 _evict_expired() + 命中后 move_to_end(task_id) (LRU: 最近访问者最后淘汰)。6) create_task 头部 _evict_expired() + 末尾 move_to_end。7) update_task 末尾 move_to_end。8) create_task/update_task 上方加 TODO(PAH-M-003) 注释标明死代码未接线 (grep 仅命中定义处)，保留供未来异步任务执行器接线，上方容量/TTL 守卫确保接线后也不无界增长。9) 单文件改动。10) opt-worktree.sh commit area=tasks:bounded-cache → opt-worktree 判定 route-fix 新 area (engine→tasks 方向分歧) 开新 worktree opt-tasks-1783237351。改 1 文件 +75/-3。",
+  "files_changed": [
+    "x-tool/AB system/python-agent-hub/src/agent_hub/routers/tasks.py"
+  ],
+  "worktree": "opt-tasks-1783237351",
+  "direction": "tasks:bounded-cache (route-fix, 新 area tasks → 开新 worktree opt-tasks-1783237351)",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "opt-worktree.sh 输出: ↔ 方向分歧（engine → tasks，route-fix 新 area），开新 worktree: opt-tasks-1783237351 / ✓ 提交到 opt-tasks-1783237351 方向=tasks:bounded-cache",
+    "worktree git log: 85d09d3 opt(tasks:bounded-cache): fix(pah-m-003): routers/tasks.py _tasks 无界 dict→OrderedDict+MAX_TASKS 10000 cap+24h TTL 惰性淘汰+LRU; create_task/update_task 标 TODO 死代码未接线 (audit-2026-07-05-011 PAH-M-003)",
+    "commit stack: 85d09d3 (PAH-M-003) → 85bd9e1 (master base, merge opt-pachong-1783233062) — 干净 fast-forward 链",
+    "分支 auto/opt-tasks-1783237351 HEAD=85d09d3 (local; origin push 403 外部 fork 不允许 push — 同 audit-008/010/011 + case-095/096/097/098 同模式，worktree+commit 完整保留 disk 待人工 merge)",
+    "AST parse 验证: python3 -c ast.parse(tasks.py) → OK parse",
+    "行为验证 (importlib 隔离加载，绕过 package __init__ 的 pydantic_settings 缺失): create_task('a','crawl')+update_task('a','done',result={'x':1}) → get_task_status('a') 返回 status=done result={'x':1}; get_task_status('missing') 返回 status=not_found; len(_tasks)=2 ✓",
+    "TTL 淘汰验证: 灌入 created_at=now-24h-100s 的旧条目 → _evict_expired() 后 'old' in _tasks=False (过期淘汰生效) ✓",
+    "容量淘汰验证: 灌入 MAX_TASKS+5=10005 条带 created_at 的条目 → _evict_expired() 后 len=10000 (cap 生效), '0'(最旧) evicted=False, '10004'(最新) retained=True (LRU 保留最新) ✓",
+    "证据 grep: `grep -rn 'create_task|update_task' src/ tests/ | grep -v asyncio.create_task | grep -v tasks.py:` → 0 命中 (确认死代码未接线，TODO 标注合理)"
+  ],
+  "next_suggestion": "下轮派发 PAH-L-001 (priority 6, browser_manager.py:52-58 BrowserManager.initialize async 竞态 → asyncio.Lock + double-checked locking)。PAH-H-001 case-095 / PAH-H-002 case-096 / PAH-M-001 case-097 / PAH-M-002 case-098 / PAH-M-003 case-099 共 5 fix 堆叠 4 worktree (opt-security-1783235416 2commit / opt-prompt-injection-1783236074 1commit / opt-notification-1783236534 1commit / opt-tasks-1783237351 1commit) 全 awaiting human merge to master。剩余 pending 未派发: PAH-L-001 / PAH-L-002。派完后 7/7 全 dispatched，进入 wait 轮等人工 merge；若连续 3 轮 0 merged → deadlock archive (同 audit-005/006/007 precedent)。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "x-tool/AB system/python-agent-hub/src/agent_hub/routers/tasks.py",
+      "line": "11, 32, 44",
+      "severity": "medium",
+      "finding": "PAH-M-003: _tasks: dict[str, dict] 是进程级模块全局无 TTL/容量上限，create_task 只增不删 → 长跑 FastAPI 内存单调增长 (OOM)；且 grep src/ tests/ 无任何调用方 → create_task/update_task 死代码，/tasks/{id} 永远 not_found，任务跟踪能力未接线。",
+      "remediation": "_tasks 改 OrderedDict + MAX_TASKS=10000 cap + 24h TTL 惰性淘汰 + LRU move_to_end；create_task/update_task 标 TODO 死代码未接线。已实施于 opt-tasks-1783237351 85d09d3。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-011",
+  "audit_depth": "shallow"
+}

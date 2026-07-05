@@ -1,0 +1,30 @@
+{
+  "case_id": "case-2026-07-05-129",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-05T23:30:00+08:00",
+  "project": "wanxia-edit",
+  "work_unit": "全量深度审计 wanxia-edit 内容生成管线（copy-generator.js / social-scraper.js / generate-cover-image.py / mail_push.py / server.js / env.js，6 文件 ~2245 行，首次深审）",
+  "situation": "audit-cycle-state.status=cycle-complete（audit-013 omnics 11 route-fix deadlock-archive 后落定）→ 触发新全量审计轮。候选未深审项目：wanxia-edit / wanxia-posts-2026-06-28 / xia。wanxia-posts-2026-06-28 是纯生成内容（png/txt）跳过；选 wanxia-edit（6 个源文件，含 GPT-Image API 下载 + SMTP 推送 + Playwright 采集 + cron 编排，安全面真实）作为本轮深审目标。",
+  "action": "深读全部 6 个源文件（不限 2 文件约束，审计轮解绑深度）。追 generate-cover-image.py 的 download_image 数据流：result_url（外部 API 响应）→ urllib.request.urlopen → save_path.write_bytes；追 mail_push.py 的 covers/*.png → JPG 附件 → SMTP 外发链，确认 file:// 本地文件读 + 邮件外泄链。实测 urllib 默认 opener handlers 含 FileHandler，urlopen(Request('file:///etc/hostname')) 成功读取宿主 hostname（b'session0c32610aed00457ea4-qr28p\\n'），坐实 SSRF-01。检查 server.js / social-scraper.js import 路径：find + ls 确认无 src/、无 node_modules、无 storage.js、无 .env，server.js 8 个 import 全悬空，整体不可启动。与 audit-2026-07-04-013 generate-image skill 的 H02/L02 commit（617f8a7 hostname allowlist + IP literal block / b528ce4 50MB cap + Content-Length precheck）对照，本文件零防护。产出独立 deep audit report，6 findings 写入 audit-cycle-state.derived_fixes。",
+  "files_changed": [".claude/audits/audit-2026-07-05-014.md", ".claude/audit-cycle-state.json", ".claude/structural-debt.md", ".claude/memory/autonomous-state.md"],
+  "worktree": null,
+  "direction": "deep-audit",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "report 落盘 .claude/audits/audit-2026-07-05-014.md（6 findings + 1 structural debt SD-WANXIA-01）",
+    "audit-cycle-state.json status: cycle-complete → fix-in-progress, pending_count=6, current_audit_id=audit-2026-07-05-014, derived_fixes=[WANXIA-SSRF-01(high,route-fix), WANXIA-DEAD-01(med,structural), WANXIA-DEAD-02(med,structural), WANXIA-SMTP-01(low,route-fix), WANXIA-ENV-01(low,route-fix), WANXIA-XHS-NO-SANDBOX-01(low,route-fix)] 全 status=pending"
+  ],
+  "next_suggestion": "下轮 status=fix-in-progress → 派生 WANXIA-SSRF-01（HIGH，最高优先；generate-cover-image.py download_image 加 scheme allowlist(https) + host allowlist(api.lk888.ai) + IP 字面量 block + 50MB cap + Content-Length 预检 + 流式读；复用 commit 617f8a7/b528ce4 的修法）。route-fix 不触公共接口 → opt-worktree 复用同 area worktree。随后逐个派生 SMTP-01 / ENV-01 / NO-SANDBOX-01；DEAD-01/02 structural 待 owner 澄清 wanxia-edit 正式布局（src/ monolith vs 松散脚本）后再动，先挂 structural-debt.md。",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {"file": "generate-cover-image.py", "line": "388-407,469", "severity": "high", "finding": "WANXIA-SSRF-01: download_image(url) 用 urllib.request.urlopen 拉取 API 返回的 result_url，无 scheme/host/IP/size 校验。urllib 默认 opener 含 FileHandler（实测 urlopen(Request('file:///etc/hostname')) 成功读取 b'session0c32610aed00457ea4-qr28p\\n'），result_url=file:///etc/passwd → 本地文件读 → 写到 covers/00-national-cover.png → mail_push.py 转 JPG 附件邮件外发 → 本地文件读+外泄链。http://169.254.169.254 SSRF 同理。无 Content-Length 预检/无大小上限 → OOM/磁盘填满。与 audit-2026-07-04-013 generate-image skill H02/L02 同类，零防护。", "remediation": "download_image 入口加：scheme allowlist(https only) + host allowlist(api.lk888.ai 及已知 CDN) + IP 字面量 block(private/loopback/link-local/reserved) + Content-Length 预检 + 流式读 65536 chunk + 50MB cap 截断；非 https/allowlist 直接 return None 不重试不落盘。", "kind": "route-fix"},
+    {"file": "server.js", "line": "1,20-26", "severity": "medium", "finding": "WANXIA-DEAD-01: server.js import 8 个模块（./src/env.js, routes, storage, calibration, social-scraper, social-calibration, prefetch-scheduler, cities + express + node-cron）磁盘上全不存在（无 src/ 目录、无 node_modules、实测 ls src/node_modules 报 No such file）。node server.js 必在首条 import 抛 ERR_MODULE_NOT_FOUND。cron 编排（22:00/12:00/23:30）静默失效。", "remediation": "owner 澄清布局后二选一：(a)补 src/ 树+装依赖 (b)删 dead server.js，cron 走系统 crontab 直接调 .py CLI。治标先删 server.js。", "kind": "structural"},
+    {"file": "social-scraper.js", "line": "11", "severity": "medium", "finding": "WANXIA-DEAD-02: import { storeSocialObservation } from './storage.js' — storage.js 磁盘上不存在（find 无结果），ESM 顶层 import 模块求值期即抛 ERR_MODULE_NOT_FOUND，单独 node social-scraper.js 测试会崩。与 DEAD-01 同根因。", "remediation": "随 DEAD-01 一并：补 storage.js，或把 storeSocialObservation 调用改 try/catch 动态 import 从顶层移除。", "kind": "structural"},
+    {"file": "mail_push.py", "line": "94", "severity": "low", "finding": "WANXIA-SMTP-01: port = int(os.environ.get('SMTP_PORT','465')) 未包 try/except，SMTP_PORT 非数字（如 '465/tcp'）时 ValueError crash + traceback，非干净退出码 1。", "remediation": "try: port = int(...) except ValueError: print(...); return 1", "kind": "route-fix"},
+    {"file": "env.js", "line": "22", "severity": "low", "finding": "WANXIA-ENV-01: env.js 去 join(__dirname,'..','.env') 父目录读 .env，server.js:6 去 new URL('.env',import.meta.url) 当前目录读 .env，两加载器路径不一致，必有一处静默 fallback（env.js catch 吞错）→ social-scraper 捕获空 cookie。env.js 注释自述此坑但路径仍不统一。", "remediation": "统一 resolveEnvPath()（优先 WANXIA_ENV_PATH 否则项目根），两加载器共用；或删 server.js:6-14 二次加载让 env.js 独占。", "kind": "route-fix"},
+    {"file": "social-scraper.js", "line": "26-33", "severity": "low", "finding": "WANXIA-XHS-NO-SANDBOX-01: chromium.launch args 含 --no-sandbox，若以 root 跑（cron 常见）seccomp/sandbox 全失，浏览器渲染引擎漏洞直接提权 root；小红书页面含第三方 JS，攻击面非零。", "remediation": "降权非 root 用户跑 chromium，或 firejail/bwrap 包裹；低优先。", "kind": "route-fix"},
+    {"file": "copy-generator.js", "line": "498-507", "severity": "info", "finding": "WANXIA-COPY-01: interactionHook 预置 4 段虚构'朋友跟我说…写了一首诗'轶事当真人证言呈现给读者，与 AI 透明度原则相抵。内容策略决策，非代码 bug。", "remediation": "无（运营方在意可改'想象一下…'非第一人称虚构框架）。", "kind": "none"}
+  ],
+  "audit_id": null,
+  "audit_depth": "deep"
+}

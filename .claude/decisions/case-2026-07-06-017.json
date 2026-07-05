@@ -1,0 +1,37 @@
+{
+  "case_id": "case-2026-07-06-017",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-06T10:40:00+08:00",
+  "project": "personal-assistant",
+  "work_unit": "PA-WIKI-01 derived route-fix: wiki.py _body_grounded 反幻觉门单 bigram 命中即过→改为≥50%覆盖率阈值",
+  "situation": "audit-2026-07-06-002 (personal-assistant 未深审后端模块 deep audit) 派生 finding PA-WIKI-01 (MEDIUM, route-fix)。wiki.py `_body_grounded` 旧实现遍历 body 的 2 字 bigram，首个命中 src_text 即 return True (line 33-34)。中文通用 bigram ('的'/'是'/'不'/'在'+任一字) 几乎必然出现在任意源文本里 → 一篇几乎全幻觉的 body 只要含任一通用 bigram 即过 grounding 门。docstring (line 4) 与 inline 注释 (line 86) 都声称验证 body 落地'全部'源，实现只要求'任一' bigram，声明与实现矛盾。与 audit-2026-07-05-002 PA-PII-01 报的 verify.check_memories bigram 弱点同族但不同函数 (verify 那条已入 SD，wiki 这条此前无人报)。本轮 status=fix-in-progress，9 pending 中 PA-WIKI-01 为 MED 优先派生。",
+  "action": "改 _body_grounded 为覆盖率阈值：统计 body 全部 bigram (len(b)-1 个) 中命中 src_text 的数量 hits，要求 hits >= max(1, total//2) 方算落地 (≥50% 非重叠语义，floor=1 防极短 body 误杀)。1 文件 route-fix，wiki.py 不在 public-interfaces.txt → opt-worktree 自动开新 area=wiki worktree (opt-wiki-1783275111)。先在 /tmp 临时脚本对 3 个用例 (grounded/hallucinated/partial) 跑新旧实现对比验证 discrimination，确认新实现 grounded PASS (ratio 0.59) / hallu FAIL (0.00) / partial 旧 PASS 但新 FAIL (0.14，旧实现单 bigram 命中即过的漏洞) 后落盘，py_compile OK。",
+  "files_changed": [
+    "personal_assistant/wiki.py"
+  ],
+  "worktree": "opt-wiki-1783275111 (branch auto/opt-wiki-1783275111, base=580c4aa=main, HEAD=a181404, 1 commit ahead, FF-clean, pushed origin auto/opt-wiki-1783275111)",
+  "direction": "wiki:grounding (route-fix, 新 area — main 无 wiki worktree 故 opt-worktree 开新 wt)",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "commit a181404 on opt-wiki-1783275111: 'opt(wiki:grounding): fix(wiki): PA-WIKI-01 _body_grounded 单 bigram 命中即过→改为≥50%覆盖率阈值'",
+    "git rev-list --count main..HEAD = 1 (单 commit, FF-clean base=580c4aa=main)",
+    "pushed origin: 'auto/opt-wiki-1783275111' set up to track origin/auto/opt-wiki-1783275111 (code.alibaba-inc.com Code Review link returned)",
+    "py_compile personal_assistant/wiki.py OK",
+    "discrimination test (/tmp/test_grounded.py): grounded body ratio 0.59 → PASS (e2e 不会误杀); hallucinated body ratio 0.00 → FAIL; partial-hallucinated body ratio 0.14 → 新 FAIL (旧实现单 bigram 命中即过 → 旧 PASS，即本次所修漏洞)",
+    "worktree 内 wiki.py:27-46 实测含新 docstring + required=max(1,total//2) + hits=sum(1 for i in range(total) if b[i:i+2] in s)，main 工作副本已由 opt-worktree 流程复位至 HEAD (旧实现)，无 main 污染"
+  ],
+  "next_suggestion": "下轮派 audit-2026-07-06-002 下一 pending MED finding PA-REC-01 (recommend.py empty-title grounding bypass) 或 PA-AND-01 (android/api.js header 合并被 opts 覆盖)。9 pending 顺序建议: PA-REC-01 (MED) → PA-AND-01 (MED) → PA-WIKI-02/PA-PRO-01/PA-REC-02/PA-DEV-01/PA-AND-02 (LOW) → PA-SPK-01 (INFO)。全 12 merged|rejected 后 cycle-complete → 下次全量审计候选: dataworks-dev-assistant (32k loc) / fbi-dev-assistant (19k loc) / xia (499 nodes)，均从未深审。⚠ opt-asr-1783274064 (c720680+94c777b 3-commit stack) + opt-wiki-1783275111 (a181404) + opt-prod-deploy-1783270172 prior-cycle 均待人工 merge to main。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "personal_assistant/wiki.py",
+      "line": "27-35",
+      "severity": "medium",
+      "finding": "PA-WIKI-01: _body_grounded 遍历 body 2-gram，首个命中 src_text 即 return True (line 33-34)。中文通用 bigram 几乎必然出现在任意源文本 → 几乎全幻觉的 body 含任一通用 bigram 即过 grounding 门。docstring/inline 注释声称'body 须落地全部源'，实现只要求'任一'，声明与实现矛盾。反幻觉形同虚设。",
+      "remediation": "改为覆盖率阈值：统计 body 全部 bigram 中命中 src_text 的比例，要求 ≥50% (hits >= max(1, total//2)) 方算落地。1 文件 route-fix。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-002",
+  "audit_depth": "shallow"
+}

@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-04-089",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-04T05:15:00Z",
+  "project": "sunset-prediction",
+  "work_unit": "calibration-cst-date-alignment",
+  "situation": "audit-2026-07-04-005 SP-H02 finding: calibration.js L114 uses UTC-based `new Date(Date.now()-86400000).toISOString().slice(0,10)` for yesterday. When CST cron fires between 00:00-07:59 CST, UTC date is still 'today', causing fetchActualWeather to request the wrong date and misalign with daily_predictions.date key (which uses CST via localDateCST).",
+  "action": "Replace UTC yesterday calculation with existing localDateCST(-1) helper from src/date-utils.js. Added import. Single-file change in src/calibration.js. Tests pass (6/6 in test/calibration.test.js). Syntax check clean.",
+  "files_changed": ["src/calibration.js"],
+  "worktree": "opt-sunset-prediction-1783010922",
+  "direction": "sunset-prediction:calibration-cst-date",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 6cbe03a pushed to origin/auto/opt-sunset-prediction-1783010922. node --check syntax OK. test/calibration.test.js 6/6 pass. localDateCST already used consistently in routes.js (8 call sites) — this brings calibration.js into alignment.",
+  "next_suggestion": "派生 SP-M01 fix（routes.js /contour/stream SSE heartbeat，priority=3）。SP-M01 merged/rejected 后 audit-cycle-state → cycle-complete，下轮触发新全量审计。",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-04-005",
+  "audit_depth": "shallow"
+}

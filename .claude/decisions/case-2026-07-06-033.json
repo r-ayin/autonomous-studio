@@ -1,0 +1,57 @@
+{
+  "case_id": "case-2026-07-06-033",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-05T20:33:06Z",
+  "project": "x-tool/一件重启脚本/remote_control",
+  "work_unit": "派生 fix RC-SEC-01+RC-LEAK-01 (audit-2026-07-06-004): gitignore + git rm --cached presets.json/public_url.txt/ip_address.txt (含 2 yunyi.cfd live key + Tailscale IP + CF tunnel URL); 新增 presets.example.json 模板",
+  "situation": "audit-2026-07-06-004 CRITICAL finding RC-SEC-01: presets.json git-tracked 含 2 真实 yunyi.cfd API key (AH7ZKSSM-.../K33EP67S-...) push 外部 fork; 同 commit 合并 RC-LEAK-01 (public_url.txt/ip_address.txt 入库). x-tool = r-ayin/x-tool 外部 fork, push 403 precedent → 预期 wt+commit stack 保留 disk+local-ref 待人工 merge.",
+  "action": "opt-worktree.sh commit remote-control:secret-untrack → 新建 opt-remote-control-1783283520 (route-fix, base=master HEAD=85bd9e1). cp-guard 还原 main staged deletion → 走 [[Stack on diverged wt escape hatch]] 通道: wt 内直接 git rm --cached + git commit --amend. origin push 403 (预期).",
+  "files_changed": [
+    ".gitignore",
+    "一件重启脚本/remote_control/presets.json",
+    "一件重启脚本/remote_control/public_url.txt",
+    "一件重启脚本/remote_control/ip_address.txt",
+    "一件重启脚本/remote_control/presets.example.json"
+  ],
+  "worktree": "opt-remote-control-1783283520",
+  "direction": "remote-control:secret-untrack",
+  "outcome": "succeeded",
+  "outcome_evidence": "wt HEAD=550baaf (amended); 5 files changed, 19 insertions(+), 25 deletions(-); git ls-files 确认 presets.json/public_url.txt/ip_address.txt 已从 index 移除; .gitignore 新增 3 条规则; presets.example.json 占位模板就位. origin push 403 (x-tool 外部 fork precedent, per memory x-tool-external-fork-push-403).",
+  "next_suggestion": [
+    "下轮派生 RC-SEC-02 (HIGH GET/ 无鉴权回显 live apiKey) — server.py stack 首条",
+    "owner 须到 yunyi.cfd 轮换 AH7ZKSSM-... 与 K33EP67S-... 两 key (引擎不可代劳)",
+    "owner 视情 git filter-repo 清历史中的 key 残留"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "一件重启脚本/remote_control/presets.json",
+      "line": "8-9,15-16",
+      "severity": "critical",
+      "finding": "RC-SEC-01: presets.json git-tracked 含 2 真实 yunyi.cfd API key push 外部 fork",
+      "remediation": "gitignore + git rm --cached + presets.example.json 模板; owner 轮换 key + 视情 filter-repo",
+      "kind": "route-fix"
+    },
+    {
+      "file": "一件重启脚本/remote_control/public_url.txt",
+      "line": "1",
+      "severity": "medium",
+      "finding": "RC-LEAK-01a: CF tunnel public_url.txt git-tracked 暴露公网入口",
+      "remediation": "gitignore + git rm --cached (与 RC-SEC-01 同 commit)",
+      "kind": "route-fix"
+    },
+    {
+      "file": "一件重启脚本/remote_control/ip_address.txt",
+      "line": "1",
+      "severity": "medium",
+      "finding": "RC-LEAK-01b: Tailscale IP ip_address.txt git-tracked",
+      "remediation": "gitignore + git rm --cached (与 RC-SEC-01 同 commit)",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-004",
+  "audit_depth": "shallow",
+  "_worktree_commit_sha": "550baaf",
+  "_worktree_base": "85bd9e1 (master HEAD)",
+  "_origin_push": "403 (expected, external fork)"
+}

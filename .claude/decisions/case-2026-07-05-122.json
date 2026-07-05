@@ -1,0 +1,41 @@
+{
+  "case_id": "case-2026-07-05-122",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-07-05T19:30:00+08:00",
+  "project": "x-tool",
+  "work_unit": "聚合ai客服开发 (omnics-client Electron) — 派生 fix OMNICS-DB-01: better-sqlite3 verbose:console.log 全量 SQL 日志泄露",
+  "situation": "audit-2026-07-05-013 deep audit 派生 route-fix 第 8 优先级 (OMNICS-DB-01, severity=low). src/main/core/database/db.ts:18 `new Database(dbPath, { verbose: console.log })` 把每条 SQL 语句(含 prepare/run 参数 — 即 KB 正文、fingerprint、用户消息内容)原样 console.log 到 stdout. Electron 打包后 stdout 写入日志文件/控制台, 致生产环境敏感数据(用户 KB 内容、消息历史参数)明文落盘. 该文件本轮前未被任何已派生 case 触及(case-115..121 均未动 db.ts), cp-guard 干净拷贝.",
+  "action": "gate verbose 回调到开发态: 新增 `const isDev = !app.isPackaged;` (Electron 惯用 idiom, 无新依赖), `verbose: isDev ? console.log : undefined`. 开发态(未打包 npm run dev)保留全量 SQL 调试日志便于排查; 打包发布后(app.isPackaged=true)关闭 verbose, better-sqlite3 收到 undefined 即不打日志. 不删 verbose 回调以保留 dev 可观测性, 仅在生产关闭. 单文件最小改动 5+/1-.",
+  "files_changed": [
+    "聚合ai客服开发/src/main/core/database/db.ts"
+  ],
+  "worktree": "opt-omnics-1783246236",
+  "direction": "omnics:db-verbose-gate",
+  "direction_kind": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "commit 6730919f251254132e3732aad5a1a5d690d3f478 landed on opt-omnics-1783246236 (HEAD now 6730919, stacked 8 commits above master 85bd9e1: 357a7ed→3335c97→187afb2→8fdbff3→c459dba→d08cf80→147e86f→6730919)",
+    "git show HEAD diff: `+const isDev = !app.isPackaged;` / `-    dbInstance = new Database(dbPath, { verbose: console.log });` / `+    dbInstance = new Database(dbPath, { verbose: isDev ? console.log : undefined });` — 1 file changed, 5 insertions(+), 1 deletion(-)",
+    "opt-worktree.sh verdict: `→ 复用同 area worktree (route-fix): opt-omnics-1783246236` + `✓ 提交到 opt-omnics-1783246236 方向=omnics:db-verbose-gate`",
+    "db.ts vs master diff in worktree pre-commit was empty (file untouched by prior 7 stacked commits) → cp-guard fresh-copied main→worktree, no case-118-style direct-worktree-commit needed"
+  ],
+  "next_suggestion": "audit-2026-07-05-013 剩余 3 个未派发 pending finding (OMNICS-CONFIG-01 apiKey safeStorage 加密 / OMNICS-INJECT-01 executeJavaScript 参数化 / OMNICS-LOG-01 axios 错误体 mask). 下轮派发 OMNICS-CONFIG-01 (priority 7, ConfigManager.ts — 注意 case-118 已在 worktree 改过 ConfigManager.ts, 需走 case-118 direct-worktree-commit precedent: 直编 worktree 文件, cp-guard 会因 worktree≠main HEAD 误判 skip). 全 11 派生 fix 状态变 merged|rejected 后 status→cycle-complete 触发新审计. x-tool external-fork push 403 precedent: opt-omnics-1783246236 分支不 push origin, 完整保留 disk 待人工 merge (同 audit-005..012).",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "聚合ai客服开发/src/main/core/database/db.ts",
+      "line": 18,
+      "severity": "low",
+      "finding": "OMNICS-DB-01: better-sqlite3 `new Database(dbPath, { verbose: console.log })` verbose 回调把每条 SQL 语句+绑定参数(含 KB 正文 content 字段、fingerprint、用户消息文本)原样 console.log 到 stdout. Electron 打包后日志落盘 → 生产环境敏感用户数据明文持久化在日志文件, 违反数据最小化原则.",
+      "remediation": "gate verbose 到开发态: `const isDev = !app.isPackaged; verbose: isDev ? console.log : undefined`. 已实施 (commit 6730919).",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-013",
+  "audit_depth": "deep",
+  "_dispatch_worktree": "opt-omnics-1783246236",
+  "_dispatch_commit": "6730919",
+  "_dispatch_branch": "auto/opt-omnics-1783246236",
+  "_dispatch_stacked_on": "147e86f (case-121 OMNICS-STORE-01)",
+  "_push_status": "no-upstream-configured (x-tool external-fork http://ghp-ro.alibaba-inc.com push 403 precedent — branch preserved on disk for manual merge, same as audit-005..012)"
+}

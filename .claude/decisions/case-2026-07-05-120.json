@@ -1,0 +1,33 @@
+{
+  "case_id": "case-2026-07-05-120",
+  "agent_id": "autonomous-engine-ralph-main-loop",
+  "timestamp": "2026-07-05T19:11:05+08:00",
+  "project": "x-tool",
+  "work_unit": "派生 audit-2026-07-05-013 finding OMNICS-PRELOAD-01: preload/index.ts IPC channel 白名单防受损 renderer 调任意 ipcMain handler (app:set-config/knowledge:*)",
+  "situation": "audit-cycle-state.status=fix-in-progress, audit-2026-07-05-013 (x-tool/聚合ai客服开发 omnics-client 深审) 派生 11 route-fix。前 5 条 (OMNICS-API-01/SIDECAR-01/LLM-01/LLM-02/KB-01) 已 commit 进 opt-omnics-1783246236 stack (357a7ed→3335c97→187afb2→8fdbff3→c459dba) 待人工 merge (x-tool fork origin push 403 precedent 同 audit-005..012)。本轮挑下一条 pending=OMNICS-PRELOAD-01 (medium, 1 文件 preload/index.ts, 未被前 5 fix 触及, 无重复)。finding: preload 暴露 send/on/invoke 原样转发任意 channel, 无白名单——受损/XSS renderer 可调 app:set-config (覆写 config 含 apiKey/systemPrompt) / knowledge:add/create-kb/delete-kb (投毒/删 KB) / knowledge:search (读历史) / app:log 等任意 ipcMain handler, 突破 ApiServer/sidecar 鉴权后仍可在 renderer 侧驱动全部 main 进程特权操作。",
+  "action": "preload/index.ts import IPC_EVENTS from ../shared/ipc-events (main 与 BasePlatformAdapter 已用同源 import, electron-vite 打包可解析)。Object.values(IPC_EVENTS).flatMap 拍平嵌套 group 成 ALLOWED_CHANNELS ReadonlySet<string> (含 platform:*/pdd:*/douyin:*/app:*/db:*/knowledge:* 全 23 channel)。新增 assertAllowed(channel) 未命中抛 Error (fail-closed, 非 silent drop——dev 期即暴露误调)。send/on/invoke 三入口前置 assertAllowed。renderer 实际使用的 15 channel (platform:new-message/dom-active/init-monitor, app:add-shop/show-add-menu/toggle-settings/get-config/set-config/log, knowledge:get-all-kbs/create-kb/delete-kb/add/search/delete) 全在白名单内, 不破坏现有调用。'electron' 别名保留——renderer 5+ 文件 (App.vue/KnowledgeManager.vue/SettingsModal.vue/Sidebar.vue) 全用 window.electron.*, 移除属结构性改名 (需同步改 renderer), 留 direction-shift; 白名单已是真实安全边界 (别名暴露但只能调白名单 channel)。direct-worktree-commit (case-104 precedent, 同 case-118: 文件已在 worktree 内编辑, cmd_commit cp-guard 会因 worktree 文件≠main HEAD 误判前轮未合并而 skip)——git add+commit 在 opt-omnics-1783246236 内, push origin 403 同 precedent (stack 保留 disk 待人工 merge)。",
+  "files_changed": [
+    "x-tool/聚合ai客服开发/src/preload/index.ts"
+  ],
+  "worktree": "opt-omnics-1783246236",
+  "direction": "omnics:preload-ipc-whitelist",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit d08cf80 on auto/opt-omnics-1783246236 (parent=c459dba case-119, base=85bd9e1=master, 6-commit stack 357a7ed→3335c97→187afb2→8fdbff3→c459dba→d08cf80, FF-clean: git merge-base --is-ancestor master HEAD 通过, rev-list --count master..HEAD=6); git show --stat HEAD: 1 file changed 27 insertions 2 deletions (import IPC_EVENTS + ALLOWED_CHANNELS Set + assertAllowed + 三入口前置校验); main x-tool git status --porcelain 该文件空 (改动在 worktree, main 干净); push origin auto/opt-omnics-1783246236 返 403 'git push is not allowed' (x-tool fork external, 同 audit-005..013 precedent, stack 保留 disk 待人工 merge, branch 6 ahead FF-clean)",
+  "next_suggestion": "audit-2026-07-05-013 仍 5 条 pending (OMNICS-CONFIG-01 low ConfigManager safeStorage / OMNICS-DB-01 low db.ts verbose / OMNICS-INJECT-01 low InputSimulator+PddAdapter 参数化 / OMNICS-STORE-01 low ProcessedMessageStore 原子写 / OMNICS-LOG-01 low XHS+pdd 日志 mask)。下轮继续派 OMNICS-CONFIG-01 (low, ConfigManager.ts apiKey safeStorage 加密, 可与 case-118 LLM-02 同文件 stack——但 case-118 已 commit 该文件, cp-guard 会 skip, 仍走 direct-worktree-commit)。全部派完且 stack 人工 merge/reject 落定后 audit-cycle-state.status→cycle-complete 触发下轮全量审计。x-tool fork push 403 积压 6-commit opt-omnics-1783246236 stack + 7 其他 wt 待人工 merge——建议用户找时间批量 merge。",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "x-tool/聚合ai客服开发/src/preload/index.ts",
+      "line": 6,
+      "severity": "medium",
+      "finding": "OMNICS-PRELOAD-01: preload send/on/invoke 原样转发任意 channel 无白名单, 受损 renderer 可调 app:set-config/knowledge:* 等任意 ipcMain handler 突破 main 进程特权",
+      "remediation": "import IPC_EVENTS 拍平成 ALLOWED_CHANNELS Set, assertAllowed 入口校验未命中抛 Error (fail-closed), send/on/invoke 三处前置; 'electron' 别名保留 (移除属结构性改名留 direction-shift)",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-013",
+  "audit_depth": "shallow",
+  "direction_kind": "route-fix",
+  "parent_audit_id": "audit-2026-07-05-013",
+  "derived_fix_finding_id": "OMNICS-PRELOAD-01"
+}

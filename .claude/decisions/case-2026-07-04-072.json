@@ -1,0 +1,23 @@
+{
+  "case_id": "case-2026-07-04-072",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-04T02:15:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "fix scout-scan.py .planning/ false positive in health scoring",
+  "situation": "scout-scan.py has_planning detection (line 623) and pending_planning_in_worktrees diff prefix (line 495) only checked for 'planning/' directory, missing '.planning/' variant used by autonomous-engine and skills. Caused autonomous-engine to repeatedly rank #1 with score=1.0 'missing planning/' across multiple lookout rounds (documented in audit-cycle-state _status_note as recurring false positive), wasting engine cycles on non-issue recommendations.",
+  "action": "Modified two sites in scripts/scout-scan.py: (1) has_planning now checks both os.path.isdir(planning/) OR os.path.isdir(.planning/); (2) pending_planning_in_worktrees diff prefix match accepts lines starting with either 'planning/' or '.planning/'. Verified post-fix: autonomous-engine scores 0.0 (was 1.0), no longer dominates #1 recommendation.",
+  "files_changed": ["scripts/scout-scan.py"],
+  "worktree": "opt-scout-shift-1783131286",
+  "direction": "scout:planning-dotprefix",
+  "outcome": "succeeded",
+  "outcome_evidence": "Post-fix scout-scan.py run shows autonomous-engine GATES.md='有' planning/='有' score=0.0; recommendations reordered to #1=1BfrYW9R(score=0.0), #2=autonomous-engine(score=0.0). Worktree pushed to origin/auto/opt-scout-shift-1783131286.",
+  "next_suggestion": [
+    "H01+H02 still pending human merge — next round continue lookout, do not compound review backlog",
+    "Consider merging opt-scout-shift-1783131286 to eliminate false positive permanently",
+    "When pending_count reaches 0, next audit cycle triggers; candidate: wechat-main or shizi (not deep-audited recently)"
+  ],
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": null,
+  "audit_depth": "shallow"
+}

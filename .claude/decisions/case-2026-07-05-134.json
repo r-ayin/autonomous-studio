@@ -1,0 +1,42 @@
+{
+  "case_id": "case-2026-07-05-134",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-05T23:50:00+08:00",
+  "project": "x-tool/api额度监测",
+  "work_unit": "全量深度审计 x-tool/api额度监测 (deep, security-review) — 选该项目因所有其他 workspace 项目均已 deep audit 过, 唯独 api额度监测 (309 行 monitor.py + config.json) 触凭证+外部调用敏感路径却从未审过",
+  "situation": "audit-cycle-state.status=cycle-complete (audit-014 wanxia-edit 全 6 derived_fixes 落定) → 本轮触发新全量深度审计. 扫 .claude/audits/ 已有报告: autonomous-studio/shizi/personal-assistant/x-tool(pachong/ota/AB/pdd/omnics)/autonomous-engine/moni/oneday-design/engine-skills-extracted/wechat-main/sunset-prediction/wanxia-edit 均 deep audit 过. 唯 api额度监测 (x-tool 子项目, Python TUI 轮询 yunyi.cfd API 查 key 余额) 从未审过且触凭证+外部调用敏感路径 → 选中.",
+  "action": "直接深读 6 文件 (monitor.py 全量 309 行 / config.json / requirements.txt / site_dump.js 头部 / .gitignore / 启动监测.bat) + git 历史核验 (git ls-files / git log -p -- config.json / git remote -v). site_dump.js 为 yunyi.cfd 前端 Vue 打包产物非本项目代码跳过. 挖 8 findings: 1 critical (密钥外泄) + 2 medium (key 全文展示/裸 except 静默吞错) + 1 medium-structural (无审计日志) + 3 low (SSRF/race/keylen) + 1 info-structural (Windows 耦合). 写 report 落 .claude/audits/audit-2026-07-05-015.md. 8 findings 全 pending 写 audit-cycle-state.derived_fixes, status=auditing→fix-in-progress. 2 structural 转 structural-debt.md SD-APIMON-01/02. 本轮不派生 fix (审计单轮内完成, 下轮起逐个派生).",
+  "files_changed": [
+    "/home/admin/workspace/autonomous-studio/.claude/audits/audit-2026-07-05-015.md",
+    "/home/admin/workspace/autonomous-studio/.claude/audit-cycle-state.json",
+    "/home/admin/workspace/autonomous-studio/.claude/structural-debt.md",
+    "/home/admin/workspace/autonomous-studio/.claude/memory/autonomous-state.md",
+    "/home/admin/workspace/autonomous-studio/.claude/decisions/case-2026-07-05-134.json"
+  ],
+  "worktree": null,
+  "direction": "audit-only (本轮不派生 fix, 无 worktree)",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "report 落盘: /home/admin/workspace/autonomous-studio/.claude/audits/audit-2026-07-05-015.md 存在, 含 8 findings 各带 file/line/severity/finding/remediation/kind",
+    "audit-cycle-state.json: current_audit_id=audit-2026-07-05-015, current_audit_status=fix-in-progress, derived_fixes 数组 8 条全 status=pending, pending_count=8 (python json.load 校验通过)",
+    "structural-debt.md 追加 SD-APIMON-01 (NOAUDITLOG, medium, open 待 owner 决策埋点粒度) + SD-APIMON-02 (WINDOWS, info, open 不主动修)",
+    "git 核验事实: git ls-files config.json 返回 config.json (确认被追踪); git log --oneline -- config.json 返回 dfc86cf (确认入历史); git remote -v 返回 ghp-ro.alibaba-inc.com/.../r-ayin/x-tool.git (确认 push 到远端); config.json:3-7 含 3 把明文 live key (K33EP67S-7N5Z-S21H-5QUS-D3S7VYNQG871 / AH7ZKSSM-F6NH-T70R-B9N8-J10CGX7JSHR5 / C6CFRN04-YQA3-ZS67-N2T4-M9ARMKR3UPWZ)",
+    "monitor.py:116/120/125 Text(key) 全文展示 (对照 :271 f\"已删除: ...{removed[-4:]}\" 已掩码, 证明项目知应掩码却未在表格落实)",
+    "monitor.py:48/60/179 三处裸 except: 静默吞错 (命中 autonomous-constraints 静默吞错真 bug 例外, 非自指 churn)",
+    "monitor.py:67-69 keys=config.get('keys',[])+for key in keys vs 主线程 :283 keys.append / :267 keys.pop 同 list → 迭代中改大小 RuntimeError 实打实可触发"
+  ],
+  "next_suggestion": "下轮 派生 fix 轮#1: 优先派生 APIMON-SECRET-01 (critical, 密钥外泄). route-fix, x-tool 是 git 仓 opt-worktree 可用. 改 .gitignore 加 config.json + git rm --cached config.json + 建 config.example.json 模板 (load_config 已有 fallback 不影响运行). ⚠️ 此 fix 只阻未来泄露, 历史 3 把 key 必须由 owner 在 yunyi.cfd 轮换 — case outcome_evidence 须如实写明. 之后逐轮派生 KEYDISPLAY-01(mask_key) → SWALLOW-01(narrow except) → SSRF-01(urlparse https+host allowlist) → RACE-01(list 快照) → KEYLEN-01(KEY_RE 正则). 纪律: monitor.py 一个文件一次只开一个 worktree 分轮派. 2 structural (NOAUDITLOG-01 埋点粒度待 owner / WINDOWS-01 info) 在 structural-debt SD-APIMON-01/02 不主动派. 全 8 derived_fixes merge/reject 后 status→cycle-complete 触发下一轮全量审计 (届时所有项目均审过, 续审 module B 或重审最早审计的项目看代码漂移).",
+  "audit_type": "security-review",
+  "audit_findings": [
+    {"file": "x-tool/api额度监测/config.json", "line": "3-7", "severity": "critical", "finding": "APIMON-SECRET-01: 明文 live API key (3 把: K33EP67S.../AH7ZKSSM.../C6CFRN04...) 被 git ls-files 追踪 + 提交 dfc86cf + push 到 origin (ghp-ro.alibaba-inc.com/.../r-ayin/x-tool.git). .gitignore 有'密钥和令牌'段却漏 config.json. CLAUDE.md 自相矛盾:'keys 为明文,切勿提交到公开仓库或外泄'却已提交. 任何能拉仓者可冒用 key 消耗 yunyi.cfd 付费额度.", "remediation": "1.gitignore 加 config.json + git rm --cached config.json + 建 config.example.json 模板(keys=[]). 2.owner 动作: yunyi.cfd 控制台作废重发 3 把 key (历史里仍有, 必须轮换). 3.长期: key 改 env var YUNYI_API_KEYS 或 config.local.json (gitignored).", "kind": "route-fix"},
+    {"file": "x-tool/api额度监测/monitor.py", "line": "116,120,125", "severity": "medium", "finding": "APIMON-KEYDISPLAY-01: dashboard 三处 Text(key) 全文渲染完整 API key (错误行 :116 dim red / loading 行 :120 dim / 正常行 :125 white). 肩窥暴露 (共享屏/录屏/远程桌面). 讽刺 :271 del 提示已掩码 ...{removed[-4:]} 却未在表格落实.", "remediation": "新增 mask_key(k)=f'{k[:4]}…{k[-4:]}', 三处 Text(key) 改传 mask_key(key). cache 字典仍用原 key 索引不影响功能.", "kind": "route-fix"},
+    {"file": "x-tool/api额度监测/monitor.py", "line": "48-49,60-61,179-180", "severity": "medium", "finding": "APIMON-SWALLOW-01: 三处裸 except: 静默吞所有异常. :48 save_config 写失败返回 False 但调用方 :268/:284 不检查 → 磁盘满/权限错时用户误以为 key 已存. :60 get_billing_info 所有网络/解析错一律'连接错误'无法区分 DNS/TLS/401/5xx/超时. :179 parser.parse 失败静默 pass 掩盖 API 格式漂移. 命中 autonomous-constraints 静默吞错真 bug 例外 (非自指 churn).", "remediation": ":48 → except (OSError,json.JSONDecodeError) as e +写 stderr. :60 → 拆 Timeout/ConnectionError/HTTPError/JSONDecodeError 分别返回不同 error 串. :179 → except (ValueError,TypeError). save_config 调用点检查返回值失败时 state['message']='保存失败'.", "kind": "route-fix"},
+    {"file": "x-tool/api额度监测/monitor.py", "line": "51-56", "severity": "low", "finding": "APIMON-SSRF-01: base_url 直接来自 config.json (用户可编辑), api_url=f'{base_url}/user/api/v1/me' 后 requests.get 带 Authorization Bearer. 无 scheme/host 校验: config 笔误 http:// 明文发凭证; 配置被改/覆盖为攻击者主机 → 3 把 live key 的 Bearer 直接外泄给攻击者.", "remediation": "get_billing_info 入口加 urlparse(base_url) 校验 scheme==https + hostname in allowlist (默认 yunyi.cfd). 非 https/非 allowlist 直接拒绝不发文凭证.", "kind": "route-fix"},
+    {"file": "x-tool/api额度监测/monitor.py", "line": "67-69 (写 74) vs 主线程 267/283", "severity": "low", "finding": "APIMON-RACE-01: update_data_thread (daemon) 取 keys=config.get('keys',[]) 拿 list 引用后 for key in keys 迭代 (:69); 主线程 process_command 同 list 上 keys.append(cmd)(:283)/keys.pop(idx)(:267) 原地改 → 'list changed size during iteration' RuntimeError 实打实可触发. data_cache dict 亦有 del (:270) 与后台写 (:74) 并发竞态.", "remediation": "update_data_thread 取 keys=list(config.get('keys',[])) 快照拷贝; make_dashboard 同理; data_cache snapshot=dict(state['data_cache']) 后迭代.", "kind": "route-fix"},
+    {"file": "x-tool/api额度监测/monitor.py", "line": "281", "severity": "low", "finding": "APIMON-KEYLEN-01: process_command 兜底 if len(cmd)>10 —— 任何 >10 字符随机串 (误输入指令/粘贴 URL/中文句子) 都当 key 追加并 save_config, 污染 keys 列表, 每次启动用假 key 发 Bearer 到 yunyi.cfd. 无格式校验. 真实 key 格式 5 段 36 字符 XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX.", "remediation": "改 KEY_RE=re.compile(r'^[A-Z0-9]{8}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{4}-[A-Z0-9]{12}$'), if KEY_RE.match(cmd) 替换 len(cmd)>10.", "kind": "route-fix"},
+    {"file": "x-tool/api额度监测/monitor.py", "line": "全文件", "severity": "medium", "finding": "APIMON-NOAUDITLOG-01: 项目处理明文 API key + 向外部 yunyi.cfd 发 Bearer 凭证请求, 但无任何审计日志 (无 .audit/ 无 logger). autonomous-constraints §B 要求触及凭证/外部调用敏感路径补 audit-log 埋点. 争议: 只读监测 TUI (GET 查余额) 每次轮询写日志噪声大, 埋点粒度需 owner 决策.", "remediation": "owner 决策后新增 audit_log.py 单文件 (append-only JSONL, schema 对齐 audit-log.schema.json). 埋点范围限: process_command add/del (result=success) + get_billing_info 401 (result=failure) + load_config base_url 变更. 不记成功轮询.", "kind": "structural"},
+    {"file": "x-tool/api额度监测/monitor.py", "line": "8,233,295", "severity": "info", "finding": "APIMON-WINDOWS-01: import msvcrt (Windows 专属) + os.system('cls') (Windows 专属). 类 Unix 下 msvcrt.kbhit() ImportError 启动失败. CLAUDE.md 已显式声明'仅 Windows: monitor.py 依赖 msvcrt' — 文档与实现一致, 非隐藏债务, info 级.", "remediation": "如需跨平台: 抽象 input_adapter (Windows msvcrt / Unix select on stdin), cls 改 ANSI \\033[2J. owner 取舍, 引擎不主动修.", "kind": "structural"}
+  ],
+  "audit_id": "audit-2026-07-05-015",
+  "audit_depth": "deep"
+}

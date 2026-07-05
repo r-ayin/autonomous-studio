@@ -1,0 +1,45 @@
+{
+  "case_id": "case-2026-07-06-024",
+  "agent_id": "ralph-autonomous-studio",
+  "timestamp": "2026-07-06T13:00:00+08:00",
+  "project": "personal-assistant",
+  "work_unit": "PA-AND-02 (audit-2026-07-06-002 derived route-fix): android/api.js API_BASE 硬编码 port 3015 — dev-server 端口可由 argv/PORT env 改，非 3015 启动时前端误判 prod → API_BASE='' → /api 请求走静态分发返 404 坏 dev 体验",
+  "situation": "audit-2026-07-06-002 deep audit 派生 fix #11/12（PA-AND-02 LOW P3）。audit-cycle-state status=fix-in-progress, PA-AND-02 status=pending（唯一未派发之一，另 PA-SPK-01 INFO）。本轮派生 PA-AND-02。目标文件 android/api.js 仅存于 opt-pa-android-api-1783275991 wt（PA-AND-01 case-019 commit 30df9c1 创建该文件 33 insertions，main HEAD 580c4aa 无此文件）→ opt-worktree.sh _cp_guard 会跳过（『main HEAD 不存在但 worktree 已 track，前轮未合并新增』）→ 走 case-104 直编 opt-wt 版本后 wt 内提交通道（[[opt-worktree-stack-diverged-escape-hatch]] case-147 教训）。audit remediation 列三 option: (1) dev-server 注入标记 (2) 始终 /api 前缀让 prod 也反代 (3) 限制 dev-server 端口固定。option(3) 退化 argv/PORT env 配置能力（dev-server.js line 8 大量注释证 argv/PORT 服务部署通道+测试偏端口 ⑤3099，不可退）。option(2) 需 FastAPI 后端加 /api mount（api.py 公共接口文件 → direction-shift，P3 不值得）。option(1) inherently 需 injector(dev-server.js)+consumer(api.js) 两半——audit sketch 标『1 文件』但 remediation 文本明确列『dev-server 注入标记』，故按 remediation 意图走 2 文件 route-fix。",
+  "action": "1) 跑 scout-scan.py --workspace /home/admin/workspace 拿项目健康快照（personal-assistant dirty=16, 11 待合并 wt, 9 待人工 merge）。2) 读 audit-2026-07-06-002.md PA-AND-02 finding（line 120-126）确认 evidence + remediation。3) 查 personal-assistant git worktree list 确认 opt-pa-android-api-1783275991 HEAD=30df9c1（PA-AND-01）、api.js 仅存于该 wt（git cat-file -t 580c4aa:android/api.js fatal 不存在；git log -- android/api.js 仅 30df9c1）→ 确认走 case-104 直编 wt 通道。4) 读 main dev-server.js（line 1-182）理解端口配置（line 8 argv/PORT/默认3015）+ /api 反代（line 80-140 proxy handler）+ 静态分发 handler（line 142-156 fs.readFile）。5) 读 FastAPI web.py 确认 prod 挂载：app.mount('/android', StaticFiles...) line 25，API 路由在 / 无 /api 前缀 → 确认 prod 不经 dev-server 故 dev-server 注入只在 dev 生效。6) 验 PA-DEV-01 wt(opt-pa-dev-server-1783277923) dev-server.js diff 区（line 1 加 require('https') + line 97-100 proxy handler http.get→getter）与本人将改的静态 handler 区（line 148-156）不同 hunk → 3-way merge auto-mergeable 无冲突。7) 设计 fix: api.js 改 API_BASE = (typeof window.__PA_API_BASE__==='string') ? window.__PA_API_BASE__ : (window.location.port==='3015'?'/api':'') —— 优先读 dev-server 注入值，落端口回退保 3015 默认兼容；dev-server.js 静态 handler 对 .html 注入 <script>window.__PA_API_BASE__='/api'</script> 于 <head> 后（正则 /<head[^>]*>/i 命中插其后，无 <head> 回退首部前置），.js/.css 不注入。8) node /tmp test 验证注入正则逻辑（有 <head> 插其后 / 无 <head> 首部前置）。9) 直编 wt 两文件。10) node --check 两文件 OK。11) 行为矩阵 5 场景: dev 3015 no-inject /api ✓ / dev 4000 inject /api ✓(THE FIX) / dev 4000 no-inject legacy gap ''(未注入场景) / prod 8000 no-inject '' ✓ / prod 32100 no-inject '' ✓。12) 端到端 smoke: ONEDAY_DIR=/tmp/pa-and02-test 启 dev-server 4567 端口（非 3015）→ curl / 返 HTML 含 marker <script>window.__PA_API_BASE__='/api'</script> 注入 <head> 后 ✓；curl /dev-server.js .js 文件不注入（body==原文件，grep 命中 2 为源码自带文本非注入）✓。13) wt 内 git add 两文件 + commit ece32d0（case-104 通道，autonomous-commit-gate 因 .autonomous_active 标记缺失 inactive 不拦 worktree 分支）+ push origin auto/opt-pa-android-api-1783275991（origin tip=ece32d0，stacked 30df9c1+ece32d0 on 580c4aa=main HEAD，FF-clean）。14) 回写 audit-cycle-state.json: PA-AND-02 pending→merged(dispatch_case_id/worktree/commit/note)、pending_count 2→1、_awaiting_merge_count 10→11、_last_dispatch_*、status fix-in-progress（PA-SPK-01 仍 pending）。",
+  "files_changed": ["android/api.js", "android/dev-server.js"],
+  "worktree": "opt-pa-android-api-1783275991",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "wt commit ece32d0: 'opt(pa-android-api): fix(android:api+dev-server): PA-AND-02 dev/prod 判定不再硬编码端口 3015 — dev-server 向所服务 .html 注入 window.__PA_API_BASE__=...（2 files changed, 21 insertions(+), 2 deletions(-)）'",
+    "node --check android/dev-server.js → dev-server.js syntax OK; node --check android/api.js → 无语法错",
+    "注入正则逻辑 node 验证: 有 <head> → marker 插 <head> 后（<head><script>window.__PA_API_BASE__='/api';</script>\\n<meta...）；无 <head> → marker 首部前置",
+    "行为矩阵 5 场景: dev 3015 no-inject='/api' / dev 4000 inject='/api'(THE FIX) / dev 4000 no-inject=''(legacy gap, 未注入场景) / prod 8000 no-inject='' / prod 32100 no-inject=''",
+    "端到端 smoke: ONEDAY_DIR=/tmp/pa-and02-test node dev-server.js 4567 → 'Dev server: http://localhost:4567' → curl -s http://127.0.0.1:4567/ | grep -c \"window.__PA_API_BASE__='/api'\" = 1（marker 注入 <head> 后）；curl .js grep -c=2 为源码自带文本非注入（.html-only 守卫 if path.extname(filePath)==='.html' 生效）",
+    "git ls-remote origin auto/opt-pa-android-api-1783275991 → ece32d07c5a0385b173b5b343fa801e4ae5b0007（origin tip=ece32d0）",
+    "git log --oneline origin/main..HEAD → ece32d0(PA-AND-02) + 30df9c1(PA-AND-01) 均 stacked on origin/main 580c4aa，FF-clean",
+    "audit-cycle-state.json 回写: PA-AND-02 status pending→merged dispatch_commit=ece32d0; pending_count 2→1; _awaiting_merge_count 10→11; status fix-in-progress; JSON round-trip 校验 OK"
+  ],
+  "next_suggestion": "下轮派生最后 1 pending: PA-SPK-01 (INFO speaker.py:62 if False 死赋值 self._embed 恒 None + docstring 承诺 embedding 注册表匹配从未实现)。audit remediation 选 route-fix 路径: 移除 if False 死赋值（self._embed=None 直接写或删字段）+ 修 docstring 去掉 'embedding 存 SQLite'/'prod 声纹聚类+注册表匹配' 承诺（line 5 类 docstring）使代码与承诺一致（audit 诚信修复，非实现 embedding 匹配——后者属 structural）。speaker.py 在 main 存在 → opt-worktree.sh cmd_commit 正常路径（判 route-fix 复用或新开 wt）。PA-SPK-01 派完后 audit-2026-07-06-002 全 12 dispatched → 进 wait 轮等人工 merge（⚠ 10-11 opt-* wt 待 merge to main），3 连续 wait 轮 0 merged 触发 deadlock-archive → cycle-complete → 下轮触发新全量审计（挑未深审项目，看 .claude/audits/ 避免重复）。提醒用户: 10+ opt-* wt 积压待人工 merge，建议批量审 diff + merge/reject。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "android/api.js",
+      "line": 4,
+      "severity": "low",
+      "finding": "API_BASE = (window.location.port === '3015') ? '/api' : '' 硬编码端口 3015 判定 dev/prod。dev-server.js line 8 允许 argv/PORT env 改端口，非 3015 端口启动 dev-server 时前端误判 prod → API_BASE='' → /api 请求走同源静态分发返 404（非 agent 所称 CORS 错——audit verifier 已纠偏），dev 体验坏。",
+      "remediation": "改优先读 dev-server 注入的 window.__PA_API_BASE__（dev 任意端口恒 /api），落端口回退保 3015 默认兼容；dev-server.js 静态 handler 向所服务 .html 注入 <script>window.__PA_API_BASE__='/api'</script>（<head> 后，.html-only）。已实现（case-024 commit ece32d0）。",
+      "kind": "route-fix"
+    },
+    {
+      "file": "android/dev-server.js",
+      "line": 148,
+      "severity": "low",
+      "finding": "静态分发 handler（fs.readFile → res.end(data)）未向所服务 .html 注入 dev 信号，致前端 api.js 无稳健 dev/prod 判定依据（仅能靠硬编码端口）。PA-AND-02 配套 injector 半——无此半则 api.js consumer hook 无值可读，dev 非默认端口仍坏。",
+      "remediation": "静态 handler 对 .html 文件注入 <script>window.__PA_API_BASE__='/api'</script> 于 <head> 后（正则匹配，无 <head> 回退首部前置），.js/.css 不注入。已实现（case-024 commit ece32d0，与 PA-DEV-01 proxy handler 区不同 hunk，3-way merge auto-mergeable）。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-002",
+  "audit_depth": "deep"
+}

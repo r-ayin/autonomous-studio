@@ -1,0 +1,23 @@
+{
+  "case_id": "case-2026-07-04-152",
+  "agent_id": "ralph-wiggum-loop",
+  "timestamp": "2026-07-04T12:38:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "lookout-round-22-pending-fix-blocked-check",
+  "situation": "audit-cycle-state status=fix-in-progress with pending_count=2 (case-040 H02 precheck shell-injection worktree opt-scripts-shift-1783116452 @ c1917c6, case-041 H01 autonomous-loop.sh backport worktree opt-scripts-shift-1783117803 @ 32b9101). Both dispatched ~18.5h ago, pushed to origin/auto/*, neither is ancestor of origin/main (HEAD c265d16). Genuinely blocked-on-human-merge. AS at 65 worktrees / 61 pending merge; cap enforced to avoid unbounded accumulation. No new fix dispatched this round.",
+  "action": "Lookout round 22. Re-verified pending fix worktrees on origin via git ls-remote; confirmed neither merged to main. Scout-scan run (text mode); #1 autonomous-engine 'missing planning/' re-confirmed FALSE POSITIVE (.planning/codebase/autonomous-engine.md exists in autonomous-engine project at 3629B mtime 2026-07-03T09:41 — scout searches AS repo not workspace root). #2 skills TODO=5 noted but existing worktree opt-skills-1782926185 has 12 SH-*+SC-* commits including TODO triage (e9e7934) awaiting merge; avoided duplicate work. No dispatchable finding; awaited human merge.",
+  "files_changed": [],
+  "worktree": null,
+  "direction": "route-fix",
+  "outcome": "blocked",
+  "outcome_evidence": "git ls-remote origin auto/opt-scripts-shift-1783116452=c1917c6 auto/opt-scripts-shift-1783117803=32b9101 main=c265d16 — neither worktree commit is ancestor of main HEAD; pending_count=2 unchanged from case-2026-07-04-151 (round 21); AS worktree count 65/61 cap still enforced; no new findings to dispatch.",
+  "next_suggestion": [
+    "Human: review+merge or reject opt-scripts-shift-1783116452 (H02 precheck shell-injection fix, case-040) and opt-scripts-shift-1783117803 (H01 autonomous-loop.sh backport, case-041) — both blocked ~18.5h",
+    "After pending fixes settle → audit-cycle-state will flip to cycle-complete → next full audit candidates by staleness: wechat-main (last audit 2026-07-01-004, 3d stale), shizi (2026-07-01-005, 3d), personal-assistant (2026-07-02-005, 2d), sunset-prediction (2026-07-03-001, 1.4d)",
+    "skills TODO=5 may be independent of triaged markers in opt-skills-1782926185; after that worktree merges, re-scout to confirm residual TODO count"
+  ],
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": null,
+  "audit_depth": "shallow"
+}

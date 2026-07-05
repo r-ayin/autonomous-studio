@@ -1,0 +1,44 @@
+{
+  "case_id": "case-2026-07-06-012",
+  "agent_id": "ralph-autonomous-engine",
+  "timestamp": "2026-07-06T07:05:00+08:00",
+  "project": "prod-deploy skill (LIVE copy: .claude/skills/prod-deploy/)",
+  "work_unit": "PD-TOKEN-01-LIVE: port host allowlist + IP-literal block from non-live http-base.js into LIVE task-client.js + event-client.js getBaseUrl()",
+  "situation": "audit-2026-07-06-001 PD-TOKEN-01 was dispatched as case-2026-07-06-010 (commit 4fd4f27) onto the NON-LIVE skills/prod-deploy/scripts/lib/http-base.js refactor copy. Per memory [[prod-deploy-dual-divergent-copies]] the LIVE skill is .claude/skills/prod-deploy/ (4-file, no http-base.js); the skills/ 6-file refactor copy is stale and not what runs. The LIVE task-client.js getHeaders()@18 + event-client.js getHeaders()@22 STILL attach CODE_PRIVATE_TOKEN/DEVOUT_TOKEN to whatever host DEVOUT_SERVER_URL resolves to — no allowlist, no IP-literal block. Token leak to a misconfigured / typo'd / DNS-rebinding host remained OPEN in the actually-running skill. Regression discovered during PD-BATCH-01 dispatch round (case-2026-07-06-011) and logged as derived finding PD-TOKEN-01-LIVE (severity medium, kind route-fix, status pending). This round dispatches that pending finding.",
+  "action": "Ported the allowlist logic (verified at git show 4fd4f27:skills/prod-deploy/scripts/lib/http-base.js) into getBaseUrl() of both LIVE clients: DEFAULT_ALLOWED_HOSTS = [localhost, 127.0.0.1, ::1, *.alibaba-inc.com] + DEVOUT_ALLOWED_HOSTS env extras (comma-separated, deduped, order-preserved); looksLikeIpLiteral() detects IPv4 dotted-quad and bare IPv6; isAllowedHost() requires exact non-wildcard match for IP literals (SSRF / metadata-service guard, e.g. 169.254.169.254 rejected) and supports *.suffix wildcard + exact hostname for DNS names; getBaseUrl() parses DEVOUT_SERVER_URL via new URL(), strips IPv6 brackets from parsed.hostname, and throws a clear allowlist error BEFORE any fetch is built — so getHeaders()/apiGet/apiPost/apiPut never attach the deploy token to an unverified host. Stacks on this worktree's existing PD-HANG-01 fetchWithTimeout (the LIVE files in opt-prod-deploy-1783270172 already carry the AbortController timeout from case-009/d3a9710). opt-worktree.sh commit hit cp-guard divergence (target files already modified in worktree by PD-HANG-01 vs main HEAD) — per [[opt-worktree-stack-diverged-escape-hatch]] (case-147 escape hatch) went direct-edit-in-worktree + commit-in-worktree channel.",
+  "files_changed": [
+    ".claude/skills/prod-deploy/scripts/lib/task-client.js",
+    ".claude/skills/prod-deploy/scripts/lib/event-client.js"
+  ],
+  "worktree": "opt-prod-deploy-1783270172 (branch auto/opt-prod-deploy-1783270172)",
+  "direction": "prod-deploy:token-host-allowlist (route-fix; files not in .claude/public-interfaces.txt)",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "commit 7398713 on auto/opt-prod-deploy-1783270172, 2 files changed, 144 insertions(+), pushed to origin (remote returned 6cf2ab3..7398713 HEAD -> auto/opt-prod-deploy-1783270172)",
+    "node --check task-client.js -> OK; node --check event-client.js -> OK (no syntax errors)",
+    "behavioral test (node --input-type=module, LIVE worktree files, via getTask/findEvent which call getBaseUrl): localhost / 127.0.0.1 / [::1] / https://deploy.aone.alibaba-inc.com -> reach fetch (OTHER:fetch failed = network, NOT allowlist block); https://evil.example.com / http://169.254.169.254 / http://8.8.8.8 -> BLOCKED pre-fetch with 'not in the allowlist' / 'Refusing to send deploy token' error; DEVOUT_ALLOWED_HOSTS=deploy.internal extends allowlist (deploy.internal reaches fetch); event-client.js evil host -> BLOCKED",
+    "allowlist logic byte-identical to merged PD-TOKEN-01 spec on http-base.js (4fd4f27) except module style (plain function vs export function) and audit-id suffix -LIVE"
+  ],
+  "next_suggestion": "Remaining pending derived fix: PD-CONCL-01 (low, route-fix) — deriveConclusion dedup assumes chronological array order; sort checks by timestamp desc before dedup + extract shared helper into sunfire-client.js (scripts/lib/sunfire-client.js + scripts/resume-next-batch.js). Dispatch next round. After PD-CONCL-01 lands, all 6 derived fixes merged -> audit-cycle-state.status=cycle-complete -> next round triggers a fresh deep audit on an unaudited project (scout-scan health-rank #1 unaudited). Note: the non-live skills/prod-deploy/ refactor copy is stale drift; consider a structural-debt entry to either delete it or re-graft LIVE->skills to collapse the dual-copy hazard (root cause of PD-TOKEN-01-LIVE regression).",
+  "audit_type": "none",
+  "audit_findings": [
+    {
+      "file": ".claude/skills/prod-deploy/scripts/lib/task-client.js",
+      "line": 10,
+      "severity": "medium",
+      "finding": "PD-TOKEN-01-LIVE (regression): getBaseUrl() returned DEVOUT_SERVER_URL with no host validation; getHeaders() attached CODE_PRIVATE_TOKEN/DEVOUT_TOKEN to whatever host it resolved to — silent token leak on misconfigured / typo'd / DNS-rebinding URL. The merged PD-TOKEN-01 fix (4fd4f27) only patched the non-live skills/ copy, not the LIVE .claude/skills/ copy.",
+      "remediation": "Port allowlist into getBaseUrl(): parse URL, validate hostname against DEFAULT_ALLOWED_HOSTS + DEVOUT_ALLOWED_HOSTS, reject IP literals unless explicitly allowlisted, throw before any fetch. DONE this case.",
+      "kind": "route-fix"
+    },
+    {
+      "file": ".claude/skills/prod-deploy/scripts/lib/event-client.js",
+      "line": 14,
+      "severity": "medium",
+      "finding": "PD-TOKEN-01-LIVE: same token-leak gap as task-client.js in the LIVE event-client.js getBaseUrl/getHeaders.",
+      "remediation": "Same allowlist graft into getBaseUrl(). DONE this case.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-001",
+  "audit_depth": "shallow"
+}

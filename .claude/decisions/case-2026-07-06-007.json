@@ -1,0 +1,60 @@
+{
+  "case_id": "case-2026-07-06-007",
+  "agent_id": "ralph-autonomous-engine",
+  "timestamp": "2026-07-06T05:00:00+08:00",
+  "project": "prod-deploy skill",
+  "work_unit": "全量深度审计 prod-deploy skill scripts/ (变更单→流水线→构建→发布准入→分批部署→完成 全自动部署编排 + 观察期门控)",
+  "situation": "audit-cycle-state.status=cycle-complete（audit-017 runner-exec 7 fix 全 merged/pushed）→ step-0 触发新全量审计轮。next_audit_hint 列 prod-deploy 为未深度审过的部署敏感 skill（11 代码文件/1510 loc）。深度解绑：读 9 JS 文件(~1100 loc)+SKILL.md+phases 流程文档，追 observation 时间门数据流（batch SUCCESS → report-observation 写 observation_result → resume-next-batch 读 updated_at 判门）。",
+  "action": "深度审计 prod-deploy scripts/ 全部 9 个 JS + 4 个 lib。追两条信任边界（DEVOUT aone-agent-server 持 token；Sunfire OpenAPI HMAC 签名）+ a1 CLI execFile 调用。重点验 deploy-gate 逻辑正确性（resume-next-batch 时间门+观测门）。产出 5 finding（1H/2M/2L 全 route-fix）落 .claude/audits/audit-2026-07-06-001.md，登记 derived_fixes status=pending。本轮不派生 fix（下轮起逐个派发，PD-TIME-01 优先）。",
+  "files_changed": [".claude/audits/audit-2026-07-06-001.md", ".claude/audit-cycle-state.json"],
+  "worktree": null,
+  "direction": "deep-audit (no commit this round)",
+  "outcome": "succeeded",
+  "outcome_evidence": "audit report 写入 .claude/audits/audit-2026-07-06-001.md（5 finding：PD-TIME-01 HIGH @ resume-next-batch.js:51 + report-observation.js:57-59 + report-event.js handleDeployBatch；PD-HANG-01 MED @ sunfire-client.js:32-54 + task-client.js:32-72 + event-client.js:32-58；PD-TOKEN-01 MED @ task-client.js:18-26 + event-client.js:22-30；PD-BATCH-01 LOW @ report-event.js:195；PD-CONCL-01 LOW @ sunfire-client.js:165-185）。audit-cycle-state.json: current_audit_id=audit-2026-07-06-001, status=fix-in-progress, derived_fixes=5 pending (PD-TIME-01/PD-HANG-01/PD-TOKEN-01/PD-BATCH-01/PD-CONCL-01), derived_fixes_pending_count=5, _archived_cycles 追加 audit-017 (5 cycles total)。prod-deploy scripts 不在 .claude/public-interfaces.txt → 全 route-fix。无 commit（审计轮不派生 fix）。",
+  "next_suggestion": "下轮 fix round：派生 PD-TIME-01（HIGH，3 文件：report-event.js handleDeployBatch 在 status→SUCCESS 写 payload.success_at=Date.now()；resume-next-batch.js:51 + report-observation.js:57-59 改读 payload.success_at 回退 updated_at）。opt-worktree.sh area=prod-deploy route-fix 复用同 worktree。后续 PD-HANG-01（超时）/PD-TOKEN-01（host allowlist）/PD-BATCH-01+PD-CONCL-01（low）。5 fix 全 merged|rejected → cycle-complete → 下个全量审计候选 dataworks-dev-assistant(32k loc)/fbi-dev-assistant(19k loc)/xia(499 nodes)。",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "scripts/resume-next-batch.js",
+      "line": 51,
+      "severity": "high",
+      "finding": "PD-TIME-01: 观察期时间门用 new Date(batchEvent.updated_at).getTime() 当作 'batch SUCCESS 时间'，但 report-observation.js:91 每 tick updateEvent(batchEvent,null,{observation_result}) 写同一事件会 bump updated_at（且 updateEvent :206 重发 status）。导致 elapsedMs=now-updated_at≈0 < requiredMs → 时间门永不通过（或需停观测再等满 observe_minutes，effective ~2x）。report-observation.js:57-59 同样用 updated_at 当 startTime，注释 'when batch became SUCCESS' 假设错误。",
+      "remediation": "report-event.js handleDeployBatch 在 status→SUCCESS 时写 payload.success_at=Date.now()；resume-next-batch.js:51 + report-observation.js:57-59 改读 batchEvent.payload?.success_at ?? updated_at（回退兼容在途批次）。",
+      "kind": "route-fix"
+    },
+    {
+      "file": "scripts/lib/sunfire-client.js",
+      "line": 32,
+      "severity": "medium",
+      "finding": "PD-HANG-01: httpPost 用 https.request 无 req.setTimeout/socket 超时；task-client.js/event-client.js fetch 无 AbortController。上游(Sunfire/DEVOUT) hang → report-observation/部署循环卡死无错（对比 poll-build.js:42 已对 a1 execFile 设 timeout:30000）。",
+      "remediation": "fetch 加 30s AbortController 超时 raise typed error；httpPost 加 req.setTimeout(30000,()=>req.destroy(new Error('Sunfire timed out')))；querySunfireInsights 把超时归 skipped:true。",
+      "kind": "route-fix"
+    },
+    {
+      "file": "scripts/lib/task-client.js",
+      "line": 18,
+      "severity": "medium",
+      "finding": "PD-TOKEN-01: getHeaders 把 X-Agent-Authorization: Code <CODE_PRIVATE_TOKEN> / token: <DEVOUT_TOKEN> 附到 DEVOUT_SERVER_URL 任意 host，无 allowlist/IP 字面量拦截。env 误配或被改 → deploy token 静默泄露外网。对齐 generate-image H02 (audit-2026-07-04-013)。",
+      "remediation": "getBaseUrl 校验 host ∈ {localhost,127.0.0.1,*.alibaba-inc.com,DEVOUT_ALLOWED_HOSTS}，IP 字面量非 allowlist 拒绝；非 allowlist 抛错不发 token。task-client+event-client 共享 getBaseUrl 去重。",
+      "kind": "route-fix"
+    },
+    {
+      "file": "scripts/report-event.js",
+      "line": 195,
+      "severity": "low",
+      "finding": "PD-BATCH-01: handleDeployBatch parseInt(values['batch-index'],10) 无 NaN 校验。缺值→batchIndex=NaN→findBatchEvent(payload.batch_index===NaN 永不命中)→createEvent 写 batch_index:NaN→JSON 序列化 null→后续合法 findBatchEvent(taskId,N) 全失效→重复事件/更新丢失。",
+      "remediation": "parseInt 后 if(!Number.isInteger(batchIndex)||batchIndex<0){console.error('ERROR: --batch-index must be non-negative integer');process.exit(1);}。",
+      "kind": "route-fix"
+    },
+    {
+      "file": "scripts/lib/sunfire-client.js",
+      "line": 165,
+      "severity": "low",
+      "finding": "PD-CONCL-01: deriveConclusion 按 'last array occurrence' dedup 当 'newest status'（byRule.set(rule,c) 保留最后出现），但 Sunfire 返回顺序未定义。newest-first 时 'last'=oldest：已恢复规则仍判 failed(误报 safe) 或仍 WARNING 规则判 passed(漏报 unsafe,罕见)。resume-next-batch.js:71-77 内联重复同样 dedup。",
+      "remediation": "dedup 前按 timestamp desc 排序使 'last' 真为 newest；或按规则 anyWarning+lastByTime。把 dedup 抽 sunfire-client 共享 helper，resume-next-batch 复用。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-001",
+  "audit_depth": "deep"
+}

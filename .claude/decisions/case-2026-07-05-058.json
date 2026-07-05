@@ -1,0 +1,40 @@
+{
+  "case_id": "case-2026-07-05-058",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-05T13:55:00+08:00",
+  "project": "shizi",
+  "work_unit": "derived-fix-dispatch SH2-L-002 (audit-2026-07-05-007 priority 6): ResultPanel.tsx:56,62 分类明细英文字母/数字行等效值硬编码 Math.ceil(count/2) 未读 config.englishRatio/digitRatio → counter.ts 用 config 算 equivalentCount 而 UI 行级用 /2，ratio≠2 时行级等效累加≠总 equivalentCount，UI 自相矛盾。Fix: 在 CountResult 加 englishEquiv/digitEquiv 字段由 counter.ts 填充（单一真相），ResultPanel 读 result.englishEquiv/digitEquiv，旧历史记录无字段时回退 /2。",
+  "situation": "audit-cycle-state.status=fix-in-progress; audit-2026-07-05-007 derived 7 route-fix, 5 已派发待 merge (SH2-M-004 case-053 opt-vision-1783212856 d5f0ef0 / SH2-M-002 case-054 opt-background-1783213292 3e7efba / SH2-M-003 case-055 5d3d756 / SH2-M-001 case-056 7d7c44f / SH2-L-001 case-057 15fd714 L4-stack), 2 仍 fix_case_id=null (SH2-L-002/003)。SH2-L-002 优先级 6 (P6 low) 未派发。ResultPanel.tsx:56 英文字母行 equiv=Math.ceil(englishCount/2)、:62 数字行 equiv=Math.ceil(digitCount/2) 硬编码 /2，但 counter.ts:71-72 用 config.englishRatio/digitRatio 算 englishEquiv/digitEquiv 汇总成 equivalentCount。用户在 SettingsPage.tsx 可调 englishRatio/digitRatio (默认2，可设3等)，调非2时：banner 大数字 equivalentCount 用 ratio=3，但分类明细英文字母/数字行仍显示 /2 等效，3 行等效累加 ≠ 总 equivalentCount，UI 自相矛盾误导用户。审计 _planned_files 仅 ResultPanel.tsx，建议 '透传 config 或在 CountResult 带 per-row equiv'——后者单一真相更优。",
+  "action": "采 CountResult 带 per-row equiv 方案（单一真相，避免 config 透传到纯展示组件）：(1) types.ts CountResult 加 englishEquiv?: number + digitEquiv?: number（可选，旧历史记录 HistoryItem.result 无此字段仍可反序列化）；(2) counter.ts calculateEquivalentCount return 追加 englishEquiv, digitEquiv（变量 :71-72 已算好，直接return）；(3) ResultPanel.tsx:56 改 equiv={result.englishEquiv ?? (result.englishCount>0?Math.ceil(result.englishCount/2):0)}、:62 同款 digitEquiv ?? 回退 /2——新结果用 counter 算的 ratio-aware 等效（与 equivalentCount 同源同 ratio），旧历史记录回退 /2 保持原行为不破。3 文件跨 background/popup/shared 三 area，但均非 .claude/public-interfaces.txt 列公共接口 → route-fix；3 文件均未被前 4 层 background stack (segmentation/ocr-internal/orchestrator) 触及 → opt-worktree cp-guard 放行；direction=popup:equivalent-per-row 新 area（与 background stack 隔离），开新 worktree opt-popup-1783215325 不叠在前 4 层待 merge stack 上（降低 deadlock 风险，独立 fast-forward）。",
+  "files_changed": [
+    "/home/admin/workspace/shizi/src/popup/ResultPanel.tsx",
+    "/home/admin/workspace/shizi/src/background/counter.ts",
+    "/home/admin/workspace/shizi/src/shared/types.ts"
+  ],
+  "worktree": "opt-popup-1783215325 (新 area worktree, route-fix 非复用——popup area 前 4 层 background stack 未触及, branch auto/opt-popup-1783215325)",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh shizi commit 'popup:equivalent-per-row' 产 commit 2465588 (3 files changed: ResultPanel.tsx +counter.ts +types.ts +.opt-lock); push origin auto/opt-popup-1783215325 成功 '[new branch] HEAD -> auto/opt-popup-1783215325'，远端 code review 链接已生成 https://code.alibaba-inc.com/qunbu/shizi/codereview/new?from=main&to=auto/opt-popup-1783215325; opt-worktree show 验证 diff: counter.ts +englishEquiv +digitEquiv 两行 insert、ResultPanel.tsx :56/:62 改读 result.englishEquiv/digitEquiv ?? 回退 /2、types.ts CountResult 加两 optional 字段; base=58c71ec (main HEAD) 干净 fast-forward 可达, 不叠在前 4 层 background stack; vitest 5 files 53/53 tests pass Duration 1.14s (commit 前主 checkout 跑); 3 文件均不在 .claude/public-interfaces.txt → route-fix 判定正确, opt-worktree 日志 '方向分歧（engine→popup，route-fix 新 area）开新 worktree'。",
+  "next_suggestion": "下轮派发 SH2-L-003 (P7 low, 删死代码 verifyOcrResults, vision-adapter.ts:567 全仓零调用者 d360b4f VL识别合并校对取代, 且用未预处理 imageBase64 无守卫——与 SH2-M-004 case-053 同 vision-adapter.ts 可叠 opt-vision-1783212856 第 2 层, route-fix stacking)。SH2-L-003 派发后 audit-2026-07-05-007 全 7 derived fix 均已 dispatch (5 在 opt-background-1783213292 stack + 1 opt-vision-1783212856 + 1 opt-popup-1783215325) awaiting human merge → 进入 wait 轮监听 merge 状态; 全 7 merged 或 deadlock-archive (3 连续 wait 轮 0 merge) 后 audit-cycle-state.status→cycle-complete 触发下一轮全量审计 (挑未深审项目: history 显示已审 autonomous-engine/autonomous-studio-aone/shizi/oneday-design/wechat-main/personal-assistant/sunset-prediction/1BfrYn9G/open-design/kaoqin/browser-use/stagehand-analysis/x-tool/agent-dashboard/huiyis/fa_agent/pc_agent/agentfw/fusion-server/dingtalk-auto/quanzhan; 未深审候选: 其余 workspace 项目)。当前 3 个独立 wt 待 merge: opt-vision-1783212856(1commit) + opt-background-1783213292(4commit stack) + opt-popup-1783215325(1commit)。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "/home/admin/workspace/shizi/src/popup/ResultPanel.tsx",
+      "line": 56,
+      "severity": "low",
+      "finding": "SH2-L-002: 英文字母 DetailRow equiv={result.englishCount>0?Math.ceil(result.englishCount/2):0} 硬编码 /2，未读 config.englishRatio。counter.ts:71 用 config.englishRatio 算 englishEquiv 汇总进 equivalentCount，UI 行级却用 /2 → ratio≠2 时行级等效累加≠总 equivalentCount，banner 大数字与分类明细自相矛盾。",
+      "remediation": "CountResult 加 englishEquiv? 字段由 counter.ts 填充（单一真相），ResultPanel 读 result.englishEquiv ?? 回退 /2（兼容旧历史记录）。已在 opt-popup-1783215325 commit 2465588 修复，53/53 tests pass。",
+      "kind": "route-fix"
+    },
+    {
+      "file": "/home/admin/workspace/shizi/src/popup/ResultPanel.tsx",
+      "line": 62,
+      "severity": "low",
+      "finding": "SH2-L-002: 数字 DetailRow equiv={result.digitCount>0?Math.ceil(result.digitCount/2):0} 同款硬编码 /2，未读 config.digitRatio。与 :56 同根因。",
+      "remediation": "CountResult 加 digitEquiv? 字段由 counter.ts 填充，ResultPanel 读 result.digitEquiv ?? 回退 /2。已在 opt-popup-1783215325 commit 2465588 修复。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-007",
+  "audit_depth": "shallow"
+}

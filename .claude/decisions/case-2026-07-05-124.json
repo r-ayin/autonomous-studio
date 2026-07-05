@@ -1,0 +1,30 @@
+{
+  "case_id": "case-2026-07-05-124",
+  "agent_id": "ralph-autonomous-engine",
+  "timestamp": "2026-07-05T20:10:00+08:00",
+  "project": "x-tool",
+  "work_unit": "派生 fix: OMNICS-CONFIG-01 apiKey 明文落盘 → safeStorage 加密 (audit-2026-07-05-013 第7优先级 route-fix)",
+  "situation": "audit-2026-07-05-013 (x-tool/聚合ai客服开发 omnics-client Electron deep audit) 16 findings 中 OMNICS-CONFIG-01 (severity low, priority 7) 指出 ConfigManager 把 AI apiKey 明文写入 userData/config.json — 任何能读该文件的本地进程/恶意扩展/备份同步链路均泄露 LLM 凭证. 此前 9 个 route-fix (API-01/SIDECAR-01/LLM-01/LLM-02/KB-01/PRELOAD-01/STORE-01/DB-01/INJECT-01) 已堆叠 opt-omnics-1783246236 分支待人工 merge (x-tool 外部 fork push 403 precedent), 本轮派生第 10 个未派发 fix OMNICS-CONFIG-01. ConfigManager.ts 已被 case-118 (OMNICS-LLM-02, commit 8fdbff3) 在 stack 内修改 → opt-worktree cp-guard 会因 worktree 文件≠main HEAD 误判 skip, 采用 case-118 precedent 的 direct-worktree-commit 方法 (直编 worktree + git add/commit).",
+  "action": "ConfigManager.ts 引入 Electron safeStorage: (1) saveConfig 把 in-memory 明文 apiKey 经 safeStorage.encryptString 加密为 base64 写入新字段 apiKeyEncrypted, 同步清空 on-disk apiKey 字段防明文残留; (2) loadConfig 新增 decryptApiKey — 优先 decryptString(base64) 还原, 失败回 default 不崩; (3) 兼容旧明文 config: 旧明文 apiKey 仍可读 (legacy migration path) 保证用户不被登出, 下次 saveConfig 自动加密+擦除明文一次完成; (4) safeStorage.isEncryptionAvailable() false (headless Linux 无 libsecret) 时降级明文 + logger.warn, 常见打包态 (Win DPAPI/macOS Keychain/Linux libsecret) 真加密. 内存仍持明文 apiKey 供 AIService 用, 行为不变. 新增 DiskAIConfig/DiskAppConfig 类型描述落盘 shape (apiKey 可选 + apiKeyEncrypted 可选).",
+  "files_changed": [
+    "聚合ai客服开发/src/main/core/ConfigManager.ts"
+  ],
+  "worktree": "opt-omnics-1783246236 (复用, route-fix, branch auto/opt-omnics-1783246236, stacked on 19dfc61 case-123 OMNICS-INJECT-01)",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "git commit 321838d on auto/opt-omnics-1783246236 (1 file changed, 82 insertions(+), 6 deletions(-)). git rev-list master...HEAD = 0 10 (10-commit stack FF-clean, master=85bd9e1, branch HEAD=321838d). git push origin → 403 'git push is not allowed' (x-tool 外部 fork r-ayin/x-tool, 同 audit-008/010/011/012 + audit-013 前 9 fix precedent — commit stack 完整保留 disk 待人工 merge). safeStorage import 自 electron, 不引入新依赖. 文件编译期类型自洽 (DiskAIConfig extends Omit<AIConfig,'apiKey'> + apiKey?/apiKeyEncrypted?).",
+  "next_suggestion": "下轮: audit-013 仅剩 1 个未派发 route-fix OMNICS-LOG-01 (priority 11, XiaoHongShuAdapter.ts + pdd.ts 日志脱敏 — XHS 完整 LLM 响应/axios 错误体可能回显 apiKey + pdd outerHTML 全量) → 派生为 case-125 direct-worktree-commit (两文件均已被前序 stacked commit 改 → 同 case-118/120 precedent). 派发后 audit-013 全 11 route-fix dispatched, 进入 wait 轮 (3 连续 0 merged → deadlock-archive 同 audit-005/006/007/008/010/011/012 precedent, cycle-complete 触发下一轮全量审计). 全量审计候选: 聚合ai客服开发 2987py / wanxia 500节点 / xia 499节点 / personal-assistant (已审) / shizi (已审) / autonomous-engine (已审) — 优先 2987py 或 wanxia (从未深审).",
+  "audit_type": "security-review",
+  "audit_findings": [
+    {
+      "file": "聚合ai客服开发/src/main/core/ConfigManager.ts",
+      "line": 25,
+      "severity": "low",
+      "finding": "OMNICS-CONFIG-01: AI apiKey (LLM 凭证, open.bigmodel.cn) 明文存 userData/config.json — 任何本地进程/扩展/备份链路读该文件即得凭证, 可盗用 LLM 配额或冒充账号",
+      "remediation": "Electron safeStorage.encryptString 加密落盘 (OS DPAPI/Keychain/libsecret) + decryptString 还原; on-disk apiKey 字段清空, 密文落 apiKeyEncrypted; 兼容旧明文 config 一次迁移; 不可用时降级+warn",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-013",
+  "audit_depth": "shallow"
+}

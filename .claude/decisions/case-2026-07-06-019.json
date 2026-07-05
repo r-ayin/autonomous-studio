@@ -1,0 +1,35 @@
+{
+  "case_id": "case-2026-07-06-019",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-06T11:10:00+08:00",
+  "project": "personal-assistant",
+  "work_unit": "PA-AND-01 derived fix: android/api.js api() helper — destructure opts.headers so ...opts spread no longer overwrites the merged headers object (audit-2026-07-06-002)",
+  "situation": "audit-cycle-state.status=fix-in-progress, audit-2026-07-06-002 personal-assistant deep audit; 5 of 12 findings already dispatched+merged (PA-ASR-01/02/03, PA-WIKI-01, PA-REC-01). PA-AND-01 (medium, P2) is highest-severity pending finding. Bug: `fetch(url, { headers: {...opts.headers}, ...opts })` — JS spread last-key-wins means `...opts` re-introduces `opts.headers` (the un-merged original) and silently drops the default `Content-Type: application/json`. Future caller `api('/x',{method:'POST',body,headers:{Authorization:'Bearer t'}})` loses Content-Type → backend 415/parse fail. InboxPage.jsx:59 happens to pass Content-Type explicitly so today 'accidentally works'.",
+  "action": "Destructure `headers` (and rest) out of opts before building fetch options: `const { headers: customHeaders, ...rest } = opts; fetch(url, { ...rest, headers: {'Content-Type':'application/json', ...customHeaders} })`. Now `rest` has no `headers` key → spread can't clobber merged headers; caller's customHeaders still win over default. Single-file route-fix, no public-interface touched.",
+  "files_changed": ["android/api.js"],
+  "worktree": "opt-pa-android-api-1783275991",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "node --check android/api.js → SYNTAX_OK",
+    "opt-worktree.sh commit → 复用同 area worktree opt-pa-android-api-1783275991, 方向=pa-android-api (route-fix, no new wt)",
+    "git log -1 → 30df9c1 opt(pa-android-api): fix(android:api): PA-AND-01 ...",
+    "worktree branch auto/opt-pa-android-api-1783275991 pushed (status -sb clean, ahead=0)",
+    "post-fix content verified: `const { headers: customHeaders, ...rest } = opts; fetch(url, { ...rest, headers: {'Content-Type':'application/json', ...customHeaders} })` — rest lacks headers key, so default Content-Type survives even when caller passes Authorization",
+    "behavioral proof: api('/x',{headers:{Authorization:'Bearer t'}}) now yields headers={Content-Type:application/json, Authorization:Bearer t} (previously headers={Authorization:Bearer t} only, Content-Type dropped)"
+  ],
+  "next_suggestion": "继续派生 PA-AND-02（android/api.js API_BASE 硬编码 port 3015，low P3）或 PA-WIKI-02（wiki.py _find_existing 子串匹配过松，low P3）。注意：本次踩到 opt-worktree 路径校验版本漂移——当前版 cmd_commit 拒绝绝对路径（M-002），需用相对项目根路径（android/api.js），与 memory note opt-worktree-absolute-file-path 相反，下轮应更新该 memory。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "android/api.js",
+      "line": "7-10",
+      "severity": "medium",
+      "finding": "PA-AND-01: api() helper builds fetch options as `{ headers: {...opts.headers}, ...opts }` — JS spread last-key-wins means `...opts` re-introduces the original `opts.headers` and silently overwrites the just-merged headers object, dropping the default `Content-Type: application/json`. Any future caller passing both a body and a custom header (e.g. Authorization) loses Content-Type → 415/parse failure. InboxPage.jsx:59 only accidentally works because it explicitly sets Content-Type:text/plain.",
+      "remediation": "Destructure headers out: `const { headers: customHeaders, ...rest } = opts; fetch(url, { ...rest, headers: {'Content-Type':'application/json', ...customHeaders} })`.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-002",
+  "audit_depth": "shallow"
+}

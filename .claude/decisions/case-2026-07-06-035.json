@@ -1,0 +1,44 @@
+{
+  "case_id": "case-2026-07-06-035",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-06T21:15:00+08:00",
+  "project": "x-tool/一件重启脚本/remote_control",
+  "work_unit": "派生 audit-2026-07-06-004 RC-SEC-03 (HIGH) + RC-CTIME-01 (LOW) + RC-LOG-01 (LOW) stack: 硬编码 PIN '1234' → env 化/随机生成 + per-IP 失败锁定 + 常量时间比较 + 不回显 PIN 明文",
+  "situation": "audit-cycle-state status=fix-in-progress, audit-2026-07-06-004 derived 15 route-fix. 已 merged: RC-SEC-01+RC-LEAK-01 (case-033, 550baaf), RC-SEC-02 (case-034, f3bcff2). 本轮取 priority=3 RC-SEC-03 (HIGH) 派生，与同文件 RC-CTIME-01+RC-LOG-01 stack (audit 派生计划 #3)。server.py:26 PIN_CODE='1234' 硬编码 4 位 (10000 空间)，公网 Cloudflare Tunnel 自动暴露 0.0.0.0:18888 到 *.trycloudflare.com，ThreadingTCPServer 无失败计数/锁定 → 公网攻击者 ~100 req/s × 100s 即穷举 PIN 拿下控制台 (改 baseUrl 盗 apiKey / 远程重启 / 注入 XSS)。4 处 PIN 校验 (do_GET /restart line 478, do_POST /update_config line 502, /add_preset line 549, /delete_preset line 587) 用 != 非常量时间 (RC-CTIME-01)。line 717 print(f'Default PIN: {PIN_CODE}') 把固定 PIN 写 server.log (RC-LOG-01)。",
+  "action": "在既有 opt-remote-control-1783283520 worktree 上 stack 第三个 commit (case-104 直编 wt+wt 内 commit 通道; cmd_commit cp-guard 对已分叉 server.py 跳过且 main 工作区无改动 → cmd_commit 必返 '无未提交改动跳过'，故走 [[opt-worktree-stack-diverged-escape-hatch]] 直编 wt 通道)。单文件 server.py 改动:\n1. import: 加 hmac + secrets\n2. line 26 PIN_CODE='1234' → PIN_CODE = os.environ.get('REMOTE_CONTROL_PIN') or f'{secrets.randbelow(1000000):06d}' (env 优先，未设启动随机生成 6 位；不再硬编码弱 PIN)\n3. 新增模块级 _fail_lock=threading.Lock() / _fail_counts={} / PIN_MAX_FAILS=5 / PIN_LOCK_SECONDS=60 (ThreadingTCPServer 多线程，per-IP 计数需加锁)\n4. RemoteControlHandler 新增三方法: _client_ip() (Cf-Connecting-IP 取真实公网客户端 IP, 直连回退 client_address), _record_pin_fail(ip) (失败累计, 满 5 次锁 60s), verify_pin(pin_input) (锁定窗口直接拒 + hmac.compare_digest 常量时间比较 + 成功清零) — 统一入口\n5. 4 处 PIN 校验点: pin_input != PIN_CODE / data.get('pin') != PIN_CODE → self.verify_pin(...) (RC-CTIME-01 一并闭合, 4 处统一经 hmac.compare_digest)\n6. line 717 print('Default PIN: {PIN_CODE}') → env 配置时只 print 'PIN configured via REMOTE_CONTROL_PIN env var.'，仅随机生成时 print 一次性 PIN 供 owner 取用 (RC-LOG-01: 不再回显固定弱 PIN 明文)\n回归安全: verify_pin 成功路径清零 _fail_counts[ip]，失败路径累计，锁定窗口内不消耗 compare_digest (防 timing 探测 + 防锁定绕过). PIN_CODE 在模块加载时定型 (env 或随机)，运行期不变. 无新增 endpoint, 无 JS 改动, 1 文件 route-fix stack。",
+  "files_changed": ["一件重启脚本/remote_control/server.py"],
+  "worktree": "opt-remote-control-1783283520",
+  "direction": "remote-control:sec",
+  "outcome": "succeeded",
+  "outcome_evidence": "wt commit 163f202 stacked on f3bcff2→550baaf (base=85bd9e1=master), 1 file changed 65 insertions 11 deletions. `python3 -c \"import ast; ast.parse(open(...).read())\"` → SYNTAX OK (line 674 pre-existing SyntaxWarning E:\\openclaw 非本 commit, RC-PATH-01 structural). grep 确认 0 处残留 '!= PIN_CODE'/'== PIN_CODE'/'Default PIN'; 4 处 verify_pin 调用点 (line 528/552/599/637) + 1 处 hmac.compare_digest (line 175) + PIN_CODE 定义 (line 30). 功能验证: 复刻 verify_pin 逻辑跑独立 python3 脚本 — 正确 PIN→True, 错误 PIN→False, 连续 5 次错误后正确 PIN 亦被拒 (锁定生效, _fail_counts[ip]=[5, <future_ts>]). push origin auto/opt-remote-control-1783283520 → 403 'git push is not allowed' (x-tool origin=外部 fork r-ayin/x-tool, [[x-tool-external-fork-push-403]] precedent, 预期) → wt+3-commit stack 完整保留 disk 待人工 merge. owner 须 set REMOTE_CONTROL_PIN env 否则每次重启随机 PIN (打印一次到 server.log 供取用)。",
+  "next_suggestion": "下轮继续派生 audit-2026-07-06-004 priority=4 RC-XSS-01 (HIGH, preset name 原样拼进 <span> 无 html.escape, server.py:203-211) — 与 RC-ATOMIC-02 (save_presets 原子写+maxlen, server.py:158-164) 同 presets 区块可 stack 同一 opt-remote-control-1783283520 worktree (现 HEAD=163f202, FF-clean on stack). 之后 priority=5..15 (RC-CFG-01/RC-BUG-01/RC-PIN-01/RC-ATOMIC-01/RC-ROBUST-01/RC-PROXY-01/RC-LOG-01已done/RC-CTIME-01已done/RC-ATOMIC-02/RC-LEAK-02) 分批 stack. 全部 15 route-fix 派发+merged|rejected 后 audit-cycle-state.status→cycle-complete 触发下一轮全量审计 (挑未深审项目). x-tool 外部 fork 待合并 worktree 全部需人工 merge (push 不可达)。",
+  "audit_type": "security-review",
+  "audit_findings": [
+    {
+      "file": "一件重启脚本/remote_control/server.py",
+      "line": "26,84-129,714",
+      "severity": "high",
+      "finding": "RC-SEC-03: PIN_CODE='1234' 硬编码 4 位 (10000 空间) + Cloudflare Tunnel 自动公网暴露 + ThreadingTCPServer 无失败计数/锁定 → 公网 ~100s 穷举 PIN 拿下控制台 (改 baseUrl 盗 apiKey/远程重启/XSS)",
+      "remediation": "PIN 从 REMOTE_CONTROL_PIN env 读, 未设随机生成 6 位; per-IP 失败计数 5 次锁 60s (内存 dict+Lock); verify_pin 统一入口",
+      "kind": "route-fix"
+    },
+    {
+      "file": "一件重启脚本/remote_control/server.py",
+      "line": "475,499,546,584(原)→478,502,549,587(现)",
+      "severity": "low",
+      "finding": "RC-CTIME-01: PIN 比较 pin_input != PIN_CODE / data.get('pin') != PIN_CODE 非常量时间 (timing side-channel, 与 RC-SEC-03 叠加放大暴力可行性)",
+      "remediation": "4 处统一经 verify_pin→hmac.compare_digest 常量时间比较",
+      "kind": "route-fix"
+    },
+    {
+      "file": "一件重启脚本/remote_control/server.py",
+      "line": "714(原)→717(现)",
+      "severity": "low",
+      "finding": "RC-LOG-01: print(f'Default PIN: {PIN_CODE}') 把固定弱 PIN 明文写 server.log (磁盘/备份可带走)",
+      "remediation": "删明文回显; env 配置只打印来源, 仅随机生成时打印一次性 PIN",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-004",
+  "audit_depth": "deep"
+}

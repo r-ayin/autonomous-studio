@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-04-075",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-04T10:25:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "lookout: verify H01+H02 pending fix branches still on origin + diagnose missing remote refs",
+  "situation": "audit-cycle-state.status=fix-in-progress, pending_count=2 (ESE-RT-H02 case-2026-07-04-040 worktree opt-scripts-shift-1783116452; ESE-RT-H01 case-2026-07-04-041 worktree opt-scripts-shift-1783117803). Last verified present on origin at 2026-07-04T02:22Z (case-2026-07-04-074). This round: re-verify after >6h block. Initial `git branch -r | grep auto/opt-scripts-shift` returned empty — appeared as if entire auto/* namespace deleted from origin.",
+  "action": "Ran scout-scan.py (workspace health snapshot). Then diagnosed apparent branch loss: (1) git fetch --quiet succeeded; (2) git ls-remote origin 'refs/heads/auto/*' returned 50+ branches including both H02 and H01 commits (c1917c6, 32b9101); (3) git config remote.origin.fetch = '+refs/heads/main:refs/remotes/origin/main' — refspec narrowed to main-only at some prior round, causing git branch -r to hide all auto/* branches. Confirmed this is a LOCAL refspec configuration issue, NOT remote deletion. Both fix branches intact on origin. No new fixes dispatched (still blocked on human merge). Documented refspec narrowing as new route-fix finding for user decision (trade-off: full refspec increases fetch payload by ~56 branches).",
+  "files_changed": [],
+  "worktree": null,
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "git ls-remote origin refs/heads/auto/opt-scripts-shift-1783116452 → c1917c6 (H02 present); refs/heads/auto/opt-scripts-shift-1783117803 → 32b9101 (H01 present). Local refspec confirmed narrow via git config --get-all remote.origin.fetch output '+refs/heads/main:refs/remotes/origin/main'. Scout-scan reported AS pending-WT=55(52待合并+3空), total workspace WTs ~119 (~91 awaiting merge). Main HEAD c265d16 does not contain either fix (no precheck-shell-injection or autonomous-loop-ESE-RT-H01 commit in log).",
+  "next_suggestion": "Human merge/review of H02 (opt-scripts-shift-1783116452, shell injection fix — higher priority/security) and H01 (opt-scripts-shift-1783117803, ESE-M02 backport). Separately: decide whether to widen origin fetch refspec to include auto/* namespace (current main-only refspec hides all worktree branches from git branch -r, complicating lookout rounds); recommend adding '+refs/heads/auto/*:refs/remotes/origin/auto/*' as compromise between visibility and fetch payload. After H01+H02 settle, audit-cycle-state will transition to cycle-complete and trigger next full audit.",
+  "audit_type": "none",
+  "audit_findings": [
+    {
+      "file": ".git/config",
+      "line": null,
+      "severity": "low",
+      "finding": "remote.origin.fetch refspec narrowed to main-only (+refs/heads/main:refs/remotes/origin/main). Side effect: git branch -r hides all auto/* worktree branches, making lookout-round verification require explicit git ls-remote instead of standard tooling. Likely set intentionally to reduce fetch noise but undocumented.",
+      "remediation": "Add second fetch refspec line '+refs/heads/auto/*:refs/remotes/origin/auto/*' to restore worktree branch visibility without fetching all namespaces. Or document the narrowing in GATES.md/CLAUDE.md so future rounds know to use ls-remote.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": null,
+  "audit_depth": "shallow"
+}

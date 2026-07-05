@@ -1,0 +1,38 @@
+{
+  "case_id": "case-2026-07-06-047",
+  "agent_id": "ralph-autonomous-engine",
+  "timestamp": "2026-07-06T07:12:17+08:00",
+  "project": "dataworks-dev-assistant",
+  "work_unit": "派生 fix: audit-2026-07-06-005 DATAAN-01+DATAAN-06 (MEDIUM, route-fix) — DuckDB 两连接设 enable_external_access=false 拦截 read_csv/read_parquet 读任意文件",
+  "situation": "audit-2026-07-06-005 确认 DuckDB 两处连接未禁 external_access：duckdb_query.py:51 read_only 连接 + duckdb_loader.py:43 读写连接，用户 SQL 可经 read_csv('/etc/passwd')/read_parquet 读进程可达任意文件。审计 remediation 建议「连接后 SET enable_external_access=false」。DATAAN-06 涉及 duckdb_loader.sql()/fetch() 执行任意用户 SQL；DATAAN-01 涉及 duckdb_query.py 直接执行用户 SQL。两者同源（enable_external_access 全局开关），合并一个 route-fix worktree 派发。",
+  "action": "1) duckdb_query.py: main() read_only 连接 (line 51) 与 do_merge 重开 r/w 连接 (line 31) 后均加 db.execute('SET enable_external_access = false')。2) duckdb_loader.py: __init__ 给 self.db (File DB) 与 self._mem (Memory DB) 均设 SET enable_external_access=false。3) 发现 DuckDB 约束（实测 duckdb 1.5.4）：enable_external_access 是数据库级全局开关而非 per-connection——一旦某连接设 false，同库所有连接的 read_json_auto/read_csv 均被禁。审计原 remediation「SET 后 load() 仍用 read_json_auto 读 /tmp 快照」因此不可行（load 会 PermissionException）。改方案：load() 不再写 /tmp JSON + read_json_auto，改用参数化 VALUES 灌入快照表（CREATE TABLE AS SELECT * FROM (VALUES (?,?...)) AS t(col_list) + Python 参数绑定），无文件表函数，与全局开关共存。新增 _create_snapshot_table() helper 处理 dict/标量/空数据。DuckDB 从 Python 参数推断列类型（VARCHAR/INT/STRUCT/ARRAY），跨全量行取并集，支持嵌套与异构行。顺带消除 DATAAN-04（/tmp 可预测路径 + symlink 跟随）——不再写 /tmp 文件。4) 实测验证：read_csv('/etc/hostname') 在 loader.db/_mem/duckdb_query.py 均抛 PermissionException 被拦；sql() 路径 except 捕获返回 [] 无数据泄露；loader.load() 灌入嵌套({'nested':{'a':1}}→STRUCT)/异构/标量/空数据均正常，_extract_schema 类型推断正确；duckdb_query.py --tables(information_schema)/--merge(重开 r/w CREATE VIEW)/查询视图均正常；参数量实测 100k 行×5 列=500k params 单语句 9s 成功（无批处理需要，保类型推断正确性）。",
+  "files_changed": [
+    "skills/dataworks-dev-assistant/core/duckdb_query.py",
+    "skills/dataworks-dev-assistant/core/duckdb_loader.py"
+  ],
+  "worktree": "opt-dataworks-1783293099",
+  "direction": "dataworks:duckdb-external-access (route-fix, 新 area → 开新 worktree)",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "opt-worktree.sh commit 输出: ✓ 提交到 opt-dataworks-1783293099 方向=dataworks:duckdb-external-access；[new branch] HEAD -> auto/opt-dataworks-1783293099 已 push origin",
+    "worktree HEAD sha = dfca487fcccd65e3605cb359322acaea32623c68 (git -C <wt> rev-parse HEAD)",
+    "worktree 内 grep enable_external_access: duckdb_query.py=3 hits, duckdb_loader.py=4 hits（main checkout 已被 opt-worktree 流程 reset 至 7102e75 clean，符合 route-fix 隔离语义）",
+    "实测: loader.sql(\"SELECT * FROM read_csv('/etc/hostname')\") → [DuckDBLoader] SQL 执行失败: Permission Error: Cannot access file \"/etc/hostname\" - file system operations are disabled by configuration；返回 [] 无数据泄露",
+    "实测: duckdb_query.py 'SELECT * FROM read_csv(\\'/etc/hostname\\')' rc=1 stderr=_duckdb.PermissionException: Permission Error: Cannot access file",
+    "实测: loader.load('ListX', [{name:foo,count:3,nested:{a:1},list:[1,2]},{name:bar,count:5,nested:{a:2,b:9},list:[3]}]) → fetch 返回 [{name:bar,count:5,nested:{a:2,b:9},list:[3]},{name:foo,count:3,nested:{a:1},list:[1,2]}]；_extract_schema 类型=[('name','VARCHAR'),('count','INTEGER'),('nested','STRUCT(a INTEGER, b INTEGER)'),('list','INTEGER[]')]",
+    "实测: duckdb_query.py --tables/--merge 'ListFoo_r*'--as all_foo / SELECT * FROM all_foo 均 rc=0 正常输出（information_schema + CREATE VIEW 在 guard 下不受影响）",
+    "实测: DuckDB 全局开关约束 — 同库第二连接 SET enable_external_access=false 后，第一（未设）连接 read_json_auto 亦 PermissionException（证明全局非 per-connection，是改参数化 VALUES 的根因）",
+    "python3 -m py_compile core/duckdb_loader.py core/duckdb_query.py → OK"
+  ],
+  "next_suggestion": "下轮派生 AUDITT-01 (MEDIUM, route-fix, 1 文件 core/telemetry.py): telemetry_start 对 sql/password/token 等敏感 kwarg 截断/哈希/丢弃，避免完整 SQL（可能含 PII/WHERE 值）写入本地 JSONL + telemetry_upload 上传远端 BFF suggest 端点。audit-2026-07-06-005 第 3 优先级。另提醒用户：live 副本 (~/.claude/skills/dataworks-dev-assistant/) 缺 core/audit_log.py 且 bff_client.py 旧 49 行，dist 需重新发布同步开发副本（非代码 fix，发布流程问题）。",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-06-005",
+  "audit_depth": "shallow",
+  "_derived_fixes_updated": [
+    {"finding_id": "DATAAN-01", "file": "core/duckdb_query.py", "status": "pending→merged", "fix_case_id": "case-2026-07-06-047"},
+    {"finding_id": "DATAAN-06", "file": "core/duckdb_loader.py", "status": "pending→merged", "fix_case_id": "case-2026-07-06-047"}
+  ],
+  "_bonus_mitigated": "DATAAN-04 (core/duckdb_loader.py /tmp 可预测路径 + symlink 跟随) — load() 不再写 /tmp JSON，改参数化 VALUES，顺带消除该 LOW finding。下轮可考虑将 DATAAN-04 在 derived_fixes 标 merged (mitigated by DATAAN-06 fix)。",
+  "_duckdb_constraint_finding": "DuckDB 1.5.4: enable_external_access 是数据库级全局开关，非 per-connection。审计 audit-2026-07-06-005 对 DATAAN-01/06 的 remediation「连接后 SET enable_external_access=false 再执行用户查询」对 duckdb_query.py 成立（无内部文件读），但对 duckdb_loader.py 不完整——loader.load() 自身用 read_json_auto 读 /tmp 快照，全局开关会连带禁用它。本 fix 用参数化 VALUES 改写 load() 解决。此约束值得回写到审计 report 作为补充说明（下轮或人工审时补）。"
+}

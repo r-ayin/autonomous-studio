@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-07-04-126",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-04T09:25:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "generate-image L02 download size cap (audit-2026-07-04-013 derived fix)",
+  "situation": "audit-2026-07-04-013 finding L02 pending: generate-image/generate_image.py:88-99 download_image streams response body to disk with no byte cap. Malicious or buggy upstream could force unbounded write, filling disk / causing OOM on constrained workers.",
+  "action": "Added DEFAULT_IMAGE_MAX_BYTES constant (env DUCKY_IMAGE_MAX_BYTES override, default 50 MB). Extended download_image signature with max_bytes param. Prechecks Content-Length header when present (fail fast if declared > cap). Falls back to streaming accumulator when header absent; raises ValueError + removes partial file on overflow. Committed directly in existing opt-generate-image-1783151835 worktree (H01/H02 already modified this file; cp-guard blocked re-copy from main so edit was applied in-tree).",
+  "files_changed": [
+    "skills/generate-image/generate_image.py"
+  ],
+  "worktree": "opt-generate-image-1783151835",
+  "direction": "generate-image:l02-download-size-cap",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit f19f2f0 on auto/opt-generate-image-1783151835 pushed to origin. python3 -c ast.parse OK. diff +49/-7 lines. Branch now carries H01+H02+L02 stacked awaiting human merge.",
+  "next_suggestion": "派生 I01 fix (devix-automation-skill localhost:58596 hardcode → CLOUDCLI_API_BASE_URL env var). 完成后 audit-cycle-state.pending_count=0 → status 改 cycle-complete，下轮触发新全量审计。",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-04-013",
+  "audit_depth": "shallow"
+}

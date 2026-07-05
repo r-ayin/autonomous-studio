@@ -1,0 +1,47 @@
+{
+  "case_id": "case-2026-07-05-109",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-05T17:15:49+08:00",
+  "project": "x-tool (pdd监测)",
+  "work_unit": "派生 audit-2026-07-05-012 PDD-PSH-01 (LOW, 优先级4)：chrome_debug_setup.py get_chrome_path winreg fallback 返回值加 os.path.exists 校验, 防 App Paths 注册表被篡改后注入 PowerShell -Command (chrome_path 后续 f-string 拼进 create_chrome_shortcut PowerShell -Command / create_batch_script batch 脚本); 同步 chrome_setup/chrome_debug_setup.py 副本 (PDD-DUP-01)",
+  "situation": "audit-cycle-state.status=fix-in-progress (audit-012 deep audit 完成, 5 route-fix derived_fixes: PDD-LEAK-01 case-106 / PDD-AUTH-01 case-107 / PDD-SANDBOX-01 case-108 已派生堆叠 opt-pdd-1783240875 待人工 merge (origin push 403 外部 fork), 余 2 pending: PDD-PSH-01 + PDD-DUMP-01)。本轮按优先级派 PDD-PSH-01 (优先级4, LOW)。audit-012 发现 chrome_debug_setup.py:32-41 get_chrome_path winreg fallback (HKLM App Paths chrome.exe QueryValue 返回值) 未经 os.path.exists 校验直接 return; 该返回值后续在 create_chrome_shortcut :57-67 f-string 拼进 subprocess.run(['powershell','-Command',powershell_script]) (line 60/62/63 $Shortcut.TargetPath/WorkingDirectory/IconLocation 双引号插值) + create_batch_script :84-101 f-string 拼进 batch_content (line 89 set CHROME_EXE / line 97 启动行)。若 App Paths 注册表被篡改为含 PowerShell 元字符 (\" / $ / ;) 的字符串, f-string 插值可闭合双引号注入任意 PowerShell 命令 (如 chrome_path='\"; Start-Process calc; $a=\"' 致 CreateShortcut.TargetPath 上下文逃逸执行任意命令); batch 路径同理 (set \"CHROME_EXE=<恶意>\" 可在 batch 解析期注入)。threat model: 需攻击者已能写 HKLM App Paths (需管理员), 但本地恶意软件/供应链篡改 chrome.exe 注册表项即可触发, 防御性补强合理。pre-check: 两副本 chrome_debug_setup.py (6365B) 与 chrome_setup/chrome_debug_setup.py (6171B) 仅 line 61 backslash 转义差异 (C:\\\\temp vs C:\\temp), get_chrome_path 块完全相同 (PDD-DUP-01 副本); x-tool 无 .claude/public-interfaces.txt, chrome_debug_setup.py 非公共接口 → route-fix 非 direction-shift; grep 确认 get_chrome_path 仅本两文件定义无外部 import 依赖。",
+  "action": "派生 fix 走 opt-worktree route-fix, 同 area 'pdd' 复用 opt-pdd-1783240875 worktree (第 5 commit 堆叠)。双文件编辑 (净 +16/-4, 每文件 +8/-2):\n1) get_chrome_path winreg fallback 块 (原 :36-37 with ... return winreg.QueryValue(key, None)) 改为: with 块内 reg_chrome_path = winreg.QueryValue(key, None) (不再 with 内直接 return, 留出校验空间), with 退出后加 4 行注释说明 + if reg_chrome_path and os.path.exists(reg_chrome_path): return reg_chrome_path; 校验失败/不存在则回退原 return None。\n2) 注释明确威胁链: chrome_path 后续 f-string 拼进 PowerShell -Command / batch 脚本 (create_chrome_shortcut/create_batch_script), 仅返回通过 os.path.exists 校验的真实路径阻断 App Paths 注册表篡改注入。\n3) 两副本 (pdd监测/chrome_debug_setup.py + pdd监测/chrome_setup/chrome_debug_setup.py) 同步同改 (PDD-DUP-01 副本对齐)。\n绝对路径调 opt-worktree.sh /home/admin/workspace/x-tool commit 'pdd:winreg-path-validate' '<msg>' <两绝对路径> (遵 [[opt-worktree-absolute-file-path]])。→ 复用 opt-pdd-1783240875 (route-fix), 提交 c0a45ae, main 工作副本 restore 至 HEAD (干净, linter 确认两文件还原原状)。python3 -m py_compile 两文件 SYNTAX_OK (仅遗留 pre-existing line 107 SyntaxWarning '\\c' invalid escape 来自 batch_content 字符串 C:\\temp, 非本次改动)。git push origin auto/opt-pdd-1783240875 → 403 (x-tool 外部 fork, 同 audit-008/010/011/PDD-LEAK-01/AUTH-01/SANDBOX-01 precedent)。",
+  "files_changed": [
+    "x-tool/pdd监测/chrome_debug_setup.py (worktree opt-pdd-1783240875 提交 c0a45ae; get_chrome_path :32-46 winreg fallback 改 reg_chrome_path 局部变量 + os.path.exists 校验 + 4 行威胁链注释; main 已 restore 干净)",
+    "x-tool/pdd监测/chrome_setup/chrome_debug_setup.py (worktree opt-pdd-1783240875 提交 c0a45ae; 同步同改 :32-46; PDD-DUP-01 副本对齐; main 已 restore 干净)"
+  ],
+  "worktree": "opt-pdd-1783240875 (path: /home/admin/workspace/.opt-worktrees/x-tool/opt-pdd-1783240875, branch: auto/opt-pdd-1783240875, base: 85bd9e1=master, HEAD: c0a45ae, 5-commit stack: b09970e .gitignore 规则 + 4c16e26 git rm --cached 4 JSON + e5ae071 PDD-AUTH-01 auth guard + 4fd27c0 PDD-SANDBOX-01 sandbox isolation + c0a45ae PDD-PSH-01 winreg path validate, FF-clean)",
+  "direction": "pdd:winreg-path-validate (route-fix; chrome_debug_setup.py 不在 public-interfaces.txt → 非 direction-shift, opt-worktree judge_direction_kind 自动判定 route-fix 复用同 area opt-pdd-1783240875)",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "git -C opt-pdd-1783240875 log --oneline -6: c0a45ae (PDD-PSH-01 winreg path validate) → 4fd27c0 (PDD-SANDBOX-01) → e5ae071 (PDD-AUTH-01) → 4c16e26 (git rm --cached) → b09970e (.gitignore 规则) → 85bd9e1 (master base), 5-commit stack FF-clean",
+    "git -C opt-pdd-1783240875 status -s: 空 (clean) — winreg path validate 提交已落, 无连带 revert",
+    "git -C opt-pdd-1783240875 show --stat HEAD: 'pdd监测/chrome_debug_setup.py | 10 ++++++++--  pdd监测/chrome_setup/chrome_debug_setup.py | 10 ++++++++--  2 files changed, 16 insertions(+), 4 deletions(-)' — 仅目标 2 文件, 无 scope 蔓延",
+    "grep -n 'reg_chrome_path\\|os.path.exists(reg_chrome_path)' worktree/pdd监测/chrome_debug_setup.py worktree/pdd监测/chrome_setup/chrome_debug_setup.py: 两文件均 :37 reg_chrome_path = winreg.QueryValue / :42 if reg_chrome_path and os.path.exists(reg_chrome_path) / :43 return reg_chrome_path — 校验就位 (两副本同步)",
+    "grep -n 'return winreg.QueryValue' 两文件: 无匹配 — 原未校验直接 return 已消除",
+    "python3 -m py_compile 两文件: SYNTAX_OK (仅 pre-existing line 107 SyntaxWarning '\\c' 来自 batch_content C:\\temp, 非本次改动, 不破编译)",
+    "git push origin auto/opt-pdd-1783240875: 'remote: git push is not allowed' + 403 (ghp-ro.alibaba-inc.com /r-ayin/x-tool.git) — x-tool 外部 fork push 被拒 (同 audit-008/010/011/PDD-LEAK-01/AUTH-01/SANDBOX-01 precedent 'x-tool origin push 403 外部 fork'); worktree+5-commit stack 完整保留 disk 待人工 merge to master",
+    "opt-worktree.sh 复用提示: '→ 复用同 area worktree (route-fix): opt-pdd-1783240875' + '✓ 提交到 opt-pdd-1783240875 方向=pdd:winreg-path-validate' — 未开新 wt, 正确堆叠第 5 commit",
+    "pre-check diff 两副本: tr -d '\\r' norm 后仅 line 61 backslash 差异 (C:\\\\temp vs C:\\temp), get_chrome_path 块完全一致 → 同改合理, 未引入跨副本行为分叉"
+  ],
+  "next_suggestion": [
+    "下轮 status 仍 fix-in-progress: 派生 PDD-DUMP-01 (优先级5, LOW, pdd_monitor.py 失败时 detailed_ui_dump/product_data_debug/operation_data_debug/price_data_debug.txt 写项目根固定名+不清理+未 gitignore, 含 PDD 后台 UI 结构敏感调试信息, 改 tempfile/.debug/ + .gitignore 规则, 触及 x-tool/.gitignore + pdd_monitor.py)。同 area 'pdd' → opt-worktree 复用 opt-pdd-1783240875, 第 6 commit 堆叠",
+    "PDD-DUMP-01 派生后 5 fix 全派生, 走 3 连续 wait 轮 (同 audit-008/010/011 deadlock precedent, x-tool origin push 403 外部 fork 常态) → 预期全 rejected-archive, worktree+commit stack 保留 disk 待人工 merge. cycle-complete 后触发下一轮全量审计 (挑未深审项目)",
+    "提醒用户: opt-pdd-1783240875 现 5-commit stack (b09970e+4c16e26+e5ae071+4fd27c0+c0a45ae) FF-clean on master 85bd9e1, 可一次性 git merge --ff-only auto/opt-pdd-1783240875 落地 PDD-LEAK-01+PDD-AUTH-01+PDD-SANDBOX-01+PDD-PSH-01 四 finding (PDD-DUMP-01 派生后变 5)。x-tool master 历史仍含 4 个 pdd_*.json 商家数据 (PDD-LEAK-01 只 untrack 不清历史), 若仓库曾 push 远端则历史泄露已成, 需 git filter-repo 清历史 (需人工授权)"
+  ],
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-05-012",
+  "audit_depth": "shallow",
+  "_derived_fix_dispatch": {
+    "finding_id": "PDD-PSH-01",
+    "audit_id": "audit-2026-07-05-012",
+    "kind": "route-fix",
+    "worktree": "opt-pdd-1783240875",
+    "branch": "auto/opt-pdd-1783240875",
+    "commits": ["c0a45ae"],
+    "base": "4fd27c0 (PDD-SANDBOX-01 stack top)",
+    "push_status": "403 (x-tool 外部 fork, 同 audit-008/010/011/PDD-LEAK-01/AUTH-01/SANDBOX-01 precedent)",
+    "awaiting_human_merge": true
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "case_id": "case-2026-07-05-055",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-05T13:10:00+08:00",
+  "project": "shizi",
+  "work_unit": "derived-fix-dispatch SH2-M-003 (audit-2026-07-05-007 priority 3): mergeMultiSourceResults perf guard — 双层循环 textSimilarity→editDistance O(n*m) 无 skipFuzzy/IoU≤0.1 早退，密集文字图 >150 跨源结果 ~22k+ 次 editDistance 卡 service worker",
+  "situation": "audit-cycle-state.status=fix-in-progress; audit-2026-07-05-007 derived 7 route-fix, 2 已派发待 merge (SH2-M-004 case-053 opt-vision-1783213292 / SH2-M-002 case-054 opt-background-1783213292), 5 仍 fix_case_id=null。SH2-M-003 优先级 3 (P3 medium) 未派发。nmsDedup (ocr-internal.ts:327) 有 skipFuzzy=all.length>150 早退 + IoU≤0.1 continue 守卫，姊妹函数 mergeMultiSourceResults (389-439) 漏守卫——每条 accepted 都 call textSimilarity→editDistance 即使位置完全不重叠，密集文字图 (>150 跨源结果, 整图+切片+增强三路合并) 产生 ~22k+ 次 editDistance 调用，service worker 长任务卡死。",
+  "action": "在 mergeMultiSourceResults 内镜像 nmsDedup :327 同款双守卫：(1) 入口加 const skipFuzzy = all.length > 150 早退标记；(2) 内层循环 bboxIoU 后加 if (iou <= 0.1) continue 跳过无位置重叠的对；(3) textSimilarity 调用改为 lazy——仅 exact-match/substring 判定未命中且 !skipFuzzy 时才计算 sim，复用已计算的 sim 给 iou>IOU_THRESHOLD && sim>TEXT_SIM_THRESHOLD 与 iou>0.4 && sim>0.5 两分支。行为对 ≤150 结果完全等价（守卫不触发，sim 仍按原条件计算，仅顺序调整：exact/substring 提前到 sim 之前但 break 条件不变）；>150 降级为 IoU+exact+substring 去重（与 nmsDedup 降级策略一致，保守但安全）。",
+  "files_changed": [
+    "/home/admin/workspace/shizi/src/background/ocr-internal.ts"
+  ],
+  "worktree": "opt-background-1783213292 (复用 case-054 SH2-M-002 同 area worktree, route-fix; branch auto/opt-background-1783213292)",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh 输出 '→ 复用同 area worktree (route-fix): opt-background-1783213292' + '提交到 opt-background-1783213292 方向=background:ocr-internal-perf'; push 成功 '3e7efba..5d3d756 HEAD -> auto/opt-background-1783213292'，origin/auto/opt-background-1783213292 已更新; vitest 5 files 53/53 tests pass Duration 1.30s; 改动仅 ocr-internal.ts 单文件，未触及 .claude/public-interfaces.txt 列出的公共接口文件 → opt-worktree judge_direction_kind 判定 route-fix 复用同 area worktree（与 SH2-M-002 stacking 同 opt-background-1783213292，base=58c71ec 干净，fast-forward 可达）。",
+  "next_suggestion": "下轮派发 SH2-M-001 (P4 medium, orchestrator.ts:201-205 parallel mode detect 双 .catch(()=>[]) 静默吞错 + :238-241 ocrPromise VL识别 catch 静默返空 → 复制 vl_text parallelErrors[] 模式)——route-fix 复用 background area worktree 或开新 vision area worktree (orchestrator.ts 不在 public-interfaces → route-fix)。然后 SH2-L-001 (P5 OCR error body) / SH2-L-002 (P6 ResultPanel equiv config) / SH2-L-003 (P7 delete dead verifyOcrResults) 依次派发。全 7 派发完成或 deadlock-archive 后 audit-cycle-state.status→cycle-complete 触发下一轮全量审计。SH2-M-003 + SH2-M-002 同叠 opt-background-1783213292，人工 merge 时一次性收 2 commits (3e7efba SH2-M-002 + 5d3d756 SH2-M-003)。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "/home/admin/workspace/shizi/src/background/ocr-internal.ts",
+      "line": 389,
+      "severity": "medium",
+      "finding": "SH2-M-003: mergeMultiSourceResults 双层循环 (r over all, a over accepted) 在 bboxIoU 后无条件 call textSimilarity(r.text, a.text)→editDistance O(|r.text|*|a.text|)。nmsDedup (:327) 有 skipFuzzy=sorted.length>150 早退 + IoU≤0.1 continue 两道守卫，姊妹函数漏。整图+切片+增强三路合并密集文字图 (>150 跨源结果) 产生 ~22k+ 次 editDistance 调用，service worker 长任务卡死。",
+      "remediation": "入口加 const skipFuzzy = all.length > 150; 内层 bboxIoU 后加 if (iou <= 0.1) continue; textSimilarity 改 lazy (仅 !skipFuzzy 且 exact/substring 未命中时计算)。行为对 ≤150 等价，>150 降级 IoU+exact+substring (同 nmsDedup)。已在 opt-background-1783213292 commit 5d3d756 修复，53/53 tests pass。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-007",
+  "audit_depth": "shallow"
+}

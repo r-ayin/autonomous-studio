@@ -1,0 +1,34 @@
+{
+  "case_id": "case-2026-07-06-020",
+  "agent_id": "ralph-wiggum-autonomous-engine",
+  "timestamp": "2026-07-06T10:05:00+08:00",
+  "project": "personal-assistant",
+  "work_unit": "wiki.py _find_existing 子串匹配过松静默覆盖页面 (PA-WIKI-02, route-fix)",
+  "situation": "audit-2026-07-06-002 派生 fix #7 (pending)。status=fix-in-progress，6 条 pending 中 PA-WIKI-02 排首位（按 finding 出现序）。finding: _find_existing 用 `t == et or t in et or et in t`，规范化后短标题\"学习\"命中\"机器学习\"/\"学习笔记\"，build() line 94 storage.add_wiki_page({\"id\": ex[\"id\"], **p}) 以新页覆写旧 body，静默毁数据。LLM prompt 虽要求 reuse exact title 但无代码层保证。",
+  "action": "改 _find_existing 子串分支：short/long 按长度分取，要求 short in long 且 len(short) >= 0.6*len(long) 方算同主题；空 et 显式 skip（旧实现空 et 时 et in t 恒 True 也会误命中）。1 文件 route-fix。触及非公共接口文件 → opt-worktree 判 route-fix 复用 opt-wiki-1783275111。",
+  "files_changed": ["personal_assistant/wiki.py"],
+  "worktree": "opt-wiki-1783275111",
+  "direction": "wiki:find-existing-substring",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "wt commit e9db08a: 'fix(wiki): PA-WIKI-02 _find_existing 子串匹配加 60% 长度比守卫...'",
+    "discrimination 测试: _find_existing('学习',[{'title':'机器学习'}]) == None (旧实现返命中→静默覆盖)；_find_existing('机器学习',[{'title':'机器学习'}]) not None (exact)；_find_existing('机器学习',[{'title':'机器学习入门'}]) not None (4/6=0.667≥0.6)；_find_existing('x',[{'title':''}]) == None (空 et skip)",
+    "PA-WIKI-01 回归: _body_grounded('xxx幻觉内容yyy','源文本') == False (未回归)",
+    "py_compile.compile('personal_assistant/wiki.py', doraise=True) OK",
+    "push origin auto/opt-wiki-1783275111: a181404..e9db08a (success, Code Review URL 生成)"
+  ],
+  "next_suggestion": "下轮继续派生 audit-2026-07-06-002 pending finding（5 条待派）：PA-PRO-01(proactive.py topic_pattern dedup 不复查≥3阈值, low)、PA-REC-02(recommend.py _share_token 3字过松, low)、PA-DEV-01(dev-server.js http.get 不支持 https 上游, low)、PA-AND-02(android/api.js API_BASE 硬编码 port 3015, low)、PA-SPK-01(speaker.py if False 死赋值+docstring 诚信, info)。建议下轮取 PA-PRO-01。注意 opt-wiki-1783275111 现堆 2 commit (PA-WIKI-01+02) 未 merge main，下轮若再触及 wiki.py 仍走 case-104 直编 wt 通道；建议人工 merge opt-wiki-1783275111 后再开新 wiki worktree。全部 pending 落定后 status→cycle-complete 触发下一轮全量审计。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "personal_assistant/wiki.py",
+      "line": 45,
+      "severity": "low",
+      "finding": "PA-WIKI-02: _find_existing 子串匹配 `t in et or et in t` 过松——短标题\"学习\"命中\"机器学习\"/\"学习笔记\"，build() 以新页覆写旧 body 静默毁数据",
+      "remediation": "子串匹配要求短串长度 ≥ 长串 60% 方算同主题（已实施：short/long 分取 + 0.6 比例守卫 + 空 et skip）",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-002",
+  "audit_depth": "deep"
+}

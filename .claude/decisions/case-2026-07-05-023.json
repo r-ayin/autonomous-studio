@@ -1,0 +1,44 @@
+{
+  "case_id": "case-2026-07-05-023",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-06T00:55:00Z",
+  "project": "personal-assistant",
+  "work_unit": "PA-WEB-01: web._fetch/_post_json/_generic 响应字节上限 + base_url scheme/host sink 校验 + api_key 优先走 header（audit-2026-07-05-002 finding PA-WEB-01 派生 route-fix）",
+  "situation": "audit-2026-07-05-002（personal-assistant 全量深度审计）finding PA-WEB-01（priority #6, LOW, route-fix）：web.py _fetch (line 38-39) / _generic (line 156-157) 用 urllib.request.urlopen 后 r.read().decode() 全量读响应无字节上限 → 恶意/失控搜索 provider（web.api.base_url 经 config 文件可被改）返 GB 级响应致进程 OOM/DoS；timeout 只限挂钟不限字节。_generic base_url (line 154) 无 scheme 校验 → http:// + 任意 host SSRF，且 api_key 作 query param (line 152-153) 走明文上链/落日志。比 PA-LLM-01 低：web.backend/web.api 走 config 文件不经 /settings/llm 暴露，攻击者需 config 文件写权限才可利用；Bing/Baidu 路径 URL 硬编码 https 不可利用。本轮 status=fix-in-progress，前 5 fix（PA-API-02/03/PA-LLM-01/PA-UPL-01/PA-STOR-01）已派生 stack 于 opt-api-1783193708（HEAD d646a40），PA-WEB-01 是 derived_fixes 里唯一 fix_case_id=null 未派生的 finding。opt-verify-1783147286 含未合并 web.py 改动（删 rate-limit 块）→ cp-guard 会跳过 web.py，故续走 case-104 escape hatch：直编 opt-api-1783193708（web.py 干净匹配 main）+ wt 内 git commit + push。",
+  "action": "在 opt-api-1783193708 worktree 直编 personal_assistant/web.py + 新增 tests/test_web.py。(1) 加 _MAX_RESPONSE_BYTES=5MB 常量 + _LOOPBACK_HOSTS={127.0.0.1,localhost,::1} + _validate_web_url(url) helper（scheme 必须 http/https 拒 file:///ftp:///data: 等；http:// 仅 loopback 防 api_key 明文上链；https:// 任意 host）+ _read_capped(resp, cap) helper（流式分块 resp.read(65536) 累计超 cap 即 RuntimeError 中止，镜像 llm._post_json PA-LLM-01 模式）。(2) _fetch 加 _validate_web_url(url) sink 校验 + _read_capped(r) 替 r.read()。(3) _post_json 加 _validate_web_url(url) sink 校验（tavily 硬编码 https 仍防 future 直传未校验 URL）+ _read_capped(r) 替 r.read()。(4) ApiWebSearcher.__init__ 读新 config web.api.key_header（默认空=向后兼容 query param）。(5) _generic 加 _validate_web_url(self.base_url) 校验（拒 http://非loopback/file:// base_url）+ api_key 优先走 header（key_header 配置时进 headers[self.key_header]=api_key，否则 fallback query param）+ _read_capped(r) 替 r.read()。tests/test_web.py +18 测：TestValidateWebUrl 7 测（https 任意 host ok / http loopback ok 含 [::1] / http 非 loopback 拒 / file 拒 / data 拒 / ftp 拒 / 缺 scheme 拒）+ TestReadCapped 3 测（小响应 ok / 超 cap（调 1024）RuntimeError 证伪原 bug 无上限吞 / 恰好 cap ok）+ TestFetchPostJsonSinks 3 测（_fetch file:// 拒不触 urlopen / _fetch http://evil 拒 loopback 不触 urlopen / _post_json file:// 拒）+ TestApiWebSearcherGeneric 5 测（_generic http://evil base_url 拒 / file base_url 拒 / api_key 进 header 不入 URL query / 无 key_header fallback query 含 api_key 向后兼容 / 超大响应 RuntimeError 中止）。",
+  "files_changed": ["personal_assistant/web.py", "tests/test_web.py"],
+  "worktree": "opt-api-1783193708",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "worktree opt-api-1783193708 (branch auto/opt-api-1783193708) stack on d646a40（PA-STOR-01）→ HEAD 06fafd7。git push origin 成功 d646a40..06fafd7（origin 已收，Code Review 链接 https://code.alibaba-inc.com/qunbu/personal-assistant/codereview/new?from=main&to=auto/opt-api-1783193708）。python3 -m pytest 全量 129 passed（前 111 + 本轮 +18 test_web.py）零回归零失败。证伪原 bug：(a) TestReadCapped.test_over_cap_raises_runtime_error——FakeResp 吐 5MB+100k 字节，_read_capped(cap=1024) 在累计超 1024 即 RuntimeError 不再吞，直接证伪原 r.read() 全量无上限；(b) TestApiWebSearcherGeneric.test_generic_oversize_response_aborts——_generic 走 _read_capped 对 5MB+100k 响应抛 RuntimeError；(c) TestFetchPostJsonSinks 三测用 monkeypatch urlopen=boom 断言 _validate_web_url 在 urlopen 之前拦截 file:///http://evil（called.n==0 证伪 sink 校验先于网络）；(d) test_generic_api_key_goes_to_header_when_configured 断言 api_key=sk-secret 进 header 且不出现在 captured URL（证伪原 query param 明文上链）；(e) test_generic_rejects_http_non_loopback_base_url / test_generic_rejects_file_base_url 断言 _generic 对恶意 base_url 抛 ValueError 证伪原无 scheme 校验。route-fix（web.py 不在 .claude/public-interfaces.txt 公共接口清单——web 搜索是内部可插拔轴非跨项目公共 API）。非自指 churn（改的是 personal-assistant 项目源码非引擎机械文件，且 audit_findings 写明 file:line+bug 证据符合 DO NOT 例外条款）。待人工 merge 落 main 后 derived_fixes PA-WEB-01 status pending→merged。",
+  "next_suggestion": "audit-2026-07-05-002 全 6 route-fix 现已全 dispatched（PA-API-02 case-018 6a91312 / PA-API-03 case-019 23c8651 / PA-LLM-01 case-020 92269fd / PA-UPL-01 case-021 159caa6 / PA-STOR-01 case-022 d646a40 / PA-WEB-01 case-023 06fafd7）全 stack 于 opt-api-1783193708，pending_count 仍=6（全 pending 待人工 merge）。下轮若仍未 merge：瞭望轮跑 scout-scan + _wait_round_count 累积，连续 3 轮无 merge → deadlock-archive（用户定 deadlock 保护）→ status=cycle-complete → 触发下一次全量审计（候选：sunset-prediction 42 文件未审 / autonomous-engine 7 文件未审但小 / huiyis-scripts 重审）。两个 structural debt（SD-PA-01 FastAPI 零认证框架 / SD-PA-02 prompt 注入防御+verify 接地阈值强化）仍 open 于 .claude/structural-debt.md，需用户授权更大单位后再动——NEXT_SUGGESTION 持续提醒。若人工 merge opt-api-1783193708 落 main：6 finding 全 status=merged → status=cycle-complete → 下轮新审计。",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "personal_assistant/web.py",
+      "line": "38-39",
+      "severity": "low",
+      "finding": "PA-WEB-01: _fetch 用 urlopen 后 r.read().decode() 全量读响应无字节上限——恶意/失控搜索 provider（web.api.base_url 经 config 可改）返 GB 级响应致进程 OOM/DoS；timeout 只限挂钟不限字节。Bing/Baidu 硬编码 https 不可利用，但 ApiWebSearcher._generic 的 base_url 经 config 文件可改 → 可利用。",
+      "remediation": "加 _MAX_RESPONSE_BYTES=5MB + _read_capped(resp) 流式分块 read(65536) 累计超限 RuntimeError 中止（镜像 llm._post_json PA-LLM-01 模式）。已实施：_fetch line 38-39 替 _read_capped(r)。",
+      "kind": "route-fix"
+    },
+    {
+      "file": "personal_assistant/web.py",
+      "line": "154,156-157",
+      "severity": "low",
+      "finding": "PA-WEB-01: ApiWebSearcher._generic 的 base_url（line 154）无 scheme 校验，可 http:// + 任意 host → SSRF；api_key 作 query param（line 152-153）走明文上链/落日志；r.read()（line 157）无字节上限 → OOM。比 PA-LLM-01 低：web.api 走 config 文件不经 /settings/llm 暴露，需 config 写权限才可利用。",
+      "remediation": "加 _validate_web_url(self.base_url) sink 校验（scheme http/https，http 仅 loopback）+ api_key 优先走 header（web.api.key_header 配置，向后兼容 query param）+ _read_capped(r) 替 r.read()。已实施：_generic line 154-157。",
+      "kind": "route-fix"
+    },
+    {
+      "file": "personal_assistant/web.py",
+      "line": "46-48",
+      "severity": "low",
+      "finding": "PA-WEB-01 防御深度：_post_json（tavily 用，硬编码 https://api.tavily.com/search）当前不可利用，但 sink 层无 scheme 校验/无 cap，未来若被直传未校验 URL 即成旁路。镜像 llm._post_json PA-LLM-01 的 sink 防御深度缺口。",
+      "remediation": "加 _validate_web_url(url) sink 校验 + _read_capped(r) 替 r.read()（与 _fetch/_generic 一致覆盖三个 sink）。已实施：_post_json line 46-48。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-002",
+  "audit_depth": "deep"
+}

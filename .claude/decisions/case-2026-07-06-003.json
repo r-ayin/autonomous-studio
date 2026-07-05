@@ -1,0 +1,36 @@
+{
+  "case_id": "case-2026-07-06-003",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-07-06T00:15:00+08:00",
+  "project": "autonomous-studio (runner-exec)",
+  "work_unit": "RE-SECRET-01 派生 fix: creds.js sqlite3 execSync→execFileSync + 空 catch 带 e.message",
+  "situation": "audit-2026-07-05-017 deep audit of runner-exec (Windows Runner PowerShell exec+文件读写+凭证发现模块) 第 5/7 派生 fix (前 4: RE-CMDI-01 ff5cd06 / RE-EXEC-02 8be0bb6 / RE-EXEC-01 5cff148 / RE-MANIFEST-01 5bc02ab 已 merged). RE-SECRET-01 [MEDIUM, route-fix]: creds.js L29 getSessionToken 用 execSync(`sqlite3 \"${dbPath}\" \"...\"`) 经 shell 调 sqlite3, dbPath 在双引号上下文, HOME 受信任但若被设为含 \" / $() / ` 的值可双引号注入; L14/L30 catch {} 静默吞错, sqlite3 真实失败(文件不存在/表不存在/权限)丢失成无上下文 throw, 排障困难。",
+  "action": "creds.js 单文件 3 处改: (1) L5 require execSync→execFileSync; (2) L29 execSync(`sqlite3 \"${dbPath}\" \"QUERY\"`) → execFileSync('sqlite3', [dbPath, 'SELECT token FROM active_tokens ORDER BY created_at DESC LIMIT 1;'], {encoding:'utf-8'}), 完全规避 shell, dbPath 作为 argv 直传不经过 shell 解析; (3) L14 catch {} → catch (e) { /* keep fallback to pgrep path; file read failure non-fatal */ } (保留 fallback 语义, getInternalSecret 文件读失败仍走 pgrep 路径); (4) L30 catch {} → catch (e) { throw new Error('无法获取 session token: ' + e.message); } (保留 throw 语义但带 e.message 排障). 不动 SERVER/WS_HOST(RE-CRED-01 下轮)、pgrep execSync(L16, 经 shell 但 pgrep 模式字符串硬编码无用户输入, 非注入面, 不在本 finding 范围)。",
+  "files_changed": ["runner-exec/scripts/creds.js"],
+  "worktree": "opt-security-1783266296",
+  "direction": "route-fix (runner-exec 非 .claude/public-interfaces.txt 公共接口 → 复用同 security area worktree, stack 在 RE-MANIFEST-01 commit 5bc02ab 之上)",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh commit 复用 opt-security-1783266296 (route-fix, 非 direction-shift); wt HEAD=f2a6d83 'opt(security:runner-exec-secret): fix(runner-exec): RE-SECRET-01 audit...'; git show HEAD --stat: runner-exec/scripts/creds.js | 8 ++++---- 4 insertions 4 deletions; push origin auto/opt-security-1783266296 5bc02ab..f2a6d83 HEAD 成功 (Code Review 链接 https://code.alibaba-inc.com/qunbu/autonomous-studio/codereview/new?from=main&to=auto/opt-security-1783266296 已生成); wt creds.js L5=execFileSync/L14=catch(e){/*keep fallback*/}/L29=execFileSync('sqlite3',[dbPath,query])/L30=catch(e){throw...e.message} 已验证; node --check SYNTAX_OK; cp-guard 未跳过(creds.js 在 wt 与 main HEAD 一致, 无前轮未合并改动分歧, 正常 cp 通道). 派生路径与 case-001/002(RE-EXEC-01/MANIFEST-01)不同: 那两轮因目标文件已被前轮 commit 分歧触发 cp-guard 跳过→走 case-104 直编 wt 通道; 本轮 creds.js 首次改动无分歧→opt-worktree.sh 正常 cp 通道一次成功。",
+  "next_suggestion": "下轮派生 RE-CRED-01 [LOW, route-fix, creds.js L7-8 SERVER/WS_HOST 硬编码 127.0.0.1:58596 无 env 覆盖, precedent devix-automation-skill commit 2560c9b $CLOUDCLI_API_BASE_URL]: const BASE = process.env.CLOUDCLI_API_BASE_URL || 'http://127.0.0.1:58596'; SERVER=BASE; WS_HOST=BASE.replace(/^http/,'ws'). 与 RE-SECRET-01 同文件 creds.js 可继续 stack 在 opt-security-1783266296 (现 HEAD f2a6d83) 之上; 但注意 creds.js 现已分歧(RE-SECRET-01 已 commit 未 merge)→ cp-guard 将跳过→须走 case-104 直编 wt+wt 内 git commit 通道 (按 [[opt-worktree-stack-diverged-escape-hatch]]). 之后 RE-PATH-01 [LOW, push.js walkDir 跟随 symlink]: walkDir 加 entry.isSymbolicLink() 跳过 或 realpathSync 校验仍在 localDir 之下. 全部 3 pending merged|rejected 后 audit-cycle-state.status→cycle-complete 触发下一轮全量审计.",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "runner-exec/scripts/creds.js",
+      "line": "29",
+      "severity": "medium",
+      "finding": "RE-SECRET-01: getSessionToken 用 execSync(`sqlite3 \"${dbPath}\" \"QUERY\"`) 经 shell 调用, dbPath 在双引号上下文, HOME 若被设为含 \" / $() / ` 的值可双引号注入; execFileSync 完全规避 shell 零成本",
+      "remediation": "L29 改 execFileSync('sqlite3', [dbPath, 'SELECT token FROM active_tokens ORDER BY created_at DESC LIMIT 1;'], {encoding:'utf-8'}); L5 require execSync→execFileSync",
+      "kind": "route-fix"
+    },
+    {
+      "file": "runner-exec/scripts/creds.js",
+      "line": "14,30",
+      "severity": "medium",
+      "finding": "RE-SECRET-01 (可观测性面): L14/L30 catch {} 静默吞错, sqlite3/auth.db 真实失败(文件不存在/表不存在/权限)丢失成无上下文 throw '无法获取 session token', 排障困难",
+      "remediation": "L14 catch (e) { /* keep fallback */ } (保留 fallback 语义); L30 catch (e) { throw new Error('无法获取 session token: ' + e.message); } (带 e.message)",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-017",
+  "audit_depth": "shallow"
+}

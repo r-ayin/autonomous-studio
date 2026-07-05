@@ -1,0 +1,38 @@
+{
+  "case_id": "case-2026-07-05-057",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-05T13:40:00+08:00",
+  "project": "shizi",
+  "work_unit": "derived-fix-dispatch SH2-L-001 (audit-2026-07-05-007 priority 5): ocr-internal.ts:67,107 OCR/上传失败 error message 仅 status code 缺 body 诊断 → 补 res.text() 截断≤200 拼进 error message",
+  "situation": "audit-cycle-state.status=fix-in-progress; audit-2026-07-05-007 derived 7 route-fix, 4 已派发待 merge (SH2-M-004 case-053 opt-vision-1783212856 d5f0ef0 / SH2-M-002 case-054 opt-background-1783213292 3e7efba / SH2-M-003 case-055 opt-background-1783213292 5d3d756 / SH2-M-001 case-056 opt-background-1783213292 7d7c44f L3-stack), 3 仍 fix_case_id=null (SH2-L-001/002/003)。SH2-L-001 优先级 5 (P5 low) 未派发。ocr-internal.ts:67 uploadImage 非413上传失败 throw `图片上传失败: ${res.status}` 仅状态码——line 65 已 fetch res.text() 但仅用于 entity-too-large 嗅探，未拼进 error；line 107 callOcrOnce 非 ok throw `OCR 请求失败: ${res.status}` 完全未取 body。SH-M-002 修了 timeout+retry 漏了 body 诊断。结果：内网 OCR 返 400/500 时用户只见状态码不见服务端报错正文，排查困难。",
+  "action": "在 ocr-internal.ts 两处补 body 诊断：(1) uploadImage tryUpload (:64-67) 在 throw 前加 const bodySnippet = text.slice(0, 200)，error message 追加 `${bodySnippet ? ` — ${bodySnippet}` : ''}`（text 已在 :65 取得，复用不重复 fetch；空 body 不追加避免尾随 dash）；(2) callOcrOnce (:107) if(!res.ok) 改块作用域，加 const text = await res.text().catch(() => '') + 同款 bodySnippet 拼接。两处均 .catch(()=> '') 容错（body 不可读时不阻塞 throw）。行为对成功路径零影响；失败路径 error message 携带≤200 字符服务端正文，便于诊断。route-fix 复用 opt-background-1783213292 第 4 层 stacking——ocr-internal.ts 与 SH2-M-003 (5d3d756) 同文件不同段（:67/107 vs :327/389-439）逻辑不冲突，但 opt-worktree cp-guard 因 worktree ahead（5d3d756 改过此文件，main HEAD 58c71ec 未含）会跳过 cp，故按 case-104 sanctioned path 直编 opt-wt 版本后 wt 内 git commit + push origin。",
+  "files_changed": [
+    "/home/admin/workspace/shizi/src/background/ocr-internal.ts"
+  ],
+  "worktree": "opt-background-1783213292 (复用 case-054/055/056 SH2-M-002/M-003/M-001 同 area worktree, route-fix stacking 第 4 层; branch auto/opt-background-1783213292)",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "git -C opt-background-1783213292 add+commit 产 15fd714 (1 file changed, 7 insertions(+), 2 deletions(-)); push origin auto/opt-background-1783213292 成功 '7d7c44f..15fd714 auto/opt-background-1783213292 -> auto/opt-background-1783213292'，远端 code review 链接已生成 https://code.alibaba-inc.com/qunbu/shizi/codereview/new?from=main&to=auto/opt-background-1783213292; git log 验证 15fd714 stacked atop 7d7c44f(SH2-M-001) atop 5d3d756(SH2-M-003) atop 3e7efba(SH2-M-002) atop 58c71ec(main base); git diff 确认仅 2 处 error message 改动（:67 上传失败 + :107 OCR 请求失败），无其他段改动; vitest 5 files 53/53 tests pass Duration 1.25s (worktree 内 symlink node_modules 后跑); ocr-internal.ts 不在 .claude/public-interfaces.txt → route-fix 复用 background area worktree (base=58c71ec 干净, fast-forward 可达)。",
+  "next_suggestion": "下轮派发 SH2-L-002 (P6 low, ResultPanel.tsx:56,62 分类明细等效行硬编码 /2 未读 config.englishRatio/digitRatio，ratio≠2 时行级等效累加≠总 equivalentCount，UI 自相矛盾——透传 config 或在 CountResult 带 per-row equiv)——route-fix 复用 sidepanel 或新 popup area worktree (ResultPanel.tsx 未被前 4 层触及，opt-worktree cp-guard 应放行)。然后 SH2-L-003 (P7 删死代码 verifyOcrResults, vision-adapter.ts:567 全仓零调用者，与 SH2-M-004 同 vision-adapter.ts 可叠 opt-vision-1783212856 第 2 层)。全 7 派发完成或 deadlock-archive 后 audit-cycle-state.status→cycle-complete 触发下一轮全量审计。当前 opt-background-1783213292 已叠 4 commits (3e7efba+5d3d756+7d7c44f+15fd714) 待人工一次性 merge。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "/home/admin/workspace/shizi/src/background/ocr-internal.ts",
+      "line": 67,
+      "severity": "low",
+      "finding": "SH2-L-001: uploadImage tryUpload 非413/非entity-too-large 上传失败 throw `图片上传失败: ${res.status}`——line 65 已 await res.text() 但仅用于嗅探 entity too large，未拼进 error message。内网 upload 服务返 400/500 时用户只见状态码不见服务端报错正文，排查困难。SH-M-002 修了 timeout+retry 漏了 body 诊断。",
+      "remediation": "复用 line 65 已取的 text，slice(0,200) 拼进 error message。已在 opt-background-1783213292 commit 15fd714 修复，53/53 tests pass。",
+      "kind": "route-fix"
+    },
+    {
+      "file": "/home/admin/workspace/shizi/src/background/ocr-internal.ts",
+      "line": 107,
+      "severity": "low",
+      "finding": "SH2-L-001: callOcrOnce 非 ok throw `OCR 请求失败: ${res.status}` 完全未取 response body。OCR 服务返 400/500 时同样只见状态码。",
+      "remediation": "if(!res.ok) 改块作用域，await res.text().catch(()=> '') + slice(0,200) 拼进 error message。已在 opt-background-1783213292 commit 15fd714 修复。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-007",
+  "audit_depth": "shallow"
+}

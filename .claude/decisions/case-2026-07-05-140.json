@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-05-140",
+  "agent_id": "ralph-autonomous-engine",
+  "timestamp": "2026-07-06T00:10:00+08:00",
+  "project": "x-tool/api额度监测",
+  "work_unit": "APIMON-KEYLEN-01 derived route-fix: process_command 以 len(cmd)>10 当 key 无格式校验，任意长字符串被存为 key 并以 Bearer 头发出",
+  "situation": "audit-2026-07-05-015 (x-tool/api额度监测 monitor.py TUI) 第 6 条 pending finding（最后一条 route-fix）。monitor.py:352 `if len(cmd) > 10:` 把任何 >10 字符输入当作 API key 添加：无字符集/结构校验。后果：(1) 用户误粘长文本/命令/路径被存为 key 并持久化到 config.json；(2) 该字符串随后作为 `Authorization: Bearer {api_key}` 发往 yunyi.cfd（SSRF allowlist 已守 base_url，但 key 本身无过滤）；(3) 若输入含 CRLF (\\r\\n) 则可构造 HTTP 头注入（requests 库会抛 InvalidHeader，但 key 已先入库）；(4) 含空格/引号/Shell 元字符的字符串污染 keys 列表。现网真实 key 为 36 字符纯 alphanumeric（实测 3 把均匹配 ^[A-Za-z0-9]+$），原 10 字符门槛远低于此且无字符约束。命中 autonomous-constraints.md 自指 churn 例外（真逻辑/安全 bug，file:line + 证据已写明）。",
+  "action": "新增 import re + 模块级常量 KEY_RE = re.compile(r\"^[A-Za-z0-9_\\-.=]{20,512}$\") + helper is_valid_key(s) -> bool(KEY_RE.fullmatch(s))。process_command line 352 `if len(cmd) > 10:` 改为 `if is_valid_key(cmd):`，else 分支提示文案从 'Key 太短' 改为 'Key 格式不符（仅字母数字 _ - . = ，20-512 字符）'。字符集 [A-Za-z0-9_\\-.=] 覆盖现网 36 字符 alphanumeric key + JWT（含 . 三段）+ sk- 前缀 + base64 token（含 = padding）；拒空白/控制符/CRLF/引号/Shell 元字符/过短(<20)/过长(>512)。fullmatch 杜绝前后藏尾。1 文件 16 insertions 2 deletions。py_compile OK + 10 case 功能验证：real-36-alnum/JWT-3-seg/sk-prefix PASS；short-11/has-space/CRLF-inject/has-quote/shell-meta/empty/too-long-600 BLOCK。monitor.py 已被 d07166c (APIMON-RACE-01) 在 opt-api-monitor-1783256389 worktree 改过 → 沿用 direct-worktree-commit precedent（opt-worktree.sh cp-from-main 流程从 autonomous-studio cwd 调 x-tool 同级路径触发 M-002 '..' 拒绝，文件本就在 worktree 内）。",
+  "files_changed": ["api额度监测/monitor.py"],
+  "worktree": "opt-api-monitor-1783256389 (branch auto/opt-api-monitor-1783256389, base=85bd9e1=master, 7-commit stack 3ed7fb7+2030a4a+0691bb9+e410417+c02abf5+d07166c+781e666, FF-clean)",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 781e666 1 file changed 16 insertions 2 deletions on auto/opt-api-monitor-1783256389 (stacked on d07166c APIMON-RACE-01, 7-commit stack FF-clean base=85bd9e1=master, git merge-base --is-ancestor 85bd9e1 HEAD 通过). py_compile OK. 10-case 验证: real-36-alnum PASS / JWT-3-seg PASS / sk-prefix PASS / short-11 BLOCK / has-space BLOCK / CRLF-inject BLOCK / has-quote BLOCK / shell-meta BLOCK / empty BLOCK / too-long-600 BLOCK. grep 'KEY_RE = re.compile' monitor.py 命中 line 30; grep 'is_valid_key(cmd)' monitor.py 命中 line 364. push origin auto/opt-api-monitor-1783256389 → 403 external fork (ghp-ro.alibaba-inc.com/r-ayin/x-tool.git, 同 audit-005/006/007/008/010/011/015 x-tool precedent), worktree+branch+7-commit stack 完整保留 disk+local-ref 待人工 merge to master.",
+  "next_suggestion": "本审计 (audit-2026-07-05-015) 全 6 route-fix dispatched (SECRET case-135 + KEYDISPLAY case-136 + SWALLOW case-137 + SSRF case-138 + RACE case-139 + KEYLEN case-140=本条) + 2 structural (NOAUDITLOG-01/WINDOWS-01 不派 fix，已写 structural-debt SD-APIMON-01/02)。下轮起进入 wait 阶段：3 连续 wait round 0 merged → deadlock-archive precedent (audit-005/006/007/008/010/011/013/015) → 全 6 route-fix status pending→rejected (worktree+7-commit stack 完整保留 disk+local-ref 待人工后 merge, fixes 本身有效) → cycle-complete → 触发下次全量审计 (候选未深审: xia 499 / personal-assistant re-audit / wechat-main re-audit). owner 须: yunyi.cfd 轮换 3 把已泄露 key + 人工 merge opt-api-monitor-1783256389 7-commit stack to master + cp config.example.json config.json 回填 + 视情 filter-repo。",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "api额度监测/monitor.py",
+      "line": 352,
+      "severity": "low",
+      "finding": "APIMON-KEYLEN-01: process_command 以 `if len(cmd) > 10:` 当 key 添加判断，无字符集/结构格式校验。任意 >10 字符输入（含空格/CRLF/引号/Shell 元字符/长文本）被存为 API key 并以 Bearer 头发出。CRLF 可致 HTTP 头注入（requests 会抛 InvalidHeader 但 key 已入库），垃圾串污染 keys 列表并持久化 config.json。现网真实 key 为 36 字符纯 alphanumeric，门槛远低于此且无字符约束。",
+      "remediation": "新增 KEY_RE = re.compile(r\"^[A-Za-z0-9_\\-.=]{20,512}$\") + is_valid_key helper，process_command 改 `if is_valid_key(cmd):`。字符集覆盖现网 alnum key + JWT + sk- + base64，拒空白/控制符/CRLF/引号/元字符/过短过长。10 case 验证通过。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-015",
+  "audit_depth": "deep"
+}

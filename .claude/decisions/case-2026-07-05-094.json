@@ -1,0 +1,76 @@
+{
+  "case_id": "case-2026-07-05-094",
+  "agent_id": "ralph-wiggum-main-loop",
+  "timestamp": "2026-07-05T14:10:00+08:00",
+  "project": "x-tool",
+  "work_unit": "deep audit: AB system/python-agent-hub (FastAPI Agent 工具中枢，首审)",
+  "situation": "audit-cycle-state.status=cycle-complete（上轮 audit-2026-07-05-010 的 10 条派生 fix 全部 merged/rejected 落定）→ 触发新全量审计轮。工作区所有真实代码项目均已审过至少一次（wechat-main/personal-assistant/sunset-prediction/x-tool/autonomous-engine/oneday-design/shizi），按 A3 在已审项目内挑最大未深审模块续审。x-tool monorepo 内 `AB system/python-agent-hub`（~1684 LOC/16 .py，FastAPI+nodriver+ComfyUI+LLM+Telegram）此前零审计报告，且非 DO NOT 排除项（非 moni 前端、非 skills/x-tool 文档型）→ 选定为首审目标。",
+  "action": "主循环深读 9 个核心文件（main.py/routers/agent.py/routers/tasks.py/tools/browser_manager.py/tools/implementations.py/core/config.py/core/registry.py/services/notification.py/schemas/tools.py）+ run.py/.env.example/pyproject.toml。追踪跨模块数据流 /invoke→registry→handler→browser.goto/LLM/telegram 全链。识别 7 个真 bug（2 HIGH SSRF+prompt-injection / 3 MEDIUM markdown-injection+missing-dep+unbounded-dict / 2 LOW race+error-leak）+ 3 INFO。产出独立 deep audit report（不派 fix，下轮起逐个派生）。所有 finding 有 file:line + 可观察证据（grep/python 实测/正则实测），满足自指 churn 禁令的'真 bug 例外'。",
+  "files_changed": [".claude/audits/audit-2026-07-05-011.md", ".claude/decisions/case-2026-07-05-094.json"],
+  "worktree": "none (audit round, no opt-worktree commit; report lands in main worktree .claude/)",
+  "direction": "audit-only",
+  "outcome": "succeeded",
+  "outcome_evidence": "audit report .claude/audits/audit-2026-07-05-011.md created (7 findings + 3 INFO，每条 file:line+remediation+planned_files)。实测佐证：(1) grep openai pyproject.toml → NOT FOUND + python3 -c 'import openai' → ModuleNotFoundError（证 PAH-M-002 死工具）；(2) re.search(r'\\{[\\s\\S]*\\}', 多块 JSON 输入) 跨块匹配 → json.loads 必败（证 PAH-H-002 正则缺陷）；(3) grep create_task/update_task 全 src 仅命中定义处无调用方（证 PAH-M-003 死代码+无界 dict）。audit-cycle-state.json 同步：current_audit_id=audit-2026-07-05-011，status=fix-in-progress，derived_fixes 7 条 status=pending。",
+  "next_suggestion": "下轮 fix-in-progress：派生 PAH-H-001（case-095，SSRF，implementations.py+schemas/tools.py，priority 1）。后续按 priority 逐个派 096-101。全 7 条落定后 audit-cycle-state.status→cycle-complete 触发下轮新审计。",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "src/agent_hub/schemas/tools.py:122-135 + src/agent_hub/tools/implementations.py:392-409",
+      "line": "tools.py:126-128 (url Field 裸 str), implementations.py:409 (page.goto(params.url))",
+      "severity": "high",
+      "finding": "SSRF: ScrapeProductReviewsInput.url 无 scheme/host/内网校验，page.goto 可拉 file:///etc/passwd / http://169.254.169.254/ / http://localhost:8000(LLM 端点)。/invoke 无 auth，被注入的 LLM 可驱服务端 Chrome 拉内网。",
+      "remediation": "schemas/tools.py 加 @field_validator 校验 scheme∈{http,https}+ipaddress 非私网/loopback/link-local；或 implementations.py goto 前 _validate_url。",
+      "kind": "route-fix"
+    },
+    {
+      "file": "src/agent_hub/tools/implementations.py:697-704,784",
+      "line": "697-704 (user_prompt f-string 拼 reviews_text), 784 (re.search(r'\\{[\\s\\S]*\\}'))",
+      "severity": "high",
+      "finding": "Prompt injection: Ozon 评价文本(攻击者可控)无围栏直接拼进 LLM user prompt，恶意评价可劫持 overall_sentiment/confidence_score。叠加 _parse_llm_response 贪婪正则跨块匹配→多 JSON 块必败，注入者塑形唯一块即控制解析。",
+      "remediation": "user prompt 围栏+忽略内嵌指令声明；正则改取最后平衡 JSON 块；overall_sentiment 白名单+confidence_score clamp 0-1。",
+      "kind": "route-fix"
+    },
+    {
+      "file": "src/agent_hub/services/notification.py:142-162",
+      "line": "142-152 (f-string 拼 title/message/metadata), 161 (parse_mode='Markdown')",
+      "severity": "medium",
+      "finding": "Telegram Markdown 注入: alert title/message/metadata 未转义 Markdown 特殊字符，源头含 LLM 可控 keyword(implementations.py:94)。→ 消息解析失败 400 静默丢告警 + [click](url) 链接注入钓鱼。",
+      "remediation": "html.escape+parse_mode='HTML' 或转义 Markdown 特殊字符；metadata JSON 序列化后入代码块。",
+      "kind": "route-fix"
+    },
+    {
+      "file": "pyproject.toml + src/agent_hub/tools/implementations.py:687",
+      "line": "pyproject [project.dependencies] (无 openai), implementations.py:687 (from openai import AsyncOpenAI)",
+      "severity": "medium",
+      "finding": "openai 未声明依赖：analyze_reviews_insight 恒 ImportError → 工具死功能，LLM 仍选它浪费一轮。grep openai pyproject NOT FOUND + python3 import openai ModuleNotFoundError。",
+      "remediation": "pyproject.toml dependencies 加 'openai>=1.0.0'（或 optional-dependencies 标注）。",
+      "kind": "route-fix"
+    },
+    {
+      "file": "src/agent_hub/routers/tasks.py:11-50",
+      "line": "11 (_tasks 全局 dict), 32/44 (create_task/update_task 无调用方)",
+      "severity": "medium",
+      "finding": "_tasks 全局 dict 无 TTL/容量上限单调增长(长跑 OOM)；create_task/update_task 全 src 无调用方=死代码，/tasks/{id} 永远 not_found，任务跟踪未接线。",
+      "remediation": "接 TTL+LRU cap 或删死代码；最小 fix 加 maxlen OrderedDict + 过期清理。",
+      "kind": "route-fix"
+    },
+    {
+      "file": "src/agent_hub/tools/browser_manager.py:52-58,60-74",
+      "line": "52-58 (initialize if None then await uc.start 无锁), 66-67 (new_context 同样无锁)",
+      "severity": "low",
+      "finding": "BrowserManager.initialize async 竞态: 两并发 new_context 同过 None 检查各起 Chrome → 双浏览器泄漏。",
+      "remediation": "加 asyncio.Lock + double-checked locking。",
+      "kind": "route-fix"
+    },
+    {
+      "file": "src/agent_hub/routers/agent.py:63-67",
+      "line": "63-67 (except Exception as e: error=str(e))",
+      "severity": "low",
+      "finding": "/invoke error=str(e) 泄露内部异常文本(库路径/文件名/栈细节)给无 auth 调用方，远端可探查内部结构，LLM 上下文被路径污染。",
+      "remediation": "白名单异常返回 str(e)，其余固定 'internal error: {type}' + 服务端日志。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": null,
+  "audit_depth": "deep"
+}

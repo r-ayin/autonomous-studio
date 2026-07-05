@@ -1,0 +1,46 @@
+{
+  "case_id": "case-2026-07-05-037",
+  "agent_id": "ralph-wiggum-loop",
+  "timestamp": "2026-07-05T08:30:00+08:00",
+  "project": "autonomous-engine",
+  "work_unit": "全量深度审计轮 (cycle-complete 触发) — autonomous-engine 再审计: 核实 audit-2026-07-01-009 的 6 个旧 finding 修复状态 + 挖新真逻辑/安全 bug (反 churn 例外条款)",
+  "situation": "audit-cycle-state.status=cycle-complete (sunset-prediction audit-2026-07-05-003 8 derived_fixes 全 rejected-archive, deadlock-archive case-036). 状态文件 _status_note 点名 autonomous-engine 为未审候选 (scout #1 score=1.0 但自指 churn 高危, 须避 2026-07-03 反 churn 例外条款只审真逻辑 bug). 发现 autonomous-engine 实曾被 audit-2026-07-01-009 审过 (6 route-fix + 1 structural), 但该审计未登记进 cycle-state.history, 派生 fix 从未派发 — 故 4 天来零修复. 本轮再审计: 既核实旧 finding 修复状态, 又挖新 bug, 并把全部 10 个 finding 正式登记进 cycle-state.derived_fixes (status=pending) 以便下轮起逐个派生.",
+  "action": "1) 读 autonomous-constraints.md (DO NOT + DO A/B/C/D 四节) + audit-cycle-state.json 确认 cycle-complete→审计轮. 2) 盘点 workspace 候选项目: engine-skills-extracted 是纯打包/manifest (doc/config 跳过), moni-master DO NOT 排除, skills doc/config 排除 → 选 autonomous-engine (状态文件点名). 3) 摸清结构: 63 文件, 审计目标 = 6 Python hooks + watchdog.sh (~1292 行). 4) 尝试 Workflow sonnet sub-agent 扇出审计 (7 文件并行 + 对抗式验证) — 全部 7 agent 失败 'completed without calling StructuredOutput' (duration 2.2s, tokens=0, sonnet schema 模式本环境不可用, 同 audit-2026-07-05-004 先例). 5) 回退主循环直读全部 7 文件 (深度审计允许 5-15 文件). 6) 逐文件核实旧 finding + 挖新 bug, 交叉对比 incremental-save.py 的正确原子写模式. 7) 产 audit-2026-07-05-005.md 报告 (10 route-fix + 1 structural). 8) 补登 SD-AE-01 到 structural-debt.md (前次审计说了没做). 9) 更新 audit-cycle-state.json: status cycle-complete→fix-in-progress, derived_fixes 10 pending, history 加 audit-005 条目.",
+  "files_changed": [
+    ".claude/audits/audit-2026-07-05-005.md (新建, 审计报告)",
+    ".claude/structural-debt.md (追加 SD-AE-01)",
+    ".claude/audit-cycle-state.json (status/derived_fixes/history/_last_audit_* 全更新)",
+    ".claude/workflows/autonomous-engine-reaudit.js (新建, 失败的 workflow 脚本留存供迭代)"
+  ],
+  "worktree": "none (审计轮不产 opt-worktree commit, 只产独立 report + 状态回写)",
+  "direction": "none (审计轮)",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    ".claude/audits/audit-2026-07-05-005.md 已建 (10 findings: AE-H-001/002 仍open + AE-M-001/002/003 + AE-L-001 仍open + AE-NEW-001/002/003/004 + AE-S-001 structural)",
+    "6 旧 finding 核实证据: resume-checkpoint.py L121/124/135/146 直读仍含 E:/x-tool 字面量; save-checkpoint.py L215 from pathlib import Path 仍在 main 块内 + L80-82 仍读 ~/.claude/audit/audit.jsonl; watchdog.sh L15 仍 PROJECT_DIR=/mnt/e/x-tool; notify-phone.py L206 send(...) 仍无赋值; decision-observer.py L263-288 chunked 反向读算法未变; protocol-check.py L70 仍 'dummy' 字面量",
+    "4 新 finding 证据: save-checkpoint.py L187-192 open('w')+json.dump+shutil.copy2 非原子 (对比 incremental-save.py L45-51 tempfile+fsync+os.replace 正确模式); watchdog.sh L86 stat||echo 0→MARKER_AGE=date+%s→L88 rm -f 静默删 marker; notify-phone.py L69-78 finally sock.close() 在 socket.socket() 抛 OSError 时 UnboundLocalError; decision-observer.py L343-344 STATE_FILE open('w') 非原子写",
+    "structural-debt.md 追加 SD-AE-01 (grep '^## SD-AE-01' 命中)",
+    "audit-cycle-state.json: status='fix-in-progress', pending_count=10, derived_fixes 含 10 条 status=pending, history 末尾为 audit-2026-07-05-005 条目"
+  ],
+  "next_suggestion": [
+    "下轮 (fix-in-progress 轮): 派生 priority 1 = AE-H-001 (resume-checkpoint.py build_engine_firmware f-string 化 + sys.platform 条件分支) — 最小单位单文件 route-fix, 走 opt-worktree 复用 (不触 public-interfaces.txt)",
+    "同文件多 finding 栈堆策略: save-checkpoint AE-H-002+AE-NEW-001 同 worktree / notify-phone AE-M-002+AE-NEW-003 同 worktree / decision-observer AE-M-003+AE-NEW-004 同 worktree / watchdog AE-M-001+AE-NEW-002 同 worktree — 减少 worktree 数, 避免历史 16-worktree churn 积压",
+    "反 churn 合规: 派生每个 fix case 时 audit_findings 必须写明 file:line + bug 证据 (一个文件一次只开一个 worktree)",
+    "运维 todo (非引擎自动化): sunset-prediction opt-routes-1783141439 5-commit stack + personal-assistant opt-api-1783193708 6-commit stack 待人工 merge (fast-forward 干净); SP-SEC-02 git remote set-url 剥离内嵌凭证 + 轮换密码; 轮换 XHS session (15 cookie 在 remote history)"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    { "file": "/home/admin/workspace/autonomous-engine/.claude/hooks/resume-checkpoint.py", "line": "121,124,135,146", "severity": "high", "finding": "AE-H-001 build_engine_firmware() 硬编码 E:/x-tool/.claude/... 路径 + wsl -d Ubuntu 命令 (普通字符串非 f-string, {PROJECT_DIR} 字面占位符未替换). Linux 原生部署下 SessionStart 注入路径不存在+WSL 命令无效→冷启动协议断裂. 4 天未修 (audit-2026-07-01-009 结转).", "remediation": "改 f-string, E:/x-tool→{PROJECT_DIR.replace(chr(92),'/')}/.claude/...; WSL 命令加 sys.platform=='win32' 条件分支, Linux 下注入 systemd/cron 等效指令. 参考 x-tool XT-H-001 修 ba9d4f3.", "kind": "route-fix" },
+    { "file": "/home/admin/workspace/autonomous-engine/.claude/hooks/save-checkpoint.py", "line": "137,215,80-82", "severity": "high", "finding": "AE-H-002 (a) L215 from pathlib import Path 在 main 块内, L137 find_task_files 用 Path→import 模块时 NameError; (b) L80-82 collect_recent_activity 读 ~/.claude/audit/audit.jsonl (全局 Claude 路径, 字段不匹配)→recent_activity 恒[]→checkpoint 丢上下文. 4 天未修.", "remediation": "Path import 移到顶部; collect_recent_activity 改读 PROJECT_DIR/.claude/decision-log.jsonl, 字段对齐 decision-observer.py 输出 (type/session_id/prompt_preview).", "kind": "route-fix" },
+    { "file": "/home/admin/workspace/autonomous-engine/.claude/hooks/save-checkpoint.py", "line": "187-192", "severity": "medium", "finding": "AE-NEW-001 write_checkpoint 非原子写 (open 'w' 截断+json.dump + shutil.copy2)→崩溃中途 latest.json 残缺 JSON→resume 恢复断裂. 检查点存在的全部意义是崩溃恢复, 非原子写直接摧毁此目的. 新发现.", "remediation": "移植同项目 incremental-save.py L42-58 的 tempfile.mkstemp+flush+fsync+os.replace 原子写模式到 write_checkpoint (filepath 与 latest.json 两处).", "kind": "route-fix" },
+    { "file": "/home/admin/workspace/autonomous-engine/.claude/watchdog.sh", "line": "15", "severity": "medium", "finding": "AE-M-001 PROJECT_DIR=/mnt/e/x-tool 硬编码 WSL 挂载路径→Linux 原生下 L31 [ ! -f $LATEST ] exit 0→L6 看门狗 no-op. 本 DevBox 就是 Linux 原生. 4 天未修.", "remediation": "PROJECT_DIR=$(cd $(dirname $0)/../.. && pwd) 相对推断; L36-44 python3 -c '...$LATEST...' 字符串插值改 argv 传参防注入. 参考 x-tool XT-M-004 修 892e4a0.", "kind": "route-fix" },
+    { "file": "/home/admin/workspace/autonomous-engine/.claude/hooks/notify-phone.py", "line": "206", "severity": "medium", "finding": "AE-M-002 main 调 send(title,message,reason,priority) 不捕获返回值→confirm 级通知失败静默丢失, 用户错过关键确认请求. 4 天未修.", "remediation": "success=send(...); if not success and reason=='confirm': 写 stderr+.claude/.last_phone_notify_failed 标记.", "kind": "route-fix" },
+    { "file": "/home/admin/workspace/autonomous-engine/.claude/hooks/notify-phone.py", "line": "69-78", "severity": "low", "finding": "AE-NEW-003 notify_via_tunnel finally sock.close() 在 socket.socket() 抛 OSError(EMFILE/ENFILE, hook 高频触发时可能) 时 UnboundLocalError→该异常未捕获一路抛出→hook 崩溃 traceback 喷 stderr→违反本 hook 设计原则 L9 '所有错误静默处理'. 新发现.", "remediation": "L70 前置 sock=None; finally 改 if sock is not None: sock.close(). 或把 socket.socket 移出 try 块.", "kind": "route-fix" },
+    { "file": "/home/admin/workspace/autonomous-engine/.claude/hooks/decision-observer.py", "line": "263-288", "severity": "medium", "finding": "AE-M-003 handle_stop 反向读日志 chunk 拼接 off-by-one (buf=f.read+buf / lines[-needed:] 截断)→跨边界行 JSON parse 失败→active_project 间歇 unknown→引擎跟进建议偏离当前项目. 4 天未修.", "remediation": "简化为一次性 tail-read: f.seek(max(0,fsize-8192))+read+splitlines 取末 20 行. 参考 x-tool XT-H-002 修 68cf537.", "kind": "route-fix" },
+    { "file": "/home/admin/workspace/autonomous-engine/.claude/hooks/decision-observer.py", "line": "343-344,363-364", "severity": "medium", "finding": "AE-NEW-004 handle_stop 末尾 STATE_FILE (autonomous-state.md) 非原子写 (open 'w' 截断+f.write), 每次 Stop 事件触发 (高频)→崩溃中途状态文件残缺→引擎固件下次读它拿到残缺内容. 与 AE-NEW-001 同类. 新发现.", "remediation": "移植 incremental-save.py 原子写模式到 STATE_FILE 两处 open 'w' (L343+L363).", "kind": "route-fix" },
+    { "file": "/home/admin/workspace/autonomous-engine/.claude/watchdog.sh", "line": "86-89", "severity": "low", "finding": "AE-NEW-002 stat -c %Y '$STALE_MARKER' 失败时 || echo 0→MARKER_AGE=$(date+%s - 0)≈1.7e9→L87 >1800 恒真→L88 rm -f 静默删有效 stale marker→丢失上次会话中断信号 (TOCTOU: marker 在 L85 [ -f ] 与 L86 stat 间被删). 新发现.", "remediation": "stat_ts=$(stat -c %Y '$STALE_MARKER' 2>/dev/null); if [ -z '$stat_ts' ]; then continue; fi—stat 失败时跳过删除而非按 0 算年龄.", "kind": "route-fix" },
+    { "file": "/home/admin/workspace/autonomous-engine/.claude/hooks/protocol-check.py", "line": "70", "severity": "low", "finding": "AE-L-001 check_and_bootstrap 传 os.path.join(project_dir,'dummy') 虚构路径给 bootstrap.py→依赖 bootstrap 内部 dirname 提取隐式约定, bootstrap 改签名即自举失败. 4 天未修.", "remediation": "传真实 project_dir 作参数, 或 bootstrap.py 入口加 --project-dir flag 显式支持. 参考 x-tool XT-M-002.", "kind": "route-fix" }
+  ],
+  "audit_id": "audit-2026-07-05-005",
+  "audit_depth": "deep"
+}

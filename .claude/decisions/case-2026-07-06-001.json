@@ -1,0 +1,63 @@
+{
+  "case_id": "case-2026-07-06-001",
+  "agent_id": "ralph-autonomous-studio",
+  "timestamp": "2026-07-06T04:50:00+08:00",
+  "project": "autonomous-studio (runner-exec)",
+  "work_unit": "RE-EXEC-01 派生 fix — runner-exec/scripts/ 4 文件 output 累积加 16MB cap 防 OOM",
+  "situation": "audit-cycle-state.status=fix-in-progress, audit-2026-07-05-017 (runner-exec deep audit) 派生 7 route-fix，2 已 merged (RE-CMDI-01 commit ff5cd06, RE-EXEC-02 commit 8be0bb6 均在 opt-security-1783266296 worktree)，RE-EXEC-01 为下一 pending。RE-EXEC-01 [MEDIUM]: exec.js:27 output += msg.data / session.js:26 this.buf += msg.data / write-file.js:33 output += msg.data / batch-write.js:37 output += msg.data 无界累积，Runner 命令可能 emit GB 级输出 (Get-Content huge.log / tree /f / 误执行 Get-ChildItem -Recurse C:\\) 致本地 node 进程 OOM 崩溃 (DoS，Runner 为共享资源)。",
+  "action": "在 opt-security-1783266296 worktree (branch auto/opt-security-1783266296) 直编 4 文件，每文件加 const MAX_OUTPUT = 16*1024*1024 (16MB) + 累积超 cap 时按各文件既有返回契约报 output_overflow。exec.js: reject(Error('output_overflow')) + e.output=output.slice(0,MAX) (对齐 RE-EXEC-02 timeout 的 error.output 契约)，超 cap 后 return 防 message handler 落到 MARKER/exit 分支。session.js: _onData 闭包内 (可访问 exec promise 的 reject) 加 cap 检查，超 cap 时清 buf/_onData + reject(e)+e.output，return。write-file.js: 只需扫 MARKER 确认完成不需完整 output，超 cap resolve({ok:false,error:'output_overflow'})，return。batch-write.js: 返 output 看进度，超 cap resolve({ok:false,error:'output_overflow',output:output.slice(0,MAX)})，return。4 文件 node --check 全过。opt-worktree.sh commit 因 M-002 拒绝 worktree 绝对路径 (含 .. 段，相对 PROJECT 解析为 ../.opt-worktrees/...)，按 [[opt-worktree-stack-diverged-escape-hatch]] 走 case-104 直编 wt + wt 内 git commit 通道 (非 main，commit-gate 不拦)，git push origin auto/opt-security-1783266296 成功。",
+  "files_changed": [
+    "runner-exec/scripts/exec.js",
+    "runner-exec/scripts/session.js",
+    "runner-exec/scripts/write-file.js",
+    "runner-exec/scripts/batch-write.js"
+  ],
+  "worktree": "opt-security-1783266296",
+  "direction": "security:runner-exec-output-cap",
+  "direction_kind": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "git log --oneline -3 在 auto/opt-security-1783266296 显示 5cff148 opt(security:runner-exec-output-cap) stack 在 8be0bb6 (RE-EXEC-02) 之上 stack 在 ff5cd06 (RE-CMDI-01) 之上 base 7102e75 (main HEAD)；git push origin auto/opt-security-1783266296 输出 '8be0bb6..5cff148  auto/opt-security-1783266296 -> auto/opt-security-1783266296' + Code Review 链接 https://code.alibaba-inc.com/qunbu/autonomous-studio/codereview/new?from=main&to=auto/opt-security-1783266296；4 文件 node --check 全 OK；git diff --stat HEAD 显示 4 files changed 36 insertions(+) 0 deletions (纯新增 cap 逻辑，未重构既有代码)；diff 内容仅 MAX_OUTPUT 常量 + cap 检查分支 + return，无 MARKER/exit/error 分支改动。",
+  "next_suggestion": "audit-017 仍 4 pending (RE-MANIFEST-01 / RE-SECRET-01 / RE-CRED-01 / RE-PATH-01)，下轮继续派生。建议下轮派 RE-MANIFEST-01 (batch-write.js:55 manifest JSON.parse 无 schema 校验，放大 RE-CMDI-01 + 崩溃面) — 单文件 batch-write.js，复用同 opt-security-1783266296 worktree stack 在 5cff148 上。其后 RE-SECRET-01+RE-CRED-01 同堆 creds.js (RE-SECRET-01 改 execFileSync+catch 上下文，RE-CRED-01 加 CLOUDCLI_API_BASE_URL env 覆盖)，RE-PATH-01 单文件 push.js walkDir symlink 跳过。4 pending 全 merged|rejected 后 audit-cycle-state.status→cycle-complete 触发下一次全量审计。",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "runner-exec/scripts/exec.js",
+      "line": 27,
+      "severity": "medium",
+      "finding": "RE-EXEC-01: output += msg.data 无界累积，Runner GB 级输出致 node OOM (DoS)。已修：加 MAX_OUTPUT=16MB cap，超 cap reject(Error('output_overflow')) + e.output=部分输出，return。",
+      "remediation": "已实施 commit 5cff148",
+      "kind": "route-fix"
+    },
+    {
+      "file": "runner-exec/scripts/session.js",
+      "line": 26,
+      "severity": "medium",
+      "finding": "RE-EXEC-01: this.buf += msg.data 无界累积同 OOM 面。已修：_onData 内加 cap 检查，超 cap 清 buf/_onData + reject(e)+e.output，return。",
+      "remediation": "已实施 commit 5cff148",
+      "kind": "route-fix"
+    },
+    {
+      "file": "runner-exec/scripts/write-file.js",
+      "line": 33,
+      "severity": "medium",
+      "finding": "RE-EXEC-01: output += msg.data 无界累积 (写文件只需扫 MARKER 不需完整 output)。已修：加 cap，超 cap resolve({ok:false,error:'output_overflow'})，return。",
+      "remediation": "已实施 commit 5cff148",
+      "kind": "route-fix"
+    },
+    {
+      "file": "runner-exec/scripts/batch-write.js",
+      "line": 37,
+      "severity": "medium",
+      "finding": "RE-EXEC-01: output += msg.data 无界累积 (返 output 看进度)。已修：加 cap，超 cap resolve({ok:false,error:'output_overflow',output:截断})，return。",
+      "remediation": "已实施 commit 5cff148",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-017",
+  "audit_depth": "deep",
+  "dispatch_finding_id": "RE-EXEC-01",
+  "dispatch_worktree": "opt-security-1783266296",
+  "dispatch_commit": "5cff148",
+  "dispatch_branch": "auto/opt-security-1783266296",
+  "dispatch_base": "8be0bb6c6a7ba9f8ab509126ab71fafec87620d3"
+}

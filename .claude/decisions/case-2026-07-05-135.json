@@ -1,0 +1,39 @@
+{
+  "case_id": "case-2026-07-05-135",
+  "agent_id": "ralph-wiggum-loop",
+  "timestamp": "2026-07-05T23:55:00+08:00",
+  "project": "x-tool/api额度监测",
+  "work_unit": "APIMON-SECRET-01 dispatch（critical 明文 live API key 入 git + push 远端 → untrack + gitignore + 模板）",
+  "situation": "fix-in-progress 轮（audit-2026-07-05-015 派生 8 个 finding 全 pending）。audit 下轮建议 #1 优先派生 APIMON-SECRET-01（critical）。三把 live yunyi.cfd API key 自 dfc86cf 起被追踪入库并 push 到 ghp-ro.alibaba-inc.com/.../r-ayin/x-tool.git 远端。.gitignore 已有「密钥和令牌」段却独漏 config.json，与项目 CLAUDE.md「keys 为明文切勿提交」自相矛盾。",
+  "action": "①opt-worktree.sh commit area=api-monitor:secret-untrack 复用 route-fix 路径，提交 .gitignore（+4 行：注释 + api额度监测/config.json + config.local.json 规则）+ config.example.json 模板（keys=[], base_url=https://yunyi.cfd）→ commit 3ed7fb7。②在 worktree 内 git rm --cached api额度监测/config.json（untrack，--cached 保留磁盘副本，实测 rm 后 worktree 磁盘 config.json 仍在）→ commit 2030a4a。③push origin auto/opt-api-monitor-1783256389 → 403（x-tool 外部 fork，同 audit-005/006/007/008/010/011/012/013 precedent，非阻断，worktree+2-commit stack 完整保留 disk+local-ref 待人工 merge）。",
+  "files_changed": [
+    ".gitignore",
+    "api额度监测/config.example.json",
+    "api额度监测/config.json (untracked via git rm --cached, disk copy preserved)"
+  ],
+  "worktree": "opt-api-monitor-1783256389（branch auto/opt-api-monitor-1783256389, base=85bd9e1=master, HEAD=2030a4a, 2 commits ahead, FF-clean, disk+local-ref 完整保留；push 403 外部 fork）",
+  "direction": "route-fix（api-monitor:secret-untrack；未触及 x-tool/.claude/public-interfaces.txt——文件不存在，默认 route-fix）",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "git -C $WT log --oneline master..HEAD: 2030a4a (git rm --cached) + 3ed7fb7 (gitignore+template)，2 commit stack",
+    "git -C $WT diff --stat master...HEAD: .gitignore +4 / api额度监测/config.example.json +4 (A) / api额度监测/config.json -8 (D from tracking，3 keys + braces)",
+    "git -C $WT diff --name-status master...HEAD: M .gitignore / A api额度监测/config.example.json / D api额度监测/config.json",
+    "rm --cached 后 test -f $WT/api额度监测/config.json → present（--cached 保留磁盘副本，未删 live key 文件）",
+    "push origin HEAD:auto/opt-api-monitor-1783256389 → remote: 'git push is not allowed' / 403（ghp-ro.../r-ayin/x-tool.git 外部 fork）——同全 x-tool audit cycle precedent，worktree+branch 完整保留待人工 merge",
+    "⚠️ owner 动作（引擎不做，写在 case 供 merge 审阅者看到）：(1) yunyi.cfd 控制台作废重发三把 key（K33EP67S.../AH7ZKSSM.../C6CFRN04...）——key 已在 git 历史+远端，untrack 只阻未来泄露，已外泄的无法收回；(2) merge 时 git merge --squash 可能把 config.json 工作树副本一并删除（result tree 不再含该文件）——merge 后 owner 须 cp config.example.json config.json 并手动回填 key；(3) 可选 git filter-repo 重写历史 + force-push 清除 dfc86cf 中的 key（破坏性，须 owner 授权）"
+  ],
+  "next_suggestion": "下轮派生 APIMON-KEYDISPLAY-01（monitor.py:116/120/125 Text(key) 全文展示 → mask_key，medium）。monitor.py 与本轮 config 文件不同 area，按「一个文件一次只开一个 worktree」纪律开新 worktree（opt-api-monitor-display-<ts> 或同 area 复用 opt-api-monitor-1783256389——同 area route-fix 可复用 stack）。建议同 area 复用以减 worktree 碎片，KEYDISPLAY+SWALLOW 同属 monitor.py 可 stack 2 commit。APIMON-SSRF/RACE/KEYLEN 亦同文件，可续 stack。structural 两条（NOAUDITLOG/WINDOWS）已入 structural-debt 待 owner，不派 fix。8 finding 全 dispatched 后进 3-wait-round deadlock-archive precedent（x-tool push 403）→ cycle-complete → 触发下次全量审计（候选未深审：xia 499 / personal-assistant re-audit / wechat-main re-audit）。",
+  "audit_type": "security-review",
+  "audit_findings": [
+    {
+      "file": "api额度监测/config.json",
+      "line": "3-7",
+      "severity": "critical",
+      "finding": "明文 live API key（K33EP67S-7N5Z-S21H-5QUS-D3S7VYNQG871 / AH7ZKSSM-F6NH-T70R-B9N8-J10CGX7JSHR5 / C6CFRN04-YQA3-ZS67-N2T4-M9ARMKR3UPWZ）入 git（dfc86cf chore: add untracked projects to version control）并 push 到远端 ghp-ro.alibaba-inc.com/github.com/r-ayin/x-tool.git。.gitignore「密钥和令牌」段独漏 config.json。git ls-files 确认追踪中。",
+      "remediation": ".gitignore 加 api额度监测/config.json + config.local.json 规则；git rm --cached config.json（untrack 保磁盘）；建 config.example.json 模板。owner 动作：yunyi.cfd 轮换三把 key + 视情 git filter-repo 重写历史 + force-push。长期：key 走 env var (YUNYI_API_KEYS) 或 config.local.json。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-015",
+  "audit_depth": "shallow"
+}

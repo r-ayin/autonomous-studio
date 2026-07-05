@@ -1,0 +1,33 @@
+{
+  "case_id": "case-2026-07-05-081",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-05T12:55:00+08:00",
+  "project": "wechat-main",
+  "work_unit": "GD-L-004 derived fix: source_hallucination.check_temporal_consistency 前瞻年份 false-fail",
+  "situation": "audit-2026-07-05-009 (wechat-main godtier-deep-research deep audit) 第 8 条也是最后 1 条 pending derived fix。 detectors/source_hallucination.py:59-68 check_temporal_consistency 用 `y > current_year+1` 即判未来年份报 issue，但权益研究合法引用前瞻预测（\"预计 2027 年营收...\"、\"2028 年产能规划\"）会被 false-fail → run_all_detectors overall=FAIL → executor.phase4_complete 抛错阻塞整个产出。前 7 条（GD-H-001/GD-M-001..003/GD-L-001..003）已全部 merged 到 opt-godtier-deep-research-1783223962，本轮派生最后 1 条 → 全 merged 触发 cycle-complete。",
+  "action": "在 check_temporal_consistency 引入前瞻语境豁免：新增 FORWARD_LOOKING_TERMS 词表（预计/预测/预期/规划/计划/有望/展望/目标/预算/forecast/projected/expected/estimat）+ FORECAST_WINDOW_YEARS=3 + FORECAST_CONTEXT_CHARS=25。规则：y<=current_year+1 放行；y 在 +1..+3 窗口且年份前 25 字符内出现前瞻词→放行（合法预测）；超 3 年窗（即使有前瞻词）或无前瞻语境的未来年份→仍报 issue（区分远期/无语境两种 issue 文案）。改 re.findall 为 re.finditer 以拿到 match 位置取前缀窗口。1 文件，route-fix 复用同 area worktree。",
+  "files_changed": [
+    ".claude/skills/godtier-deep-research/detectors/source_hallucination.py"
+  ],
+  "worktree": "opt-godtier-deep-research-1783223962",
+  "worktree_branch": "auto/opt-godtier-deep-research-1783223962",
+  "direction": "godtier-deep-research:source-temporal-forecast-exemption",
+  "direction_kind": "route-fix",
+  "commit_sha": "c59ab02",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh 输出 `✓ 提交到 opt-godtier-deep-research-1783223962` + `18ff42c..c59ab02 HEAD -> auto/opt-godtier-deep-research-1783223962` + push 成功 origin/auto/opt-godtier-deep-research-1783223962。worktree 工作树 clean (git status --short 无输出)。提交文件 grep FORWARD_LOOKING_TERMS 命中 2 处（词表定义+docstring 引用），证明 fix 已落 commit。复现验证（python3 import 已提交文件）：(A) `预计 2028 年营收增长`→[] 前瞻豁免成功（修复前会 false-fail）；(B) `公司 2028 年营收 100 亿`（裸未来年份）→[{year:2028,issue:引用了未来年份但无前瞻语境修饰}] 仍报；(C) `预计 2031 年落地`（超 3 年窗）→[{issue:引用了远期年份超 3 年预测窗}] 仍报；(D) `2024 年营收`（过去）→[]。py_compile 通过。main checkout 文件已恢复原状（opt-worktree cp-guard 还原），worktree HEAD=c59ab02 携带 fix。",
+  "next_suggestion": "audit-2026-07-05-009 全 8 条 derived route-fix 已 merged（GD-H-001 case-074 / GD-M-001 case-075 / GD-M-002 case-076 / GD-M-003 case-077 / GD-L-001 case-078 / GD-L-002 case-079 / GD-L-003 case-080 / GD-L-004 case-081），audit-cycle-state.status 应改 cycle-complete → 下一轮触发新全量审计。8 条 fix 全堆叠在 auto/opt-godtier-deep-research-1783223962（7-commit 栈 base 18ff42c→c59ab02 HEAD，FF 干净，disk+origin 完整）待人工 merge to main。下轮：新全量审计，挑未深审过的项目（看 .claude/audits/ 已有报告，避免 wechat-main/skills godtier/autonomous-engine/x-tool ota 等已审）。候选未深审项目：dingtalk-auto/agentfw/fusion-server/fa_agent/pc_agent/agent-dashboard/huiyis/stagehand-analysis/browser-use/oneday-design/quanzhan 等（多数历史 deadlock-archive，可 re-audit 验证 prior finding 是否仍 open 或已人手 merge）。",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": ".claude/skills/godtier-deep-research/detectors/source_hallucination.py",
+      "line": "59-68",
+      "severity": "low",
+      "finding": "GD-L-004: check_temporal_consistency y>current_year+1 即报 future-year issue，把权益研究合法前瞻预测（预计 2027 年营收、2028 年产能规划）false-fail → run_all_detectors overall=FAIL → executor.phase4_complete 抛错阻塞产出。",
+      "remediation": "前瞻语境豁免：年份前 25 字符内出现前瞻词且在 current_year+1..+3 预测窗内放行；超 3 年窗或无前瞻语境仍报 issue。已实现并复现验证。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-009",
+  "audit_depth": "deep"
+}

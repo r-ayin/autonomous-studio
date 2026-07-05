@@ -1,0 +1,39 @@
+{
+  "case_id": "case-2026-07-06-027",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-06T03:41:41+08:00",
+  "project": "x-tool/xia",
+  "work_unit": "shanxia-chat-token-gate (XIA-CHAT-01+02 stacked)",
+  "situation": "audit-2026-07-06-003 derived fix dispatch #1. XIA-CHAT-01 HIGH: CHAT_TOKEN hardcoded in chat-widget.js:11 shipped to browser = public secret; worker token gate at :95 gives false assurance. XIA-CHAT-02 MED: disconnect sendBeacon cannot set custom headers → 401 at token gate → slot release path unreachable → 3-session slots leak to 120s timeout → legit clients hit 503 busy. Note on XIA-CHAT-02 explicitly said '可与 XIA-CHAT-01 同栈（删 token 后此 bug 自然消解，但 disconnect 前置仍应独立修以稳健）'. Stacked both on same worktree.",
+  "action": "chat-widget.js: delete CHAT_TOKEN constant + send() headers drop X-Chat-Token. chat-worker.js: delete token gate at :93-95, move body.json() parse + disconnect branch BEFORE where token gate was so sendBeacon slot-release works independently of any future auth. Added explanatory comments citing XIA-CHAT-01/02 and suggesting per-session HMAC if client auth needed later.",
+  "files_changed": [
+    "xia/山夏/chat-widget.js",
+    "xia/山夏/chat-worker.js"
+  ],
+  "worktree": "opt-xia-1783280481",
+  "direction": "xia:shanxia-chat-token-gate",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit b8e89eddeb8ec448b9f5683205ca5baea33d4d42 on auto/opt-xia-1783280481, base=85bd9e1=master HEAD, fast-forward clean, 2 files changed (+18/-8), pushed origin by opt-worktree.sh cmd_commit built-in push step. Verified via git -C <wt> log/show.",
+  "next_suggestion": "派生 XIA-CHAT-03 (MED, messages 数组 role/content 校验防提示注入+预算 drain, 1 文件 chat-worker.js:121-135) — 可复用本 wt opt-xia-1783280481 (同 area xia). 然后 XIA-CHAT-04 (MED, D1 fire-and-forget .catch→ctx.waitUntil, 1 文件).",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "xia/山夏/chat-widget.js",
+      "line": 11,
+      "severity": "high",
+      "finding": "XIA-CHAT-01: CHAT_TOKEN='b6227973c87099bb34cdb9848ff1300cd78b2ed327bab0b7' hardcoded in browser bundle → public to every visitor; worker :95 token gate is security theater.",
+      "remediation": "Delete CHAT_TOKEN constant + send() X-Chat-Token header. Worker deletes corresponding gate. Rely on IP rate limit + 3-session concurrency + max_tokens:500.",
+      "kind": "route-fix"
+    },
+    {
+      "file": "xia/山夏/chat-worker.js",
+      "line": 95,
+      "severity": "medium",
+      "finding": "XIA-CHAT-02: disconnect sendBeacon has no custom headers → 401 at token gate → sessions.delete never runs → slot leaks 120s → legit clients 503 busy.",
+      "remediation": "Move body.json() parse + disconnect branch before any auth check. Even after XIA-CHAT-01 removes the token gate, this ordering is independently robust against future auth reintroductions.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-003",
+  "audit_depth": "shallow"
+}

@@ -1,0 +1,49 @@
+{
+  "case_id": "case-2026-07-06-009",
+  "agent_id": "ralph-autonomous-engine",
+  "timestamp": "2026-07-06T05:50:00+08:00",
+  "project": "prod-deploy",
+  "work_unit": "PD-HANG-01 derived fix: outbound HTTP had no timeout — sunfire-client.httpPost https.request with no req.setTimeout; task-client/event-client fetch() with no AbortController. Hung Sunfire/DEVOUT endpoint blocks report-observation + resume-next-batch forever with no error → silent deploy-pipeline stall. Add 30s timeout (env-overridable) to all three; querySunfireInsights already degrades timeout reject to {skipped:true,reason}.",
+  "situation": "audit-cycle-state status=fix-in-progress, audit-2026-07-06-001 (prod-deploy deep audit). PD-TIME-01 (HIGH) already dispatched case-2026-07-06-008 commit d5c4078 (merged=dispatched+pushed, FF-clean). 4 findings still pending; PD-HANG-01 is next (MEDIUM, next-highest severity). Bug verified against LIVE skill copy .claude/skills/prod-deploy/scripts/lib/ (identical to /home/admin/.claude/skills/prod-deploy/ — the installed skill). NOTE: audit was performed against /home/admin/.claude/skills/prod-deploy/ which is the 4-file monolithic live copy; a SEPARATE divergent 6-file refactored copy at skills/prod-deploy/scripts/lib/ (with http-base.js + audit-log-helper.js) ALREADY has the timeout fix from prior audit-2026-07-02-006 (H-001/H-002/L-001) — but that copy is NOT the live skill. This fix targets the live 4-file copy where PD-HANG-01 is genuinely open. Confirmed by reading all 3 files in worktree opt-prod-deploy-1783270172 at HEAD d5c4078: sunfire-client.js:32-54 httpPost has no req.setTimeout; task-client.js:30-72 apiGet/apiPost/apiPut use bare fetch(); event-client.js:32-58 apiPost/apiPut use bare fetch(). Compare poll-build.js:42-46 / poll-pre-check.js:58-62 which correctly set timeout:30000 on a1 execFile — the HTTP clients lacked the equivalent.",
+  "action": "3-file route-fix stacked on opt-prod-deploy-1783270172 (same area, route-fix; lib files not in public-interfaces.txt). Pattern mirrored from the divergent copy's http-base.js (project's own established timeout pattern from prior audit-2026-07-02-006 fixes). (1) sunfire-client.js: added const DEFAULT_TIMEOUT_MS = Number(process.env.SUNFIRE_HTTP_TIMEOUT_MS) || 30000; in httpPost added req.setTimeout(DEFAULT_TIMEOUT_MS, () => req.destroy(new Error('Sunfire httpPost timed out after ${DEFAULT_TIMEOUT_MS}ms'))) after https.request — destroy() rejects the promise via the existing 'error' handler, so querySunfireInsights catch-block (line 101-103) already degrades to {skipped:true,reason:'Sunfire request failed: …timed out…'}. (2) task-client.js: added DEFAULT_TIMEOUT_MS (DEVOUT_HTTP_TIMEOUT_MS env, 30000 default) + fetchWithTimeout(url,init) helper using AbortController+setTimeout, raises typed '${method} ${url} timed out after ${DEFAULT_TIMEOUT_MS}ms' on AbortError; apiGet/apiPost/apiPut now call fetchWithTimeout instead of bare fetch. (3) event-client.js: same DEFAULT_TIMEOUT_MS + fetchWithTimeout helper; apiPost/apiPut use fetchWithTimeout. node --check passes on all 3 files.",
+  "files_changed": [
+    ".claude/skills/prod-deploy/scripts/lib/sunfire-client.js",
+    ".claude/skills/prod-deploy/scripts/lib/task-client.js",
+    ".claude/skills/prod-deploy/scripts/lib/event-client.js"
+  ],
+  "worktree": "opt-prod-deploy-1783270172",
+  "direction": "prod-deploy:hang-timeout",
+  "outcome": "succeeded",
+  "outcome_evidence": "Committed d3a9710 on branch auto/opt-prod-deploy-1783270172 (worktree opt-prod-deploy-1783270172), 3 files changed +81/-5. Pushed to origin: 'd5c4078..d3a9710 auto/opt-prod-deploy-1783270172 -> auto/opt-prod-deploy-1783270172'. `git -C wt log --oneline -3` shows d3a9710 on top of d5c4078 (PD-TIME-01) on top of 7102e75 (main HEAD). `git rev-list --left-right --count origin/main...HEAD` = 0/2 (0 behind, 2 ahead) → FF-clean. `node --check` OK on all 3 files. `grep -c 'fetchWithTimeout|DEFAULT_TIMEOUT_MS|req.setTimeout'` in wt = sunfire-client.js:4 / task-client.js:8 / event-client.js:7. Escape hatch used: opt-worktree.sh cmd_commit cp-guard skipped (target files already diverged in wt working tree from direct edit), so committed directly in wt via `git -C wt add+commit` then manual push (auto/opt-* branch, gate allows; per [[opt-worktree-stack-diverged-escape-hatch]] memory). Main working tree restored (edits removed from main checkout post-commit). Live skill /home/admin/.claude/skills/prod-deploy/ still has OLD code (grep=0) — fix lands in live only after human merge of opt branch to main + sync, standard flow.",
+  "next_suggestion": "Dispatch PD-TOKEN-01 next (MEDIUM, 2 lib files: task-client.js + event-client.js getBaseUrl/getHeaders — validate DEVOUT_SERVER_URL host against allowlist {localhost,127.0.0.1,*.alibaba-inc.com,DEVOUT_ALLOWED_HOSTS} + IP-literal block; throw at getBaseUrl time so no token sent to unknown host; mirrors generate-image H02). Stack on same opt-prod-deploy-1783270172 (route-fix, escape-hatch commit). Then PD-BATCH-01 (LOW, report-event.js handleDeployBatch parseInt NaN guard) + PD-CONCL-01 (LOW, sunfire-client.js deriveConclusion sort checks by timestamp desc before dedup + extract helper for resume-next-batch.js inline dedup). After all 5 merged|rejected → audit-cycle-state.status=cycle-complete → next round triggers new deep audit. NOTE for future audit: divergent 6-file copy at skills/prod-deploy/scripts/ (http-base.js refactor) is stale-vs-live and should be reconciled — flag as structural debt candidate.",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": ".claude/skills/prod-deploy/scripts/lib/sunfire-client.js",
+      "line": 40,
+      "severity": "medium",
+      "finding": "PD-HANG-01 (fixed this round): httpPost used https.request with no req.setTimeout — hung Sunfire dispatcher blocks report-observation tick forever with no error, stalling batch progression.",
+      "remediation": "Add req.setTimeout(DEFAULT_TIMEOUT_MS, () => req.destroy(...)); querySunfireInsights catch-block already degrades reject to {skipped:true,reason}.",
+      "kind": "route-fix"
+    },
+    {
+      "file": ".claude/skills/prod-deploy/scripts/lib/task-client.js",
+      "line": 30,
+      "severity": "medium",
+      "finding": "PD-HANG-01 (fixed this round): apiGet/apiPost/apiPut used bare fetch() with no AbortController — hung DEVOUT_SERVER_URL blocks every task-client caller (report-event, resume-next-batch, complete-task, poll-build, poll-pre-check) indefinitely.",
+      "remediation": "fetchWithTimeout helper with AbortController + 30s timeout; typed timeout error on abort.",
+      "kind": "route-fix"
+    },
+    {
+      "file": ".claude/skills/prod-deploy/scripts/lib/event-client.js",
+      "line": 32,
+      "severity": "medium",
+      "finding": "PD-HANG-01 (fixed this round): apiPost/apiPut used bare fetch() with no AbortController — hung DEVOUT_SERVER_URL blocks every event-client caller (report-event, resume-next-batch, report-observation) indefinitely.",
+      "remediation": "Same fetchWithTimeout helper + 30s timeout.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-001",
+  "audit_depth": "shallow",
+  "_audit_depth_note": "derived fix case — parent audit-2026-07-06-001 was deep; this fix-dispatch case itself is shallow (3-file targeted edit per audit remediation sketch)."
+}

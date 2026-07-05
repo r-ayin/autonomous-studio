@@ -1,0 +1,44 @@
+{
+  "case_id": "case-2026-07-05-040",
+  "agent_id": "ralph-autonomous-studio",
+  "timestamp": "2026-07-05T06:47:10+08:00",
+  "project": "autonomous-engine",
+  "work_unit": "派生 fix (audit-2026-07-05-005 priority 4+9 同栈堆): watchdog.sh AE-M-001 (PROJECT_DIR=/mnt/e/x-tool 硬编码 WSL 挂载路径 → Linux 原生下看门狗 no-op + python3 -c '$LATEST' 字符串插值注入面) + AE-NEW-002 (stat 失败时 || echo 0 → MARKER_AGE 恒大 → rm -f 静默删有效 stale marker)",
+  "situation": "audit-cycle-state.status=fix-in-progress, derived_fixes 仍有 7 个 pending-dispatch (priority 4..10)。AE-H-001 (case-038 commit d801343) + AE-H-002/AE-NEW-001 (case-039 commit 677cdb8) 已堆在 opt-hooks-1783203936 待人工 merge。本轮按 priority 4 派生 AE-M-001，同文件 priority 9 = AE-NEW-002 同栈堆到同一 hooks worktree。两 finding 均为真逻辑/数据损坏 bug，符合 2026-07-03 反 churn 例外条款。watchdog.sh 是 L6 外部监控层（cron 每 5min 跑），PROJECT_DIR 硬编码 WSL 挂载路径 → Linux 原生部署下 checkpoint 路径不存在 → 整个看门狗静默 no-op；stat 失败致 rm 静默删 stale marker → 丢失中断信号让 resume 链路断裂。",
+  "action": "改单文件 .claude/watchdog.sh 三处: (1) L15 PROJECT_DIR=\"/mnt/e/x-tool\" → PROJECT_DIR=\"$(cd \"$(dirname \"$0\")/..\" && pwd)\" 相对脚本位置推断，跨平台（WSL/原生 Linux 均可）；note: 审计描述写 ../.. 是笔误，脚本位于 <proj>/.claude/watchdog.sh，.. 一级即项目根，../.. 会跑到项目父目录，故用 .. (AE-M-001a)。(2) L36-44 CHECKPOINT_TS 的 python3 -c 块：原 with open('$LATEST') 字符串插值（LATEST 派生自 PROJECT_DIR，PROJECT_DIR 旧时硬编码所以风险低，但路径含空格/特殊字符仍会断 + 习惯性注入面），改 sys.argv[1] 传参，python3 -c \"...\" \"$LATEST\" (AE-M-001b)。(3) L85-90 stale marker 清理：原 MARKER_AGE=$(( $(date +%s) - $(stat -c %Y \"$STALE_MARKER\" 2>/dev/null || echo 0) )) 在 stat 失败时（文件被并发删除/权限/TOCTOU）回退 0 → MARKER_AGE ≈ NOW-0 ≈ 1.7e9 → 恒 >1800 → rm -f 静默删掉仍有效的 stale marker → 丢失中断信号；改 STAT_TS=$(stat ... || true) 单独捕获，空则跳过删除（保留信号待下轮重判），非空则 MARKER_AGE=$((NOW_EPOCH - STAT_TS)) 复用 L51 已算的 NOW_EPOCH 避免重复 date 调用 (AE-NEW-002)。",
+  "files_changed": [".claude/watchdog.sh"],
+  "worktree": "opt-hooks-1783203936",
+  "direction": "hooks:watchdog-linux-path",
+  "outcome": "succeeded",
+  "outcome_evidence": "1) bash -n .claude/watchdog.sh → SYNTAX_OK (无语法错误，set -euo pipefail 下 STAT_TS=$(... || true) 不会因 stat 非零退出而 abort)。2) opt-worktree.sh commit 复用同 area worktree opt-hooks-1783203936 (route-fix, 触及文件 autonomous-engine:.claude/watchdog.sh 不在 public-interfaces.txt——清单只列 autonomous-studio:watchdog.sh 不同项目)，commit 9b747ff 落地，diff: 1 file changed, 18 insertions(+), 7 deletions(-)。3) push 成功 677cdb8..9b747ff HEAD -> auto/opt-hooks-1783203936，origin 已同步（remote 创建 codereview 链接 https://code.alibaba-inc.com/xtool/autonomous-engine/codereview/new?from=master&to=auto/opt-hooks-1783203936）。4) worktree git log 栈堆确认: 985aa36 (base) → d801343 (AE-H-001) → 677cdb8 (AE-H-002+AE-NEW-001) → 9b747ff (AE-M-001+AE-NEW-002)，4 commit 干净栈堆。5) sed -n '15p;36,46p;83,95p' 确认 L15 改 PROJECT_DIR 推断、L36-44 改 sys.argv[1]、L85-95 改 STAT_TS 空判断三处均已落地 worktree。",
+  "next_suggestion": "下轮继续派生 priority 5 = AE-M-002 (notify-phone.py L206 send() 返回值未捕获 → confirm 级通知失败静默丢失) + 同文件 priority 6 = AE-NEW-003 (notify_via_tunnel L69-78 finally sock.close() 在 socket.socket() 抛 OSError(EMFILE) 时 UnboundLocalError → 破坏 hook 静默契约) 同栈堆到 opt-hooks-1783203936（同 .py 文件 .claude/hooks/notify-phone.py）。opt-hooks-1783203936 当前已堆 4 commit (d801343/677cdb8/9b747ff) 待人工 merge；若再 3 轮瞭望后仍 0 merge → 触发 deadlock-archive reject (同 sunset-prediction/personal-assistant/wechat-main 模式)。派生进度 5/10: AE-H-001/AE-H-002/AE-NEW-001/AE-M-001/AE-NEW-002 已派；剩 5 pending-dispatch (AE-M-002/AE-NEW-003/AE-M-003/AE-NEW-004/AE-L-001)。",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": ".claude/watchdog.sh",
+      "line": "15",
+      "severity": "medium",
+      "finding": "AE-M-001a: PROJECT_DIR=\"/mnt/e/x-tool\" 硬编码 WSL 挂载路径。Linux 原生部署下该路径不存在 → CHECKPOINT_DIR/LATEST/HEARTBEAT_FILE/STALE_MARKER/RESUME_FLAG/LOCK_FILE 全部指向 /mnt/e/x-tool/.claude/... 不存在路径 → L31 [ ! -f \"$LATEST\" ] 恒真 → exit 0 → 整个看门狗 cron 每 5min 跑但永远静默 no-op，无法检测僵死。x-tool 姊妹 XT-M-004 已修 892e4a0。",
+      "remediation": "改 PROJECT_DIR=\"$(cd \"$(dirname \"$0\")/..\" && pwd)\" 相对脚本位置推断。",
+      "kind": "route-fix"
+    },
+    {
+      "file": ".claude/watchdog.sh",
+      "line": "36-44",
+      "severity": "low",
+      "finding": "AE-M-001b: CHECKPOINT_TS=$(python3 -c \"...with open('$LATEST')...\" 2>/dev/null) 用 shell 字符串插值把 $LATEST 嵌进 python 源码字符串。LATEST 派生自 PROJECT_DIR（旧硬编码时风险低），但路径含空格/引号/特殊字符会断 python 语法或构成注入面。习惯性反模式。",
+      "remediation": "改 sys.argv[1] 传参：python3 -c \"...with open(sys.argv[1])...\" \"$LATEST\"。",
+      "kind": "route-fix"
+    },
+    {
+      "file": ".claude/watchdog.sh",
+      "line": "85-90 (原)",
+      "severity": "low",
+      "finding": "AE-NEW-002: MARKER_AGE=$(( $(date +%s) - $(stat -c %Y \"$STALE_MARKER\" 2>/dev/null || echo 0) ))。stat 失败时（STALE_MARKER 在 [ -f ] 检查后被并发 rm/权限问题/TOCTOU）回退 0 → MARKER_AGE = NOW - 0 ≈ 1.7e9 → 恒 >1800 → rm -f \"$STALE_MARKER\" \"$RESUME_FLAG\" 静默删掉仍有效的 stale marker → 丢失中断信号，resume-checkpoint 读不到 stale marker 不会触发恢复。TOCTOU + 静默吞错的复合 bug。",
+      "remediation": "STAT_TS=$(stat -c %Y \"$STALE_MARKER\" 2>/dev/null || true) 单独捕获；[ -n \"$STAT_TS\" ] 才算 MARKER_AGE 并判 rm，空则跳过保留信号。复用 L51 NOW_EPOCH 避免重复 date +%s。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-005",
+  "audit_depth": "deep"
+}

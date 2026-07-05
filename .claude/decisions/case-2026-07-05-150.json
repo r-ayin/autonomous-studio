@@ -1,0 +1,47 @@
+{
+  "case_id": "case-2026-07-05-150",
+  "agent_id": "autonomous-engine-main-loop",
+  "timestamp": "2026-07-05T23:12:05+08:00",
+  "project": "x-tool/wanxia",
+  "work_unit": "WX-SILENT-01 空 catch 静默吞错 → console.warn 留诊断痕迹 (audit-2026-07-05-016 derived fix #6 of 7)",
+  "situation": "audit-2026-07-05-016 finding WX-SILENT-01 [LOW]: routes.js + social-scraper.js 多处空 catch(e){}/catch{} 静默吞错 — augmentGridWithCities 失败时 contour 用未增强 grid 分数、weibo mid 采样失败、xhs DOM 抽取失败, 均无任何日志 → 抓取/增强静默失效时运维无信号. 非安全问题, 可观测性债务. 前 5 fix (WX-AUTH-01 eb00793 / WX-HEALTH-01 d4960bd / WX-ENV-01 c0c13b4 / WX-TIMEOUT-01 3a63b2b / WX-CACHE-01 75603a7) 已 stacked on opt-security-1783235416. 注意: WX-CACHE-01 (case-149) 重构 routes.js 时已为 /contour 非流路由的 augmentGrid silent catch 加了 console.warn (routes.js:159), 故本 fix 仅需补 /contour/stream 路由 (routes.js:242) + social-scraper.js 两处.",
+  "action": "routes.js:242 /contour/stream augmentGridWithCities catch(e){}→catch(e){console.warn('[contour/stream] augmentGridWithCities failed:', e.message)} (对齐 /contour 非流已有 warn 范式). social-scraper.js:180 weibo mid 采样 catch{}→catch(e){console.warn(`[weibo] ${cityName}: engagement sample mid=${mid} failed: ${e.message}`)}; social-scraper.js:242 xhs DOM 抽取 catch{}→catch(e){console.warn(`[xhs] ${cityName}: DOM extraction failed: ${e.message}`)}. 保留原降级语义 (un-augmented grid / 空 DOM 回退), 仅补可观测性. node --check OK 两文件. ⚠ routes.js+social-scraper.js 已因前序 fix (WX-CACHE-01 改 routes.js) 在 wt 与 main HEAD 分叉 → opt-worktree cmd_commit cp-guard 会跳过 → 走 case-104/147 文档化逃生通道: 直编 opt-wt 版本 + wt 内 git commit (绕过 cp 流不触 main). route-fix 性质不变 (wanxia src 非公共接口), 仍 security area 复用 opt-security-1783235416 (现 6-commit stack FF-clean base=85bd9e1=master). push 403 external fork (r-ayin/x-tool, precedent audit-008/010/016/145-149). worktree+branch+commit 保留 local 待人工 merge to master.",
+  "files_changed": [
+    "wanxia/src/routes.js",
+    "wanxia/src/social-scraper.js"
+  ],
+  "worktree": "opt-security-1783235416",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit c2a4a5e on auto/opt-security-1783235416 (6-commit stack: eb00793 WX-AUTH-01 → d4960bd WX-HEALTH-01 → c0c13b4 WX-ENV-01 → 3a63b2b WX-TIMEOUT-01 → 75603a7 WX-CACHE-01 → c2a4a5e WX-SILENT-01, FF-clean base=85bd9e1=master). node --check OK for both files. 2 files changed, 3 insertions(+), 3 deletions(-). push 403 external fork (r-ayin/x-tool precedent); worktree+branch+commit preserved local disk+local-ref 待人工 merge.",
+  "next_suggestion": "派生 WX-XHS-REUSE-01 [LOW] (social-scraper.js:24-45 浏览器单例 + closeBrowser 竞态: cron 22:00 finally closeBrowser 关 context 时若 HTTP /api/social/fetch 正用同 context → in-flight page.goto 抛 'Target closed'; remediation: closeBrowser 加引用计数或在用时不关, 或 HTTP 用独立 context; --no-sandbox 若确认非 root 可保留加注释). 该 fix 派完后 audit-2026-07-05-016 全 7 findings merged|rejected → audit-cycle-state.status=cycle-complete → 下轮触发新全量审计 (届时工作区未深审的真实代码项目可能需重新扫描, 或对已审项目 module 级续审).",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "wanxia/src/routes.js",
+      "line": "242",
+      "severity": "low",
+      "finding": "WX-SILENT-01: /contour/stream 路由 augmentGridWithCities try/catch(e){} 空体静默吞错 — getPredictions() 或 augment 失败时 contour 用未增强 grid 分数, 运维无信号. (注: /contour 非流路由同模式已由 WX-CACHE-01 case-149 补 console.warn, 本处 stream 路由漏网.)",
+      "remediation": "catch(e){console.warn('[contour/stream] augmentGridWithCities failed:', e.message)} — 保留降级语义仅补日志. Applied in this commit (c2a4a5e).",
+      "kind": "route-fix"
+    },
+    {
+      "file": "wanxia/src/social-scraper.js",
+      "line": "180",
+      "severity": "low",
+      "finding": "WX-SILENT-01: fetchWeiboDesktop mid→engagement 采样 catch{} /* skip */ 静默吞错 — m.weibo.cn/api/statuses/show 调用失败 (网络/限流/JSON 解析) 时无日志, social_score 可能偏低无诊断.",
+      "remediation": "catch(e){console.warn(`[weibo] ${cityName}: engagement sample mid=${mid} failed: ${e.message}`)} — 保留跳过语义仅补日志. Applied in this commit (c2a4a5e).",
+      "kind": "route-fix"
+    },
+    {
+      "file": "wanxia/src/social-scraper.js",
+      "line": "242",
+      "severity": "low",
+      "finding": "WX-SILENT-01: fetchXiaohongshu DOM 回退抽取 catch{} /* DOM extraction also failed */ 静默吞错 — API intercept 失败后 DOM 抽取再失败时无日志, xhs 数据全空无诊断.",
+      "remediation": "catch(e){console.warn(`[xhs] ${cityName}: DOM extraction failed: ${e.message}`)} — 保留返回空语义仅补日志. Applied in this commit (c2a4a5e).",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-016",
+  "audit_depth": "shallow"
+}

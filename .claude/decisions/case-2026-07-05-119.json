@@ -1,0 +1,41 @@
+{
+  "case_id": "case-2026-07-05-119",
+  "agent_id": "autonomous-engine-ralph-main-loop",
+  "timestamp": "2026-07-05T19:02:27+08:00",
+  "project": "x-tool",
+  "work_unit": "派生 audit-2026-07-05-013 finding OMNICS-KB-01: KnowledgeService.preciseSearch FTS5 MATCH phrase 转义防买家消息含 \" 破坏语法",
+  "situation": "audit-cycle-state.status=fix-in-progress, audit-2026-07-05-013 (x-tool/聚合ai客服开发 omnics-client 深审) 派生 11 route-fix。前 4 条 (OMNICS-API-01/SIDECAR-01/LLM-01/LLM-02) 已 commit 进 opt-omnics-1783246236 stack (357a7ed→3335c97→187afb2→8fdbff3) 待人工 merge (x-tool fork origin push 403 precedent)。本轮挑下一条 pending=OMNICS-KB-01 (medium, 1 文件 KnowledgeService.ts, 未被前 4 fix 触及, 无重复)。finding: preciseSearch 把 buyer query 按空格切词后每个 token 用 \\\"${k}\\\" 包进 FTS5 MATCH 表达式, 未转义 token 内的 \\\" ; 买家消息含 \\\" (经 PDD onDomMessage→AIService.getReply→preciseSearch 或 /knowledge/search HTTP 端点可达) 断 phrase 语法→catch 返 []→AI 静默 fallback 没查到, 真实商品检索失效。",
+  "action": "新增 private static escapeFtsPhrase(token): 把 token 内 \\\" 双写为 \\\"\\\" (FTS5 phrase 内唯一需转义字符; 其余 * : ( ) ^ - 与词 AND/OR/NEAR 在引号内为字面量无需处理); andQuery (line 137) 与 orQuery fallback (line 151) 两处 keywords.map 调用替换为 \\\"${this.escapeFtsPhrase(k)}\\\"。arrow 继承 static 方法的 this=KnowledgeService, this.escapeFtsPhrase 可达。byte-level python 编辑保 CRLF (该文件 mixed LE, 目标三处皆 CRLF, 避 Edit 工具翻 LF→CRLF 噪音, diff 干净 22+/2-)。route-fix 复用 opt-omnics-1783246236 worktree (KnowledgeService.ts 不在 .claude/public-interfaces.txt, judge_direction_kind=route-fix, 同 area omnics 复用)。",
+  "files_changed": [
+    "x-tool/聚合ai客服开发/src/main/core/services/KnowledgeService.ts"
+  ],
+  "worktree": "opt-omnics-1783246236",
+  "direction": "omnics:kb-fts5-escape",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit c459dba on auto/opt-omnics-1783246236 (parent=8fdbff3 case-118, base=85bd9e1=master, 5-commit stack 357a7ed→3335c97→187afb2→8fdbff3→c459dba, FF-clean: git merge-base --is-ancestor master HEAD 通过, rev-list --count master..HEAD=5); git show --stat HEAD: 1 file changed 22 insertions 2 deletions (无 CRLF 行尾噪音, 三处目标皆 CRLF 保真, diff 仅含 escapeFtsPhrase 新方法块 + andQuery/orQuery 两行逻辑替换); main x-tool git status --porcelain 该文件空 (改动已迁 worktree, main 干净); 待人工 merge (x-tool fork origin push 403 precedent 同 audit-005..012, stack 保留 disk+origin 待人工审)",
+  "next_suggestion": "audit-2026-07-05-013 仍 6 条 pending (OMNICS-PRELOAD-01 med / OMNICS-CONFIG-01 low / OMNICS-DB-01 low / OMNICS-INJECT-01 low / OMNICS-STORE-01 low / OMNICS-LOG-01 low)。下轮继续派 OMNICS-PRELOAD-01 (medium, preload/index.ts IPC channel 白名单, 1 文件, 未被前 5 fix 触及)。全部派完且 stack 人工 merge/reject 落定后 audit-cycle-state.status→cycle-complete 触发下轮全量审计。x-tool fork push 403 积压 5 worktree stack 待人工 merge — 建议用户找时间批量 merge opt-omnics-1783246236 (5 commit) 与 opt-pachong / opt-security 等。",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "x-tool/聚合ai客服开发/src/main/core/services/KnowledgeService.ts",
+      "line": 137,
+      "severity": "medium",
+      "finding": "OMNICS-KB-01: preciseSearch andQuery 用 `\"${k}\"` 拼 FTS5 MATCH, token 内 \\\" 未转义, 买家消息含 \\\" 破坏 phrase 语法→catch 返 []→AI fallback 没查到, 商品检索失效",
+      "remediation": "新增 escapeFtsPhrase(token) 把 \\\" 双写为 \\\"\\\" (FTS5 phrase 唯一需转义字符), andQuery/orQuery 两处调用替换",
+      "kind": "route-fix"
+    },
+    {
+      "file": "x-tool/聚合ai客服开发/src/main/core/services/KnowledgeService.ts",
+      "line": 151,
+      "severity": "medium",
+      "finding": "OMNICS-KB-01 (orQuery fallback 同症): `\"${k}\"`.join(' OR ') 同样未转义 token 内 \\\"",
+      "remediation": "orQuery 同样替换为 escapeFtsPhrase(k)",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-013",
+  "audit_depth": "shallow",
+  "direction_kind": "route-fix",
+  "parent_audit_id": "audit-2026-07-05-013",
+  "derived_fix_finding_id": "OMNICS-KB-01"
+}

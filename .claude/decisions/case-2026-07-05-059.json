@@ -1,0 +1,30 @@
+{
+  "case_id": "case-2026-07-05-059",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-05T17:50:00+08:00",
+  "project": "shizi",
+  "work_unit": "derived-fix-dispatch SH2-L-003 (audit-2026-07-05-007 priority 7, low): vision-adapter.ts:603 verifyOcrResults 全仓零调用者=死代码（d360b4f VL识别合并校对取代该独立校对步骤），且其唯一依赖 VERIFY_OCR_PROMPT_TEMPLATE (:294) 亦随之死；函数还接受未预处理 imageBase64 无 IMAGE_TOO_LARGE 守卫无兜底，若被接回大图 OOM/400。Fix: 删除 verifyOcrResults 函数 + VERIFY_OCR_PROMPT_TEMPLATE 常量 + 未用 VerifiedText import。",
+  "situation": "audit-cycle-state.status=fix-in-progress; audit-2026-07-05-007 derived 7 route-fix, 6 已派发待 merge (SH2-M-004 case-053 opt-vision-1783212856 d5f0ef0 / SH2-M-002 case-054 opt-background-1783213292 3e7efba / SH2-M-003 case-055 5d3d756 L2 / SH2-M-001 case-056 7d7c44f L3 / SH2-L-001 case-057 15fd714 L4 / SH2-L-002 case-058 opt-popup-1783215325 2465588 新wt独立), 仅剩 SH2-L-003 (P7 low) fix_case_id=null 未派发。SH2-L-003 删死代码 verifyOcrResults (vision-adapter.ts:603 wt行号, main:567), 与 SH2-M-004 case-053 同文件不同段 (case-053 改 :114/:161 media_type detectMediaType, SH2-L-003 删 :294 template + :603 function) → opt-vision-1783212856 第 2 层 stacking, route-fix cp-guard 应放行 (case-057 同款 precedent: 同 wt 同文件不同段, cp-guard 跳过 cp → 直编 wt 版本后 wt 内 git commit+push)。",
+  "action": "grep -rn verifyOcrResults 全仓 (.ts/.tsx/.js/.json) 确认仅定义处 :603 + 内部 console.warn :619, 零调用者零 re-export (export 但无 import); grep VERIFY_OCR_PROMPT_TEMPLATE 确认仅 :294 定义 + :614 函数内唯一使用 → 删函数后 template 亦死, 一并清。读 worktree 版 vision-adapter.ts (opt-vision-1783212856 HEAD=d5f0ef0, 因 case-053 已改此文件 line 号偏移: main :567→wt :603, main :258→wt :294) 定位确切边界: template :294-319 (含尾 blank :320), 函数 doc :600-602 + body :603-654 (含尾 blank :655)。两处 Edit 删 template block (old_string 含前导 '只返回 JSON。`;' 作锚确保唯一) + 删 function block (old_string 含前导 'return results; }' + 后续 sanitizeErrorBody 注释作锚)。删后 VerifiedText import 仅剩 :5 一处 (grep -c=1) → 第三处 Edit 从 import type {...} 移除 VerifiedText。node_modules 不在 wt → 软链 ln -s /home/admin/workspace/shizi/node_modules $WT/node_modules 后 npx vitest run 53/53 pass, 软链 rm 清理。直编 wt 版本 (cp-guard skip precedent) → wt 内 git add+commit ba3a21b + push origin auto/opt-vision-1783212856 (fast-forward d5f0ef0..ba3a21b)。",
+  "files_changed": [
+    "/home/admin/workspace/shizi/src/background/vision-adapter.ts"
+  ],
+  "worktree": "opt-vision-1783212856 (复用 case-053 SH2-M-004 同 area 同文件 worktree, route-fix 第 2 层 stacking; branch auto/opt-vision-1783212856, base d5f0ef0)",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "wt 内 git commit ba3a21b 'opt(vision:dead-code-delete): SH2-L-003 删除死代码 verifyOcrResults...' (1 file changed, 1 insertion(+), 84 deletions(-)); git push origin auto/opt-vision-1783212856 成功 'd5f0ef0..ba3a21b auto/opt-vision-1783212856 -> auto/opt-vision-1783212856' + 远端 code review 链接生成 https://code.alibaba-inc.com/qunbu/shizi/codereview/new?from=main&to=auto/opt-vision-1783212856; 残留引用 grep 验证空 (verifyOcrResults/VERIFY_OCR_PROMPT_TEMPLATE 在 wt 文件 0 命中); vitest 5 files 53/53 tests pass Duration 1.03s (symlink node_modules 后 wt 内跑); origin/auto/opt-vision-1783212856 HEAD=ba3a21b 已确认; stack 链 ba3a21b→d5f0ef0→58c71ec(main) fast-forward 干净可 merge; 软链 node_modules 已 rm, wt status 干净。全 7 derived fix 现均 dispatched: opt-vision-1783212856 (2commit: d5f0ef0 SH2-M-004 + ba3a21b SH2-L-003) + opt-background-1783213292 (4commit stack: 3e7efba/5d3d756/7d7c44f/15fd714) + opt-popup-1783215325 (1commit: 2465588 SH2-L-002)。",
+  "next_suggestion": "audit-2026-07-05-007 全 7 derived fix 均已 dispatch, 0 待派发 → 下轮起进入 wait 轮监听 human merge 状态 (status 仍 fix-in-progress, derived_fixes 全 status=pending dispatched-awaiting-merge)。下轮: 跑 scout-scan 瞭望快照 + 检查 3 个 wt (opt-vision-1783212856/opt-background-1783213292/opt-popup-1783215325) 是否被 merge 到 shizi main; 若全 merged → status=cycle-complete 触发下一轮全量审计 (挑未深审项目); 若 3 连续 wait 轮 0 merge → deadlock-archive (reject 全 7, status=cycle-complete) 同 audit-2026-07-05-001/002/003 precedent。下轮也可顺手做 scout 推荐小修复 (本轮 scout #1=autonomous-engine 补 planning/ 目录, 但属 autonomous-studio 自指 churn 禁区边缘——planning/ 是文档非机械文件, 可做; 慎重则跳过等审计轮)。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "/home/admin/workspace/shizi/src/background/vision-adapter.ts",
+      "line": 603,
+      "severity": "low",
+      "finding": "SH2-L-003: verifyOcrResults 全仓零调用者 (grep .ts/.tsx/.js/.json 仅定义处 + 内部 console.warn, 无 import/re-export), d360b4f VL识别合并校对已取代该独立校对步骤 → 死代码。且函数接受未预处理 imageBase64 (不经 preprocessForVL IMAGE_TOO_LARGE 守卫) 直接 callVisionApi, 若被接回大图无 OOM/400 兜底。",
+      "remediation": "删除 verifyOcrResults 函数 + 其唯一依赖 VERIFY_OCR_PROMPT_TEMPLATE 常量 + 未用 VerifiedText import。已在 opt-vision-1783212856 commit ba3a21b (stacking atop d5f0ef0 SH2-M-004) 修复, 53/53 tests pass。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-007",
+  "audit_depth": "shallow"
+}

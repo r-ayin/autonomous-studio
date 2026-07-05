@@ -1,0 +1,34 @@
+{
+  "case_id": "case-2026-07-06-048",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-06T07:20:00+08:00",
+  "project": "dataworks-dev-assistant",
+  "work_unit": "AUDITT-01 派生修复：telemetry_start 对 sql/凭证 kwarg 脱敏",
+  "situation": "audit-2026-07-06-005（dataworks-dev-assistant 全量深度审计）挖出 AUDITT-01（MEDIUM）：telemetry_start 把非 well-known kwarg（含 sql）原样塞进 _context['args']，telemetry_end 落本地 JSONL（~/.dataworks/telemetry.jsonl）且 telemetry_upload.py 上传远端，全程零脱敏。execute_sql.py:451 传 sql=args.sql，SQL 可含表名/列名/WHERE 值（PII/业务数据）。这是审计报告中明确指出的两条真实外部信任边界之一（LLM prompt injection 致 SQL/PII 外泄），属实质安全收益。",
+  "action": "在 telemetry.py 新增 _SENSITIVE_KWARGS 集合 + _sanitize_sql() + _sanitize_extra() 三个内部 helper。telemetry_start 的 extra dict 写入 _context['args'] 前过 _sanitize_extra：sql 类 kwarg 调 _sanitize_sql 保留首关键字（SQL 类型）+ 前 50 字符截断（超长加 …），password/token/secret/api_key/credential/cookie/authorization 等 kwarg 值替换为 <redacted>，其余 kwarg 原样保留。不改动 telemetry_end/telemetry_fail/分析报告函数，最小 surgical 改动。",
+  "files_changed": ["skills/dataworks-dev-assistant/core/telemetry.py"],
+  "worktree": "opt-dataworks-1783293099",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "opt-worktree.sh 复用同 area worktree opt-dataworks-1783293099（route-fix，telemetry.py 不在 .claude/public-interfaces.txt）",
+    "commit 7100503 pushed origin/auto/opt-dataworks-1783293099 (dfca487..7100503 HEAD)",
+    "AST parse OK + CLI smoke (python3 core/telemetry.py 正常输出)",
+    "运行时验证：telemetry_start('execute_sql.py', sql='SELECT secret_col FROM big_table WHERE x=1', password='s3cr3t', project_id=14255) → _context['args']={'sql':'SELECT:SELECT secret_col FROM big_table WHERE x=1','password':'<redacted>'}；assert 's3cr3t' not in args 通过；project_id 走 well-known 通道不入 args",
+    "_sanitize_sql 长串截断：'SELECT '+'a'*200 → 'SELECT:SELECT aaaa…'(50 char + …)"
+  ],
+  "next_suggestion": "下轮继续派发 audit-2026-07-06-005 的 pending finding，建议顺序 WRITEO-02（modules/node-management/scripts/manage_node_deps.py，raw requests 绕过 _do_request 无审计无确认，medium）→ HTTPAU-01~04 批（core/bff_client.py，low 批量）→ AUDITT-03/06 + RUNTIM-* + DATAAN-03/04 + SQLEXE-03/08 + WRITEO-04/08/09 逐条派发。全部 pending 派完后 audit-cycle-state.status 改 cycle-complete 触发下一轮全量审计。",
+  "audit_type": "security-review",
+  "audit_findings": [
+    {
+      "file": "skills/dataworks-dev-assistant/core/telemetry.py",
+      "line": "67-75 (original telemetry_start extra kwargs block)",
+      "severity": "medium",
+      "finding": "AUDITT-01：telemetry_start 把非 well-known kwarg（含 sql）原样塞进 _context['args']，经 telemetry_end 落本地 JSONL + telemetry_upload.py 上传远端，全程零脱敏。SQL 可含表名/列名/WHERE 值（PII/业务数据），execute_sql.py:451 传 sql=args.sql。",
+      "remediation": "telemetry_start 对 sql 保留类型+前50字符截断、password/token 等 redact。已实施：新增 _SENSITIVE_KWARGS + _sanitize_sql + _sanitize_extra，extra dict 写入前过 _sanitize_extra。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-005",
+  "audit_depth": "deep"
+}

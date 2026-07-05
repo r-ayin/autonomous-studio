@@ -1,0 +1,62 @@
+{
+  "case_id": "case-2026-07-06-032",
+  "agent_id": "ralph-autonomous-engine",
+  "timestamp": "2026-07-06T20:30:00+08:00",
+  "project": "x-tool/一件重启脚本/remote_control",
+  "work_unit": "全量深度审计 remote_control/server.py (735 LOC) + .bat/.vbs/sync-ai-config.py + git-tracked 配置（presets.json/public_url.txt/ip_address.txt/startup-enhanced.bat）",
+  "situation": "audit-cycle-state.status=cycle-complete (audit-2026-07-06-003 x-tool/xia 山夏 7/7 XIA-CHAT 全 merged) → 本轮触发新全量审计。所有顶层项目均已被深审≥1次，state.next_audit_trigger_reason 明示候选 x-tool/juhe / x-tool/remote_control / 先前浅审区续审。juhe 目录已不存在；remote_control 在 一件重启脚本/ 下，audit-016 broad monorepo sweep grep remote_control=0 → 从未独立深审。选取此模块。",
+  "action": "main-loop deep read (sonnet sub-agent fan-out 历史连续 402 per audit-005/007/009 precedent → 主循环直读 fallback，constraints A 节授权；可用 sub-agent 但须 model=sonnet，实测 402 故主循环)。读 server.py 全 735 LOC + presets.json/config.yml/public_url.txt/ip_address.txt 内容 + .gitignore + git ls-files 跟踪状态 + startup.bat/startup-enhanced.bat/run_background.vbs/sync-ai-config.py。跨文件 sink 扫描 eval/exec/pickle/os.system/shell=True/requests/urlopen + 硬编码 secret。产出 17 findings 落 .claude/audits/audit-2026-07-06-004.md，15 route-fix 入 audit-cycle-state.derived_fixes (pending)，1 structural SD-RC-01 入 structural-debt.md。",
+  "files_changed": [
+    ".claude/audits/audit-2026-07-06-004.md (new)",
+    ".claude/audit-cycle-state.json (status cycle-complete→fix-in-progress, derived_fixes 7 XIA-CHAT→15 RC-*, pending_count 0→15, +history entry)",
+    ".claude/structural-debt.md (+SD-RC-01)"
+  ],
+  "worktree": null,
+  "direction": "audit (no fix dispatched this round; derived fixes pending next rounds)",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    ".claude/audits/audit-2026-07-06-004.md created (17 findings: 1 CRIT + 3 HIGH + 6 MED + 6 LOW + 2 INFO)",
+    "audit-cycle-state.json: status=fix-in-progress, pending_count=15, derived_fixes=15 (verified via json round-trip load/dump)",
+    "RC-SEC-01 CRITICAL verified: $ git ls-files → presets.json tracked; $ cat presets.json → 2 live yunyi.cfd key (AH7ZKSSM-F6NH-T70R-B9N8-J10CGX7JSHR5 / K33EP67S-7N5Z-S21H-5QUS-D3S7VYNQG871); $ git log → dfc86cf committed; x-tool origin=外部 fork r-ayin/x-tool push 403 precedent (audit-008/010/011/012/013/015/016/003) → key 已 push 远端",
+    "RC-SEC-02 HIGH verified: server.py:452 <input type=password id=api_key value={api_key}> — GET / (line 171) 全程无 PIN 校验，curl 即得明文 apiKey",
+    "RC-SEC-03 HIGH verified: server.py:26 PIN_CODE=\"1234\" 硬编码; :84-129 start_tunnel_thread 自动 CF Tunnel 暴露公网; :475/499/546/584 PIN 校验无 attempt 计数/锁定",
+    "RC-XSS-01 HIGH verified: server.py:206 <span class=preset-name>{p['name']}</span> — p['name'] 未 html.escape; /add_preset :553 接受任意 name",
+    "RC-BUG-01 MEDIUM verified (真逻辑bug): server.py:539 str(e, sort_keys=True) — 内置 str() 无 sort_keys 形参 → TypeError; error 响应路径自崩; 命中自指 churn 例外 (audit_findings 写明 file:line+证据)",
+    "RC-LEAK-01 MEDIUM verified: git ls-files → public_url.txt+ip_address.txt tracked; cat ip_address.txt → 100.82.91.58 (Tailscale CGNAT 段) + 192.168.1.8 LAN IP",
+    "RC-LEAK-02 MEDIUM verified: startup-enhanced.bat:39-40 hardcoded gateway token 4ee4af6aca33da22fb9d8c2362c1541c140acbb0a9dd8922; git-tracked",
+    "跨文件 sink 扫描: server.py 4 处 shell=True (line 89/613/625/671) 均硬编码命令/target 列表无用户输入 → 无命令注入; urllib.request.urlretrieve 仅 hardcoded GitHub URL; ✓",
+    "structural SD-RC-01 appended to .claude/structural-debt.md (跨 4 文件 E:\\openclaw 硬编码, 需 config-path 解析模块, 非最小 fix)"
+  ],
+  "next_suggestion": [
+    "派生 RC-SEC-01 (CRITICAL, priority 1): .gitignore 加 presets.json 规则 + git rm --cached presets.json + 新建 presets.example.json 模板; 走 opt-worktree.sh commit (route-fix, area=remote-control-security); 提醒 owner 须到 yunyi.cfd 轮换 2 key (同 audit-015 APIMON-SECRET-01 precedent, 引擎不可代劳)",
+    "派生 RC-SEC-02 (HIGH, priority 2): server.py GET / 不在 HTML 嵌 apiKey/primary_model/base_url, 改空值/占位, 配置仅 PIN 校验后返回 — 1 文件",
+    "派生 RC-SEC-03+RC-CTIME-01+RC-LOG-01 stack (HIGH+LOW+LOW 同文件 server.py): PIN 从 env 读 + hmac.compare_digest 4 处 + 删 line 714 print — 1 commit stack",
+    "派生 RC-XSS-01+RC-ATOMIC-02 stack (server.py presets_html/save_presets 区块): html.escape(p['name']) + 原子写+maxlen — 1 commit",
+    "派生 RC-CFG-01+RC-ATOMIC-01+RC-ROBUST-01+RC-BUG-01+RC-PIN-01+RC-PROXY-01 (server.py 其余 6 finding, 分 2-3 commit stack)",
+    "派生 RC-LEAK-01 (gitignore + 2 git rm --cached, 可与 RC-SEC-01 同 .gitignore commit 合并)",
+    "派生 RC-LEAK-02 (startup-enhanced.bat token 动态读) — 独立 commit",
+    "全 15 route-fix dispatched 后 3 连续 wait 轮 (x-tool 外部 fork push 403 precedent) → 预期 deadlock-archive, wt+stack 保留 disk 待人工 merge (同 audit-005/006/011/013/015 precedent)"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {"file": "一件重启脚本/remote_control/presets.json", "line": "8-9,15-16", "severity": "critical", "finding": "presets.json git-tracked 含 2 真实 yunyi.cfd API key (AH7ZKSSM-F6NH-T70R-B9N8-J10CGX7JSHR5 / K33EP67S-7N5Z-S21H-5QUS-D3S7VYNQG871), committed dfc86cf push 外部 fork origin; 同 audit-015 APIMON-SECRET-01 provider 但不同 key", "remediation": ".gitignore 加规则 + git rm --cached + presets.example.json 模板; owner 须轮换 2 key + 视情 filter-repo", "kind": "route-fix"},
+    {"file": "一件重启脚本/remote_control/server.py", "line": "171-470 (444-452)", "severity": "high", "finding": "RC-SEC-02: GET / 全程无 PIN 校验, HTML <input value={api_key}> 直接回显 live apiKey; curl 即得明文 (type=password 仅浏览器遮罩)", "remediation": "不在初始 HTML 嵌 apiKey/primary_model/base_url, 改空值/占位, 配置仅 PIN 校验后返回", "kind": "route-fix"},
+    {"file": "一件重启脚本/remote_control/server.py", "line": "26,84-129,714,475,499,546,584", "severity": "high", "finding": "RC-SEC-03: 硬编码 PIN \"1234\" (4 位 10000 空间) + 自动 Cloudflare 公网隧道 + 无速率限制/锁定 → 公网秒级暴力", "remediation": "PIN 从 env/文件读 (不硬编码) + per-IP 失败计数器 5 次锁 60s", "kind": "route-fix"},
+    {"file": "一件重启脚本/remote_control/server.py", "line": "203-211", "severity": "high", "finding": "RC-XSS-01: preset name p['name'] 未 html.escape 直接拼 <span> → 存储型 XSS, 可驱动全部 PIN 保护端点 (改 baseUrl 盗 apiKey / 远程重启)", "remediation": "import html; html.escape(p['name']); safe_json 改 html.escape(json.dumps(p))", "kind": "route-fix"},
+    {"file": "一件重启脚本/remote_control/server.py", "line": "510-525", "severity": "medium", "finding": "RC-CFG-01: /update_config 接受任意 base_url 无 scheme/host 校验, 写入 provider.baseUrl → Bot 下次调 LLM 把 Bearer apiKey 送攻击者主机 (SSRF 凭证盗取)", "remediation": "validate_base_url: scheme 必须 https (本地 ollama 例外) + 拒私网/环回/云元数据 (同 audit-015 APIMON-SSRF-01 _is_blocked_host)", "kind": "route-fix"},
+    {"file": "一件重启脚本/remote_control/server.py", "line": "539", "severity": "medium", "finding": "RC-BUG-01: str(e, sort_keys=True) 非法 Python — 内置 str() 无 sort_keys 形参 → TypeError; save_config 失败时 error 响应路径自身崩溃, 客户端收到断连而非 JSON 错误 (真逻辑 bug, 命中自指 churn 例外)", "remediation": "str(e) 去 sort_keys", "kind": "route-fix"},
+    {"file": "一件重启脚本/remote_control/public_url.txt + ip_address.txt + .gitignore", "line": "whole-file", "severity": "medium", "finding": "RC-LEAK-01: public_url.txt (trycloudflare 隧道域名) + ip_address.txt (含 Tailscale CGNAT 100.82.91.58 + LAN 192.168.1.8) 均 git-tracked + push origin", "remediation": ".gitignore 加两规则 + git rm --cached 两文件 (可与 RC-SEC-01 同 .gitignore commit 合并)", "kind": "route-fix"},
+    {"file": "一件重启脚本/remote_control/startup-enhanced.bat", "line": "39-40", "severity": "medium", "finding": "RC-LEAK-02: Gateway auth token 4ee4af6aca33da22fb9d8c2362c1541c140acbb0a9dd8922 硬编码 .bat, git-tracked + push origin", "remediation": "token 从 clawdbot.json gateway.auth.token 动态读 (server.py:643-644 已示范), .bat 用 python -c/env 传递", "kind": "route-fix"},
+    {"file": "一件重启脚本/remote_control/server.py", "line": "371,474", "severity": "medium", "finding": "RC-PIN-01: /restart 把 PIN 放 GET query (?pin=), 泄漏到浏览器历史/Referer/CF edge log/server.log/代理日志", "remediation": "改 POST /restart, PIN 在 JSON body (同 /update_config 一致)", "kind": "route-fix"},
+    {"file": "一件重启脚本/remote_control/server.py", "line": "140-147", "severity": "medium", "finding": "RC-ATOMIC-01: save_config json.dump 直接覆写 clawdbot.json, 写中途崩溃致配置截断/损坏, Bot 启动失败", "remediation": "写 .tmp 后 os.replace 原子替换", "kind": "route-fix"},
+    {"file": "一件重启脚本/remote_control/server.py", "line": "475,499,546,584", "severity": "low", "finding": "RC-CTIME-01: PIN 用 != 比较, 非常量时间, timing side-channel (公网抖动大实用价值低但与 RC-SEC-03 叠加)", "remediation": "import hmac; hmac.compare_digest(pin, PIN_CODE) 4 处替换", "kind": "route-fix"},
+    {"file": "一件重启脚本/remote_control/server.py", "line": "494-496,542-544,580-582", "severity": "low", "finding": "RC-ROBUST-01: /update_config & /add_preset 的 int(Content-Length) + json.loads 在 try 块之前, 畸形 JSON/缺 header → 未捕获异常, 连接断无 400", "remediation": "整体包 try/except, JSONDecodeError/KeyError/ValueError 返回 400", "kind": "route-fix"},
+    {"file": "一件重启脚本/remote_control/server.py", "line": "55-69", "severity": "low", "finding": "RC-PROXY-01: download_cloudflared 成功路径 line 67-69 return 未恢复 HTTPS_PROXY env, 残留 http://127.0.0.1:10809 污染 cloudflared tunnel + Bot 子进程网络", "remediation": "try/finally 临时设 env, 成功/失败均恢复原值", "kind": "route-fix"},
+    {"file": "一件重启脚本/remote_control/server.py", "line": "714", "severity": "low", "finding": "RC-LOG-01: print(f'Default PIN: {PIN_CODE}') → server.log 明文记 PIN (*.log 已 gitignore 不入库, 但磁盘可读/备份带走)", "remediation": "删 line 714 print 或改不输出 PIN (与 RC-SEC-03 同文件 stack)", "kind": "route-fix"},
+    {"file": "一件重启脚本/remote_control/server.py", "line": "158-164", "severity": "low", "finding": "RC-ATOMIC-02: save_presets 非原子写 + /add_preset 无数量上限 → 攻击者拿下 PIN 后刷入海量 preset 致 presets.json 膨胀 DoS", "remediation": "原子写 + if len>100: presets=presets[-100:] maxlen", "kind": "route-fix"},
+    {"file": "一件重启脚本/remote_control/server.py", "line": "POST 端点全", "severity": "info", "finding": "RC-CSRF-01: 无 CSRF token, 但 PIN-in-body (非 cookie) 缓解传统 CSRF; GET / 无鉴权 (RC-SEC-02) 使 CSRF 无必要; 不派 fix", "remediation": "记录, 不派生", "kind": "route-fix"},
+    {"file": "一件重启脚本/remote_control/server.py:30,621,641 + sync-ai-config.py:8-9 + startup.bat:16-23", "line": "多", "severity": "info", "finding": "RC-PATH-01: 跨 4 文件硬编码 E:\\openclaw 绝对路径, Windows-only 不可移植, 改一处动多处", "remediation": "→ SD-RC-01 structural-debt (引入 get_config_path() 从 OPENCLAW_CONFIG_PATH env 解析, 跨文件迁移)", "kind": "structural"}
+  ],
+  "audit_id": "audit-2026-07-06-004",
+  "audit_depth": "deep"
+}

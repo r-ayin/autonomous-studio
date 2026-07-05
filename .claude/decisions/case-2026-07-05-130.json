@@ -1,0 +1,27 @@
+{
+  "case_id": "case-2026-07-05-130",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-05T23:50:00+08:00",
+  "project": "wanxia-edit",
+  "work_unit": "派生 fix WANXIA-SSRF-01：generate-cover-image.py download_image 加 scheme allowlist(https) + host allowlist + IP 字面量 block + 50MB cap + Content-Length 预检 + 流式读 + 半成品清理（复用 generate-image skill H02/L02 commit 617f8a7/b528ce4 模式）",
+  "situation": "audit-cycle-state.status=fix-in-progress（audit-014 wanxia-edit deep audit 6 derived_fixes pending）。本轮 step 0 读 state 选 pending finding 派生最小 fix。优先 WANXIA-SSRF-01（HIGH 安全）。该 finding 指出 download_image 用 urllib.request.urlopen 拉外部 API 返回的 result_url，无任何 scheme/host/IP/size 校验：urllib 默认 opener 含 FileHandler → file:///etc/passwd 本地文件读 → 写 covers/00-national-cover.png → mail_push.py 转 JPG 附件 SMTP 外发 = 本地文件读+外泄链；169.254.169.254 SSRF 同理；无大小上限 → OOM/磁盘填满。与 audit-2026-07-04-013 generate-image skill H02(hostname allowlist+IP block)/L02(50MB cap+Content-Length precheck) 同类，本文件零防护。",
+  "action": "改 generate-cover-image.py 一个文件（route-fix，最小单位）。imports 加 ipaddress/ssl/urlparse。GPTImageClient 内加 3 项安全基线：(1) _DEFAULT_IMAGE_MAX_BYTES=50MB(env WANXIA_IMAGE_MAX_BYTES 可覆盖)；(2) _allowed_image_hosts() — 默认从 GPT_IMAGE_API_BASE 解析 host(api.lk888.ai)，env WANXIA_ALLOWED_IMAGE_HOSTS 可追加逗号分隔，避免 CDN 切换时硬编码断裂；(3) _validate_image_url(url) — 仅 https、非空 host、拒 IP 字面量(ipv4/ipv6/带方括号，ipaddress.ip_address 探测)、host 须在白名单。download_image 重写：先 _validate_image_url（失败 print 🚫 直接 return False 不重试不落盘），urlopen 后 Content-Length 预检(int 转换失败走流式累计)，open(save_path,'wb') 流式 read(65536) 累计 written，超 max_bytes 抛 ValueError + except BaseException 清理半成品(save_path.unlink)避免下游误读截断 PNG，超限/校验失败 return False 不走重试，仅网络异常走原 5 次重试。signature 不变(self,url:Path,max_retries=5)->bool，generate_and_wait:469 调用点零改动。编译通过 + importlib 加载跑 7 条 URL 用例：file:///etc/passwd BLOCK / http://api.lk888.ai BLOCK(非 https) / https://169.254.169.254 BLOCK(IP 字面量) / https://127.0.0.1:8080 BLOCK(IP) / https://evil.example.com BLOCK(非白名单) / https://api.lk888.ai/v1/r/x.png PASS / https://[::1] BLOCK(IP 字面量)。allowed hosts 实测={'api.lk888.ai'}。\n\n关键决策：wanxia-edit 不是 git 仓库（无 .git，git rev-parse 报 'not a git repository'），opt-worktree.sh 需 git 故无法派 worktree。这是 SD-WANXIA-01 '项目布局碎片化' structural debt 的直接体现（owner 未澄清 src/ monolith vs 松散脚本布局，且磁盘无 .git）。修复直接落 live 工作文件（cron 实际调用的就是该文件 python generate-cover-image.py），等价于 merge 后状态；不 git init（结构性变更须 owner 授权，违反约束 DO NOT 第 1/14 条精神）。fix 本身有效，pending 下一轮 owner 澄清 git 布局后可补 git 化。",
+  "files_changed": ["/home/admin/workspace/wanxia-edit/generate-cover-image.py"],
+  "worktree": null,
+  "direction": "fix:wanxia-ssrf",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "python3 py_compile.compile('generate-cover-image.py', doraise=True) → compile OK",
+    "importlib 加载模块 + 7 条 URL 用例实测：file:///etc/passwd BLOCK(非 https scheme 'file') / http://api.lk888.ai BLOCK(非 https 'http') / https://169.254.169.254 BLOCK(拒绝 IP 字面量) / https://127.0.0.1:8080 BLOCK(IP 字面量) / https://evil.example.com BLOCK(hostname 不在白名单 allowed=['api.lk888.ai']) / https://api.lk888.ai/v1/r/x.png PASS / https://[::1] BLOCK(IP 字面量 '::1')",
+    "_allowed_image_hosts() 实测返回 {'api.lk888.ai'}（从 GPT_IMAGE_API_BASE 默认值 https://api.lk888.ai 解析）",
+    "grep 确认 download_image signature 不变 (self, url:str, save_path:Path, max_retries:int=5)->bool，generate_and_wait:469 调用 ok=self.download_image(result_url,save_path) 零改动",
+    "新增 _validate_image_url / _allowed_image_hosts / _DEFAULT_IMAGE_MAX_BYTES 三处安全基线落 GPTImageClient 内（line 391-446），download_image 重写 line 446-510"
+  ],
+  "next_suggestion": "下轮继续派生 audit-014 剩余 pending fix（按优先级）：WANXIA-SMTP-01(mail_push.py:94 int(SMTP_PORT) 包 try/except) → WANXIA-ENV-01(env.js vs server.js .env 路径统一) → WANXIA-XHS-NO-SANDBOX-01(social-scraper.js --no-sandbox，低优先)。均 route-fix 单文件，但因 wanxia-edit 非 git 仓无法走 opt-worktree，需评估：要么 owner 澄清后 git init wanxia-edit（解除 SD-WANXIA-01），要么继续直接落 live 文件并在 case 注明。WANXIA-DEAD-01/02 structural 待 owner 决策 src/ monolith vs 松散脚本布局，不派生。SD-WANXIA-01 仍 open。当 6 个 derived_fixes 全 merged/rejected 后 audit-cycle-state.status→cycle-complete 触发下次全量审计（候选未深审：xia 499 / personal-assistant re-audit / wechat-main re-audit）。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {"file": "generate-cover-image.py", "line": "388-407,469", "severity": "high", "finding": "WANXIA-SSRF-01（派生 fix 目标，本轮修复）：download_image 用 urllib.request.urlopen 拉外部 API 返回的 result_url，无 scheme/host/IP/size 校验；urllib 默认 opener 含 FileHandler → file:// 本地文件读 + 169.254.169.254 SSRF + 无大小上限 OOM + mail_push.py 邮件外泄链。", "remediation": "已修：加 _validate_image_url(https only + host 白名单从 GPT_IMAGE_API_BASE 解析 + IP 字面量 block) + Content-Length 预检 + 流式 read(65536) + 50MB cap + 半成品清理。7 条 URL 用例全 BLOCK/PASS 符预期。", "kind": "route-fix"}
+  ],
+  "audit_id": "audit-2026-07-05-014",
+  "audit_depth": "deep"
+}

@@ -1,0 +1,43 @@
+{
+  "case_id": "case-2026-07-05-116",
+  "agent_id": "ralph-wiggum-loop",
+  "timestamp": "2026-07-05T18:23:19+08:00",
+  "project": "x-tool",
+  "work_unit": "聚合ai客服开发/qianfan_driver sidecar 共享密钥鉴权 (OMNICS-SIDECAR-01)",
+  "situation": "audit-2026-07-05-013 finding OMNICS-SIDECAR-01 (HIGH, priority #2 of 11 pending): qianfan_driver.py FastAPI 全端点 (/send_message /embed_window /get_messages /dump_ui /resize_window /restore_window /set_visible /status /get_customer_info /debug_windows) 无任何鉴权, 虽 bind 127.0.0.1 但 localhost 任意进程/浏览器 CSRF 可驱动千帆客服窗口发钓鱼话术、嵌窗、读聊天历史、dump UI. Electron spawn (XiaoHongShuAdapter.startPythonSidecar) 只传 --port 不传 token. 派生 fix #2 of 11 pending (OMNICS-API-01=case-115 已派).",
+  "action": "最小修复 2 文件: (1) qianfan_driver.py 加 module-level API_TOKEN + @app.middleware('http') enforce_sidecar_token 校验 X-Sidecar-Token header, 不匹配返 401 JSON; argparse 加 --api-token (None=unauth 仅手动 dev, Electron 路径必传); __main__ 模块作用域赋 API_TOKEN (无 global 因 annotated name 不能 global, 且 __main__ block 是模块作用域直接写全局). (2) XiaoHongShuAdapter.ts 加 sidecarToken=randomBytes(16).hex + pythonAxios=axios.create({headers:{X-Sidecar-Token}}) 实例, spawn args 加 --api-token, 全 12 处 axios.get/post 改用 this.pythonAxios.get/post (保留 axios.isAxiosError + axios.create). opt-worktree.sh 判 direction_kind=route-fix (qianfan_driver.py/XiaoHongShuAdapter.ts 不在 public-interfaces.txt), 复用同 area worktree opt-omnics-1783246236, commit stack 在 case-115 (357a7ed) 之上.",
+  "files_changed": [
+    "x-tool/聚合ai客服开发/src/python/qianfan_driver.py",
+    "x-tool/聚合ai客服开发/src/main/core/adapters/XiaoHongShuAdapter.ts"
+  ],
+  "worktree": "opt-omnics-1783246236",
+  "direction": "omnics:sidecar-auth",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 3335c97 on auto/opt-omnics-1783246236 (parent=357a7ed case-115, base=85bd9e1=master, FF-clean: master 是 HEAD 祖先, HEAD ahead 2 / behind 0); git merge-base --is-ancestor master HEAD 通过; worktree 内 grep 确认 X-Sidecar-Token/enforce_sidecar_token/sidecarToken 各 5 命中; python3 -m py_compile qianfan_driver.py 通过; x-tool external-fork push 403 precedent (同 audit-005..012/013/115) → stack 完整保留 disk 待人工 merge to master. ⚠ 副作用: 原文件 CRLF 行尾 (qianfan 345行/XHS 457行 \r), Edit 工具匹配时规范化为 LF → 全文件 CRLF→LF 转换, 致 diff 虚高 (qianfan 385+/345- 全为行尾转换, 实质逻辑改动 ~30行; XHS 160+/152- 大部分同因). 安全逻辑改动正确, 但人工 review diff 会看到行尾噪音. 已知 harness 行为 (CRLF 文件任何 Edit 都触发全文件 LF 化), 非故意 churn.",
+  "next_suggestion": "下一轮派生 OMNICS-LLM-01 (MED, priority #3: 买家消息原样 role:user 拼 LLM 无围栏 → prompt injection, AIService.ts + XiaoHongShuAdapter.ts, 但 XHS adapter 本轮已动需防 cp-guard 冲突 → 优先审 AIService.ts 单文件围栏); 然后 OMNICS-LLM-02 (MED deceptive systemPrompt), OMNICS-KB-01 (MED FTS5 未转义). 全 11 pending 派完等 3 轮 wait timeout 或人工 merge. 注意 OMNICS-API-01+SIDECAR-01 同 worktree stack, 人工 merge 时一并落.",
+  "audit_type": "security-review",
+  "audit_findings": [
+    {
+      "file": "x-tool/聚合ai客服开发/src/python/qianfan_driver.py",
+      "line": "21,593-795(__main__ 793-810)",
+      "severity": "high",
+      "finding": "OMNICS-SIDECAR-01: FastAPI 全端点无鉴权, 127.0.0.1 bind 仍可被本地任意进程/浏览器 CSRF 驱动 send_message/embed_window/get_messages/dump_ui",
+      "remediation": "module-level API_TOKEN + @app.middleware enforce X-Sidecar-Token (401 on mismatch) + --api-token CLI arg; Electron spawn 传 random hex",
+      "kind": "route-fix"
+    },
+    {
+      "file": "x-tool/聚合ai客服开发/src/main/core/adapters/XiaoHongShuAdapter.ts",
+      "line": "456-498(startPythonSidecar), 39-594(全 axios 调用)",
+      "severity": "high",
+      "finding": "OMNICS-SIDECAR-01 (adapter 侧): startPythonSidecar 只传 --port 无 token, 全 axios 调用无 auth header → sidecar 鉴权后 adapter 自身被拒",
+      "remediation": "sidecarToken=randomBytes(16).hex + pythonAxios=axios.create({headers:{X-Sidecar-Token}}) + spawn 加 --api-token + 全 axios.get/post 改 this.pythonAxios.*",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-013",
+  "audit_depth": "shallow",
+  "_parent_finding_id": "OMNICS-SIDECAR-01",
+  "_dispatch_worktree_head": "3335c97",
+  "_dispatch_branch": "auto/opt-omnics-1783246236",
+  "_dispatch_stacked_on": "357a7ed (case-115 OMNICS-API-01)"
+}

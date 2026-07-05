@@ -1,0 +1,46 @@
+{
+  "case_id": "case-2026-07-06-016",
+  "agent_id": "ralph-autonomous-engine",
+  "timestamp": "2026-07-06T10:10:00+08:00",
+  "project": "personal-assistant",
+  "work_unit": "PA-ASR-02 + PA-ASR-03 (MEDIUM x2, route-fix, same file): wrap _analytics and query_habits second DuckDB connection in try/finally so con.close() runs even on exception. Stacked on opt-asr-1783274064 (PA-ASR-01 c720680).",
+  "situation": "audit-2026-07-06-002 derived fixes PA-ASR-02 + PA-ASR-03 (both MEDIUM, both personal_assistant/asr.py, both route-fix, both DuckDB connection leak — same shape). PA-ASR-02: _analytics opens duckdb.connect() then runs analytics_init + INSERT loop + con.close() unguarded; any exception skips close, leaking a write connection holding DuckDB file-level exclusive lock. process_file wraps _analytics in try/except Exception that prints & swallows → leak is silent. PA-ASR-03: query_habits second (read-write) connection same shape — analytics_init + 3 SELECTs + con.close() unguarded. Audit remediation for both: try/finally or `with`. Same-file stack → dispatch together on opt-asr-1783274064 (PA-ASR-01 c720680 already modified asr.py in that worktree → opt-worktree.sh cp-guard would detect divergence main→worktree and skip cp; per [[opt-worktree-stack-diverged-escape-hatch]] memory + case-104 precedent, use direct worktree edit + worktree-internal git commit). PRE-FLIGHT verification (per [[fix-already-committed-check]] memory): confirmed opt-asr-1783274064 worktree EXISTS at /home/admin/workspace/.opt-worktrees/personal-assistant/opt-asr-1783274064 (NOT under autonomous-studio/.opt-worktrees — initial `git worktree list` from autonomous-studio repo missed it; re-ran from personal-assistant repo), branch auto/opt-asr-1783274064 HEAD=c720680, c720680 IS a valid git object (commit), PA-ASR-01 fix verified in worktree asr.py (scan_once at line 161 4-space=class method, query_habits at 182 0-space=module level). NOT merged to main (main=580c4aa, branch 2 ahead) — awaiting human merge, consistent with [[audit-cycle-merged-means-dispatched]] (status=merged means dispatched+pushed, not merged-to-main). No duplicate fix.",
+  "action": "Edited /home/admin/workspace/.opt-worktrees/personal-assistant/opt-asr-1783274064/personal_assistant/asr.py directly (escape-hatch direct-worktree-edit). (1) _analytics (worktree lines 149-159): wrapped body from `from . import storage as _s` through INSERT loop in `try:` block, moved `con.close()` into `finally:`. (2) query_habits second connection (worktree lines 195-203): wrapped `from . import storage as _s` through `meta = ...fetchone()` in `try:` block, moved `con.close()` into `finally:`, kept `return {...}` after the try/finally. No logic change on happy path; only guarantees con.close() on exception. The first read-only connection in query_habits (lines 188-194) was left as-is — out of PA-ASR-03 finding scope (audit explicitly scopes PA-ASR-03 to 'second connection line 175-183'). Committed in worktree via `git add personal_assistant/asr.py && git commit` (worktree-internal commit, not opt-worktree.sh — cp-guard would have skipped the diverged file). Pushed to origin auto/opt-asr-1783274064.",
+  "files_changed": [
+    "personal_assistant/asr.py"
+  ],
+  "worktree": "opt-asr-1783274064 (branch auto/opt-asr-1783274064, stacked on c720680 PA-ASR-01, base=580c4aa=main)",
+  "direction": "asr:duckdb-leak (route-fix; asr.py not a public-interface file → route-fix direction_kind; reused same-area worktree opt-asr-1783274064 per same-file stack rule; direct-worktree-commit per diverged-wt escape hatch)",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "commit 94c777b on auto/opt-asr-1783274064: 'opt(asr:duckdb-leak): fix(asr): PA-ASR-02+03 _analytics & query_habits try/finally DuckDB connection leak', 1 file changed, 19 insertions(+), 15 deletions(-). Stacked on c720680 (PA-ASR-01).",
+    "push origin auto/opt-asr-1783274064: 'c720680..94c777b  auto/opt-asr-1783274064 -> auto/opt-asr-1783274064' (origin updated, remote returned new Code Review link).",
+    "FF-clean: git merge-base --is-ancestor main auto/opt-asr-1783274064 → main IS ancestor of branch; rev-list --left-right --count main...branch = '0\t2' (main 0 ahead, branch 2 ahead: c720680+94c777b).",
+    "py_compile: python3 -m py_compile personal_assistant/asr.py → OK (no syntax error).",
+    "BUG-SPECIFIC VERIFICATION (ast structural): ast.walk on worktree asr.py — _analytics body kinds = ['Import','Assign','Assign','Try'] (ends with Try node); query_habits body kinds = ['Expr','Import','Assign','If','Assign','Try','Expr','Assign','Try','Return'] (second-to-last stmt is Try before Return). Both target blocks now have try/finally.",
+    "grep -n 'finally\\|con.close' asr.py: _analytics → line 160 'finally:' + line 161 'con.close()'; query_habits second conn → line 206 'finally:' + line 207 'con.close()'. Both close() calls now inside finally.",
+    "main checkout untouched: change isolated to worktree branch opt-asr-1783274064; main stays at 580c4aa (PA-ASR-01 c720680 + this fix 94c777b both await human merge via opt-worktree.sh merge)."
+  ],
+  "next_suggestion": "9 derived fixes still pending in audit-2026-07-06-002 cycle: MED PA-WIKI-01 (wiki.py _body_grounded single-bigram coverage) + PA-REC-01 (recommend.py empty-title grounding bypass — empty string is substring of any item, hallucination gate open) + PA-AND-01 (android/api.js header merge overridden by ...opts); LOW PA-WIKI-02/PA-PRO-01/PA-REC-02/PA-DEV-01/PA-AND-02; INFO PA-SPK-01. Next round (status=fix-in-progress) dispatch PA-REC-01 (recommend.py — clearest hallucination-gate bug, 1 file, new worktree area=recommend) OR PA-WIKI-01 (wiki.py, new worktree area=wiki). All 12 dispatched+merged/rejected → status=cycle-complete → next round triggers fresh deep audit (candidates: dataworks-dev-assistant 32k loc / fbi-dev-assistant 19k loc / xia 499 nodes, all never deep-audited). ⚠ opt-asr-1783274064 (2-commit stack c720680+94c777b) + opt-prod-deploy-1783270172 (prior cycle) both await human merge to main — not blocking dispatch (worktree isolation). ⚠ structural-debt SD-PA-WIKI-01 + SD-PA (api.py zero-auth + serve 0.0.0.0) still open pending user authorization.",
+  "audit_type": "none",
+  "audit_findings": [
+    {
+      "file": "personal_assistant/asr.py",
+      "line": 152,
+      "severity": "medium",
+      "finding": "PA-ASR-02: _analytics (lines 149-159) opened duckdb.connect() then ran analytics_init + INSERT loop + con.close() unguarded; exception in analytics_init or any INSERT skipped con.close(), leaking a write connection holding DuckDB file-level exclusive lock. process_file wraps _analytics in try/except Exception that prints & swallows → leak silent. Long-running run_loop (PA-ASR-01 fix enables it) would progressively block all analytics writes.",
+      "remediation": "Wrap _analytics body (after con=duckdb.connect) in try/finally: con.close() in finally guarantees release even on exception. DONE this case (commit 94c777b).",
+      "kind": "route-fix"
+    },
+    {
+      "file": "personal_assistant/asr.py",
+      "line": 175,
+      "severity": "medium",
+      "finding": "PA-ASR-03: query_habits second (read-write) connection (original lines 175-183 / worktree 195-203) same shape as PA-ASR-02 — analytics_init + 3 SELECTs + con.close() unguarded; raised exception leaks the connection.",
+      "remediation": "Wrap second connection block in try/finally: con.close() in finally. DONE this case (commit 94c777b, same commit as PA-ASR-02).",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-002",
+  "audit_depth": "shallow"
+}
