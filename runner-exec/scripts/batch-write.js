@@ -57,7 +57,25 @@ if (require.main === module) {
     console.log('manifest 格式: [{"path":"C:\\\\...","content":"..."}]');
     process.exit(0);
   }
-  const files = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+  let files;
+  try {
+    files = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+  } catch (e) {
+    console.error('ERROR: manifest JSON 解析失败:', e.message);
+    process.exit(1);
+  }
+  // RE-MANIFEST-01 (audit-017): manifest 无 schema 校验 → 非数组/非 string path/content
+  // 直达 RE-CMDI-01 注入面或 TypeError 崩溃。强校验 {path,content} 均为非空 string。
+  if (!Array.isArray(files)) {
+    console.error('ERROR: manifest 必须是数组');
+    process.exit(1);
+  }
+  for (const f of files) {
+    if (typeof f.path !== 'string' || typeof f.content !== 'string') {
+      console.error('ERROR: manifest 每项 {path,content} 必须为 string');
+      process.exit(1);
+    }
+  }
   console.log(`批量写入 ${files.length} 个文件...`);
   batchWrite(files).then(r => {
     console.log(r.ok ? `✓ 全部完成` : `✗ ${r.error}`);
