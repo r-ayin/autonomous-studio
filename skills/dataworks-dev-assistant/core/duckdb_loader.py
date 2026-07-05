@@ -42,6 +42,11 @@ class DuckDBLoader:
         db_path = os.path.join(runtime_dir, _DB_FILE)
         self.db = duckdb.connect(db_path)       # File DB: session 级持久化
         self._mem = duckdb.connect()              # Memory DB: 临时分析
+        # 防御纵深：禁止 read_csv/read_parquet/ATTACH 等表函数读进程可达的任意文件
+        # 用户 SQL 可经 sql()/fetch() 执行，read_csv('/etc/passwd') 即使在读写连接下也须拦截
+        # (audit-2026-07-06-005 DATAAN-06)
+        self.db.execute("SET enable_external_access = false")
+        self._mem.execute("SET enable_external_access = false")
         self._tables = {}  # table_name → {"api_name", "call_params", "row_count", "schema", "called_at"}
         self._round = self._next_round()
         self._call_seq = 0
@@ -165,6 +170,42 @@ class DuckDBLoader:
 
         return schema
 
+    def _create_snapshot_table(self, conn, table_name, data):
+        """用参数化 VALUES 创建快照表（不读文件，enable_external_access=false 下可用）。
+
+        DuckDB 从 Python 参数推断列类型，跨全量行取并集，支持嵌套（dict→STRUCT，
+        list→ARRAY）与异构行（缺字段填 None）。单语句即可承载 10w 行（实测 9s），
+        无需分批——保留与 read_json_auto 一致的类型推断正确性。
+        """
+        conn.execute(f'DROP TABLE IF EXISTS "{table_name}"')
+
+        if not data:
+            # 空数据：建空表保下游 SELECT COUNT(*)=0 / _extract_schema 不报错
+            conn.execute(f'CREATE TABLE "{table_name}" (_empty VARCHAR)')
+            return
+
+        # 标量行归一化为 dict，使参数化路径统一
+        rows = [r if isinstance(r, dict) else {"_value": r} for r in data]
+
+        # 列并集（保序），异构行缺字段填 None
+        columns = []
+        seen = set()
+        for row in rows:
+            for k in row.keys():
+                if k not in seen:
+                    seen.add(k)
+                    columns.append(k)
+
+        col_list = ", ".join(f'"{c}"' for c in columns)
+        row_ph = "(" + ", ".join(["?"] * len(columns)) + ")"
+        all_ph = ", ".join([row_ph] * len(rows))
+        params = [v for row in rows for v in (row.get(c) for c in columns)]
+        conn.execute(
+            f'CREATE TABLE "{table_name}" AS '
+            f'SELECT * FROM (VALUES {all_ph}) AS t({col_list})',
+            params,
+        )
+
     def load(self, api_name, data, call_params=None, primary_key=None):
         """
         将 API 返回数据灌入 DuckDB（独立快照表）
@@ -211,27 +252,15 @@ class DuckDBLoader:
         self._call_seq += 1
         table_name = f"{api_name}_r{self._round}_c{self._call_seq}"
 
-        # 写入临时 JSON
-        tmp_path = f"/tmp/_duckdb_loader_{table_name}_{os.getpid()}.json"
-        try:
-            with open(tmp_path, "w", encoding="utf-8") as f:
-                json.dump(data, f, ensure_ascii=False)
-
-            # File DB: 直接 CREATE（不做 UPSERT）
-            self.db.execute(f'DROP TABLE IF EXISTS "{table_name}"')
-            self.db.execute(
-                f"CREATE TABLE \"{table_name}\" AS SELECT * FROM read_json_auto('{tmp_path}')"
-            )
-
-            # Memory DB: 同样创建（供 auto_summary 分析）
-            self._mem.execute(f'DROP TABLE IF EXISTS "{table_name}"')
-            self._mem.execute(
-                f"CREATE TABLE \"{table_name}\" AS SELECT * FROM read_json_auto('{tmp_path}')"
-            )
-
-        finally:
-            if os.path.exists(tmp_path):
-                os.remove(tmp_path)
+        # 参数化灌入快照表（不再写 /tmp JSON + read_json_auto）：
+        # enable_external_access=false 是 DuckDB 数据库级全局开关（非 per-connection），
+        # 一旦设置即禁用所有连接的 read_json_auto/read_csv 等文件表函数。为让 load()
+        # 与防御开关共存，改用 VALUES 参数绑定灌入（无文件 I/O），DuckDB 从 Python 参数
+        # 推断列类型（VARCHAR/INT/STRUCT/ARRAY），支持嵌套与异构行。
+        # 顺带消除 DATAAN-04 /tmp 可预测路径 + symlink 跟随问题。
+        # (audit-2026-07-06-005 DATAAN-06 + DATAAN-04)
+        self._create_snapshot_table(self.db, table_name, data)
+        self._create_snapshot_table(self._mem, table_name, data)
 
         # 更新元信息
         row_count = self.db.execute(f'SELECT COUNT(*) FROM "{table_name}"').fetchone()[0]
