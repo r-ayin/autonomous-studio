@@ -25,11 +25,41 @@ function getHeaders() {
   return headers;
 }
 
+/**
+ * Default HTTP request timeout in milliseconds.
+ * Prevents fetch() from hanging indefinitely when DEVOUT_SERVER_URL is
+ * unresponsive — without this, every task-client call (used by report-event,
+ * resume-next-batch, complete-task, poll-build, poll-pre-check) can block
+ * forever with no error. Can be overridden via DEVOUT_HTTP_TIMEOUT_MS env var.
+ * Audit reference: audit-2026-07-06-001 finding PD-HANG-01.
+ */
+const DEFAULT_TIMEOUT_MS = Number(process.env.DEVOUT_HTTP_TIMEOUT_MS) || 30000;
+
+/**
+ * fetch() wrapper with an AbortController-based timeout.
+ * Aborts after DEFAULT_TIMEOUT_MS and raises a typed timeout error so callers
+ * see a clear failure instead of an indefinite hang.
+ */
+async function fetchWithTimeout(url, init) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } catch (err) {
+    if (err && err.name === 'AbortError') {
+      throw new Error(`${init.method || 'GET'} ${url} timed out after ${DEFAULT_TIMEOUT_MS}ms`);
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 const API_PREFIX = '/api/v1/agent/tasks';
 
 async function apiGet(path) {
   const url = `${getBaseUrl()}${path}`;
-  const res = await fetch(url, {
+  const res = await fetchWithTimeout(url, {
     method: 'GET',
     headers: getHeaders(),
   });
@@ -45,7 +75,7 @@ async function apiGet(path) {
 
 async function apiPost(path, body) {
   const url = `${getBaseUrl()}${path}`;
-  const res = await fetch(url, {
+  const res = await fetchWithTimeout(url, {
     method: 'POST',
     headers: getHeaders(),
     body: JSON.stringify(body),
@@ -59,7 +89,7 @@ async function apiPost(path, body) {
 
 async function apiPut(path, body) {
   const url = `${getBaseUrl()}${path}`;
-  const res = await fetch(url, {
+  const res = await fetchWithTimeout(url, {
     method: 'PUT',
     headers: getHeaders(),
     body: JSON.stringify(body),

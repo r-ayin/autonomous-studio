@@ -14,6 +14,16 @@ import https from 'https';
 
 const SUNFIRE_URL = 'https://api.x.alibaba-inc.com/api/dispatcher.do';
 
+/**
+ * Default HTTP request timeout in milliseconds for Sunfire API calls.
+ * Prevents https.request from hanging indefinitely when the Sunfire dispatcher
+ * is unresponsive (TCP stall / slowloris) — without this, report-observation
+ * ticks block forever with no error, stalling batch progression.
+ * Can be overridden via SUNFIRE_HTTP_TIMEOUT_MS env var for testing / slow networks.
+ * Audit reference: audit-2026-07-06-001 finding PD-HANG-01.
+ */
+const DEFAULT_TIMEOUT_MS = Number(process.env.SUNFIRE_HTTP_TIMEOUT_MS) || 30000;
+
 // ─── Auth / Transport ──────────────────────────────────────────────────────
 
 /**
@@ -46,6 +56,12 @@ function httpPost(url, body) {
       let data = '';
       res.on('data', (chunk) => (data += chunk));
       res.on('end', () => resolve(data));
+    });
+    // Abort the request if the server stops responding within the timeout.
+    // req.setTimeout fires on socket inactivity; destroy() rejects the promise
+    // via the 'error' handler so querySunfireInsights can degrade to skipped.
+    req.setTimeout(DEFAULT_TIMEOUT_MS, () => {
+      req.destroy(new Error(`Sunfire httpPost timed out after ${DEFAULT_TIMEOUT_MS}ms`));
     });
     req.on('error', reject);
     req.write(body);
