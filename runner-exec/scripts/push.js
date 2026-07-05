@@ -16,10 +16,19 @@ function escapePSPath(p) {
   return String(p).replace(/'/g, "''");
 }
 
+// walkDir: enumerate regular files under dir (depth-first), skipping dotfiles.
+// Symlinks are skipped (audit-2026-07-05-017 RE-PATH-01): fs.readdirSync with
+// withFileTypes gives Dirent objects whose isSymbolicLink() reliably identifies
+// links regardless of target type. fs.readFileSync follows symlinks by default,
+// so a link inside localDir pointing at /etc/... or ~/.ssh/... would have its
+// target content read and pushed to the remote Runner → local file exfiltration.
+// Skipping symlinks (files AND dir-links) closes the vector at zero behavioral
+// cost: a skill mirror dir contains only regular files.
 function walkDir(dir) {
   const results = [];
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     if (entry.name.startsWith('.')) continue;
+    if (entry.isSymbolicLink()) continue;
     const full = path.join(dir, entry.name);
     if (entry.isDirectory()) results.push(...walkDir(full));
     else results.push(full);
