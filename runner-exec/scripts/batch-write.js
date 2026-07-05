@@ -4,6 +4,10 @@ const WebSocket = require('./vendor/ws');
 const { getInternalSecret, getSessionToken, getRunnerID, WS_HOST } = require('./creds');
 const { escapePS, escapePSPath } = require('./write-file');
 
+// 16MB cap — batch-write 返回 output 供调用方看进度，但 output += msg.data 无界累积会在
+// Runner 误回放大输出时 OOM (audit-017 RE-EXEC-01)。超 cap 时截断并报 output_overflow。
+const MAX_OUTPUT = 16 * 1024 * 1024;
+
 async function batchWrite(files, timeoutMs = 60000) {
   const secret = getInternalSecret();
   const runnerId = await getRunnerID(secret);
@@ -35,6 +39,7 @@ async function batchWrite(files, timeoutMs = 60000) {
       }
       if (msg.type === 'output') {
         output += msg.data;
+        if (output.length > MAX_OUTPUT) { clearTimeout(timer); ws.close(); resolve({ ok: false, error: 'output_overflow', output: output.slice(0, MAX_OUTPUT) }); return; }
         if (output.includes(MARKER)) { clearTimeout(timer); ws.close(); resolve({ ok: true, output }); }
       }
       if (msg.type === 'exit') { clearTimeout(timer); ws.close(); resolve({ ok: true, output }); }
