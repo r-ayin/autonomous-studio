@@ -15,6 +15,10 @@ function escapePSPath(p) {
   return String(p).replace(/'/g, "''");
 }
 
+// 16MB cap — 写文件只需扫 MARKER 确认完成，不需要完整 output；但 output += msg.data 无界累积
+// 会在 Runner 误回放大输出时 OOM (audit-017 RE-EXEC-01)。超 cap 时停止累积并报 output_overflow。
+const MAX_OUTPUT = 16 * 1024 * 1024;
+
 async function writeFile(windowsPath, content, timeoutMs = 30000) {
   const secret = getInternalSecret();
   const runnerId = await getRunnerID(secret);
@@ -40,6 +44,7 @@ async function writeFile(windowsPath, content, timeoutMs = 30000) {
       }
       if (msg.type === 'output') {
         output += msg.data;
+        if (output.length > MAX_OUTPUT) { clearTimeout(timer); ws.close(); resolve({ ok: false, error: 'output_overflow' }); return; }
         if (output.includes(MARKER)) { clearTimeout(timer); ws.close(); resolve({ ok: true }); }
       }
       if (msg.type === 'exit') { clearTimeout(timer); ws.close(); resolve({ ok: true }); }
