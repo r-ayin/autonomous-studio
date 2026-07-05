@@ -192,7 +192,15 @@ async function handleDeployBatch(taskId, args) {
     strict: false,
   });
 
+  // PD-BATCH-01: parseInt('--batch-index') returns NaN when the flag is missing or
+  // non-numeric. NaN serializes to null and NaN !== NaN, so findBatchEvent never
+  // matches → a fresh deploy_batch event is created every tick → duplicate events
+  // and lost status updates on the real batch. Guard explicitly and fail fast.
   const batchIndex = parseInt(values['batch-index'], 10);
+  if (!Number.isInteger(batchIndex) || batchIndex < 0) {
+    console.error(`[report-event] deploy_batch requires a non-negative integer --batch-index, got: ${JSON.stringify(values['batch-index'])}`);
+    process.exit(1);
+  }
   const batchTotal = values['batch-total'] ? parseInt(values['batch-total'], 10) : null;
   const instances = values['instances'] ? parseInt(values['instances'], 10) : null;
   const extraPayload = values.payload ? JSON.parse(values.payload) : null;
