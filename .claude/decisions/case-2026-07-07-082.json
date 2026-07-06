@@ -1,0 +1,83 @@
+{
+  "case_id": "case-2026-07-07-082",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-07T19:15:00+08:00",
+  "project": "moni-master",
+  "work_unit": "Deep audit Python web backend (api.py + engine.py)",
+  "situation": "audit-cycle-state was cycle-complete after audit-028 Rust fixes all merged. All workspace projects previously audited. moni-master Python backend (local_simulator/api.py 2033 lines) was the only unaudited major module remaining.",
+  "action": "Full deep audit of moni-master Python FastAPI backend. Read api.py (full), engine.py (key methods via sonnet sub-agent), models.py, config.yaml. Identified 7 findings (2H/3M/2L): SSRF via LLM proxy, unbounded backtest frames, sync blocking WFO, agent action whitelist bypass, API key leak, no-auth (structural x2). Wrote audit report audit-2026-07-07-029.md. Updated audit-cycle-state to fix-in-progress with 5 pending route-fixes.",
+  "files_changed": [
+    ".claude/audits/audit-2026-07-07-029.md",
+    ".claude/audit-cycle-state.json"
+  ],
+  "worktree": null,
+  "direction": "audit-only (no code changes this round)",
+  "outcome": "succeeded",
+  "outcome_evidence": "audit-2026-07-07-029.md written (7 findings, 2H/3M/2L). audit-cycle-state.json updated: status=fix-in-progress, pending_count=5, derived_fixes populated with MONI-PY-001..007. SD-014/SD-015 queued in structural-debt.md.",
+  "next_suggestion": [
+    "派生 MONI-PY-001 (SSRF) fix — highest severity, route-fix on api.py LLM chat endpoint",
+    "派生 MONI-PY-005 (API key leak) fix — high severity, sanitize config in /agent/state/full",
+    "派生 MONI-PY-004 (whitelist bypass) fix — medium, add missing actions to _ACTION_KWARGS_WHITELIST"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "local_simulator/api.py",
+      "line": 1914,
+      "severity": "high",
+      "finding": "SSRF via LLM chat proxy — user-controlled provider_override.base_url fetched server-side with api_key in Authorization header. No URL allowlist, no scheme/host validation.",
+      "remediation": "Add URL allowlist for base_url. Validate scheme=https. Reject private/reserved IPs after DNS resolution.",
+      "kind": "route-fix"
+    },
+    {
+      "file": "local_simulator/api.py",
+      "line": 127,
+      "severity": "medium",
+      "finding": "Unbounded BacktestPayload.frames list — no max_length constraint. Memory exhaustion DoS. Mirrors MONI-API-002 (Rust side, fixed).",
+      "remediation": "Add Field(max_length=500) to frames. Server-side guard in endpoint.",
+      "kind": "route-fix"
+    },
+    {
+      "file": "local_simulator/api.py",
+      "line": 1749,
+      "severity": "medium",
+      "finding": "/validation/grid-search calls wfo_engine.run_wfo() synchronously in FastAPI sync endpoint. Blocks event loop for minutes during CPU-heavy Monte Carlo.",
+      "remediation": "Refactor to AsyncRunStore pattern (same as /wfo/run). Return run_id, let client poll.",
+      "kind": "route-fix"
+    },
+    {
+      "file": "local_simulator/api.py",
+      "line": 1378,
+      "severity": "medium",
+      "finding": "_filter_action_args returns args UNFILTERED when action not in whitelist. 8 actions (place_order, update_settings, etc.) pass arbitrary kwargs. update_settings → _deep_update allows config injection.",
+      "remediation": "Add all dispatched actions to whitelist. Validate update_runtime_settings keys against known config subtrees.",
+      "kind": "route-fix"
+    },
+    {
+      "file": "local_simulator/api.py",
+      "line": 1340,
+      "severity": "high",
+      "finding": "/agent/state/full returns settings: app.state.engine.config with llm.api_key in plaintext. /agent/settings also leaks via get_runtime_settings(). /llm/config GET correctly redacts but these two don't.",
+      "remediation": "Create sanitize_config() helper. Apply in both endpoints before returning.",
+      "kind": "route-fix"
+    },
+    {
+      "file": "local_simulator/api.py",
+      "line": 920,
+      "severity": "medium",
+      "finding": "No authentication on any of 50+ endpoints including state-mutating ones. Default binds 127.0.0.1 but any local process has full control.",
+      "remediation": "Add configurable auth middleware. Structural debt SD-014.",
+      "kind": "structural"
+    },
+    {
+      "file": "local_simulator/api.py",
+      "line": 1994,
+      "severity": "low",
+      "finding": "WebSocket /ws accepts connections without authentication. Pushes real-time trading events.",
+      "remediation": "Require auth token before accept. Structural debt SD-015.",
+      "kind": "structural"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-029",
+  "audit_depth": "deep"
+}
