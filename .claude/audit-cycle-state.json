@@ -1,29 +1,93 @@
 {
   "_schema": "audit-cycle-state v1.0",
   "_description": "追踪当前全量审计周期状态。全量审计事件驱动：上次派生的 fix 全部 merge/reject 落定后才触发下一次全量审计。引擎每轮 step 0 读这个文件决定本轮是审计轮还是瞭望轮。",
-  "current_audit_id": "audit-2026-07-03-017",
-  "current_audit_started_at": "2026-07-03T11:00:00Z",
-  "current_audit_project": "autonomous-studio",
-  "current_audit_module": "hooks+scripts control plane",
+  "current_audit_id": "audit-2026-07-06-019",
+  "current_audit_started_at": "2026-07-06T03:40:00Z",
+  "current_audit_project": "FinanceTracker",
+  "current_audit_module": "全栈（core/security 加密+生物识别 / core/data Room DB / feature/import-export CSV / app 入口 / 构建配置）",
   "derived_fixes": [
-    {"fix_case_id": "case-2026-07-03-107", "audit_id": "audit-2026-07-03-017", "finding_id": "H-001", "status": "merged", "kind": "route-fix", "description": "commit-gate -a flag bypass", "merged_in": "442452b"},
-    {"fix_case_id": "case-2026-07-03-108", "audit_id": "audit-2026-07-03-017", "finding_id": "H-002", "status": "merged", "kind": "direction-shift", "description": "checkpoint prompt injection hardening", "merged_in": "442452b"},
-    {"fix_case_id": "case-2026-07-03-109", "audit_id": "audit-2026-07-03-017", "finding_id": "H-003", "status": "merged", "kind": "route-fix", "description": "check-planning-status.sh shell injection", "merged_in": "442452b"},
-    {"fix_case_id": "case-2026-07-03-110", "audit_id": "audit-2026-07-03-017", "finding_id": "H-004", "status": "merged", "kind": "direction-shift", "description": "auto-push + secret-file exclusions", "merged_in": "6c1ab8e"},
-    {"fix_case_id": "case-2026-07-03-111", "audit_id": "audit-2026-07-03-017", "finding_id": "M-008", "status": "merged", "kind": "route-fix", "description": "save-checkpoint missing fsync", "merged_in": "442452b"},
-    {"fix_case_id": "case-2026-07-03-111", "audit_id": "audit-2026-07-03-017", "finding_id": "M-009", "status": "merged", "kind": "route-fix", "description": "incremental-save non-atomic write", "merged_in": "442452b"},
-    {"fix_case_id": "case-2026-07-03-111", "audit_id": "audit-2026-07-03-017", "finding_id": "M-010", "status": "merged", "kind": "route-fix", "description": "latest.json writer race", "merged_in": "442452b"},
-    {"fix_case_id": "case-2026-07-03-109", "audit_id": "audit-2026-07-03-017", "finding_id": "M-011", "status": "merged", "kind": "route-fix", "description": "echo $TOOL_INPUT flag risk", "merged_in": "442452b"}
+    {
+      "fix_case_id": "case-2026-07-06-010",
+      "audit_id": "audit-2026-07-06-019",
+      "finding_id": "H-002+H-003",
+      "status": "pending",
+      "kind": "route-fix",
+      "description": "SQLCipher 口令改 Keystore/EncryptedSharedPreferences + SecureRandom 生成（消除明文 prefs + 非 CSPRNG）",
+      "files": ["core/security/src/main/java/com/financetracker/core/security/crypto/DatabaseEncryption.kt"]
+    },
+    {
+      "fix_case_id": "case-2026-07-06-011",
+      "audit_id": "audit-2026-07-06-019",
+      "finding_id": "H-004",
+      "status": "pending",
+      "kind": "route-fix",
+      "description": "allowBackup=false + dataExtractionRules 排除 databases/ 与 security_prefs（堵 adb backup 一把导走库+密钥）",
+      "files": ["app/src/main/AndroidManifest.xml"]
+    },
+    {
+      "fix_case_id": "case-2026-07-06-012",
+      "audit_id": "audit-2026-07-06-019",
+      "finding_id": "M-001",
+      "status": "pending",
+      "kind": "route-fix",
+      "description": "BiometricAuthenticator 加 DEVICE_CREDENTIAL 兜底 + CryptoObject 重载（去 negativeButton 互斥）",
+      "files": ["core/security/src/main/java/com/financetracker/core/security/biometric/BiometricAuthenticator.kt"]
+    },
+    {
+      "fix_case_id": "case-2026-07-06-013",
+      "audit_id": "audit-2026-07-06-019",
+      "finding_id": "M-002+M-003",
+      "status": "pending",
+      "kind": "route-fix",
+      "description": "CSV 导出公式注入中和（=+-@\\t\\r 前置'）+ 导入流式解析（去 readLines OOM）+ RFC4180 引号状态机（修往返损坏）",
+      "files": ["feature/import-export/src/main/java/com/financetracker/feature/importexport/CsvService.kt"]
+    },
+    {
+      "fix_case_id": "case-2026-07-06-014",
+      "audit_id": "audit-2026-07-06-019",
+      "finding_id": "M-004",
+      "status": "pending",
+      "kind": "route-fix",
+      "description": "fallbackToDestructiveMigration 守卫改 BuildConfig.DEBUG（version==1 release 不再静默丢财务历史）",
+      "files": ["core/data/src/main/java/com/financetracker/core/data/di/DatabaseModule.kt"]
+    },
+    {
+      "fix_case_id": "case-2026-07-06-015",
+      "audit_id": "audit-2026-07-06-019",
+      "finding_id": "L-001",
+      "status": "pending",
+      "kind": "route-fix",
+      "description": "Logger 加 BuildConfig.DEBUG 守卫 + PII 截断脱敏（防金额/备注进 logcat）",
+      "files": ["core/common/src/main/java/com/financetracker/core/common/util/Logger.kt"]
+    },
+    {
+      "fix_case_id": "case-2026-07-06-016",
+      "audit_id": "audit-2026-07-06-019",
+      "finding_id": "L-002",
+      "status": "pending",
+      "kind": "route-fix",
+      "description": "getPassphrase() fail-closed（不吞异常返 null，安全路径禁止静默）",
+      "files": ["core/security/src/main/java/com/financetracker/core/security/crypto/DatabaseEncryption.kt"]
+    },
+    {
+      "fix_case_id": "case-2026-07-06-017",
+      "audit_id": "audit-2026-07-06-019",
+      "finding_id": "L-003+L-004+I-002",
+      "status": "pending",
+      "kind": "route-fix",
+      "description": "CSV 导入账户/分类存在性校验+去硬编码 1L 兜底；minSdk→29 删 legacy WRITE_EXTERNAL_STORAGE 死分支；Room exportSchema=true",
+      "files": ["feature/import-export/src/main/java/com/financetracker/feature/importexport/CsvService.kt", "feature/import-export/src/main/java/com/financetracker/feature/importexport/ImportExportViewModel.kt", "app/build.gradle.kts", "core/data/src/main/java/com/financetracker/core/data/db/FinanceDatabase.kt"]
+    }
   ],
-  "pending_count": 0,
-  "status": "cycle-complete",
-  "_last_scout_at": "2026-07-03T11:45:00Z",
-  "_last_scout_case_id": "case-2026-07-03-106",
-  "_last_scout_summary": "Deep audit of autonomous-studio hooks+scripts (audit-2026-07-03-017). 52 findings (4H/14M/18L/16I) across 15 files. Top: H-001 commit-gate -a bypass, H-002 checkpoint prompt injection, H-003 shell injection in .sh, H-004 auto-push credential leak path. 8 derived fixes queued for dispatch.",
-  "_status_note": "audit-2026-07-03-017 cycle-complete as of 2026-07-03T12:15Z. All 8 derived_fixes merged to main (H-001/H-002/H-003/M-008/M-009/M-010/M-011 via 442452b batch merge; H-004 via 6c1ab8e). Next round triggers new full deep audit on unaudited project.",
+  "pending_count": 8,
+  "status": "fix-in-progress",
+  "_last_scout_at": "2026-07-06T03:40:00Z",
+  "_last_scout_case_id": "case-2026-07-06-010",
+  "_last_scout_summary": "Deep audit FinanceTracker (audit-2026-07-06-019, security-review). 15 findings (5H/4M/4L/2I). Headline: SQLCipher dead code — DatabaseModule never wires SupportFactory, DB is plaintext despite README claim; biometric authenticate() zero callers, no launch gate; passphrase plaintext in SharedPrefs + non-CSPRNG; allowBackup=true. 8 route-fix derived pending (case-010..017); 2 structural debts (SD-004 SQLCipher wiring+migration, SD-005 launch auth gate) queued for user authorization.",
+  "_status_note": "audit-2026-07-06-019 on FinanceTracker: deep security audit. H-001 SQLCipher dead code (DB unencrypted), H-005 biometric non-enforced — both structural (SD-004/SD-005). 8 route-fixes pending dispatch next rounds. status=fix-in-progress.",
   "_status_enum": "idle | auditing | fix-in-progress | cycle-complete",
-  "last_audit_completed_at": "2026-07-03T11:45:00Z",
-  "last_audit_id": "audit-2026-07-03-017",
+  "last_audit_completed_at": "2026-07-06T03:40:00Z",
+  "last_audit_id": "audit-2026-07-06-019",
   "next_audit_trigger_reason": "pending-fixes-cleared",
   "_next_audit_trigger_reason_enum": "pending-fixes-cleared | manual-trigger | first-run",
   "history": [
@@ -33,11 +97,19 @@
       "module": "hooks",
       "completed_at": "2026-07-01T11:10:00Z",
       "findings_total": 19,
-      "findings_by_severity": {"high": 2, "medium": 7, "low": 6, "info": 4},
+      "findings_by_severity": {
+        "high": 2,
+        "medium": 7,
+        "low": 6,
+        "info": 4
+      },
       "derived_route_fixes": 2,
       "derived_structural_debts": 0,
       "fixes_merged_at": "2026-07-01T12:30:00Z",
-      "fixes_merged_commits": ["900a3cc", "b1d072d"]
+      "fixes_merged_commits": [
+        "900a3cc",
+        "b1d072d"
+      ]
     },
     {
       "audit_id": "audit-2026-07-01-002",
@@ -45,11 +117,27 @@
       "module": "scripts",
       "completed_at": "2026-07-01T03:55:00Z",
       "findings_total": 9,
-      "findings_by_severity": {"high": 2, "medium": 4, "low": 3, "info": 0},
+      "findings_by_severity": {
+        "high": 2,
+        "medium": 4,
+        "low": 3,
+        "info": 0
+      },
       "derived_route_fixes": 9,
       "derived_structural_debts": 0,
       "fixes_merged_at": "2026-07-01T18:20:00Z",
-      "fixes_merged_commits": ["92792fe", "25a104a", "cea1871", "d818533", "40cbdd2", "a78f30b", "7e47c1e", "6a5b66a", "7b6b66a", "79f2e6c"]
+      "fixes_merged_commits": [
+        "92792fe",
+        "25a104a",
+        "cea1871",
+        "d818533",
+        "40cbdd2",
+        "a78f30b",
+        "7e47c1e",
+        "6a5b66a",
+        "7b6b66a",
+        "79f2e6c"
+      ]
     },
     {
       "audit_id": "audit-2026-07-01-003",
@@ -57,12 +145,22 @@
       "module": "runtime-listeners",
       "completed_at": "2026-07-01T19:00:00Z",
       "findings_total": 7,
-      "findings_by_severity": {"high": 1, "medium": 3, "low": 2, "info": 1},
+      "findings_by_severity": {
+        "high": 1,
+        "medium": 3,
+        "low": 2,
+        "info": 1
+      },
       "derived_route_fixes": 4,
       "derived_direction_shifts": 1,
       "derived_structural_debts": 0,
       "fixes_merged_at": "2026-07-01T19:05:00Z",
-      "fixes_merged_commits": ["16bcfbf", "390d2f7", "3449e8d", "0056380"]
+      "fixes_merged_commits": [
+        "16bcfbf",
+        "390d2f7",
+        "3449e8d",
+        "0056380"
+      ]
     },
     {
       "audit_id": "audit-2026-07-01-004",
@@ -70,7 +168,12 @@
       "module": "tests",
       "completed_at": "2026-07-01T20:30:00Z",
       "findings_total": 7,
-      "findings_by_severity": {"high": 1, "medium": 3, "low": 2, "info": 1},
+      "findings_by_severity": {
+        "high": 1,
+        "medium": 3,
+        "low": 2,
+        "info": 1
+      },
       "derived_route_fixes": 5,
       "derived_direction_shifts": 0,
       "derived_structural_debts": 2,
@@ -84,12 +187,19 @@
       "module": ".claude/hooks/",
       "completed_at": "2026-07-02T02:48:00Z",
       "findings_total": 5,
-      "findings_by_severity": {"high": 1, "medium": 2, "low": 1, "info": 1},
+      "findings_by_severity": {
+        "high": 1,
+        "medium": 2,
+        "low": 1,
+        "info": 1
+      },
       "derived_route_fixes": 4,
       "derived_direction_shifts": 0,
       "derived_structural_debts": 1,
       "fixes_merged_at": "2026-07-02T09:00:00Z",
-      "fixes_merged_commits": ["7ebfc60"]
+      "fixes_merged_commits": [
+        "7ebfc60"
+      ]
     },
     {
       "audit_id": "audit-2026-07-02-002",
@@ -97,7 +207,12 @@
       "module": "full-project",
       "completed_at": "2026-07-02T10:30:00Z",
       "findings_total": 6,
-      "findings_by_severity": {"high": 1, "medium": 3, "low": 1, "info": 1},
+      "findings_by_severity": {
+        "high": 1,
+        "medium": 3,
+        "low": 1,
+        "info": 1
+      },
       "derived_route_fixes": 5,
       "derived_direction_shifts": 0,
       "derived_structural_debts": 1,
@@ -111,7 +226,12 @@
       "module": "core-security+daemon-proxy+store",
       "completed_at": "2026-07-02T15:30:00Z",
       "findings_total": 6,
-      "findings_by_severity": {"high": 1, "medium": 3, "low": 1, "info": 1},
+      "findings_by_severity": {
+        "high": 1,
+        "medium": 3,
+        "low": 1,
+        "info": 1
+      },
       "derived_route_fixes": 5,
       "derived_direction_shifts": 0,
       "derived_structural_debts": 1,
@@ -125,7 +245,12 @@
       "module": "full-project",
       "completed_at": "2026-07-02T16:30:00Z",
       "findings_total": 7,
-      "findings_by_severity": {"high": 2, "medium": 3, "low": 1, "info": 1},
+      "findings_by_severity": {
+        "high": 2,
+        "medium": 3,
+        "low": 1,
+        "info": 1
+      },
       "derived_route_fixes": 6,
       "derived_direction_shifts": 0,
       "derived_structural_debts": 1,
@@ -139,7 +264,12 @@
       "module": "server-full",
       "completed_at": "2026-07-02T18:45:00Z",
       "findings_total": 9,
-      "findings_by_severity": {"high": 3, "medium": 4, "low": 1, "info": 1},
+      "findings_by_severity": {
+        "high": 3,
+        "medium": 4,
+        "low": 1,
+        "info": 1
+      },
       "derived_route_fixes": 7,
       "derived_direction_shifts": 1,
       "derived_structural_debts": 1,
@@ -153,7 +283,12 @@
       "module": "server+prompt-optimizer",
       "completed_at": "2026-07-02T23:58:00Z",
       "findings_total": 6,
-      "findings_by_severity": {"high": 1, "medium": 3, "low": 1, "info": 1},
+      "findings_by_severity": {
+        "high": 1,
+        "medium": 3,
+        "low": 1,
+        "info": 1
+      },
       "derived_route_fixes": 5,
       "derived_direction_shifts": 0,
       "derived_structural_debts": 1,
@@ -167,7 +302,12 @@
       "module": "backend-full",
       "completed_at": "2026-07-02T07:54:45Z",
       "findings_total": 9,
-      "findings_by_severity": {"high": 3, "medium": 4, "low": 1, "info": 1},
+      "findings_by_severity": {
+        "high": 3,
+        "medium": 4,
+        "low": 1,
+        "info": 1
+      },
       "derived_route_fixes": 7,
       "derived_direction_shifts": 0,
       "derived_structural_debts": 2,
@@ -181,7 +321,12 @@
       "module": "scripts-full",
       "completed_at": "2026-07-02T12:00:00Z",
       "findings_total": 9,
-      "findings_by_severity": {"high": 3, "medium": 4, "low": 1, "info": 1},
+      "findings_by_severity": {
+        "high": 3,
+        "medium": 4,
+        "low": 1,
+        "info": 1
+      },
       "derived_route_fixes": 8,
       "derived_direction_shifts": 0,
       "derived_structural_debts": 1,
@@ -195,7 +340,12 @@
       "module": "packages/core/lib/v3 (agent tools, launch, handlers, mcp)",
       "completed_at": "2026-07-02T09:51:00Z",
       "findings_total": 7,
-      "findings_by_severity": {"high": 2, "medium": 3, "low": 1, "info": 1},
+      "findings_by_severity": {
+        "high": 2,
+        "medium": 3,
+        "low": 1,
+        "info": 1
+      },
       "derived_route_fixes": 6,
       "derived_direction_shifts": 0,
       "derived_structural_debts": 1,
@@ -209,7 +359,12 @@
       "module": "MCP server + SecurityWatchdog + DownloadsWatchdog + Agent action chain",
       "completed_at": "2026-07-02T16:45:00Z",
       "findings_total": 28,
-      "findings_by_severity": {"high": 9, "medium": 10, "low": 6, "info": 3},
+      "findings_by_severity": {
+        "high": 9,
+        "medium": 10,
+        "low": 6,
+        "info": 3
+      },
       "derived_route_fixes": 18,
       "derived_direction_shifts": 0,
       "derived_structural_debts": 6,
@@ -223,12 +378,23 @@
       "module": "background scripts + manifest + popup uploader + shared storage",
       "completed_at": "2026-07-03T01:25:00Z",
       "findings_total": 9,
-      "findings_by_severity": {"high": 1, "medium": 2, "low": 3, "info": 3},
+      "findings_by_severity": {
+        "high": 1,
+        "medium": 2,
+        "low": 3,
+        "info": 3
+      },
       "derived_route_fixes": 6,
       "derived_direction_shifts": 0,
       "derived_structural_debts": 0,
       "fixes_merged_at": "2026-07-02T17:53:09Z",
-      "fixes_merged_commits": ["7163dd3", "4ccf238", "bfb8a38", "9bcada9", "7d235da"],
+      "fixes_merged_commits": [
+        "7163dd3",
+        "4ccf238",
+        "bfb8a38",
+        "9bcada9",
+        "7d235da"
+      ],
       "_note": "Deep audit on shizi Chrome extension. H-001 ONNX supply chain (no hash pin). M-001 OCR data exfil without consent. M-002 progress channel silent failure. 3 low robustness + 3 info. 5/6 route-fixes merged. L-002 cosmetic accepted as-is. Cycle-complete 2026-07-02."
     },
     {
@@ -237,7 +403,12 @@
       "module": "apps/daemon/src (server entry, auth, origin, MCP, routes, plugins)",
       "completed_at": "2026-07-03T02:25:00Z",
       "findings_total": 27,
-      "findings_by_severity": {"high": 6, "medium": 13, "low": 8, "info": 0},
+      "findings_by_severity": {
+        "high": 6,
+        "medium": 13,
+        "low": 8,
+        "info": 0
+      },
       "derived_route_fixes": 15,
       "derived_direction_shifts": 1,
       "derived_structural_debts": 11,
@@ -251,7 +422,12 @@
       "module": "full-project",
       "completed_at": "2026-07-03T05:28:00Z",
       "findings_total": 10,
-      "findings_by_severity": {"high": 2, "medium": 4, "low": 2, "info": 2},
+      "findings_by_severity": {
+        "high": 2,
+        "medium": 4,
+        "low": 2,
+        "info": 2
+      },
       "derived_route_fixes": 7,
       "derived_direction_shifts": 1,
       "derived_structural_debts": 2,
@@ -265,7 +441,12 @@
       "module": "server+storage+auth",
       "completed_at": "2026-07-02T21:35:00Z",
       "findings_total": 9,
-      "findings_by_severity": {"high": 3, "medium": 4, "low": 1, "info": 1},
+      "findings_by_severity": {
+        "high": 3,
+        "medium": 4,
+        "low": 1,
+        "info": 1
+      },
       "derived_route_fixes": 7,
       "derived_direction_shifts": 0,
       "derived_structural_debts": 1,
@@ -279,7 +460,12 @@
       "module": "full-project (server+src+webpack+public)",
       "completed_at": "2026-07-03T06:36:00Z",
       "findings_total": 7,
-      "findings_by_severity": {"high": 0, "medium": 2, "low": 2, "info": 3},
+      "findings_by_severity": {
+        "high": 0,
+        "medium": 2,
+        "low": 2,
+        "info": 3
+      },
       "derived_route_fixes": 0,
       "derived_direction_shifts": 0,
       "derived_structural_debts": 0,
@@ -293,7 +479,12 @@
       "module": "monorepo-full (moni+remote_control+pachong+juhe+wanxia+pdd+ota)",
       "completed_at": "2026-07-03T10:15:00Z",
       "findings_total": 72,
-      "findings_by_severity": {"high": 16, "medium": 25, "low": 24, "info": 7},
+      "findings_by_severity": {
+        "high": 16,
+        "medium": 25,
+        "low": 24,
+        "info": 7
+      },
       "derived_route_fixes": 13,
       "derived_direction_shifts": 4,
       "derived_structural_debts": 6,
@@ -307,13 +498,56 @@
       "module": "hooks+scripts control plane",
       "completed_at": "2026-07-03T11:45:00Z",
       "findings_total": 52,
-      "findings_by_severity": {"high": 4, "medium": 14, "low": 18, "info": 16},
+      "findings_by_severity": {
+        "high": 4,
+        "medium": 14,
+        "low": 18,
+        "info": 16
+      },
       "derived_route_fixes": 6,
       "derived_direction_shifts": 2,
       "derived_structural_debts": 0,
       "fixes_merged_at": null,
       "fixes_merged_commits": [],
       "_note": "Deep audit on autonomous-studio hooks+scripts. H-001 commit-gate -a bypass, H-002 checkpoint prompt injection, H-003 shell injection in .sh, H-004 auto-push credential leak. 8 priority derived_fixes pending dispatch."
+    },
+    {
+      "audit_id": "audit-2026-07-06-018",
+      "project": "oneday-auto-fix",
+      "module": "full-project (auto-fix loop + keepalive proxy + cookie conversion + probes)",
+      "completed_at": "2026-07-06T03:10:00Z",
+      "findings_total": 17,
+      "findings_by_severity": {
+        "high": 4,
+        "medium": 6,
+        "low": 4,
+        "info": 3
+      },
+      "derived_route_fixes": 8,
+      "derived_direction_shifts": 1,
+      "derived_structural_debts": 0,
+      "fixes_merged_at": null,
+      "fixes_merged_commits": [],
+      "_note": "Deep audit on oneday-auto-fix (first time). H-001 gitPush shell injection, H-002 ignoreHTTPSErrors MITM, H-003 prompt-injection pageerror→Bash agent, H-004 no .gitignore/chmod. 9 derived fixes pending dispatch (case-2026-07-06-001..009)."
+    },
+    {
+      "audit_id": "audit-2026-07-06-019",
+      "project": "FinanceTracker",
+      "module": "全栈（core/security 加密+生物识别 / core/data Room DB / feature/import-export CSV / app 入口 / 构建配置）",
+      "completed_at": "2026-07-06T03:40:00Z",
+      "findings_total": 15,
+      "findings_by_severity": {
+        "high": 5,
+        "medium": 4,
+        "low": 4,
+        "info": 2
+      },
+      "derived_route_fixes": 8,
+      "derived_direction_shifts": 0,
+      "derived_structural_debts": 2,
+      "fixes_merged_at": null,
+      "fixes_merged_commits": [],
+      "_note": "Deep audit on FinanceTracker (Android Kotlin finance app, first time). H-001 SQLCipher dead code (DB never encrypted — DatabaseModule wires no SupportFactory), H-002 passphrase plaintext in SharedPrefs, H-003 non-CSPRNG passphrase, H-004 allowBackup=true, H-005 biometric non-enforced (authenticate() zero callers, no launch gate, toggle sets pref without verification). M-001..M-004 biometric fallback/CSV formula injection+parser/destructive migration. 8 route-fixes pending (case-010..017); 2 structural debts SD-004 (SQLCipher wiring+migration) + SD-005 (launch auth gate) queued for user authorization. status=fix-in-progress."
     }
   ]
 }

@@ -14,15 +14,15 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-07-03T12:30Z（case-2026-07-03-107 fix H-001 commit-gate -a bypass; opt-hooks-1783036663; audit-2026-07-03-017 derived fix 1/8 dispatched）**
-- **活跃项目**: audit-cycle-state status=fix-in-progress. audit-2026-07-03-017 (autonomous-studio hooks) complete. H-001 dispatched (case-107, opt-hooks-1783036663). 7 remaining: H-002 checkpoint prompt injection, H-003 shell injection .sh, H-004 auto-push credential leak, M-008 fsync, M-009/M-010 atomic writes, M-011 echo flag risk.
-- **当前阶段**: fix-in-progress → 下轮派生 H-003 (trivial shell injection fix)
+- **最后活跃: 2026-07-06T11:00Z（oneday-auto-fix 项目经 audit-2026-07-06-018 审出 17 findings/9 derived fix 后，用户决定删项目不修；9 fix 全标 rejected，cycle 回 complete；引擎待重启选新项目审计）**
+- **活跃项目**: audit-cycle-state status=cycle-complete, pending=0, 9/9 rejected（oneday-auto-fix 已删，fix 目标不存在）。下轮重启 step0 看到 cycle-complete → 触发新全量审计，从剩余未深审项目选目标（FinanceTracker / kaoqin / huiyis 等，避开 skills/x-tool 纯文档）。
+- **当前阶段**: cycle-complete → 待重启触发新全量审计（oneday-auto-fix 已删，勿再派它的 fix）
 - **GOAL_STATUS**: active
 - **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动；审计轮次事件驱动 audit-cycle-state + 敏感路径 audit-log 埋点）
-- **LAST_UPDATED**: 2026-07-03(case-2026-07-03-107 fix H-001 commit-gate -a bypass; opt-hooks-1783036663)
-- **LAST_WORKTREE**: opt-hooks-1783036663
+- **LAST_UPDATED**: 2026-07-06(用户删 oneday-auto-fix 项目; audit-2026-07-06-018 的 9 derived_fixes 全 rejected; cycle-complete; 待重启选新项目审计)
+- **LAST_WORKTREE**: null（oneday-auto-fix 非仓未开 worktree，已删）
 - **LAST_OUTCOME**: done
-- **NEXT_SUGGESTION**: [1] Dispatch H-003 fix (check-planning-status.sh shell injection, trivial 1-line, route-fix). [2] Batch M-008+M-009 atomic write fixes. [3] Plan H-002 direction-shift (checkpoint integrity). [4] H-004 auto-push direction-shift. Target: /home/admin/workspace/autonomous-studio.
+- **NEXT_SUGGESTION**: [1] 重启引擎：`setsid bash scripts/autonomous-loop.sh /home/admin/workspace /home/admin/workspace/autonomous-studio-aone --bg`（父目录双参数）。[2] step0 见 cycle-complete → 自动触发新全量审计，从未深审项目选目标（FinanceTracker 74 Kotlin / kaoqin / huiyis，避开 skills/x-tool 纯文档）。[3] 勿再派 oneday-auto-fix 的 fix（项目已删，9 fix 已 rejected）。
 - **自主循环**: 🟢 活跃
   - L1 Inline: 每次回复末尾内联检查 (+ git status)
   - L2 Heartbeat: CronCreate 每7分钟（执行轨——推进 Studio 阶段或主动扫描）
@@ -74,10 +74,10 @@ metadata:
 <!-- GOAL_ID: G-2026-06-15-002 -->
 <!-- GOAL_STATUS: active -->
 <!-- ACTIVE_GOAL: ralph-wiggum-autonomous-loop (每轮一个小工作单位，scout-scan 排序选任务) -->
-<!-- LAST_UPDATED: 2026-07-03(case-2026-07-03-107 fix H-001 commit-gate -a bypass; opt-hooks-1783036663) -->
-<!-- LAST_WORKTREE: opt-hooks-1783036663 -->
+<!-- LAST_UPDATED: 2026-07-06(case-2026-07-06-001 deep-audit oneday-auto-fix audit-2026-07-06-018; 17 findings→9 pending derived fix) -->
+<!-- LAST_WORKTREE: null（审计轮不派 fix） -->
 <!-- LAST_OUTCOME: done -->
-<!-- NEXT_SUGGESTION: [1] Dispatch H-003 fix (check-planning-status.sh shell injection, trivial). [2] Batch M-008+M-009 atomic writes. [3] Plan H-002 direction-shift. Target: /home/admin/workspace/autonomous-studio. -->
+<!-- NEXT_SUGGESTION: [1] 派 case-2026-07-06-001 H-001 oneday-auto-fix gitPush --branch shell 注入(单文件 route-fix 复用 worktree). [2] case-2026-07-06-003 H-003 direction-shift prompt 净化+去 Bash 工具(开新 worktree). [3] case-2026-07-06-002 H-002 ignoreHTTPSErrors 多文件批改. 全 9 fix merged|rejected 后 cycle-complete → 下次全量审计 FinanceTracker(Kotlin 按模块分段). -->
 
 | 字段 | 内容 |
 |------|------|

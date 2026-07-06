@@ -1,0 +1,6 @@
+# x-tool — 用户口输入（去重后，3 条 / 原始 3 条）
+# 由 distill-user-style.py Step1 生成，供 BUSINESS-INTENT 提炼 + 引擎阶段①CONTEXTUALIZE 读
+
+[2026-06-20] 全量优化
+[2026-06-20] God文件不拆分，其他的你优化好后写好说明
+[2026-06-20] 将整个仓库打包

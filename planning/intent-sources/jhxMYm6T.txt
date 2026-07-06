@@ -1,0 +1,1500 @@
+# jhxMYm6T — 用户口输入（去重后，30 条 / 原始 32 条）
+# 由 distill-user-style.py Step1 生成，供 BUSINESS-INTENT 提炼 + 引擎阶段①CONTEXTUALIZE 读
+
+[2026-06-16] 当前遇到的问题： 分析当前页面出错原因
+
+期望达到的效果： 页面出错了 Loading chunk src_shared_components_CommonPageTitle_tsx-src_shared_components_DingtalkDocsPanel_tsx failed. (missing: https://1d.alibaba-inc.com/_p/3005/src_shared_components_CommonPageTitle_tsx-src_shared_components_DingtalkDocsPanel_tsx.chunk.js) ChunkLoadError at webpack_require.f.j (https://1d.alibaba-inc.com/_p/3005/main.js:3379:29) at https://1d.alibaba-inc.com/_p/3005/main.js:2672:40 at Array.reduce (<anonymous>) at webpack_require.e (https://1d.alibaba-inc.com/_p/3005/main.js:2671:67) at fn.e (https://1d.alibaba-inc.com/_p/3005/main.js:2905:50) at https://1d.alibaba-inc.com/_p/3005/main.js:72:411 at lazyInitializer (https://1d.alibaba-inc.com/_p/3005/vendor.js:154788:20) at resolveLazy (https://1d.alibaba-inc.com/_p/3005/vendor.js:131862:10) at reconcileSingleElement (https://1d.alibaba-inc.com/_p/3005/vendor.js:132673:114) at reconcileChildFibers (https://1d.alibaba-inc.com/_p/3005/vendor.js:132763:35)
+
+15:51:56
+智能助手
+15:51:56
+建议按优先级处理：
+
+先做临时恢复：在 OneDay 中刷新预览/重新启动应用预览服务；如果只是 dev server 热更新后主包与 chunk 不一致，刷新或重启通常能恢复。
+如果刷新后仍复现，做代码级修复：将 src/App.tsx 中当前页面相关的 React.lazy 路由分包改成静态 import，避免运行时再请求 *.chunk.js。
+修改后重新预览，确认不再请求缺失的 src_shared_components_CommonPageTitle_tsx-src_shared_components_DingtalkDocsPanel_tsx.chunk.js。
+诊断报告里的 [webpack-dev-server] {"isTrusted":true} 更像开发服务器 WebSocket 连接噪音，不是这次页面崩溃的直接原因；直接导致页面错误的是 chunk 文件缺失/返回非 JS。
+本项目启用了 OneDay Cloud 且存在 migrations，已核查数据库依赖未使用不兼容的 @supabase/supabase-js；运行模式是 WebC，也不是远端 SandBox + Cloud 的跨域已知问题。
+代码示例：
+
+示例修复方向（放在 src/App.tsx）：
+
+// 修改前：
+// const TrainingHubModule = React.lazy(() => import(/* webpackPrefetch: true */ './modules/trainingHub'));
+
+// 修改后：
+import TrainingHubModule from './modules/trainingHub';
+
+// 如果希望彻底避免此类分包问题，也可以把其他模块一并从 React.lazy 改为静态 import。
+// 改完后，对应 <Route element={<TrainingHubModule />} /> 不需要调整。
+配置路径：src/App.tsx
+
+正确配置：将当前页面相关模块从 React.lazy 动态导入改为静态 import
+
+📚 参考文档
+该文档说明 [webpack-dev-server] {"isTrusted":true} 属于 webpack-dev-server 客户端相关日志，可作为本次诊断中区分噪音日志和真正 ChunkLoadError 的参考。 - 点击查看
+该文档说明 OneDay Cloud 在 WebC 与 SandBox 下的差异。本次项目为 WebC，未命中 SandBox 导致 Cloud 初始化失败的已知问题。当前页面不是业务组件渲染逻辑本身报错，而是前端构建后的异步 chunk 没有被正确加载。诊断报告显示浏览器请求 src_shared_components_CommonPageTitle_tsx-src_shared_components_DingtalkDocsPanel_tsx.chunk.js 和 src_modules_trainingHub_index_tsx.chunk.js 时，拿到的内容不是 JS，而是类似 not found 的文本，因此先触发 Unexpected identifier 'not'，随后 Webpack 抛出 ChunkLoadError: Loading chunk ... failed。用户代码中 src/App.tsx 使用了大量 React.lazy + import() 路由分包，当前出错页面正好依赖这些懒加载 chunk；一旦 WebC 预览服务重启、热更新、缓存或 chunk 产物不同步，就会出现主包还在、异步分包缺失的白屏/错误边界页面。
+[2026-06-16] 数据库连接失败: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON。请检查数据库表是否已创建（运行 migrations）
+需要实现数据和文档上传功能，在培训管理的知识库页面
+[2026-06-16] 不用了，这三个方案是错的，按你的方案执行
+[2026-06-16] 不要合并远端改动，退回，只推送你改的
+[2026-06-16] 8f045d6在这个版本上，推送你的修复，不重构页面
+[2026-06-16] 让所有交互操作和所有网页内容输出详细的错误日志
+[2026-06-16] 导入失败
+Invalid JSON: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+导入失败: Invalid JSON: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+同步失败: Invalid JSON: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+[xhr] JSON parse failed for /api/dingtalk/status: 404 not found
+https://1d.alibaba-inc.com/_p/3005/api/dingtalk/status
+at console.<computed>(chobitsu:25:294207)
+at json(main.js:17314:33)
+at (anonymous)(main.js:7304:35)
+console.<computed> @ chobitsu:25:294207
+[钉钉文档] 状态接口返回非 JSON
+at console.<computed>(chobitsu:25:294207)
+at (anonymous)(main.js:7310:25)
+console.<computed> @ chobitsu:25:294207
+[xhr] GET /api/dingtalk/status → 200 (18ms, 68B)
+[xhr] JSON parse failed for /api/dingtalk/status: 404 not found
+https://1d.alibaba-inc.com/_p/3005/api/dingtalk/status
+at console.<computed>(chobitsu:25:294207)
+at json(main.js:17314:33)
+at (anonymous)(main.js:7304:35)
+console.<computed> @ chobitsu:25:294207
+[钉钉文档] 状态接口返回非 JSON
+at console.<computed>(chobitsu:25:294207)
+at (anonymous)(main.js:7310:25)
+console.<computed> @ chobitsu:25:294207
+[钉钉文档] 请求: /api/dingtalk/status
+[xhr] GET /_p/3005/api/dingtalk/status
+[xhr] GET /api/dingtalk/status → 200 (12ms, 158B)
+[xhr] JSON parse failed for /api/dingtalk/status: <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Error</title>
+</head>
+<body>
+<pre>Cannot GET /api/dingtalk/status</pre>
+</body>
+</html>
+at console.<computed>(chobitsu:25:294207)
+at json(main.js:17314:33)
+at (anonymous)(main.js:7304:35)
+console.<computed> @ chobitsu:25:294207
+[钉钉文档] 状态接口返回非 JSON
+at console.<computed>(chobitsu:25:294207)
+at (anonymous)(main.js:7310:25)
+console.<computed> @ chobitsu:25:294207
+[xhr] POST /_p/3005/api/kb/cloud-import
+[xhr] POST /api/kb/cloud-import → 200 (20ms, 159B)
+[xhr] JSON parse failed for /api/kb/cloud-import: <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Error</title>
+</head>
+<body>
+<pre>Cannot POST /api/kb/cloud-import</pre>
+</body>
+</html>
+at console.<computed>(chobitsu:25:294207)
+at json(main.js:17314:33)
+at handleImportToCloud(main.js:5652:37)
+console.<computed> @ chobitsu:25:294207
+[知识库] 导入到云端失败: Invalid JSON: Unexpected token '<', "<!DOCTYPE "... is not valid JSON Error: Invalid JSON: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+    at Object.json (https://1d.alibaba-inc.com/_p/3005/main.js:17315:47)
+    at Object.handleImportToCloud [as onClick] (https://1d.alibaba-inc.com/_p/3005/main.js:5652:37)
+at console.<computed>(chobitsu:25:294207)
+at handleImportToCloud(main.js:5663:21)
+console.<computed> @ chobitsu:25:294207
+[xhr] POST /_p/3005/api/kb/cloud-import
+[xhr] POST /api/kb/cloud-import → 200 (14ms, 159B)
+[xhr] JSON parse failed for /api/kb/cloud-import: <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Error</title>
+</head>
+<body>
+<pre>Cannot POST /api/kb/cloud-import</pre>
+</body>
+</html>
+at console.<computed>(chobitsu:25:294207)
+at json(main.js:17314:33)
+at handleImportToCloud(main.js:5652:37)
+console.<computed> @ chobitsu:25:294207
+[知识库] 导入到云端失败: Invalid JSON: Unexpected token '<', "<!DOCTYPE "... is not valid JSON Error: Invalid JSON: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+    at Object.json (https://1d.alibaba-inc.com/_p/3005/main.js:17315:47)
+    at Object.handleImportToCloud [as onClick] (https://1d.alibaba-inc.com/_p/3005/main.js:5652:37)
+at console.<computed>(chobitsu:25:294207)
+at handleImportToCloud(main.js:5663:21)
+console.<computed> @ chobitsu:25:294207
+[xhr] POST /_p/3005/api/kb/cloud-import
+[xhr] POST /api/kb/cloud-import → 200 (13ms, 159B)
+[xhr] JSON parse failed for /api/kb/cloud-import: <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Error</title>
+</head>
+<body>
+<pre>Cannot POST /api/kb/cloud-import</pre>
+</body>
+</html>
+at console.<computed>(chobitsu:25:294207)
+at json(main.js:17314:33)
+at handleImportToCloud(main.js:5652:37)
+console.<computed> @ chobitsu:25:294207
+[知识库] 导入到云端失败: Invalid JSON: Unexpected token '<', "<!DOCTYPE "... is not valid JSON Error: Invalid JSON: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+    at Object.json (https://1d.alibaba-inc.com/_p/3005/main.js:17315:47)
+    at Object.handleImportToCloud [as onClick] (https://1d.alibaba-inc.com/_p/3005/main.js:5652:37)
+at console.<computed>(chobitsu:25:294207)
+at handleImportToCloud(main.js:5663:21)
+console.<computed> @ chobitsu:25:294207
+[xhr] POST /_p/3005/api/dingtalk/sync
+[xhr] POST /api/dingtalk/sync → 200 (12ms, 157B)
+[xhr] JSON parse failed for /api/dingtalk/sync: <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Error</title>
+</head>
+<body>
+<pre>Cannot POST /api/dingtalk/sync</pre>
+</body>
+</html>
+at console.<computed>(chobitsu:25:294207)
+at json(main.js:17314:33)
+at handleSync(main.js:5628:37)
+console.<computed> @ chobitsu:25:294207
+[知识库] 同步钉钉文档失败: Invalid JSON: Unexpected token '<', "<!DOCTYPE "... is not valid JSON Error: Invalid JSON: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+    at Object.json (https://1d.alibaba-inc.com/_p/3005/main.js:17315:47)
+    at Object.handleSync [as onClick] (https://1d.alibaba-inc.com/_p/3005/main.js:5628:37)
+at console.<computed>(chobitsu:25:294207)
+at handleSync(main.js:5635:21)
+
+console.<computed> @ chobitsu:25:294207
+
+Bot
+[2026-06-16] [cloudSync] question_banks 拉取失败: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+console.<computed> @ chobitsu:25:294207
+[postgrest-xhr] GET https://1d.alibaba-inc.com/_p/3005/database/questions?select=*&offset=0&limit=1000
+[cloudSync] questions 拉取失败: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+console.<computed> @ chobitsu:25:294207
+[postgrest-xhr] GET https://1d.alibaba-inc.com/_p/3005/database/campaigns?select=*&offset=0&limit=1000
+[postgrest-xhr] GET https://1d.alibaba-inc.com/_p/3005/database/questions?select=*&offset=0&limit=1000 → 200 (141ms, 157B)
+[postgrest-xhr] GET https://1d.alibaba-inc.com/_p/3005/database/campaigns?select=*&offset=0&limit=1000 → 200 (140ms, 157B)
+[cloudSync] questions 拉取失败: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+console.<computed> @ chobitsu:25:294207
+[postgrest-xhr] GET https://1d.alibaba-inc.com/_p/3005/database/campaigns?select=*&offset=0&limit=1000
+[cloudSync] campaigns 拉取失败: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+console.<computed> @ chobitsu:25:294207
+[postgrest-xhr] GET https://1d.alibaba-inc.com/_p/3005/database/papers?select=*&offset=0&limit=1000
+[postgrest-xhr] GET https://1d.alibaba-inc.com/_p/3005/database/campaigns?select=*&offset=0&limit=1000 → 200 (24ms, 157B)
+[postgrest-xhr] GET https://1d.alibaba-inc.com/_p/3005/database/papers?select=*&offset=0&limit=1000 → 200 (23ms, 154B)
+[cloudSync] campaigns 拉取失败: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+console.<computed> @ chobitsu:25:294207
+[postgrest-xhr] GET https://1d.alibaba-inc.com/_p/3005/database/papers?select=*&offset=0&limit=1000
+[cloudSync] papers 拉取失败: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+console.<computed> @ chobitsu:25:294207
+[postgrest-xhr] GET https://1d.alibaba-inc.com/_p/3005/database/paper_rules?select=*&offset=0&limit=1000
+[postgrest-xhr] GET https://1d.alibaba-inc.com/_p/3005/database/papers?select=*&offset=0&limit=1000 → 200 (15ms, 154B)
+[postgrest-xhr] GET https://1d.alibaba-inc.com/_p/3005/database/paper_rules?select=*&offset=0&limit=1000 → 200 (15ms, 159B)
+[cloudSync] papers 拉取失败: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+console.<computed> @ chobitsu:25:294207
+[postgrest-xhr] GET https://1d.alibaba-inc.com/_p/3005/database/paper_rules?select=*&offset=0&limit=1000
+[cloudSync] paper_rules 拉取失败: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+console.<computed> @ chobitsu:25:294207
+[postgrest-xhr] GET https://1d.alibaba-inc.com/_p/3005/database/exam_assignments?select=*&offset=0&limit=1000
+[postgrest-xhr] GET https://1d.alibaba-inc.com/_p/3005/database/paper_rules?select=*&offset=0&limit=1000 → 200 (32ms, 159B)
+[postgrest-xhr] GET https://1d.alibaba-inc.com/_p/3005/database/exam_assignments?select=*&offset=0&limit=1000 → 200 (30ms, 164B)
+[cloudSync] paper_rules 拉取失败: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+console.<computed> @ chobitsu:25:294207
+[postgrest-xhr] GET https://1d.alibaba-inc.com/_p/3005/database/exam_assignments?select=*&offset=0&limit=1000
+[cloudSync] exam_assignments 拉取失败: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+console.<computed> @ chobitsu:25:294207
+[postgrest-xhr] GET https://1d.alibaba-inc.com/_p/3005/database/enrollments?select=*&offset=0&limit=1000
+[OneDayAssets] Debug source tracking enabled
+[postgrest-xhr] GET https://1d.alibaba-inc.com/_p/3005/database/exam_assignments?select=*&offset=0&limit=1000 → 200 (97ms, 164B)
+[postgrest-xhr] GET https://1d.alibaba-inc.com/_p/3005/database/enrollments?select=*&offset=0&limit=1000 → 200 (96ms, 159B)
+[cloudSync] exam_assignments 拉取失败: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+console.<computed> @ chobitsu:25:294207
+[postgrest-xhr] GET https://1d.alibaba-inc.com/_p/3005/database/enrollments?select=*&offset=0&limit=1000
+[cloudSync] enrollments 拉取失败: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+console.<computed> @ chobitsu:25:294207
+[postgrest-xhr] GET https://1d.alibaba-inc.com/_p/3005/database/practice_attempts?select=*&offset=0&limit=1000
+[postgrest-xhr] GET https://1d.alibaba-inc.com/_p/3005/database/enrollments?select=*&offset=0&limit=1000 → 200 (19ms, 159B)
+[postgrest-xhr] GET https://1d.alibaba-inc.com/_p/3005/database/practice_attempts?select=*&offset=0&limit=1000 → 200 (20ms, 165B)
+[cloudSync] enrollments 拉取失败: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+console.<computed> @ chobitsu:25:294207
+[postgrest-xhr] GET https://1d.alibaba-inc.com/_p/3005/database/practice_attempts?select=*&offset=0&limit=1000
+[cloudSync] practice_attempts 拉取失败: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+console.<computed> @ chobitsu:25:294207
+[postgrest-xhr] GET https://1d.alibaba-inc.com/_p/3005/database/sessions?select=*&offset=0&limit=1000
+[postgrest-xhr] GET https://1d.alibaba-inc.com/_p/3005/database/practice_attempts?select=*&offset=0&limit=1000 → 200 (20ms, 165B)
+[postgrest-xhr] GET https://1d.alibaba-inc.com/_p/3005/database/sessions?select=*&offset=0&limit=1000 → 200 (18ms, 156B)
+[cloudSync] practice_attempts 拉取失败: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+console.<computed> @ chobitsu:25:294207
+[postgrest-xhr] GET https://1d.alibaba-inc.com/_p/3005/database/sessions?select=*&offset=0&limit=1000
+[cloudSync] sessions 拉取失败: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+console.<computed> @ chobitsu:25:294207
+[cloudSync] 从 Cloud 加载完成: Object
+[dataService] Cloud 加载结果: Object
+[dataService] Cloud 可用但无数据，将种子数据同步到 Cloud
+[App] 数据初始化完成, 来源: cloud
+[钉钉文档] 请求: /api/dingtalk/status
+[xhr] GET /_p/3005/api/dingtalk/status
+[钉钉文档] 请求: /api/dingtalk/status
+[xhr] GET /_p/3005/api/dingtalk/status
+[postgrest-xhr] GET https://1d.alibaba-inc.com/_p/3005/database/sessions?select=*&offset=0&limit=1000 → 200 (454ms, 156B)
+[xhr] GET /api/dingtalk/status → 200 (87ms, 158B)
+[xhr] JSON parse failed for /api/dingtalk/status: <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Error</title>
+</head>
+<body>
+<pre>Cannot GET /api/dingtalk/status</pre>
+</body>
+</html>
+at console.<computed>(chobitsu:25:294207)
+at json(main.js:17314:33)
+at (anonymous)(main.js:7304:35)
+console.<computed> @ chobitsu:25:294207
+[钉钉文档] 状态接口返回非 JSON
+at console.<computed>(chobitsu:25:294207)
+at (anonymous)(main.js:7310:25)
+console.<computed> @ chobitsu:25:294207
+[xhr] GET /api/dingtalk/status → 200 (83ms, 158B)
+[xhr] JSON parse failed for /api/dingtalk/status: <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Error</title>
+</head>
+<body>
+<pre>Cannot GET /api/dingtalk/status</pre>
+</body>
+</html>
+at console.<computed>(chobitsu:25:294207)
+at json(main.js:17314:33)
+at (anonymous)(main.js:7304:35)
+console.<computed> @ chobitsu:25:294207
+[钉钉文档] 状态接口返回非 JSON
+at console.<computed>(chobitsu:25:294207)
+at (anonymous)(main.js:7310:25)
+console.<computed> @ chobitsu:25:294207
+[cloudSync] sessions 拉取失败: SyntaxError: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+at console.<computed>(chobitsu:25:294207)
+at fetchAllRows(main.js:10282:21)
+at loadAllFromCloud(main.js:10300:31)
+at init(main.js:10493:32)
+console.<computed> @ chobitsu:25:294207
+[cloudSync] 从 Cloud 加载完成: Object
+[dataService] Cloud 加载结果: Object
+[dataService] Cloud 可用但无数据，将种子数据同步到 Cloud
+[App] 数据初始化完成, 来源: cloud
+[postgrest-xhr] POST https://1d.alibaba-inc.com/_p/3005/database/staff?on_conflict=id&columns=%22id%22%2C%22employee_id%22%2C%22name%22%2C%22role%22%2C%22department%22%2C%22status%22%2C%22created_at%22%2C%22updated_at%22
+[postgrest-xhr] POST https://1d.alibaba-inc.com/_p/3005/database/staff?on_conflict=id&columns=%22id%22%2C%22employee_id%22%2C%22name%22%2C%22role%22%2C%22department%22%2C%22status%22%2C%22created_at%22%2C%22updated_at%22 → 200 (13ms, 154B)
+[postgrest-xhr] POST https://1d.alibaba-inc.com/_p/3005/database/question_banks?on_conflict=id&columns=%22id%22%2C%22name%22%2C%22description%22%2C%22category%22%2C%22status%22%2C%22created_by%22%2C%22question_count%22%2C%22created_at%22%2C%22updated_at%22
+[postgrest-xhr] POST https://1d.alibaba-inc.com/_p/3005/database/question_banks?on_conflict=id&columns=%22id%22%2C%22name%22%2C%22description%22%2C%22category%22%2C%22status%22%2C%22created_by%22%2C%22question_count%22%2C%22created_at%22%2C%22updated_at%22 → 200 (10ms, 163B)
+[postgrest-xhr] POST https://1d.alibaba-inc.com/_p/3005/database/questions?on_conflict=id&columns=%22id%22%2C%22bank_id%22%2C%22type%22%2C%22difficulty%22%2C%22content%22%2C%22options%22%2C%22answer%22%2C%22explanation%22%2C%22tags%22%2C%22created_at%22%2C%22updated_at%22
+[postgrest-xhr] POST https://1d.alibaba-inc.com/_p/3005/database/questions?on_conflict=id&columns=%22id%22%2C%22bank_id%22%2C%22type%22%2C%22difficulty%22%2C%22content%22%2C%22options%22%2C%22answer%22%2C%22explanation%22%2C%22tags%22%2C%22created_at%22%2C%22updated_at%22 → 200 (10ms, 158B)
+[postgrest-xhr] POST https://1d.alibaba-inc.com/_p/3005/database/papers?on_conflict=id&columns=%22id%22%2C%22name%22%2C%22description%22%2C%22total_score%22%2C%22pass_score%22%2C%22time_limit%22%2C%22status%22%2C%22question_ids%22%2C%22created_by%22%2C%22created_at%22%2C%22updated_at%22
+[postgrest-xhr] POST https://1d.alibaba-inc.com/_p/3005/database/papers?on_conflict=id&columns=%22id%22%2C%22name%22%2C%22description%22%2C%22total_score%22%2C%22pass_score%22%2C%22time_limit%22%2C%22status%22%2C%22question_ids%22%2C%22created_by%22%2C%22created_at%22%2C%22updated_at%22 → 200 (9ms, 155B)
+[postgrest-xhr] POST https://1d.alibaba-inc.com/_p/3005/database/paper_rules?on_conflict=id&columns=%22id%22%2C%22paper_id%22%2C%22bank_id%22%2C%22difficulty%22%2C%22count%22%2C%22score_per_question%22%2C%22created_at%22
+[postgrest-xhr] POST https://1d.alibaba-inc.com/_p/3005/database/paper_rules?on_conflict=id&columns=%22id%22%2C%22paper_id%22%2C%22bank_id%22%2C%22difficulty%22%2C%22count%22%2C%22score_per_question%22%2C%22created_at%22 → 200 (9ms, 160B)
+[cloudSync] 全量同步完成: 
+Object {
+synced: Array(Array(0)),
+errors: Array(Array(5))
+}
+[2026-06-16] 就是重启之后的报错
+[2026-06-17] 取消导入云端数据库和同步钉钉文档的功能和ui，只保留本地上传文档（excel、word、json、md、csv等常见文档）的接口，文档直接上传到knowledge-files云储存桶中，并在页面中渲染，可以浏览读取编辑和下载。编辑自动同步到云端。
+[2026-06-17] 你能直接把文件传到云储存桶吗
+[2026-06-17] 1d平台适配技能里有这个方法
+[2026-06-17] [OneDayAssets] Debug source tracking enabled
+Warning: [antd: Modal] `destroyOnClose` is deprecated. Please use `destroyOnHidden` instead.
+at console.<computed>(chobitsu:25:294207)
+at warning(vendor.js:115358:15)
+at call(vendor.js:115379:5)
+at warningOnce(vendor.js:115386:3)
+at _warning(vendor.js:22557:67)
+at typeWarning(vendor.js:22590:17)
+at typeWarning.deprecated(vendor.js:22595:5)
+at (anonymous)(vendor.js:43865:15)
+console.<computed> @ chobitsu:25:294207
+[xhr] GET /_p/3005/api/kb/list-files?prefix=knowledge-docs
+[xhr] GET /_p/3005/api/kb/list-files?prefix=knowledge-docs
+[xhr] GET /api/kb/list-files?prefix=knowledge-docs → 200 (21ms, 156B)
+[xhr] 收到 HTML 而非 JSON: /api/kb/list-files?prefix=knowledge-docs: Cannot GET /api/kb/list-files
+at console.<computed>(chobitsu:25:294207)
+at json(main.js:17399:33)
+at apiGet(main.js:5666:29)
+at (anonymous)(main.js:5688:26)
+console.<computed> @ chobitsu:25:294207
+[知识库] 加载文件列表失败: 服务端返回 HTML: Cannot GET /api/kb/list-files
+at console.<computed>(chobitsu:25:294207)
+at (anonymous)(main.js:5693:21)
+console.<computed> @ chobitsu:25:294207
+[xhr] GET /api/kb/list-files?prefix=knowledge-docs → 200 (28ms, 156B)
+[xhr] 收到 HTML 而非 JSON: /api/kb/list-files?prefix=knowledge-docs: Cannot GET /api/kb/list-files
+at console.<computed>(chobitsu:25:294207)
+at json(main.js:17399:33)
+at apiGet(main.js:5666:29)
+at (anonymous)(main.js:5688:26)
+console.<computed> @ chobitsu:25:294207
+[知识库] 加载文件列表失败: 服务端返回 HTML: Cannot GET /api/kb/list-files
+at console.<computed>(chobitsu:25:294207)
+at (anonymous)(main.js:5693:21)
+
+我说的是1d平台开发适配技能
+[2026-06-17] 哪些报错你都修复了吗？
+[2026-06-17] 全部修复
+[2026-06-17] This session is being continued from a previous conversation that ran out of context. The summary below covers the earlier portion of the conversation.
+
+Summary:
+1. Primary Request and Intent:
+   The user asked to pull a project from `https://code.alibaba-inc.com/OneDayAI-RPUKYRO/jhxMYm6T` (branch `onedaybot-dev`), diagnose why cloud database imports were failing (getting HTML instead of JSON), and fix all issues. Over the session, the scope expanded to:
+   - Fix PostgREST `/database` proxy issues on 1D platform
+   - Fix ChunkLoadError from webpack code splitting
+   - Add detailed error logging throughout the stack
+   - Fix Express route registration failures
+   - Review and fix code quality issues (security, wrong table names, migration SQL)
+   - Remove "导入云端数据库" and "同步钉钉文档" features entirely
+   - Rewrite knowledge base page to upload/browse/edit/download files directly via `oneday.supabase.storage` SDK (per the `1d-platform-dev` skill documentation)
+   - Fix all TypeScript type errors across the project
+
+2. Key Technical Concepts:
+   - **1D Platform (OneDay)**: Alibaba internal platform running apps in WebContainer (browser sandbox). Injects `window.ONEDAY_CONFIG` and `window.oneday` SDK. Uses `/_p/{port}/` URL prefix for routing.
+   - **oneday-preview-plugin**: Platform plugin that intercepts `window.fetch` and returns fake HTML. XHR is NOT intercepted.
+   - **@ali/oneday-frontend-sdk**: Must use this instead of `@supabase/supabase-js`. Provides `oneday.supabase` for database and `oneday.supabase.storage` for file storage.
+   - **PostgREST**: Database access via HTTP API. Server-side uses env vars `POSTGREST_URL`, `POSTGREST_TOKEN`, `POSTGREST_SCHEMA`. Frontend uses SDK.
+   - **Cloud Storage**: Files stored in Supabase Storage buckets (e.g., `knowledge-files`). Accessed via `oneday.supabase.storage.from('bucket-name')`.
+   - **WebContainer constraints**: Express runs as background process, may not restart when code updates. `publicPath: 'auto'` breaks chunk loading. localStorage not persistent.
+   - **webpack externals**: Must use `var` prefix format for `@ali/oneday-frontend-sdk` external.
+
+3. Files and Code Sections:
+   - **`src/modules/trainingHub/pages/KnowledgeBase.tsx`** (FINAL VERSION - most important)
+     - Completely rewritten to use `oneday.supabase.storage` SDK directly
+     - Manages files in `knowledge-files` bucket, `docs` folder
+     - Features: upload, list, preview (text files), edit with save to cloud, download, delete
+     - No Express dependency - all operations go through frontend SDK
+     ```typescript
+     import { oneday } from '@/onedaycloud/client';
+     const BUCKET = 'knowledge-files';
+     const FOLDER = 'docs';
+     function getStorage() {
+       const s = oneday?.supabase?.storage;
+       if (!s) throw new Error('OneDay Cloud Storage 不可用');
+       return s.from(BUCKET);
+     }
+     // Upload: storage.upload(path, arrayBuffer, { contentType, upsert: true })
+     // List: storage.list(FOLDER, { limit: 1000 })
+     // Download: storage.download(path) -> Blob
+     // Delete: storage.remove([path])
+     // Edit/Save: storage.upload(path, blob, { upsert: true })
+     ```
+
+   - **`src/onedaycloud/client.ts`** - Simplified to 3 lines by user's fix:
+     ```typescript
+     import { createClient } from '@ali/oneday-frontend-sdk';
+     import type { Database } from './types';
+     export const oneday = createClient<Database>();
+     ```
+
+   - **`src/shared/services/cloudSyncService.ts`** - Added health check with 60s TTL:
+     ```typescript
+     let _cloudHealthy: boolean | null = null;
+     let _cloudHealthCheckedAt = 0;
+     async function checkCloudHealth(supabase: any): Promise<boolean> {
+       if (_cloudHealthy !== null && Date.now() - _cloudHealthCheckedAt < 60000) return _cloudHealthy;
+       // queries knowledge_documents (not staff - staff lacks RLS permissions)
+     }
+     ```
+
+   - **`src/shared/services/xhrFetch.ts`** - Enhanced with logging and HTML detection:
+     - Every XHR request logs method/url/status/timing/size
+     - `json()` method detects HTML responses and extracts `<pre>` error text
+     - `getJSON()` logs success/failure details
+
+   - **`src/shared/services/dataService.ts`** - Fixed table name: `question_items` → `questions` (4 occurrences)
+
+   - **`src/modules/staff/pages/StaffListPanel.tsx`** - Fixed 10 `onResize` type errors by adding `as any` to all `onHeaderCell` return values
+
+   - **`server/index.js`** - Major changes:
+     - Added `/database/*` PostgREST proxy route
+     - Request logging middleware (skips static files)
+     - All route registrations wrapped in try/catch with detailed error logging
+     - Startup diagnostics (prints registered routes count, DB_MODE, POSTGREST_URL status)
+
+   - **`server/lib/kbCloudWriter.js`** - New file, server-side PostgREST writer:
+     - `upsertFolders(folders)`, `upsertDocument(doc)`, `deleteDocument(docId)`
+     - Uses `Prefer: resolution=merge-duplicates,return=minimal` header
+
+   - **`server/routes/kbRoutes.js`** - Added endpoints:
+     - `POST /api/kb/cloud-import` - server-side bulk import
+     - `POST /api/kb/upload-doc` - document upload with path traversal protection
+     - `POST /api/kb/delete-doc` - document deletion with safeId sanitization
+     - `GET /api/kb/download-file` - file download proxy
+     - `GET /api/kb/read-file` - read file content as text
+     - `POST /api/kb/update-file` - update file content
+
+   - **`webpack.config.js`** - Added `/database` to historyApiFallback rewrites, URL rewrite middleware, and proxy config. Added DingTalk dev middleware for cached data serving. Set `maxAsyncRequests: 1`.
+
+   - **`src/App.tsx`** - Converted all `React.lazy()` to static imports, removed `Suspense`
+
+   - **`migrations/20260617_020923_create_knowledge_cloud_tables.sql`** - Fixed `content` default from `'{}'::jsonb` to `'[]'::jsonb`, added `update_kb_updated_at()` trigger function and triggers for both tables
+
+   - **`server/middleware/auth.js`** - Added public paths for new endpoints including dingtalk routes, download-file, read-file, update-file
+
+   - **1D Platform Dev Skill** installed at `/home/admin/workspace/.agents/skills/1d-platform-dev/`
+     - Key doc: `oneday-cloud.md` - documents Storage API, CRUD, client init, auth, troubleshooting
+
+4. Errors and fixes:
+   - **"响应不是有效的 JSON (HTTP 200): <!DOCTYPE html"**: PostgREST URL missing `/_p/{port}/` prefix + fetch intercepted by platform plugin + webpack missing `/database` proxy. Fixed with proxy prefix, XHR-based fetch, webpack config updates.
+   - **ChunkLoadError: Loading chunk failed**: `publicPath: 'auto'` broken on 1D platform. Fixed by removing React.lazy, using static imports, setting `maxAsyncRequests: 1`.
+   - **"数据库连接失败: SyntaxError"**: Frontend `/database` proxy doesn't work on 1D platform. Fixed by moving to server-side API, then ultimately to frontend SDK direct storage.
+   - **"Cannot POST /api/kb/cloud-import"**: Express not loading new routes after code push. User feedback: "就是重启之后的报错" (this IS after restart). Eventually bypassed by using frontend SDK instead of Express.
+   - **cloudSync error storm**: Health check queried `staff` table (no RLS permissions) and cached result forever. Fixed: changed to query `knowledge_documents`, added 60s TTL.
+   - **`question_items` table name wrong**: `dataService.ts` used `question_items` but actual table is `questions`. Fixed with sed replace.
+   - **Path traversal in upload-doc/delete-doc**: `req.body.id` used directly in `path.join` without sanitization. Fixed with regex sanitization and `path.resolve` check.
+   - **Migration SQL wrong defaults**: `content` defaulted to `{}` but code expects `[]`. Fixed to `'[]'::jsonb`. Missing `updated_at` triggers added.
+   - **`destroyOnClose` deprecation**: Changed to `destroyOnHidden`.
+   - **StaffListPanel 10 type errors**: `onResize` signature incompatible with antd's `ReactEventHandler`. Fixed with `as any` casts.
+   - **User rejected merged remote changes**: "不要合并远端改动，退回，只推送你改的". I reset with `git reset --hard` and force-pushed.
+   - **User rejected page restructuring**: "8f045d6在这个版本上，推送你的修复，不重构页面". I reset to that commit and only pushed server-side fixes.
+   - **User pointed to 1D platform skill**: "1d平台适配技能里有这个方法" - I was using Express proxy but should use `oneday.supabase.storage` SDK directly.
+
+5. Problem Solving:
+   - Solved the fundamental architecture mismatch: the app was trying to use server-side PostgREST proxy (`/database`) which doesn't work reliably on the 1D WebContainer platform. The correct approach (per 1d-platform-dev skill) is to use `@ali/oneday-frontend-sdk`'s `oneday.supabase.storage` directly from the frontend.
+   - Solved Express route registration failures by wrapping all `require()` calls in try/catch with detailed logging.
+   - Eliminated cloudSync error storms by adding a health check with TTL that queries a table with proper RLS permissions.
+   - All TypeScript errors now resolved (0 errors from `tsc --noEmit`).
+
+6. All user messages:
+   - "拉取这个项目最新情况，结合1d平台适配技能排查为什么导入失败 响应不是有效的 JSON (HTTP 200): <!DOCTYPE html>..."
+   - "在导入云端数据库功能"
+   - "推送"
+   - "当前遇到的问题：分析当前页面出错原因 期望达到的效果：页面出错了 Loading chunk... failed" (with full ChunkLoadError stack trace and 1D platform diagnosis)
+   - "数据库连接失败: SyntaxError: Unexpected token '<'... 需要实现数据和文档上传功能，在培训管理的知识库页面"
+   - "根据1d平台开发适配技能更新计划"
+   - "不用了，这三个方案是错的，按你的方案执行"
+   - "不要合并远端改动，退回，只推送你改的"
+   - "8f045d6在这个版本上，推送你的修复，不重构页面"
+   - "让所有交互操作和所有网页内容输出详细的错误日志"
+   - (Detailed error logs showing all /database/* and /api/* returning HTML)
+   - "就是重启之后的报错"
+   - (More detailed error logs showing cloudSync failures and route not found errors)
+   - "拉取最新git，我进行了修复，根据刚更新的1d平台适配技能，评估修复质量和检测存在问题"
+   - "取消导入云端数据库和同步钉钉文档的功能和ui，只保留本地上传文档（excel、word、json、md、csv等常见文档）的接口，文档直接上传到knowledge-files云储存桶中，并在页面中渲染，可以浏览读取编辑和下载。编辑自动同步到云端。"
+   - "你能直接把文件传到云储存桶吗"
+   - "1d平台适配技能里有这个方法"
+   - "我说的是1d平台开发适配技能"
+   - (Error logs showing list-files returning HTML + "我说的是1d平台开发适配技能")
+   - "哪些报错你都修复了吗？"
+   - "全部修复"
+
+7. Pending Tasks:
+   - None explicitly pending. All reported errors have been fixed. TypeScript compiles with 0 errors.
+
+8. Current Work:
+   The most recent task was fixing the last 10 TypeScript type errors in `StaffListPanel.tsx`. The `onResize` handler signature was incompatible with antd's `ColumnType.onHeaderCell` expected return type. Fixed by adding `as any` casts to all 10 `onHeaderCell` return objects. Committed as `0f966bf` and pushed to `onedaybot-dev`.
+
+   The user asked "哪些报错你都修复了吗？" and I provided a complete status table of all 13 issues. The user then said "全部修复" and I fixed the remaining StaffListPanel errors. `tsc --noEmit` now returns 0 errors.
+
+9. Optional Next Step:
+   No pending tasks. All errors have been fixed and pushed. The project compiles cleanly with zero TypeScript errors. If the user reports new issues from the 1D platform after this push, the next step would be to investigate those specific errors.
+
+If you need specific details from before compaction (like exact code snippets, error messages, or content you generated), read the full transcript at: /home/admin/.claude/projects/-home-admin-workspace/74e7e4a6-0668-49d9-be05-53d74ec7def9.jsonl
+Continue the conversation from where it left off without asking the user any further questions. Resume directly — do not acknowledge the summary, do not recap what was happening, do not preface with "I'll continue" or similar. Pick up the last task as if the break never happened.
+[2026-06-17] 拉取最新git然后分析为什么会出现以下报错，根据1d平台开发适配技能：
+
+[知识库] 加载文件列表失败: OneDay Cloud Storage 不可用，请确认项目已开启数据库服务
+at console.<computed>(chobitsu:25:294207)
+at (anonymous)(main.js:5680:21)
+at (anonymous)(main.js:5688:62)
+at commitHookEffectListMount(vendor.js:140546:26)
+at invokePassiveEffectMountInDEV(vendor.js:142550:13)
+at invokeEffectsInDev(vendor.js:144747:11)
+at commitDoubleInvokeEffectsInDEV(vendor.js:144726:7)
+at flushPassiveEffectsImpl(vendor.js:144452:5)
+[2026-06-17] 在页面中访问或让 Agent 调试 /api/kb/storage-status。如果返回 available: false，就说明后端运行正常，但 Storage 服务端配置不可用。
+修复项目代码中的误导提示：把“请确认项目已开启数据库服务”改成更准确的“后端已运行，但 Cloud Storage 服务端凭证缺失或不可用”。
+修复云函数端口隐患：将后端默认端口从 3020 改为 9000，符合 OneDay 云函数要求。
+如果知识库文件必须从 knowledge-files bucket 读取，需要给后端补齐服务端可用的 Storage/PostgREST 配置，例如 Storage URL 与服务端 Token；如果是云函数访问 OneDay Cloud 数据库，按知识库说明，需要申请数据库账号密码后使用服务端直连方式，不要依赖浏览器端注入配置。
+修改后重新构建/重启应用，再检查知识库文件列表是否恢复。
+代码示例：
+
+建议让 Agent 修改为类似方向：
+
+// server/config/env.js
+const PORT = parseInt(
+  process.env.PORT || process.env.BACKEND_PORT || process.env.EXPRESS_PORT || '9000',
+  10
+);
+
+// server/db/storageAdapter.js 中保留敏感信息脱敏，只暴露诊断状态
+function getStorageDiagnostics() {
+  return {
+    available: isCloudStorageAvailable(),
+    hasStorageBaseUrl: !!STORAGE_BASE_URL,
+    hasStorageKey: !!STORAGE_KEY,
+    bucket: BUCKET_NAME,
+  };
+}
+
+// server/routes/kbRoutes.js 的 /storage-status 返回详细状态，但不要返回 Token 明文
+router.get('/storage-status', (_, res) => {
+  res.json(storageAdapter.getDiagnostics());
+});
+配置路径：server/config/env.js；server/db/storageAdapter.js；server/routes/kbRoutes.js
+
+正确配置：后端默认端口应为 9000；Storage 访问需要配置服务端可用的 Storage/PostgREST URL 与 Token；bucket 保持 knowledge-files
+
+📚 参考文档
+说明全栈应用/云函数需要 WebC 环境、fc.baseUrl 配置和后端 API 服务正常；并强调 Express 服务应运行在 9000 端口。 - 点击查看
+OneDay 服务端开发指南，说明云函数能力、API 运行中状态以及云函数中调用 OneDay Cloud 数据库需要申请数据库账号密码并提供给服务端使用。 - 点击查看
+说明云函数服务端访问 OneDay Cloud 数据库不能使用浏览器代理方案，应改为服务端直连数据库。与本次“前端 Cloud 开启但后端 Storage/数据库访问凭证不可用”的链路相关。
+
+这次不是“后端没有启动”。诊断报告明确显示云函数 API 状态为“API 运行中”。真正的问题是项目后端的 Cloud Storage 访问链路没有拿到服务端可用的 Storage 地址和 Token：代码将知识库文件列表读取设计为走后端 Storage Adapter，但该 Adapter 依赖服务端环境变量；OneDay Cloud 开启后，前端 SDK 能拿到平台注入配置，并不等于云函数后端自动拥有 Storage 的服务端访问凭证。因此后端可以是运行中的，但访问 knowledge-files bucket 时会报“OneDay Cloud Storage 不可用”。同时，项目后端默认端口 3020 不符合云函数 9000 端口规范，建议一并修复，避免后续部署或发布态出现启动异常。
+
+这些分析的点你都修复好了吗？你怎么看待这些分析？
+[2026-06-17] [xhr] 收到 HTML 而非 JSON: /api/kb/cloud-files?folder=docs: Cannot GET /api/kb/cloud-files
+at console.<computed>(chobitsu:25:294207)
+at json(main.js:17515:33)
+at parseJsonResponse(main.js:5662:36)
+at apiGetJson(main.js:5676:12)
+at (anonymous)(main.js:5734:30)
+console.<computed> @ chobitsu:25:294207
+[知识库] 加载文件列表失败: fileList.map is not a function
+at console.<computed>(chobitsu:25:294207)
+at (anonymous)(main.js:5738:21)
+console.<computed> @ chobitsu:25:294207
+[xhr] GET /api/kb/cloud-files?folder=docs → 200 (28ms, 157B)
+[xhr] 收到 HTML 而非 JSON: /api/kb/cloud-files?folder=docs: Cannot GET /api/kb/cloud-files
+at console.<computed>(chobitsu:25:294207)
+at json(main.js:17515:33)
+at parseJsonResponse(main.js:5662:36)
+at apiGetJson(main.js:5676:12)
+at (anonymous)(main.js:5734:30)
+console.<computed> @ chobitsu:25:294207
+[知识库] 加载文件列表失败: fileList.map is not a function
+at console.<computed>(chobitsu:25:294207)
+at (anonymous)(main.js:5738:21)
+能不能正确的解析和加载文件？
+[2026-06-17] 知识库页面/功能在加载文件列表时失败，控制台报错类似「[xhr] 收到 HTML 而非 JSON: /api/kb/cloud-files?folder=docs: Cannot GET /api/kb/cloud-files」以及「[知识库] 加载文件列表失败: fileList.map is not a function」；通常表现为文件列表区域空白、报错或无法继续渲染。
+排查步骤
+1. 查看浏览器 Network 中 /api/kb/cloud-files?folder=docs 的响应状态与 body；如果直接返回 HTML（如 Cannot GET /api/kb/cloud-files），说明请求打到了不匹配的路由或后端未挂载该接口。2. 对照后端路由实现，确认实际暴露的是 GET /api/kb/cloud-files，并检查服务端是否有对应路由挂载到 /api/kb。3. 检查前端取数代码对返回值的假设：当前代码期望 JSON 数组并直接执行 map，但当后端返回 HTML/错误对象时会触发 fileList.map is not a function。4. 确认前端请求路径是否写错、是否存在旧接口名兼容问题，或代理/部署层是否把 /api/kb/cloud-files 转发到了错误服务。
+解决方案
+前端侧需要修正文件列表接口调用与返回值处理：优先确保请求路径与后端实际路由一致（/api/kb/cloud-files），并在读取响应前先校验 HTTP 状态码与 Content-Type，只有在成功且返回数组时才调用 map；若后端返回的是错误对象或 HTML，则显示明确错误并中止渲染。同时建议为接口兼容增加兜底：对非数组响应统一转换为 [] 或抛出可读错误，避免 fileList.map 直接崩溃。
+
+这些问题你的修复都覆盖了吗
+[2026-06-17] [OneDayAssets] Debug source tracking enabled
+[oneday] SDK createClient returned no supabase
+console.<computed> @ chobitsu:25:294207
+[oneday] SDK createClient returned no supabase
+console.<computed> @ chobitsu:25:294207
+[xhr] GET /_p/3005/api/kb/cloud-files?folder=docs
+[oneday] SDK createClient returned no supabase
+console.<computed> @ chobitsu:25:294207
+[xhr] GET /_p/3005/api/kb/cloud-files?folder=docs
+[xhr] GET /api/kb/cloud-files?folder=docs → 200 (19ms, 157B)
+[xhr] 收到 HTML 而非 JSON: /api/kb/cloud-files?folder=docs: Cannot GET /api/kb/cloud-files
+console.<computed> @ chobitsu:25:294207
+[知识库] API 降级失败: 服务端返回 HTML: Cannot GET /api/kb/cloud-files
+console.<computed> @ chobitsu:25:294207
+[知识库] 2秒后重试...
+[xhr] GET /api/kb/cloud-files?folder=docs → 200 (20ms, 157B)
+[xhr] 收到 HTML 而非 JSON: /api/kb/cloud-files?folder=docs: Cannot GET /api/kb/cloud-files
+console.<computed> @ chobitsu:25:294207
+[知识库] API 降级失败: 服务端返回 HTML: Cannot GET /api/kb/cloud-files
+console.<computed> @ chobitsu:25:294207
+[知识库] 2秒后重试...
+[oneday] SDK createClient returned no supabase
+console.<computed> @ chobitsu:25:294207
+[xhr] GET /_p/3005/api/kb/cloud-files?folder=docs
+[oneday] SDK createClient returned no supabase
+console.<computed> @ chobitsu:25:294207
+[xhr] GET /_p/3005/api/kb/cloud-files?folder=docs
+[xhr] GET /api/kb/cloud-files?folder=docs → 200 (9ms, 157B)
+[xhr] 收到 HTML 而非 JSON: /api/kb/cloud-files?folder=docs: Cannot GET /api/kb/cloud-files
+at console.<computed>(chobitsu:25:294207)
+at json(main.js:17567:33)
+at apiGet(main.js:5677:29)
+at (anonymous)(main.js:5731:30)
+console.<computed> @ chobitsu:25:294207
+[知识库] API 降级失败: 服务端返回 HTML: Cannot GET /api/kb/cloud-files
+console.<computed> @ chobitsu:25:294207
+[xhr] GET /api/kb/cloud-files?folder=docs → 200 (30ms, 157B)
+[xhr] 收到 HTML 而非 JSON: /api/kb/cloud-files?folder=docs: Cannot GET /api/kb/cloud-files
+at console.<computed>(chobitsu:25:294207)
+at json(main.js:17567:33)
+at apiGet(main.js:5677:29)
+at (anonymous)(main.js:5731:30)
+console.<computed> @ chobitsu:25:294207
+[知识库] API 降级失败: 服务端返回 HTML: Cannot GET /api/kb/cloud-files
+
+还是缓存，没有连接到cloud，根据1d开发适配技能修复
+[2026-06-17] 建议修复顺序
+1. 先确认后端是否加载了最新代码
+访问：
+
+/api/kb/storage-status
+/api/kb/cloud-files?folder=docs
+如果还是：
+
+Cannot GET /api/kb/cloud-files
+说明后端服务没重启或运行的不是当前仓库代码。
+
+需要重启应用/重新预览，确保 server/routes/kbRoutes.js 最新代码生效。
+
+2. 再解决后端 Cloud 凭证来源问题
+当前不能只依赖：
+
+process.env.STORAGE_URL
+process.env.SUPABASE_SERVICE_KEY
+因为 OneDay Cloud 的配置主要在前端注入。
+
+可选方案：
+
+方案 A：继续走后端代理
+需要确保云函数/服务端运行环境里配置这些变量：
+
+STORAGE_URL
+SUPABASE_SERVICE_KEY
+POSTGREST_URL
+POSTGREST_TOKEN
+POSTGREST_SCHEMA
+否则 storageAdapter 一定会降级。
+
+方案 B：改成前端通过 OneDay Cloud SDK 获取配置后调用
+也就是不要让服务端凭空读取 process.env，而是使用平台实际注入的 window.ONEDAY_CONFIG.database_config。
+
+最终判断
+这次不是 OneDay Cloud 没开启，而是：
+
+当前运行态后端没有 /api/kb/cloud-files 路由，所以请求根本没到 Cloud Storage 逻辑；
+后端 Storage 适配器依赖 process.env，但 OneDay Cloud 配置没有自动注入到服务端环境变量，因此即使路由恢复，也会因为凭证缺失继续降级；
+webpack-dev-server 报错是 WebSocket 噪音，不是主因。
+建议下一步先重启应用，确认 /api/kb/cloud-files 不再返回 Cannot GET，然后再修复 storageAdapter 的 Cloud 凭证来源。
+
+总是降级成缓存而不是cloud，解决连不上cloud的问题，结合1d平台开发适配技能，优化整个的修复建议然后全面排查
+[2026-06-17] 1.删除所有关于降级到缓存、本地的降级行为，禁止进行任何降级，然后输出完整详细不加省略的错误报告。
+2.使用以下分析的实现项目方式，根据1d平台开发适配技能，进行纠错。
+ 📁  核心文件清单
+
+  1. 1d云客户端初始化 — src/onedaycloud/client.ts
+
+  import { createClient } from "@ali/oneday-frontend-sdk"
+  import type { Database } from './types';
+
+  export const oneday = createClient<Database>();
+  这是1d云的入口，使用 @ali/oneday-frontend-sdk 创建 Supabase 兼容客户端。
+
+  2. 数据库类型定义 — src/onedaycloud/types.ts
+
+  定义了以下关键表结构：
+  - resume_uploads — 简历上传记录表（含 pdf_storage_url 存储桶URL字段）
+  - ai_screening_results — AI筛选结果表
+  - resume_records — 简历数据记录表
+  - feature_permissions — 功能权限表
+
+  3. 🔑  文件上传到存储桶的核心函数 — src/utils/resumeUploadService.ts
+
+  // ⭐  上传PDF到1d云存储桶的核心函数
+  async function uploadPdfToStorage(file: File, batchId: string): Promise<string> {
+    const timestamp = Date.now();
+    const safeName = file.name.replace(/[^a-zA-Z0-9\u4e00-\u9fff._-]/g, '_');
+    const storagePath = `${batchId}/${timestamp}_${safeName}`;
+
+    const arrayBuffer = await file.arrayBuffer();
+
+    // ⭐  关键：调用 oneday.supabase.storage 上传到 'resume-pdfs' 存储桶
+    const { error: uploadError } = await oneday.supabase.storage
+      .from('resume-pdfs')           // 存储桶名称
+      .upload(storagePath, arrayBuffer, {
+        contentType: 'application/pdf',
+        upsert: false,
+      });
+
+    if (uploadError) throw new Error(`PDF 存储失败: ${uploadError.message}`);
+
+    // ⭐  获取文件的公开访问URL
+    const { data: urlData } = oneday.supabase.storage
+      .from('resume-pdfs')
+      .getPublicUrl(storagePath);
+
+    return urlData.publicUrl;
+  }
+
+  // ⭐  保存上传记录（同时触发文件上传）
+  export async function saveResumeUpload(params: {
+    candidateName: string;
+    pdfFilename: string;
+    pdfText: string;
+    positionType: string;
+    batchId: string;
+    file?: File;
+  }): Promise<string> {
+    let pdfStorageUrl = '';
+
+    if (params.file) {
+      try {
+        pdfStorageUrl = await uploadPdfToStorage(params.file, params.batchId);
+      } catch (e: any) {
+        console.error('[PDF Storage]', e.message);
+      }
+    }
+
+    // 将存储URL写入数据库记录
+    const { data, error } = await oneday.supabase
+      .from('resume_uploads')
+      .insert({
+        candidate_name: params.candidateName,
+        pdf_filename: params.pdfFilename,
+        pdf_text: params.pdfText,
+        position_type: params.positionType,
+        batch_id: params.batchId,
+        pdf_storage_url: pdfStorageUrl,   // ⭐  存储桶URL存入数据库
+        status: 'pending',
+      })
+      .select('id')
+      .single();
+
+    if (error) throw new Error(`上传失败: ${error.message}`);
+    return data.id;
+  }
+
+  4. 🖼️  前端展示PDF文件 — src/components/PdfPreviewCard.tsx
+
+  // ⭐  通过 iframe 直接渲染存储桶中的PDF文件
+  // PDF URL 格式示例：
+  // https://oneday-sbproxy.alibaba-inc.com/1BSoUUzD/storage/v1/object/public/resume-pdfs/robot/1781345173861_周小虎.pdf
+
+  <iframe
+    src={d.pdfUrl}          // ⭐  直接使用存储桶公开URL
+    className="w-full h-full border-0"
+    title="PDF Preview"
+    onError={() => setIframeError(true)}
+  />
+
+  // 备用方案：如果iframe加载失败，提供下载链接
+  <a href={d.pdfUrl} target="_blank" rel="noopener noreferrer">
+    点击直接下载查看
+  </a>
+
+  5. 📤  前端上传组件 — src/components/ResumeScreener.tsx
+
+  这个组件实现了完整的上传流程：
+  1. 拖拽/选择PDF文件 → addFiles()
+  2. 解析PDF文本 → extractTextFromPdf() / extractTextViaOcr()
+  3. 上传到存储桶+保存记录 → saveResumeUpload({ ..., file: item.file })
+  4. AI筛选 → screenAndSave()
+  4. AI筛选 → screenAndSave()
+  5. 展示上传列表和状态
+
+  ---
+  🔄 完整数据流
+
+  用户拖拽PDF → ResumeScreener.tsx
+         ↓
+  extractTextFromPdf() 提取文本
+         ↓
+  saveResumeUpload()
+    ├── uploadPdfToStorage()  ← ⭐  上传到 oneday.supabase.storage.from('resume-pdfs')
+    │     └── getPublicUrl()  ← ⭐ 获取公开URL
+    └── supabase.from('resume_uploads').insert({ pdf_storage_url }) ← 存入数据库
+         ↓
+  PdfPreviewCard.tsx
+    └── <iframe src={pdfUrl} />  ← ⭐  用公开URL在前端展示PDF
+
+  📌 关键技术点
+
+  ┌──────────┬────────────────────────────────────────────────────────────────────────────────────────────────┐
+  │   要素   │                                               值                                               │
+  ├──────────┼────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ SDK      │ @ali/oneday-frontend-sdk                                                                       │
+  ├──────────┼────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ 存储桶名 │ resume-pdfs                                                                                    │
+  ├──────────┼────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ 上传API  │ oneday.supabase.storage.from('resume-pdfs').upload(path, arrayBuffer)                          │
+  ├──────────┼────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ 获取URL  │ oneday.supabase.storage.from('resume-pdfs').getPublicUrl(path)                                 │
+  ├──────────┼────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ URL格式  │ https://oneday-sbproxy.alibaba-inc.com/{projectId}/storage/v1/object/public/resume-pdfs/{path} │
+  ├──────────┼────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ 前端展示 │ <iframe src={publicUrl}> 或 <a href={publicUrl}>                                               │
+  ├──────────┼────────────────────────────────────────────────────────────────────────────────────────────────┤
+  │ 数据库表 │ resume_uploads（存 pdf_storage_url 字段）
+[2026-06-17] 仍然是缓存模式，结合1d平台开发适配技能进行修复
+已转到 https://1d.alibaba-inc.com/_p/3005/index.html
+index.html:50 [oneday-bootstrap] ONEDAY_CONFIG 未找到, 等待 postMessage...
+vendor.js:157586 [webpack-dev-server] Server started: Hot Module Replacement enabled, Live Reloading enabled, Progress disabled, Overlay enabled.
+vendor.js:159189 [HMR] Waiting for update signal from WDS...
+vendor.js:147252 Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+main.js:6729 === OneDay Cloud SDK 初始化失败：createClient() 返回 null ===
+./src/onedaycloud/safeClient.ts @ main.js:6729
+__webpack_require__ @ main.js:17789
+fn @ main.js:18089
+./src/shared/services/cloudSyncService.ts @ main.js:9537
+__webpack_require__ @ main.js:17789
+fn @ main.js:18089
+./src/shared/services/staffStore.ts @ main.js:15556
+__webpack_require__ @ main.js:17789
+fn @ main.js:18089
+./src/shared/services/authService.ts @ main.js:8564
+__webpack_require__ @ main.js:17789
+fn @ main.js:18089
+./src/shared/context/AppIdentityContext.tsx @ main.js:7847
+__webpack_require__ @ main.js:17789
+fn @ main.js:18089
+./src/main.tsx @ main.js:462
+__webpack_require__ @ main.js:17789
+（匿名） @ main.js:19111
+__webpack_require__.O @ main.js:17832
+（匿名） @ main.js:19112
+（匿名） @ main.js:19114
+main.js:6730 window.oneday 状态: undefined
+./src/onedaycloud/safeClient.ts @ main.js:6730
+__webpack_require__ @ main.js:17789
+fn @ main.js:18089
+./src/shared/services/cloudSyncService.ts @ main.js:9537
+__webpack_require__ @ main.js:17789
+fn @ main.js:18089
+./src/shared/services/staffStore.ts @ main.js:15556
+__webpack_require__ @ main.js:17789
+fn @ main.js:18089
+./src/shared/services/authService.ts @ main.js:8564
+__webpack_require__ @ main.js:17789
+fn @ main.js:18089
+./src/shared/context/AppIdentityContext.tsx @ main.js:7847
+__webpack_require__ @ main.js:17789
+fn @ main.js:18089
+./src/main.tsx @ main.js:462
+__webpack_require__ @ main.js:17789
+（匿名） @ main.js:19111
+__webpack_require__.O @ main.js:17832
+（匿名） @ main.js:19112
+（匿名） @ main.js:19114
+main.js:6736 ONEDAY_CONFIG 状态: undefined
+./src/onedaycloud/safeClient.ts @ main.js:6736
+__webpack_require__ @ main.js:17789
+fn @ main.js:18089
+./src/shared/services/cloudSyncService.ts @ main.js:9537
+__webpack_require__ @ main.js:17789
+fn @ main.js:18089
+./src/shared/services/staffStore.ts @ main.js:15556
+__webpack_require__ @ main.js:17789
+fn @ main.js:18089
+./src/shared/services/authService.ts @ main.js:8564
+__webpack_require__ @ main.js:17789
+fn @ main.js:18089
+./src/shared/context/AppIdentityContext.tsx @ main.js:7847
+__webpack_require__ @ main.js:17789
+fn @ main.js:18089
+./src/main.tsx @ main.js:462
+__webpack_require__ @ main.js:17789
+（匿名） @ main.js:19111
+__webpack_require__.O @ main.js:17832
+（匿名） @ main.js:19112
+（匿名） @ main.js:19114
+main.js:6742 可能原因:
+./src/onedaycloud/safeClient.ts @ main.js:6742
+__webpack_require__ @ main.js:17789
+fn @ main.js:18089
+./src/shared/services/cloudSyncService.ts @ main.js:9537
+__webpack_require__ @ main.js:17789
+fn @ main.js:18089
+./src/shared/services/staffStore.ts @ main.js:15556
+__webpack_require__ @ main.js:17789
+fn @ main.js:18089
+./src/shared/services/authService.ts @ main.js:8564
+__webpack_require__ @ main.js:17789
+fn @ main.js:18089
+./src/shared/context/AppIdentityContext.tsx @ main.js:7847
+__webpack_require__ @ main.js:17789
+fn @ main.js:18089
+./src/main.tsx @ main.js:462
+__webpack_require__ @ main.js:17789
+（匿名） @ main.js:19111
+__webpack_require__.O @ main.js:17832
+（匿名） @ main.js:19112
+（匿名） @ main.js:19114
+main.js:6743   1. 项目未开启 OneDay Cloud（项目设置→数据库→开启）
+./src/onedaycloud/safeClient.ts @ main.js:6743
+__webpack_require__ @ main.js:17789
+fn @ main.js:18089
+./src/shared/services/cloudSyncService.ts @ main.js:9537
+__webpack_require__ @ main.js:17789
+fn @ main.js:18089
+./src/shared/services/staffStore.ts @ main.js:15556
+__webpack_require__ @ main.js:17789
+fn @ main.js:18089
+./src/shared/services/authService.ts @ main.js:8564
+__webpack_require__ @ main.js:17789
+fn @ main.js:18089
+./src/shared/context/AppIdentityContext.tsx @ main.js:7847
+__webpack_require__ @ main.js:17789
+fn @ main.js:18089
+./src/main.tsx @ main.js:462
+__webpack_require__ @ main.js:17789
+（匿名） @ main.js:19111
+__webpack_require__.O @ main.js:17832
+（匿名） @ main.js:19112
+（匿名） @ main.js:19114
+main.js:6744   2. 运行模式不是 WebC（浏览器沙盒）
+./src/onedaycloud/safeClient.ts @ main.js:6744
+__webpack_require__ @ main.js:17789
+fn @ main.js:18089
+./src/shared/services/cloudSyncService.ts @ main.js:9537
+__webpack_require__ @ main.js:17789
+fn @ main.js:18089
+./src/shared/services/staffStore.ts @ main.js:15556
+__webpack_require__ @ main.js:17789
+fn @ main.js:18089
+./src/shared/services/authService.ts @ main.js:8564
+__webpack_require__ @ main.js:17789
+fn @ main.js:18089
+./src/shared/context/AppIdentityContext.tsx @ main.js:7847
+__webpack_require__ @ main.js:17789
+fn @ main.js:18089
+./src/main.tsx @ main.js:462
+__webpack_require__ @ main.js:17789
+（匿名） @ main.js:19111
+__webpack_require__.O @ main.js:17832
+（匿名） @ main.js:19112
+（匿名） @ main.js:19114
+main.js:6745   3. window.oneday 未被1D平台注入
+./src/onedaycloud/safeClient.ts @ main.js:6745
+__webpack_require__ @ main.js:17789
+fn @ main.js:18089
+./src/shared/services/cloudSyncService.ts @ main.js:9537
+__webpack_require__ @ main.js:17789
+fn @ main.js:18089
+./src/shared/services/staffStore.ts @ main.js:15556
+__webpack_require__ @ main.js:17789
+fn @ main.js:18089
+./src/shared/services/authService.ts @ main.js:8564
+__webpack_require__ @ main.js:17789
+fn @ main.js:18089
+./src/shared/context/AppIdentityContext.tsx @ main.js:7847
+__webpack_require__ @ main.js:17789
+fn @ main.js:18089
+./src/main.tsx @ main.js:462
+__webpack_require__ @ main.js:17789
+（匿名） @ main.js:19111
+__webpack_require__.O @ main.js:17832
+（匿名） @ main.js:19112
+（匿名） @ main.js:19114
+main.js:6746 =======================================
+./src/onedaycloud/safeClient.ts @ main.js:6746
+__webpack_require__ @ main.js:17789
+fn @ main.js:18089
+./src/shared/services/cloudSyncService.ts @ main.js:9537
+__webpack_require__ @ main.js:17789
+fn @ main.js:18089
+./src/shared/services/staffStore.ts @ main.js:15556
+__webpack_require__ @ main.js:17789
+fn @ main.js:18089
+./src/shared/services/authService.ts @ main.js:8564
+__webpack_require__ @ main.js:17789
+fn @ main.js:18089
+./src/shared/context/AppIdentityContext.tsx @ main.js:7847
+__webpack_require__ @ main.js:17789
+fn @ main.js:18089
+./src/main.tsx @ main.js:462
+__webpack_require__ @ main.js:17789
+（匿名） @ main.js:19111
+__webpack_require__.O @ main.js:17832
+（匿名） @ main.js:19112
+（匿名） @ main.js:19114
+oneday-preview-plugin-0427.js:2 ⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+console.warn @ oneday-preview-plugin-0427.js:2
+（匿名） @ chobitsu:25
+warnOnce @ vendor.js:150152
+logDeprecation @ vendor.js:150155
+logV6DeprecationWarnings @ vendor.js:150158
+（匿名） @ vendor.js:148373
+commitHookEffectListMount @ vendor.js:140546
+commitPassiveMountOnFiber @ vendor.js:142327
+commitPassiveMountEffects_complete @ vendor.js:142287
+commitPassiveMountEffects_begin @ vendor.js:142274
+commitPassiveMountEffects @ vendor.js:142262
+flushPassiveEffectsImpl @ vendor.js:144435
+flushPassiveEffects @ vendor.js:144380
+（匿名） @ vendor.js:144165
+workLoop @ vendor.js:156067
+flushWork @ vendor.js:156040
+performWorkUntilDeadline @ vendor.js:156334
+postMessage
+schedulePerformWorkUntilDeadline @ vendor.js:156375
+performWorkUntilDeadline @ vendor.js:156339
+postMessage
+schedulePerformWorkUntilDeadline @ vendor.js:156375
+requestHostCallback @ vendor.js:156389
+unstable_scheduleCallback @ vendor.js:156242
+scheduleCallback$1 @ vendor.js:144933
+ensureRootIsScheduled @ vendor.js:143079
+scheduleUpdateOnFiber @ vendor.js:142927
+updateContainer @ vendor.js:146254
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ vendor.js:146710
+./src/main.tsx @ main.js:478
+__webpack_require__ @ main.js:17789
+（匿名） @ main.js:19111
+__webpack_require__.O @ main.js:17832
+（匿名） @ main.js:19112
+（匿名） @ main.js:19114
+oneday-preview-plugin-0427.js:2 ⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+console.warn @ oneday-preview-plugin-0427.js:2
+（匿名） @ chobitsu:25
+warnOnce @ vendor.js:150152
+logDeprecation @ vendor.js:150155
+logV6DeprecationWarnings @ vendor.js:150161
+（匿名） @ vendor.js:148373
+commitHookEffectListMount @ vendor.js:140546
+commitPassiveMountOnFiber @ vendor.js:142327
+commitPassiveMountEffects_complete @ vendor.js:142287
+commitPassiveMountEffects_begin @ vendor.js:142274
+commitPassiveMountEffects @ vendor.js:142262
+flushPassiveEffectsImpl @ vendor.js:144435
+flushPassiveEffects @ vendor.js:144380
+（匿名） @ vendor.js:144165
+workLoop @ vendor.js:156067
+flushWork @ vendor.js:156040
+performWorkUntilDeadline @ vendor.js:156334
+postMessage
+schedulePerformWorkUntilDeadline @ vendor.js:156375
+performWorkUntilDeadline @ vendor.js:156339
+postMessage
+schedulePerformWorkUntilDeadline @ vendor.js:156375
+requestHostCallback @ vendor.js:156389
+unstable_scheduleCallback @ vendor.js:156242
+scheduleCallback$1 @ vendor.js:144933
+ensureRootIsScheduled @ vendor.js:143079
+scheduleUpdateOnFiber @ vendor.js:142927
+updateContainer @ vendor.js:146254
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ vendor.js:146710
+./src/main.tsx @ main.js:478
+__webpack_require__ @ main.js:17789
+（匿名） @ main.js:19111
+__webpack_require__.O @ main.js:17832
+（匿名） @ main.js:19112
+（匿名） @ main.js:19114
+chobitsu:25 [dataService] Supabase 客户端: null
+chobitsu:25 [dataService] 初始化完成: 数据来自 localStorage 缓存
+chobitsu:25 [App] 数据初始化完成, 来源: local
+chobitsu:25 [App] 数据初始化完成, 来源: local
+chobitsu:25 [xhr] GET /_p/3005/api/kb/cloud-files?folder=docs
+chobitsu:25 [xhr] GET /_p/3005/api/kb/cloud-files?folder=docs
+chobitsu:25 [xhr] GET /api/kb/cloud-files?folder=docs → 200 (26ms, 157B)
+oneday-preview-plugin-0427.js:2 [xhr] 收到 HTML 而非 JSON: /api/kb/cloud-files?folder=docs: Cannot GET /api/kb/cloud-files
+console.error @ oneday-preview-plugin-0427.js:2
+（匿名） @ chobitsu:25
+json @ main.js:17493
+apiGet @ main.js:5663
+await in apiGet
+（匿名） @ main.js:5698
+（匿名） @ main.js:5710
+commitHookEffectListMount @ vendor.js:140546
+commitPassiveMountOnFiber @ vendor.js:142327
+commitPassiveMountEffects_complete @ vendor.js:142287
+commitPassiveMountEffects_begin @ vendor.js:142274
+commitPassiveMountEffects @ vendor.js:142262
+flushPassiveEffectsImpl @ vendor.js:144435
+flushPassiveEffects @ vendor.js:144380
+performSyncWorkOnRoot @ vendor.js:143472
+flushSyncCallbacks @ vendor.js:129403
+commitRootImpl @ vendor.js:144355
+commitRoot @ vendor.js:144078
+finishConcurrentRender @ vendor.js:143377
+performConcurrentWorkOnRoot @ vendor.js:143205
+workLoop @ vendor.js:156067
+flushWork @ vendor.js:156040
+performWorkUntilDeadline @ vendor.js:156334
+postMessage
+schedulePerformWorkUntilDeadline @ vendor.js:156375
+requestHostCallback @ vendor.js:156389
+unstable_scheduleCallback @ vendor.js:156242
+scheduleCallback$1 @ vendor.js:144933
+ensureRootIsScheduled @ vendor.js:143079
+scheduleUpdateOnFiber @ vendor.js:142927
+dispatchSetState @ vendor.js:134069
+（匿名） @ main.js:7874
+Promise.then
+（匿名） @ main.js:7873
+Promise.then
+（匿名） @ main.js:7872
+commitHookEffectListMount @ vendor.js:140546
+commitPassiveMountOnFiber @ vendor.js:142327
+commitPassiveMountEffects_complete @ vendor.js:142287
+commitPassiveMountEffects_begin @ vendor.js:142274
+commitPassiveMountEffects @ vendor.js:142262
+flushPassiveEffectsImpl @ vendor.js:144435
+flushPassiveEffects @ vendor.js:144380
+（匿名） @ vendor.js:144165
+workLoop @ vendor.js:156067
+flushWork @ vendor.js:156040
+performWorkUntilDeadline @ vendor.js:156334
+postMessage
+schedulePerformWorkUntilDeadline @ vendor.js:156375
+performWorkUntilDeadline @ vendor.js:156339
+postMessage
+schedulePerformWorkUntilDeadline @ vendor.js:156375
+requestHostCallback @ vendor.js:156389
+unstable_scheduleCallback @ vendor.js:156242
+scheduleCallback$1 @ vendor.js:144933
+ensureRootIsScheduled @ vendor.js:143079
+scheduleUpdateOnFiber @ vendor.js:142927
+updateContainer @ vendor.js:146254
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ vendor.js:146710
+./src/main.tsx @ main.js:478
+__webpack_require__ @ main.js:17789
+（匿名） @ main.js:19111
+__webpack_require__.O @ main.js:17832
+（匿名） @ main.js:19112
+（匿名） @ main.js:19114
+oneday-preview-plugin-0427.js:2 [知识库] 加载文件列表失败: 服务端返回 HTML: Cannot GET /api/kb/cloud-files
+console.error @ oneday-preview-plugin-0427.js:2
+（匿名） @ chobitsu:25
+（匿名） @ main.js:5702
+await in （匿名）
+（匿名） @ main.js:5710
+commitHookEffectListMount @ vendor.js:140546
+commitPassiveMountOnFiber @ vendor.js:142327
+commitPassiveMountEffects_complete @ vendor.js:142287
+commitPassiveMountEffects_begin @ vendor.js:142274
+commitPassiveMountEffects @ vendor.js:142262
+flushPassiveEffectsImpl @ vendor.js:144435
+flushPassiveEffects @ vendor.js:144380
+performSyncWorkOnRoot @ vendor.js:143472
+flushSyncCallbacks @ vendor.js:129403
+commitRootImpl @ vendor.js:144355
+commitRoot @ vendor.js:144078
+finishConcurrentRender @ vendor.js:143377
+performConcurrentWorkOnRoot @ vendor.js:143205
+workLoop @ vendor.js:156067
+flushWork @ vendor.js:156040
+performWorkUntilDeadline @ vendor.js:156334
+postMessage
+schedulePerformWorkUntilDeadline @ vendor.js:156375
+requestHostCallback @ vendor.js:156389
+unstable_scheduleCallback @ vendor.js:156242
+scheduleCallback$1 @ vendor.js:144933
+ensureRootIsScheduled @ vendor.js:143079
+scheduleUpdateOnFiber @ vendor.js:142927
+dispatchSetState @ vendor.js:134069
+（匿名） @ main.js:7874
+Promise.then
+（匿名） @ main.js:7873
+Promise.then
+（匿名） @ main.js:7872
+commitHookEffectListMount @ vendor.js:140546
+commitPassiveMountOnFiber @ vendor.js:142327
+commitPassiveMountEffects_complete @ vendor.js:142287
+commitPassiveMountEffects_begin @ vendor.js:142274
+commitPassiveMountEffects @ vendor.js:142262
+flushPassiveEffectsImpl @ vendor.js:144435
+flushPassiveEffects @ vendor.js:144380
+（匿名） @ vendor.js:144165
+workLoop @ vendor.js:156067
+flushWork @ vendor.js:156040
+performWorkUntilDeadline @ vendor.js:156334
+postMessage
+schedulePerformWorkUntilDeadline @ vendor.js:156375
+performWorkUntilDeadline @ vendor.js:156339
+postMessage
+schedulePerformWorkUntilDeadline @ vendor.js:156375
+requestHostCallback @ vendor.js:156389
+unstable_scheduleCallback @ vendor.js:156242
+scheduleCallback$1 @ vendor.js:144933
+ensureRootIsScheduled @ vendor.js:143079
+scheduleUpdateOnFiber @ vendor.js:142927
+updateContainer @ vendor.js:146254
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ vendor.js:146710
+./src/main.tsx @ main.js:478
+__webpack_require__ @ main.js:17789
+（匿名） @ main.js:19111
+__webpack_require__.O @ main.js:17832
+（匿名） @ main.js:19112
+（匿名） @ main.js:19114
+chobitsu:25 [xhr] GET /api/kb/cloud-files?folder=docs → 200 (42ms, 157B)
+oneday-preview-plugin-0427.js:2 [xhr] 收到 HTML 而非 JSON: /api/kb/cloud-files?folder=docs: Cannot GET /api/kb/cloud-files
+console.error @ oneday-preview-plugin-0427.js:2
+（匿名） @ chobitsu:25
+json @ main.js:17493
+apiGet @ main.js:5663
+await in apiGet
+（匿名） @ main.js:5698
+（匿名） @ main.js:5710
+commitHookEffectListMount @ vendor.js:140546
+invokePassiveEffectMountInDEV @ vendor.js:142550
+invokeEffectsInDev @ vendor.js:144747
+commitDoubleInvokeEffectsInDEV @ vendor.js:144726
+flushPassiveEffectsImpl @ vendor.js:144452
+flushPassiveEffects @ vendor.js:144380
+performSyncWorkOnRoot @ vendor.js:143472
+flushSyncCallbacks @ vendor.js:129403
+commitRootImpl @ vendor.js:144355
+commitRoot @ vendor.js:144078
+finishConcurrentRender @ vendor.js:143377
+performConcurrentWorkOnRoot @ vendor.js:143205
+workLoop @ vendor.js:156067
+flushWork @ vendor.js:156040
+performWorkUntilDeadline @ vendor.js:156334
+postMessage
+schedulePerformWorkUntilDeadline @ vendor.js:156375
+requestHostCallback @ vendor.js:156389
+unstable_scheduleCallback @ vendor.js:156242
+scheduleCallback$1 @ vendor.js:144933
+ensureRootIsScheduled @ vendor.js:143079
+scheduleUpdateOnFiber @ vendor.js:142927
+dispatchSetState @ vendor.js:134069
+（匿名） @ main.js:7874
+Promise.then
+（匿名） @ main.js:7873
+Promise.then
+（匿名） @ main.js:7872
+commitHookEffectListMount @ vendor.js:140546
+commitPassiveMountOnFiber @ vendor.js:142327
+commitPassiveMountEffects_complete @ vendor.js:142287
+commitPassiveMountEffects_begin @ vendor.js:142274
+commitPassiveMountEffects @ vendor.js:142262
+flushPassiveEffectsImpl @ vendor.js:144435
+flushPassiveEffects @ vendor.js:144380
+（匿名） @ vendor.js:144165
+workLoop @ vendor.js:156067
+flushWork @ vendor.js:156040
+performWorkUntilDeadline @ vendor.js:156334
+postMessage
+schedulePerformWorkUntilDeadline @ vendor.js:156375
+performWorkUntilDeadline @ vendor.js:156339
+postMessage
+schedulePerformWorkUntilDeadline @ vendor.js:156375
+requestHostCallback @ vendor.js:156389
+unstable_scheduleCallback @ vendor.js:156242
+scheduleCallback$1 @ vendor.js:144933
+ensureRootIsScheduled @ vendor.js:143079
+scheduleUpdateOnFiber @ vendor.js:142927
+updateContainer @ vendor.js:146254
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ vendor.js:146710
+./src/main.tsx @ main.js:478
+__webpack_require__ @ main.js:17789
+（匿名） @ main.js:19111
+__webpack_require__.O @ main.js:17832
+（匿名） @ main.js:19112
+（匿名） @ main.js:19114
+oneday-preview-plugin-0427.js:2 [知识库] 加载文件列表失败: 服务端返回 HTML: Cannot GET /api/kb/cloud-files
+console.error @ oneday-preview-plugin-0427.js:2
+（匿名） @ chobitsu:25
+（匿名） @ main.js:5702
+await in （匿名）
+（匿名） @ main.js:5710
+commitHookEffectListMount @ vendor.js:140546
+invokePassiveEffectMountInDEV @ vendor.js:142550
+invokeEffectsInDev @ vendor.js:144747
+commitDoubleInvokeEffectsInDEV @ vendor.js:144726
+flushPassiveEffectsImpl @ vendor.js:144452
+flushPassiveEffects @ vendor.js:144380
+performSyncWorkOnRoot @ vendor.js:143472
+flushSyncCallbacks @ vendor.js:129403
+commitRootImpl @ vendor.js:144355
+commitRoot @ vendor.js:144078
+finishConcurrentRender @ vendor.js:143377
+performConcurrentWorkOnRoot @ vendor.js:143205
+workLoop @ vendor.js:156067
+flushWork @ vendor.js:156040
+performWorkUntilDeadline @ vendor.js:156334
+postMessage
+schedulePerformWorkUntilDeadline @ vendor.js:156375
+requestHostCallback @ vendor.js:156389
+unstable_scheduleCallback @ vendor.js:156242
+scheduleCallback$1 @ vendor.js:144933
+ensureRootIsScheduled @ vendor.js:143079
+scheduleUpdateOnFiber @ vendor.js:142927
+dispatchSetState @ vendor.js:134069
+（匿名） @ main.js:7874
+Promise.then
+（匿名） @ main.js:7873
+Promise.then
+（匿名） @ main.js:7872
+commitHookEffectListMount @ vendor.js:140546
+commitPassiveMountOnFiber @ vendor.js:142327
+commitPassiveMountEffects_complete @ vendor.js:142287
+commitPassiveMountEffects_begin @ vendor.js:142274
+commitPassiveMountEffects @ vendor.js:142262
+flushPassiveEffectsImpl @ vendor.js:144435
+flushPassiveEffects @ vendor.js:144380
+（匿名） @ vendor.js:144165
+workLoop @ vendor.js:156067
+flushWork @ vendor.js:156040
+performWorkUntilDeadline @ vendor.js:156334
+postMessage
+schedulePerformWorkUntilDeadline @ vendor.js:156375
+performWorkUntilDeadline @ vendor.js:156339
+postMessage
+schedulePerformWorkUntilDeadline @ vendor.js:156375
+requestHostCallback @ vendor.js:156389
+unstable_scheduleCallback @ vendor.js:156242
+scheduleCallback$1 @ vendor.js:144933
+ensureRootIsScheduled @ vendor.js:143079
+scheduleUpdateOnFiber @ vendor.js:142927
+updateContainer @ vendor.js:146254
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ vendor.js:146710
+./src/main.tsx @ main.js:478
+__webpack_require__ @ main.js:17789
+（匿名） @ main.js:19111
+__webpack_require__.O @ main.js:17832
+（匿名） @ main.js:19112
+（匿名） @ main.js:19114
+[2026-06-17] network_sw.0519.js:1 [SW] sw init Wed Jun 17 2026 14:21:17 GMT+0800 (中国标准时间)
+network_sw.0519.js:1 [SW] sw init Wed Jun 17 2026 14:21:31 GMT+0800 (中国标准时间)
+index.html:72 [oneday-bootstrap] ONEDAY_CONFIG 未找到, 等待 postMessage...
+vendor.js:157586 [webpack-dev-server] Server started: Hot Module Replacement enabled, Live Reloading enabled, Progress disabled, Overlay enabled.
+vendor.js:159189 [HMR] Waiting for update signal from WDS...
+vendor.js:147252 Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+main.js:6728 [oneday] window.oneday 是 polyfill，等待平台注入真实 SDK
+tryCreateClient @ main.js:6728
+oneday-preview-plugin-0427.js:2 ⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+console.warn @ oneday-preview-plugin-0427.js:2
+oneday-preview-plugin-0427.js:2 ⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+console.warn @ oneday-preview-plugin-0427.js:2
+oneday-preview-plugin-0427.js:2 [oneday] window.oneday 是 polyfill，等待平台注入真实 SDK
+console.warn @ oneday-preview-plugin-0427.js:2
+main.js:10592 [dataService] Supabase 客户端: null
+main.js:10623 [dataService] 初始化完成: 数据来自 localStorage 缓存
+main.js:7897 [App] 数据初始化完成, 来源: local
+main.js:7897 [App] 数据初始化完成, 来源: local
+oneday-preview-plugin-0427.js:2 [oneday] window.oneday 是 polyfill，等待平台注入真实 SDK
+console.warn @ oneday-preview-plugin-0427.js:2
+oneday-preview-plugin-0427.js:2 === OneDay Cloud SDK 最终初始化失败 ===
+console.error @ oneday-preview-plugin-0427.js:2
+oneday-preview-plugin-0427.js:2 window.oneday: object Array(5)
+console.error @ oneday-preview-plugin-0427.js:2
+oneday-preview-plugin-0427.js:2 window.oneday.__polyfill: true
+console.error @ oneday-preview-plugin-0427.js:2
+oneday-preview-plugin-0427.js:2 ONEDAY_CONFIG: undefined
+console.error @ oneday-preview-plugin-0427.js:2
+oneday-preview-plugin-0427.js:2 确认: 1) 项目设置→数据库→开启 OneDay Cloud  2) 运行模式为 WebC（浏览器沙盒）
+console.error @ oneday-preview-plugin-0427.js:2
+oneday-preview-plugin-0427.js:2 =======================================
+console.error @ oneday-preview-plugin-0427.js:2
+chobitsu:25 [xhr] GET /_p/3000/api/kb/cloud-files?folder=docs
+chobitsu:25 [xhr] GET /_p/3000/api/kb/cloud-files?folder=docs
+chobitsu:25 [xhr] GET /api/kb/cloud-files?folder=docs → 200 (27ms, 157B)
+oneday-preview-plugin-0427.js:2 [xhr] 收到 HTML 而非 JSON: /api/kb/cloud-files?folder=docs: Cannot GET /api/kb/cloud-files
+console.error @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+json @ main.js:17515
+apiGet @ main.js:5663
+await in apiGet
+（匿名） @ main.js:5698
+（匿名） @ main.js:5710
+commitHookEffectListMount @ vendor.js:140546
+commitPassiveMountOnFiber @ vendor.js:142327
+commitPassiveMountEffects_complete @ vendor.js:142287
+commitPassiveMountEffects_begin @ vendor.js:142274
+commitPassiveMountEffects @ vendor.js:142262
+flushPassiveEffectsImpl @ vendor.js:144435
+flushPassiveEffects @ vendor.js:144380
+commitRootImpl @ vendor.js:144331
+commitRoot @ vendor.js:144078
+performSyncWorkOnRoot @ vendor.js:143513
+flushSyncCallbacks @ vendor.js:129403
+（匿名） @ vendor.js:143047
+oneday-preview-plugin-0427.js:2 [知识库] 加载文件列表失败: 服务端返回 HTML: Cannot GET /api/kb/cloud-files
+console.error @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+（匿名） @ main.js:5702
+await in （匿名）
+（匿名） @ main.js:5710
+commitHookEffectListMount @ vendor.js:140546
+commitPassiveMountOnFiber @ vendor.js:142327
+commitPassiveMountEffects_complete @ vendor.js:142287
+commitPassiveMountEffects_begin @ vendor.js:142274
+commitPassiveMountEffects @ vendor.js:142262
+flushPassiveEffectsImpl @ vendor.js:144435
+flushPassiveEffects @ vendor.js:144380
+commitRootImpl @ vendor.js:144331
+commitRoot @ vendor.js:144078
+performSyncWorkOnRoot @ vendor.js:143513
+flushSyncCallbacks @ vendor.js:129403
+（匿名） @ vendor.js:143047
+chobitsu:25 [xhr] GET /api/kb/cloud-files?folder=docs → 200 (60ms, 157B)
+oneday-preview-plugin-0427.js:2 [xhr] 收到 HTML 而非 JSON: /api/kb/cloud-files?folder=docs: Cannot GET /api/kb/cloud-files
+console.error @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+json @ main.js:17515
+apiGet @ main.js:5663
+await in apiGet
+（匿名） @ main.js:5698
+（匿名） @ main.js:5710
+commitHookEffectListMount @ vendor.js:140546
+invokePassiveEffectMountInDEV @ vendor.js:142550
+invokeEffectsInDev @ vendor.js:144747
+commitDoubleInvokeEffectsInDEV @ vendor.js:144726
+flushPassiveEffectsImpl @ vendor.js:144452
+flushPassiveEffects @ vendor.js:144380
+commitRootImpl @ vendor.js:144331
+commitRoot @ vendor.js:144078
+performSyncWorkOnRoot @ vendor.js:143513
+flushSyncCallbacks @ vendor.js:129403
+（匿名） @ vendor.js:143047
+oneday-preview-plugin-0427.js:2 [知识库] 加载文件列表失败: 服务端返回 HTML: Cannot GET /api/kb/cloud-files
+console.error @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+（匿名） @ main.js:5702
+await in （匿名）
+（匿名） @ main.js:5710
+commitHookEffectListMount @ vendor.js:140546
+invokePassiveEffectMountInDEV @ vendor.js:142550
+invokeEffectsInDev @ vendor.js:144747
+commitDoubleInvokeEffectsInDEV @ vendor.js:144726
+flushPassiveEffectsImpl @ vendor.js:144452
+flushPassiveEffects @ vendor.js:144380
+commitRootImpl @ vendor.js:144331
+commitRoot @ vendor.js:144078
+performSyncWorkOnRoot @ vendor.js:143513
+flushSyncCallbacks @ vendor.js:129403
+（匿名） @ vendor.js:143047
+
+
+建议按两步修复。第一步，修正前端 API 基址：把 getApiBase() 改成优先使用 OneDay 注入的云函数 baseUrl。这样当前页面访问知识库文件列表时，会请求真实云函数后端的 /api/kb/cloud-files，而不是预览服务的 /api/kb/cloud-files。第二步，处理误导性 SDK 日志：当前 safeClient.ts 看到 window.oneday.__polyfill 为 true 就打印最终初始化失败，但诊断报告显示 database_config 和 jwtToken 已配置，并且知识库文件列表已经改为走后端 API，不应让这个日志干扰判断。可以把该日志降级为 warn，或避免在应用启动时通过 barrel export 触发 safeClient 的 eager 初始化。修复后重新预览，并优先验证 ONEDAY_CONFIG.fc.baseUrl 是否存在，以及访问 ${fc.baseUrl}/api/kb/cloud-files?folder=docs 是否返回 JSON 数组。
+
+代码示例：
+
+export function getApiBase(): string {
+  let config: any = undefined;
+  try {
+    config = (window as any).ONEDAY_CONFIG || (window as any).parent?.window?.ONEDAY_CONFIG;
+  } catch {
+    config = (window as any).ONEDAY_CONFIG;
+  }
+
+  const fcBaseUrl = config?.fc?.baseUrl;
+  if (fcBaseUrl) {
+    return `${String(fcBaseUrl).replace(/\/$/, '')}/api`;
+  }
+
+  return '/api';
+}
+配置路径：src/onedaycloud/utils.ts
+
+正确配置：getApiBase() 应优先返回 ${ONEDAY_CONFIG.fc.baseUrl}/api，没有 fc.baseUrl 时才降级为 /api``
+
+📚 参考文档
+全栈应用/云函数网络请求排查指南，明确说明前端调用后端 API 需要正常获取并使用 ONEDAY_CONFIG.fc.baseUrl，且后端 API 服务需正常运行。 - 点击查看
+OneDay 服务端开发使用指南，说明云函数开启、API 运行中、接口调试以及后端修改未生效时应查看部署和日志。 - 点击查看
+
+根因是前端 API 基址写死为 '/api'，没有优先使用 OneDay 云函数注入的 ONEDAY_CONFIG.fc.baseUrl，导致浏览器请求 /api/kb/cloud-files 时打到了当前预览/静态服务侧，而不是实际运行中的云函数后端，所以即使重启后端 API，前端仍然收到 HTML 形式的 Cannot GET /api/kb/cloud-files。另一个并行问题是 safeClient.ts 对 window.oneday.__polyfill 的判断过严，会打印「OneDay Cloud SDK 最终初始化失败」的误导日志；但当前报告里 database_config 和 jwtToken 已配置，真正导致知识库文件列表失败的是 API 基址错误。
+
+根据1d开发适配技能进行修复
+[2026-06-17] 为什么子agnet配额不足？
+[2026-06-17] 子agent使用qwen3.7max模型或者sonnet模型就可以了
+[2026-06-17] 记住这点
+[2026-06-17] 将这个项目的知识库页面的代码，同步更新到https://code.alibaba-inc.com/OneDayAI-RPUKYRO/1BfrYn9G/tree/onedaybot-dev
+
+这个项目里
+[2026-06-17] 使用2个子agent对 1BfrYn9G进行审计

@@ -1,0 +1,5412 @@
+# 1BfrYn9G — 用户口输入（去重后，127 条 / 原始 146 条）
+# 由 distill-user-style.py Step1 生成，供 BUSINESS-INTENT 提炼 + 引擎阶段①CONTEXTUALIZE 读
+
+[2026-06-30] 不要改我的原项目代码，而是新创建一个fa_agent项目目录，同时将重构的代码覆盖到https://code.alibaba-inc.com/forge-agent/chonggou，同时将整个项目部署运行到ecs
+[2026-06-26] 全部修复，按照1d平台适配技能，还有一个1d cloud传文件技能，你可以参照这两个，对项目进行功能修复
+[2026-06-26] 全量修复，按照1d平台适配技能，审计修复情况，排查逻辑问题和bug
+[2026-06-26] 全量处理修复
+[2026-06-26] 整理成我复制后直接发给1d agent的话
+[2026-06-26] 推送git了吗？
+[2026-06-26] 5a8d4a8有一点更新，和本地所有的改动，包括其他人的改动，一起合并一下
+[2026-06-24] 不用抑制思考输出，能不能做一个真正强健的灵活的兼容模型错误格式的中间代码层进行自动补正
+[2026-06-24] [Request interrupted by user]
+[2026-06-24] 看一下git提交了吗
+[2026-06-24] 根据规则库文档格式规范.md来下载https://alidocs.dingtalk.com/i/nodes/6LeBq413JA9BOdm2irBQ7NaYJDOnGvpb?corpId=dingd8e1123006514592&utm_medium=im_card&iframeQuery=utm_medium%3Dim_card%26utm_source%3Dim&utm_scene=team_space&utm_source=im这个通用知识库目录放到ai试衣规则知识库下面，ai试衣规则知识库-通用知识库-...
+[2026-06-24] Base directory for this skill: /home/admin/.claude/skills/devix-dingtalk-skill
+
+# devix-dingtalk-skill
+
+Devix 用于读写钉钉**文档（Doc）**、**表格（Sheet）**、**AI 表格（AI Table）** 的三合一技能。基于钉钉 MCP（Model Context Protocol）网关实现，支持多组织、多 MCP 类型混合配置、自动切换。
+
+## 当前覆盖范围
+
+| 类型 | 子模块 | MCP 入口 | 状态 |
+| --- | --- | --- | --- |
+| 钉钉文档 Doc | `scripts.dingtalk_doc` | mcpId=9629 | ✅ 已支持 |
+| 钉钉电子表格 Sheet | `scripts.dingtalk_sheet` | mcpId=9704 | ✅ 已支持 |
+| 钉钉 AI 表格 | `scripts.dingtalk_ai_table` | mcpId=9555 | ✅ 已支持 |
+
+> ⚠️ 三种 MCP 是**三个独立服务**，授权地址各自不同，都在 `mcp.dingtalk.com`，仅 `mcpId` 不同。
+
+## Priority Rules
+
+**当用户消息中包含 `alidocs.dingtalk.com` 或 `docs.dingtalk.com` 链接时，必须遵循以下规则：**
+
+1. **必须使用本技能** 读取内容
+2. **禁止使用浏览器打开钉钉链接** —— 浏览器需要登录且无法正确提取内容
+3. 只有当本技能明确报错后，才考虑其他方案
+
+判别链接归属（先看 URL 形态，再看用户描述的关键词）：
+
+| 形态 / 关键词 | 归属 | 入口函数 |
+| --- | --- | --- |
+| `alidocs.dingtalk.com/i/nodes/<id>` + "文档/段落/标题/Markdown" | **文档** | `read_doc(url)` |
+| `alidocs.dingtalk.com/i/nodes/<id>` 或 `spreadsheetv2/...` + "单元格/工作表/A1/行列/筛选" | **电子表格** | `get_all_sheets(url)` → `get_range(url, ...)` |
+| `docs.dingtalk.com/i/nodes/<id>` 或 "AI 表格/Base/字段/记录" | **AI 表格** | `get_base(url)` → `query_records(...)` |
+
+> 同样是 `alidocs.dingtalk.com/i/nodes/<id>`，文档和电子表格用同一种 URL 形态。优先按用户描述的关键词判断；不确定时可先调 `dingtalk_doc.get_doc_info(url)` 或 `dingtalk_sheet.get_all_sheets(url)`，看哪个能返回成功结果。
+
+## When to Use
+
+- **（最高优先级）用户消息中出现 `alidocs.dingtalk.com` / `docs.dingtalk.com` 链接**
+- 用户要求创建 / 更新 / 追加钉钉文档、AI 表格
+- 用户要求搜索钉钉文档 / AI 表格
+- 用户要求查看知识库 / 文件夹下的列表
+- 用户要求"建表"、"查记录"、"加字段"、"按条件筛选 AI 表格"、"刷新 AI 字段"等
+- 用户提供了授权地址（MCP URL）并要求配置
+
+## First-Time Setup
+
+**当配置不存在（脚本报错提示未配置）或用户首次使用时，按以下流程引导用户：**
+
+### 第一步：引导用户获取授权地址
+
+向用户发送以下提示（直接发送，不要改写）：
+
+> 三合一技能需要分别获取 **三个 MCP 授权**（文档 / 表格 / AI 表格是三个独立 MCP 服务）。请依次打开下面的链接并复制各自的 MCP 地址：
+>
+> 1. **钉钉文档 MCP**：https://mcp.dingtalk.com/#/detail?mcpId=9629&detailType=marketMcpDetail
+> 2. **钉钉表格 MCP**：https://mcp.dingtalk.com/#/detail?mcpId=9704&detailType=marketMcpDetail
+> 3. **钉钉 AI 表格 MCP**：https://mcp.dingtalk.com/#/detail?mcpId=9555&detailType=marketMcpDetail
+>
+> 每个页面右侧点击「获取 MCP Server 配置」，复制出来的地址（格式类似
+> `https://mcp-gw.dingtalk.com/server/xxx?key=xxx`）发给我，我会自动识别类型并完成配置。
+>
+> 如果你在多个钉钉组织中都有内容，每个组织 × 每种 MCP 都需要分别获取一个地址。
+
+### 第二步：保存用户授权
+
+收到用户提供的地址后，执行（**任一子模块的 `setup` 都通用**，会自动探测 server 类型）：
+
+```python
+from scripts.dingtalk_doc import setup, list_servers
+
+result = setup("用户提供的完整地址")
+print(result["message"])
+# → "已添加 MCP 服务器 [doc-1] (type=doc)..." 或 "[ai_table-1] (type=ai_table)..."
+
+# 多个组织 / 多个 MCP 类型，多次调用即可
+setup("第二个地址", name="org-b-doc")
+setup("第三个地址", name="org-b-ai")
+
+list_servers()  # 查看（凭证自动脱敏）
+```
+
+`setup()` 通过 `tools/list` 自动识别该 MCP 的类型（`doc` / `ai_table`），并保存到技能目录下
+`config/servers.json`，无需手动编辑。
+
+## How to Import
+
+```python
+import sys
+from pathlib import Path
+
+# 【重要】以下路径仅为示例，需要根据实际使用的工具调整：
+# - Claude Code: ~/.claude/skills/devix-dingtalk-skill
+# - Cursor: ~/.cursor/skills/devix-dingtalk-skill
+# - Qoderwork: ~/.qoderwork/skills/devix-dingtalk-skill
+SKILL_DIR = Path.home() / ".claude" / "skills" / "devix-dingtalk-skill"
+sys.path.insert(0, str(SKILL_DIR))
+
+# 配置管理（任一模块都有，统一入口）
+from scripts.dingtalk_doc import setup, list_servers, remove_server
+
+# 钉钉文档
+from scripts.dingtalk_doc import (
+    read_doc, read_doc_blocks, get_doc_info,
+    create_doc, update_doc,
+    insert_block, update_block, delete_block,
+    search_docs, list_nodes, create_folder,
+)
+
+# 钉钉电子表格
+from scripts.dingtalk_sheet import (
+    create_spreadsheet, export_xlsx, query_export_job,
+    get_all_sheets, get_sheet, create_sheet, update_sheet, copy_sheet,
+    get_range, update_range, append_rows,
+    find_cells, replace_all,
+    merge_cells, unmerge_range,
+    add_dimension, insert_dimension, delete_dimension, move_dimension, update_dimension,
+    get_filter, create_filter, update_filter, delete_filter,
+    set_filter_criteria, clear_filter_criteria, sort_filter,
+    set_dropdown_lists, get_dropdown_lists, delete_dropdown_lists,
+    raw_call as sheet_raw_call,  # 浮动图片/个人筛选视图等低频
+)
+
+# 钉钉 AI 表格
+from scripts.dingtalk_ai_table import (
+    list_bases, search_bases, get_base, create_base, update_base, delete_base,
+    copy_base, search_templates,
+    get_tables, create_table, update_table, delete_table,
+    get_fields, create_fields, update_field, delete_field,
+    query_records, create_records, update_records, delete_records,
+    get_base_primary_doc_id,
+    get_views, create_view, update_view, delete_view,
+    run_ai_field,
+    prepare_attachment_upload, prepare_import_upload, import_data, export_data,
+    create_guide_document, update_guide_document, delete_guide_document,
+    raw_call,  # 任意未单独包装的 MCP 工具直通
+)
+```
+
+## Steps — 钉钉文档（Doc）
+
+### 读取文档
+
+```python
+result = read_doc(url="https://alidocs.dingtalk.com/i/nodes/<nodeId>")
+markdown_content = result["markdown"]
+```
+
+### 读取文档块元素
+
+```python
+result = read_doc_blocks(url="https://alidocs.dingtalk.com/i/nodes/<nodeId>")
+for block in result["blocks"]:
+    print(block["index"], block["blockType"], block["element"].get("id"))
+```
+
+### 创建 / 更新文档
+
+```python
+create_doc(doc_name="文档标题", content="Markdown 内容")
+create_doc(doc_name="标题", content="内容", workspace_id="xxx")
+create_doc(doc_name="标题", content="内容", folder_id="xxx")
+
+update_doc(url="https://alidocs.dingtalk.com/i/nodes/<nodeId>", content="新 Markdown 内容")
+```
+
+### 块级操作
+
+```python
+insert_block(url, {"blockType": "paragraph", "paragraph": {"text": "新段落"}})
+insert_block(url, {"blockType": "heading", "heading": {"level": 2, "text": "二级标题"}})
+update_block(url, block_id="xxx", element={"blockType": "paragraph", "paragraph": {"text": "更新内容"}})
+delete_block(url, block_id="xxx")
+```
+
+### 搜索 / 浏览
+
+```python
+search_docs(keyword="关键词", count=10)
+list_nodes(workspace_id="知识库ID")
+list_nodes(folder_id="文件夹ID")
+get_doc_info(url="https://alidocs.dingtalk.com/i/nodes/<nodeId>")
+create_folder(name="新文件夹", workspace_id="xxx")
+```
+
+## Steps — 钉钉 AI 表格（AI Table）
+
+> AI 表格是"Base → Table → Field/Record/View"的结构。
+> 几乎所有写操作都需要 `baseId` + `tableId`。先用 `list_bases` / `search_bases` 找 Base，
+> 再用 `get_base` 取 Table 列表，再用 `get_tables` 看字段目录，最后做读写。
+
+### 找 Base
+
+```python
+list_bases(limit=10)                                # 最近访问的 Base
+search_bases(query="销售日报")                       # 按名称搜
+get_base(base_id="AR4xxx...")                       # 进入某个 Base
+# 返回里有 tables 列表：tableId / tableName / summary
+# AI 表格访问 URL：https://docs.dingtalk.com/i/nodes/<baseId>
+```
+
+### 建表 / 加字段
+
+```python
+# 一次建一张表，并附带初始字段（单次最多 15 个字段）
+create_table(
+    base_id="<baseId>",
+    table_name="销售台账",
+    fields=[
+        {"fieldName": "客户", "type": "text"},
+        {"fieldName": "金额", "type": "currency", "config": {"currencyType": "CNY"}},
+        {"fieldName": "阶段", "type": "singleSelect",
+         "config": {"options": [{"name": "线索"}, {"name": "成交"}, {"name": "流失"}]}},
+        {"fieldName": "负责人", "type": "user", "config": {"multiple": False}},
+        {"fieldName": "成交日期", "type": "date"},
+    ],
+)
+
+# 给已有表加字段
+create_fields(base_id, table_id, fields=[
+    {"fieldName": "备注", "type": "richText"},
+    {"fieldName": "进度", "type": "progress"},
+])
+
+# 看字段目录
+tables = get_tables(base_id, table_ids=["<tableId>"])
+fields = get_fields(base_id, table_id, field_ids=["<fieldId>"])  # 含完整 options 等
+
+update_field(base_id, table_id, field_id, new_field_name="新名字")
+delete_field(base_id, table_id, field_id)
+```
+
+### 增 / 删 / 查 / 改记录
+
+```python
+# 新增
+create_records(base_id, table_id, records=[
+    {"cells": {
+        "fld_客户ID":  "阿里巴巴",
+        "fld_金额ID":  120000,
+        "fld_阶段ID":  "成交",
+        "fld_日期ID":  "2026-05-18",
+    }},
+    {"cells": {"fld_客户ID": "蚂蚁", "fld_金额ID": 80000, "fld_阶段ID": "线索"}},
+])
+
+# 查询：按 ID
+query_records(base_id, table_id, record_ids=["rec_xxx", "rec_yyy"])
+
+# 查询：按条件 + 排序 + 分页
+result = query_records(
+    base_id, table_id,
+    field_ids=["fld_客户ID", "fld_金额ID"],          # 限定返回字段，节省 token
+    filters={
+        "operator": "and",
+        "operands": [
+            {"fieldId": "fld_阶段ID", "operator": "eq", "value": "成交"},
+            {"fieldId": "fld_金额ID", "operator": "gt", "value": 100000},
+        ],
+    },
+    sort=[{"fieldId": "fld_日期ID", "direction": "desc"}],
+    limit=100,
+)
+# 翻页：把 result["cursor"] 传到下一次的 cursor
+
+# 更新（只传需要改的 cells）
+update_records(base_id, table_id, records=[
+    {"recordId": "rec_xxx", "cells": {"fld_阶段ID": "流失"}},
+])
+
+# 删除（最多 100 条）
+delete_records(base_id, table_id, record_ids=["rec_xxx"])
+```
+
+各字段类型的写入格式（摘要）：
+
+| 类型 | 写入示例 |
+| --- | --- |
+| `text` / `url` / `email` / `telephone` | `"字符串"` |
+| `number` / `currency` | `123` 或 `123.45` |
+| `progress` | `0~1`（0.5 = 50%） |
+| `rating` | 数字（在 `min~max` 范围内） |
+| `checkbox` | `true` / `false` |
+| `singleSelect` | `"选项名"` 或 `{"id": "opt_xxx"}` |
+| `multipleSelect` | `["选项1", "选项2"]` |
+| `date` | `"2026-03-15"` / `"2026-03-15 09:00"` / RFC3339 / 毫秒时间戳 |
+| `user` | `[{"userId": "...", "corpId": "..."}]` |
+| `department` | `[{"deptId": "..."}]` |
+| `group` | `[{"cid": "..."}]`（不是 chatId） |
+| `attachment` | 外链 `[{"url": "https://..."}]` 或上传后 `[{"fileToken": "..."}]` |
+
+### 视图（View）
+
+```python
+get_views(base_id, table_id)                        # 全部视图
+create_view(base_id, table_id, view_type="Kanban",
+            view_name="按阶段看板",
+            config={"visibleFieldIds": ["fld_主ID", "fld_金额ID", "fld_阶段ID"]})
+update_view(base_id, table_id, view_id, config={"sort": [...]})
+delete_view(base_id, table_id, view_id)
+```
+
+支持的视图类型：`Grid` / `FormDesigner` / `Gantt` / `Calendar` / `Kanban` / `Gallery`。
+
+### AI 字段
+
+```python
+# 整列刷新 AI 字段
+run_ai_field(base_id, table_id, field_ids=["fld_AI_xxx"])
+
+# 指定记录刷新（最多 500 条）
+run_ai_field(base_id, table_id,
+             field_ids=["fld_AI_xxx"], record_ids=["rec_a", "rec_b"])
+# 异步任务：只返回提交结果，进度需要到文档里看
+```
+
+### 模板 / 建 Base
+
+```python
+search_templates(query="项目管理")                   # 找模板
+create_base(base_name="我的新 Base", template_id="235")
+create_base(base_name="空 Base", folder_id="<dentryUuid>")  # 放进知识库指定文件夹
+update_base(base_id, new_base_name="改个名")
+delete_base(base_id, reason="测试垃圾")
+copy_base(base_id, target_folder_id="<dentryUuid>", only_copy_meta=False)
+```
+
+### 导入 / 导出 / 附件
+
+```python
+# 外链文件写 attachment 字段（不要先下载）
+update_records(base_id, table_id, records=[
+    {"recordId": "rec_xxx",
+     "cells": {"fld_附件ID": [{"url": "https://example.com/report.pdf"}]}},
+])
+
+# 本地文件 → 申请上传地址 → PUT 上传 → 写 fileToken
+prep = prepare_attachment_upload(base_id, file_name="report.pdf",
+                                  size=12345, mime_type="application/pdf")
+# 客户端用 requests.put(prep["uploadUrl"], data=..., headers={"Content-Type": "application/pdf"})
+update_records(base_id, table_id, records=[
+    {"recordId": "rec_xxx",
+     "cells": {"fld_附件ID": [{"fileToken": prep["fileToken"]}]}},
+])
+
+# 导入 Excel → 自动新建数据表
+imp = prepare_import_upload(base_id, file_name="data.xlsx", file_size=98765)
+# PUT 上传到 imp["uploadUrl"]
+result = import_data(import_id=imp["importId"])      # 等不到再调一次
+
+# 导出整个 Base 为 Excel
+export_data(base_id, scope="all", format="excel")
+# 单表导出： scope="table", table_id="..."
+# 视图导出： scope="view", table_id="...", view_id="..."
+```
+
+### 直通入口（未单独包装的工具）
+
+```python
+# 仪表盘 / 图表 / 分享 等复杂工具走直通
+raw_call("get_dashboard_config_example", {})
+raw_call("create_dashboard", {"baseId": "...", "config": {...}})
+raw_call("update_dashboard_share", {"baseId": "...", "dashboardId": "...",
+                                     "enabled": True, "shareType": "ORG"})
+```
+
+完整工具列表见 `_mcp_client.list_mcp_tools(server_index=...)`。
+
+## Steps — 钉钉电子表格（Sheet）
+
+> Spreadsheet 是一个文档（`nodeId` / dentryUuid / URL 三者通用），里面有多个 Worksheet。
+> 所有写操作都需 `node_id` + `sheet_id`。`sheet_id` 也可直接传工作表名。
+
+### 找工作表
+
+```python
+# 列出某个在线表格的所有工作表
+get_all_sheets(node_id="https://alidocs.dingtalk.com/i/nodes/<dentryUuid>")
+# 或直接传 32 位 dentryUuid
+
+# 取某个 sheet 的详情（含行列数、最后非空位置）
+get_sheet(node_id, sheet_id="Sheet1")           # 名字
+get_sheet(node_id, sheet_id="sht_xxx")          # ID
+```
+
+### 读单元格 / 范围
+
+```python
+# 默认：读第一个工作表的全部非空数据
+get_range(node_id)
+
+# 读指定区域
+get_range(node_id, sheet_id="Sheet1", range="A1:D10")
+
+# 也可写带前缀的形式，会忽略 sheet_id
+get_range(node_id, range="Sheet1!A1:D10")
+# 返回三套数据：
+#   values        → 公式计算后的值
+#   formulas      → 原始公式
+#   displayValues → 界面显示值
+# 均为二维数组 [行][列]
+```
+
+### 写单元格 / 范围
+
+```python
+# 只写值（最常用）
+update_range(
+    node_id, sheet_id="Sheet1", range_address="A1:B2",
+    values=[["客户", "金额"], ["阿里", 120000]],
+)
+
+# 公式
+update_range(node_id, "Sheet1", "C2", values=[["=A2&'-'&B2"]])
+update_range(node_id, "Sheet1", "B5", values=[["=SUM(B2:B4)"]])
+
+# 清空（实测：必须用空字符串 ""，不能用 None / null —— MCP 把 null 视作"保留原值"）
+update_range(node_id, "Sheet1", "A1:B2", values=[["", ""], ["", ""]])
+# 大批量清空可直接 delete_dimension(node_id, sheet_id, "ROWS", position="1", length=N)
+
+# 同时写值 + 格式
+update_range(
+    node_id, "Sheet1", "A1:B1",
+    values=[["客户", "金额"]],
+    font_weights=[["bold", "bold"]],
+    background_colors=[["#FFF2CC", "#FFF2CC"]],
+    horizontal_alignments=[["center", "center"]],
+)
+
+# 超链接
+update_range(
+    node_id, "Sheet1", "A2",
+    hyperlinks=[[{"type": "path", "link": "https://example.com", "text": "示例"}]],
+)
+
+# 数字格式
+update_range(node_id, "Sheet1", "B2:B100",
+             number_format="¥#,##0")   # 人民币；其它常用："0%"、"yyyy/m/d"
+
+# 自动换行
+update_range(node_id, "Sheet1", "A1:Z1", word_wrap="autoWrap")
+```
+
+### 追加行（最常用的写入模式）
+
+```python
+# 自动定位到最后非空行下方
+append_rows(node_id, sheet_id="Sheet1", values=[
+    ["阿里",  120000, "2026-05-18"],
+    ["蚂蚁",   80000, "2026-05-19"],
+])
+# 返回追加范围（A1 表示法）
+```
+
+### 查找 / 替换
+
+```python
+find_cells(node_id, "Sheet1", text="阿里")
+find_cells(node_id, "Sheet1", text="^A.*$", use_regexp=True, range="A1:A100")
+find_cells(node_id, "Sheet1", text="ALI", match_case=False, match_entire_cell=True)
+
+replace_all(node_id, "Sheet1", text="阿里", replace_text="阿里巴巴")
+replace_all(node_id, "Sheet1", text="\\s+", replace_text="", use_regexp=True)
+```
+
+### 行 / 列管理
+
+```python
+# 末尾追加 5 行 / 3 列
+add_dimension(node_id, "Sheet1", dimension="ROWS",    length=5)
+add_dimension(node_id, "Sheet1", dimension="COLUMNS", length=3)
+
+# 在第 3 行之前插入 2 行；在 B 列之前插入 1 列
+insert_dimension(node_id, "Sheet1", "ROWS",    position="3", length=2)
+insert_dimension(node_id, "Sheet1", "COLUMNS", position="B", length=1)
+
+# 从第 3 行起删 2 行
+delete_dimension(node_id, "Sheet1", "ROWS", position="3", length=2)
+
+# 移动行（0-based）：把第 1-2 行（index 0~1）移到第 4 行（index 3）后面
+move_dimension(node_id, "Sheet1", "ROWS",
+               start_index=0, end_index=1, destination_index=4)
+
+# 隐藏 / 设行高 / 设列宽
+update_dimension(node_id, "Sheet1", "ROWS",    start_index="3", length=2, hidden=True)
+update_dimension(node_id, "Sheet1", "ROWS",    start_index="1", length=1, pixel_size=40)
+update_dimension(node_id, "Sheet1", "COLUMNS", start_index="A", length=3, pixel_size=120)
+```
+
+### 合并单元格
+
+```python
+merge_cells(node_id, "Sheet1", "A1:D1")                       # 合并所有
+merge_cells(node_id, "Sheet1", "A1:D3", merge_type="mergeRows")
+unmerge_range(node_id, "Sheet1", "A1:D3")
+```
+
+### 全局筛选（每个工作表至多一个）
+
+```python
+create_filter(node_id, "Sheet1", range="A1:E100")
+
+# 列 0 只显示 ["阿里","蚂蚁"]
+set_filter_criteria(node_id, "Sheet1", column=0,
+    filter_criteria={"filterType": "values", "visibleValues": ["阿里", "蚂蚁"]})
+
+# 列 2 金额 > 100000
+set_filter_criteria(node_id, "Sheet1", column=2,
+    filter_criteria={"filterType": "condition",
+                     "condition": {"operator": "greaterThan", "value": 100000}})
+
+sort_filter(node_id, "Sheet1", field={"column": 0, "ascending": True})
+
+clear_filter_criteria(node_id, "Sheet1", column=2)
+delete_filter(node_id, "Sheet1")
+```
+
+### 下拉列表
+
+```python
+set_dropdown_lists(node_id, "Sheet1", range="C2:C100", options=[
+    {"value": "线索"},
+    {"value": "成交", "color": "#22C55E"},
+    {"value": "流失", "color": "#EF4444"},
+])
+get_dropdown_lists(node_id, "Sheet1", range="C2")
+delete_dropdown_lists(node_id, "Sheet1", range="C2:C100")
+```
+
+### 工作表管理
+
+```python
+create_spreadsheet(name="新表格", folder_id="<dentryUuid>")   # 新建文件
+create_sheet(node_id, name="Q2 数据")                          # 表内新增 worksheet
+update_sheet(node_id, "Sheet1", title="销售台账", frozen_row_count=1)
+copy_sheet(node_id, "Sheet1", title="Sheet1 副本")
+```
+
+### 导出 xlsx
+
+```python
+job = export_xlsx(node_id)
+result = query_export_job(job["jobId"])   # 完成时返回下载链接；未完则继续轮询
+```
+
+### 直通入口
+
+浮动图片、个人筛选视图（filter_views）、内嵌单元格图片（write_image）等低频工具走 `sheet_raw_call`：
+
+```python
+sheet_raw_call("create_float_image", {
+    "nodeId": node_id, "sheetId": "Sheet1",
+    "src": "https://...", "range": "A1", "width": 200, "height": 100,
+})
+sheet_raw_call("list_float_images", {"nodeId": node_id, "sheetId": "Sheet1"})
+sheet_raw_call("create_filter_view", {"nodeId": node_id, "sheetId": "Sheet1",
+                                       "name": "我的视图", "range": "A1:E100"})
+```
+
+## 配置管理
+
+```python
+list_servers()                # 已配置的授权（脱敏，含 type/server_id/key）
+remove_server("org-name")     # 按名称删除
+remove_server(0)              # 按索引删除
+```
+
+## Error Handling
+
+- **跨组织限制**：自动尝试下一个同类型授权，无需用户干预
+- **同类型授权全失败**：抛出 `DingMCPError`，向用户展示错误信息
+- **类型不匹配**：未配置该类型 MCP 时，错误信息会告知"已配置的类型有 [...]，请添加 X 类型"
+- **未配置**：按 First-Time Setup 引导用户获取授权地址
+- **授权地址格式错误**：`setup()` 返回失败并说明正确格式
+- **AI 表格 ID 不存在 / 无权限**：返回业务错误，自动跳到下一个授权
+
+## Notes
+
+- **权限**：需要文档 / AI 表格"可查看 / 下载"或更高权限；写操作需"可编辑"
+- 配置文件：`<skill_dir>/config/servers.json`，自动创建，已在 `.gitignore` 中
+- 凭证：含每个用户独立的 key，**绝不提交到代码仓库**
+- 外部依赖：Python `requests`
+- AI 表格的 `baseId` 既支持 32 位纯 ID，也支持 `https://docs.dingtalk.com/i/nodes/<baseId>` 完整链接
+- 老版本 `dingtalk-doc-rw` 的配置不会自动迁移；用户需在本技能中重新 `setup()` 一次
+
+
+ARGUMENTS: 读取钉钉文档 https://alidocs.dingtalk.com/i/nodes/6LeBq413JA9BOdm2irBQ7NaYJDOnGvpb?corpId=dingd8e1123006514592 的「通用知识库目录」内容
+[2026-06-24] 看一下之前图片怎么做的，图片应该是存在dolt里然后用链接映射的
+[2026-06-24] 继续研究
+[2026-06-24] 1d平台适配技能里有解决这个问题
+[2026-06-24] 推，现在是不是所有文档都可以放到1d cloud里面？还能保留当前的文件夹结构吗
+[2026-06-24] 图片的迁移到云不要手动触发，而是保存文件编辑时自动无感触发，不需要在前端留按钮。图片你直接搬，文档不搬。
+[2026-06-24] 先拉区合并再提交git
+[2026-06-24] 你现在已经把现有的图片都搬进去了吗？
+[2026-06-24] 你看一下1d平台开发适配技能，里面能让你直接传图片进去
+[2026-06-24] https://code.alibaba-inc.com/xiqxhq/zujianfuyon?_dt_ac=DP3umA%2BtxedLyK9z3P6X3BJ9dw7NmoAr4aiIaaU%2F538ZcB2iiusQSZy3kqX05ruWL7fAw76KcrYb7tv4&_dt_sig=eSEmR36x1iLqww413JqD9DLgtnBqWxV1YH1aKb%2BNth4%3D&_dt_ts=1782297811这个里面有直接上传文件的方法，你拆解一下
+[2026-06-29] 之前是在哪个会话里讨论的？你找一下session文件
+[2026-06-29] 进度先保存下来，项目反应理论需要的条件是什么？具体是靠什么指标来评价区分度的？
+[2026-06-29] 所以还是需要题目维度的技能对应吧？并且一个题目智能对应一个技能？
+[2026-06-29] 检查一下bug和深度审计代码，检查逻辑问题
+[2026-06-29] 全量修复，然后再检查一轮
+[2026-06-29] 全量解决，然后同步git推送
+[2026-06-29] 我发给1d agent了，你继续
+[2026-06-29] 文件内容已读取，现在原样执行。
+
+数据库变更
+fix_ranking_rpc
+执行失败
+learner_twins 表没有 created_at 列，去重排序需去掉该字段。让我修正后重新执行：
+
+数据库变更
+fix_ranking_rpc_v2
+执行成功
+迁移已成功执行，结果如下：
+
+✅ 执行成功（保存为 migrations/20260629_045224_fix_ranking_rpc_v2.sql）
+
+说明：原始文件 20260629_140000_fix_ranking_rpc.sql 中去重 SQL 引用了 learner_twins 表不存在的 created_at 列，导致第一次执行报错 42703: column "created_at" does not exist。修复方式是去掉该排序字段，其余内容完全原样执行，函数签名/参数名/实现均未改动：
+
+get_skill_score_rates(p_skill_atom_id text, p_learner_ids text[]) — 重建成功，SECURITY DEFINER，返回 (learner_id, score_rate, n_contrib)
+upsert_mastery_ranking_row(..., p_scope_ref jsonb, ...) — 重建成功，11个参数签名完整保留
+apply_twin_level(p_learner_id, p_skill_atom_id, p_new_level int, p_evidence_type, p_evidence_id) — 重建成功，返回 int（prev_level）
+learner_twins 去重 + 唯一约束 learner_twins_learner_skill_key — 执行成功
+src/onedaycloud/types.ts 已自动刷新，masteryRankingService.ts 可按原签名正常调用。
+[2026-06-29] 迁移 fix_upsert_ranking_columns 执行成功，保存为 migrations/20260629_053345_fix_upsert_ranking_columns.sql，src/onedaycloud/types.ts 已自动刷新。
+
+变更详情：
+
+DROP 了旧的所有同名重载（幂等）
+重建 upsert_mastery_ranking_row（11个参数签名不变），内部列映射修正为：
+score ← p_raw_score_rate
+rank_position ← p_computed_level
+total_count ← p_sample_n
+extra ← jsonb 存 z_score / percentile / cohort_mean / cohort_std / computed_level
+采用 delete-then-insert 策略绕 RLS，scope_ref 用 jsonb 相等比较
+get_skill_score_rates 和 apply_twin_level 未改动
+masteryRankingService.ts 无需任何修改，可直接调用。
+[2026-06-29] 删除重复的题目，同时在储存规则的服务器里，还有其他没有录入的试卷和题目，用测试、答案、考题、试题来标记的，正确导入这些题目
+[2026-06-29] 不用管勒索表。开始继续讨论技能系统设计
+[2026-06-29] 说简单一点，我看不懂
+[2026-06-29] 第3个，但先不要开始这个，先记录下来，我继续和你讨论这个系统设计
+[2026-06-29] 技能体系现在设计的是比较初级的，随着项目的增加，不同业务线做的事情的不同的增加（但可能仍有大量相同）。根据题目的做题记录，可不可以进行因子分析，在题目的积累中得出更准确的有统计学意义的因子？
+[2026-06-29] 还有两个问题，1.我需要大部分人做大部分题都能做对，因为这个是想让人上线作业的测试，不是将人区分出来的考题，怎么进行后面的统计学工作？2.项目是已经规定好的，但因子可以根据后面的数据重新设计，如何灵活兼容，如何让当前的技能因子系统优雅切换到更新后的技能系统？
+[2026-06-29] 我这边在之后能提供的数据有以下几种：每个人做的测试题目（每个人做的不同项目下的题目是不同的，但可能关联到相同的技能因子上）、每个人实际在线上实际作业的具体数据（每个项目里的题目是一样的，不同的项目题目会不同，没有任何原始的技能因子关联）。该怎么设计整套统计系统？
+[2026-06-29] 有一个误区，线上能通过的作业，一般都是80%（最差最差）和95%以上的一致性，区分度极低
+[2026-06-29] 目前的现状：线上作业数据管够，要多少都有，缺少测试题目作业数据。我们可以直接从线上数据来先进行因子归因和聚类吗？我现在真正想做的是一个人员的调度系统，即在不同项目中，通过相同的技能能力因子，让人可以在不同项目之间灵活调用，降低培训和上手难度，提高管理水平。
+[2026-06-29] 制定设计保存，然后给出详细的统计方式统计方法，和统计方法的讲解，用能让小白明白的话讲解，形成详细的规划文档和html
+[2026-06-29] 以后我怎么根据不断更新的数据，也灵活更新技能系统？
+[2026-06-29] 也都加进去
+[2026-06-29] https://nex-skill.1d.alibaba-inc.com/#/这个页面的技能里，我用哪个可以获得批量的具体作业人员的具体题目和具体信息？
+[2026-06-29] [
+{
+    "domain": ".alibaba-inc.com",
+    "expirationDate": 1817278591.082642,
+    "hostOnly": false,
+    "httpOnly": false,
+    "name": "cna",
+    "path": "/",
+    "sameSite": "no_restriction",
+    "secure": true,
+    "session": false,
+    "storeId": "0",
+    "value": "Zz3BIj8mjEACAYzNC+/Ijhs5",
+    "id": 1
+},
+{
+    "domain": ".alibaba-inc.com",
+    "expirationDate": 1798277099,
+    "hostOnly": false,
+    "httpOnly": false,
+    "name": "isg",
+    "path": "/",
+    "sameSite": "no_restriction",
+    "secure": true,
+    "session": false,
+    "storeId": "0",
+    "value": "BIOD0FIX7ah7yqENqLtmlndgEkct-Bc6AOZEZbVs0OAGdIGWPcofiPTm6gQ6U28y",
+    "id": 2
+},
+{
+    "domain": ".alibaba-inc.com",
+    "expirationDate": 1782725791.509058,
+    "hostOnly": false,
+    "httpOnly": true,
+    "name": "SSO_REFRESH_TOKEN",
+    "path": "/",
+    "sameSite": "no_restriction",
+    "secure": true,
+    "session": false,
+    "storeId": "0",
+    "value": "buc50cf380f7baf47fb8006a4220800043b0cf00",
+    "id": 3
+},
+{
+    "domain": ".alibaba-inc.com",
+    "expirationDate": 1798260083,
+    "hostOnly": false,
+    "httpOnly": false,
+    "name": "tfstk",
+    "path": "/",
+    "sameSite": "unspecified",
+    "secure": false,
+    "session": false,
+    "storeId": "0",
+    "value": "gYajl0Z0GKvbQNg91mfPPmZCQkg_dmsP87A_tWHwuh3YFAw3Lr-9DSHt58wdsx8aMAL_65Vq35WDwUhisdUNnmp-fflpBKHAm7USTjKvMfFt5dwUUFoOmR76izwB7EWcm5Ls7VBFLw7Uis0iW9zdNW4BnXlpHN8tM03m_x9a_0bUiSA-2rmLzwSsqjhSXAetD0h-6YhxBchAN0hE6VLxXEKJeYD-WEhxB3p-TXLtMneTw_GieA3tWR3RNfDHTBG1cxVf_hNkY8f1NnDBWFUSG0IyZjY_8gGvLnVjFFLTPuOILSKWWFUSGmazkd7ORmrTtD44_NTouWZ-yfaG9hMsAlUqyrBRJ0mTXko_4KC4pRN8IqzR6nHL0-u8kkO9W7gbDccj2K6SprV8-4nPJ6N8r-P0P5ROWbyEeS4x5wCnlqHxPb4NEEH_2lUqmVvACA47wrE14lYEdMy9fQiHWbMFN_tMjrZIQYMOjU_qDbcj4_1WHlmxZbMFN_tMjmhoGY55NKEG.",
+    "id": 4
+},
+{
+    "domain": ".alibaba-inc.com",
+    "hostOnly": false,
+    "httpOnly": false,
+    "name": "x_mini_wua",
+    "path": "/",
+    "sameSite": "no_restriction",
+    "secure": true,
+    "session": true,
+    "storeId": "0",
+    "value": "B0KHGecgXgtk4q8rPc8gC5y/eIKLUNGGHhnPiDj63edgd+WqSNjeL7h+xDcIinIuCBdo+XhgQmuj9t8l8aB1XFbOZRuU1X+4bNMXJsBsxcL334QmFe82HJJtYG4Qk7EeTD47Gv/607WQTo5YgMNqBFil8o6YVs7YkT6CtmaKMfAGm3x/96OcXy5TzhWnmLU7SckJDt9x7J4eeRDY+zTQTPoK10hongdjEV0iJLmdYwf94tmUXaouzkP0sF6S75IobLIqadS/fKf4DxiakbhXCsicUCDymu24jErpLjptvFweHPXyctsCHdlZ2ry2pHM/QiSULrEA61CPf4uNSQpxQfnDQ37C5byzQTTiadVsBDd+",
+    "id": 5
+},
+{
+    "domain": ".alibaba-inc.com",
+    "hostOnly": false,
+    "httpOnly": false,
+    "name": "x_sign",
+    "path": "/",
+    "sameSite": "no_restriction",
+    "secure": true,
+    "session": true,
+    "storeId": "0",
+    "value": "wzm0IV003xAAI7AP4v1ih5XOaIOeg7ADuko+VScsaHCmvmQJFBZbHgnL4FsNtzFduCGmV23BycqTeXQH41mkb+8ZQ7Iyw7ADvoOwA7",
+    "id": 6
+},
+{
+    "domain": ".alibaba-inc.com",
+    "hostOnly": false,
+    "httpOnly": false,
+    "name": "x_umt",
+    "path": "/",
+    "sameSite": "no_restriction",
+    "secure": true,
+    "session": true,
+    "storeId": "0",
+    "value": "P1gAZlEpyZoCHCLgnf1jHMnI6OYDPs0YSG29vnsLrKPveFaqw99HZY6ckGbDngaon24xVbJAWRNq37o94E_IExjs",
+    "id": 7
+},
+{
+    "domain": ".alibaba-inc.com",
+    "expirationDate": 1782977792,
+    "hostOnly": false,
+    "httpOnly": false,
+    "name": "xlly_s",
+    "path": "/",
+    "sameSite": "no_restriction",
+    "secure": true,
+    "session": false,
+    "storeId": "0",
+    "value": "1",
+    "id": 8
+},
+{
+    "domain": "nex-skill.1d.alibaba-inc.com",
+    "expirationDate": 1782811499.09416,
+    "hostOnly": true,
+    "httpOnly": true,
+    "name": "EGG_SESS",
+    "path": "/",
+    "sameSite": "no_restriction",
+    "secure": true,
+    "session": false,
+    "storeId": "0",
+    "value": "tuUKcF2gCXXGDOBN_efRrt9M_hWQ29EETGZ9YaXFn7qr3qGFq8O2UA0QYx-6cLCpiFbhPUfo2vaq6WKY7bTYlZcO0jbjiOtRCPTFc05G78-ObvKzT_vkSqEhScXyOgAkyP0badh5-sFH5-vhJhp-xOtq7CEvRm3Xd9QHzt-CoNIqZjIudJ6xAomwmYsDGD5yFDRWaRyIVAqY3PAkK2h2Ev5LQj3F5sM-nTkkQYbRkVLbTLNyEyT50D6j796jOzw4rQhZP9OEVyHgpV8jYs_AGSLfNV8dt_IZfIu5y3qShkYQN1AD1CBZWBViY8m_NXmjqglQtAJWcVGIlQrloTTbX50-WlI1lIr0QH8WnEH5wLBEQ1CQi1s3gVaOpf8Ag_BOW147-YbJVYToepq5DkNe2S68KorG0RpXL08QZTxWTiPrLUX_vfYGbEzOnLHahsNlfiNLJkLsDjKu_Fl0f7dSsattIduOELc2xCVkpIRfHjnKhJDk4IbvJrHbhS1u1Ylx9NKyqjBal9AjEhZhgXRBO_aaYUg-UV6cyGL3PxBFU1Z2pxwrLC7CCQvEsgmkZ_QLMUT0XdcMNdEhfGha-nRqtlc507WAQZYMekUd-BkasPfmOYJdeN6wl05OKJdC4edW0f1U5vEUpZdoqHbzxMjpeQuWM1jhBmP9DDZUkCMPWmtK6RE-46TpdaclDeTlAz7pkwiTsrhZ0A0gol0QGdmy4xyGdqMqxuf2GRI0f4KrY6BwB4u5RIrn4JeND3tQcjWhuPfvV9L2O178J5IXy64uCPtycuXf9ywqFBqNceBktm_bGPksmtU--7VWSIocjIwYQ9soPl-v9wUzklqH1HQ01KfIOhPUD54aKbbUSSPDmpxClezTRON_E3g-bOukUg63HcxUUJcOmAMWwwTvboSxnld_5Rd35d01AJ1RyHv5ua9bA9UQHn52E8e5odGA-dzlTlt4jthbmjgwX5E0Ki-_spiLfrBMc6Ztf0FVsDHRrmKW-lPlNnlLrh_8lDJo7xSzihTj4d57EfQuXWzkamugZjX-m4Uj1LIZeLW3KiKABUtIn0vcUAi-c3utSgLG9YQDOQPSQKLmBFWOGFFJ2wkndRA_NgmGAkfs3o9X836zBjGBf6DCyaHukjx6F2rk3u47uzv01OFV6vanp0dDodTBg-OGhRRtH5kDcZP5GM_KFXEFV8zfSBpsGPugDXYYGoxrCS88sKV1SD_k4eFtybylDw==",
+    "id": 9
+}
+]
+
+用这个登录
+[2026-06-22] 和云端是相同版本吗
+[2026-06-22] 拉取一下最新git
+[2026-06-22] # Dolt SQL 数据库使用手册
+
+> **服务器**: 阿里云 ECS · **版本**: Dolt 2.1.8 · **部署日期**: 2026-06-22
+
+---
+
+## 1. 连接信息
+
+| 项目 | 值 |
+|------|-----|
+| 公网地址 | `115.29.199.130` |
+| 端口 | `3306`（MySQL 协议） |
+| 用户 | `root` |
+| 密码 | （无，建议尽快设置） |
+| 实例 ID | `i-bp113wi9bzgq4dyfik80` |
+| 地域 | `cn-hangzhou` |
+
+### 快速连接
+
+```bash
+# 命令行
+mysql -h115.29.199.130 -P3306 -uroot
+
+# 指定数据库
+mysql -h115.29.199.130 -P3306 -uroot my_app
+```
+
+### 各语言 SDK 连接
+
+**Python**
+```bash
+pip install mysql-connector-python
+```
+```python
+import mysql.connector
+
+conn = mysql.connector.connect(
+    host="115.29.199.130",
+    port=3306,
+    user="root",
+    password="",
+    database="my_app"
+)
+cur = conn.cursor()
+cur.execute("SELECT * FROM users")
+for row in cur.fetchall():
+    print(row)
+```
+
+**Node.js**
+```bash
+npm install mysql2
+```
+```js
+const mysql = require('mysql2/promise');
+const conn = await mysql.createConnection({
+    host: '115.29.199.130',
+    port: 3306,
+    user: 'root',
+    password: '',
+    database: 'my_app'
+});
+const [rows] = await conn.execute('SELECT * FROM users');
+console.log(rows);
+```
+
+**Go**
+```bash
+go get github.com/go-sql-driver/mysql
+```
+```go
+import "database/sql"
+import _ "github.com/go-sql-driver/mysql"
+
+db, _ := sql.Open("mysql", "root:@tcp(115.29.199.130:3306)/my_app")
+rows, _ := db.Query("SELECT * FROM users")
+```
+
+**Java (JDBC)**
+```
+jdbc:mysql://115.29.199.130:3306/my_app?user=root
+```
+
+**GUI 工具** (DBeaver / Navicat / DataGrip)
+```
+Host: 115.29.199.130
+Port: 3306
+User: root
+Password: (空)
+```
+
+---
+
+## 2. 数据库概览
+
+当前已创建的数据库：
+
+| 数据库 | 说明 | 表 |
+|--------|------|-----|
+| `my_app` | 应用演示数据库 | `users`, `orders`, `files` |
+| `demo_diff` | Dolt diff 功能演示 | `products` |
+| `hello_dolt` | 初始测试库 | `users` |
+| `file_buckets` | 文件桶/容器系统 | `buckets`, `files` |
+
+---
+
+## 3. 基础 CRUD 操作
+
+### 3.1 数据库操作
+
+```sql
+-- 创建数据库（自动启用 Dolt 版本控制）
+CREATE DATABASE my_project;
+
+-- 切换数据库
+USE my_project;
+
+-- 查看所有数据库
+SHOW DATABASES;
+
+-- 删除数据库
+DROP DATABASE my_project;
+```
+
+### 3.2 表操作
+
+```sql
+-- 创建表
+CREATE TABLE users (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    username VARCHAR(50) NOT NULL,
+    email VARCHAR(100),
+    age INT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 创建关联表
+CREATE TABLE orders (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user_id INT,
+    product VARCHAR(100),
+    amount DECIMAL(10,2),
+    status VARCHAR(20) DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id)
+);
+
+-- 查看表结构
+DESCRIBE users;
+SHOW TABLES;
+
+-- 删除表
+DROP TABLE orders;
+```
+
+### 3.3 插入数据
+
+```sql
+-- 单条插入
+INSERT INTO users (username, email, age) VALUES ('alice', 'alice@example.com', 28);
+
+-- 批量插入
+INSERT INTO users (username, email, age) VALUES
+    ('bob', 'bob@example.com', 35),
+    ('carol', 'carol@example.com', 22);
+
+-- 插入订单
+INSERT INTO orders (user_id, product, amount, status) VALUES
+    (1, 'MacBook Pro', 14999.00, 'paid'),
+    (2, 'iPad Pro', 8499.00, 'pending');
+```
+
+### 3.4 查询
+
+```sql
+-- 基础查询
+SELECT * FROM users;
+
+-- 条件查询
+SELECT * FROM orders WHERE status = 'paid' AND amount > 5000;
+
+-- JOIN 关联查询
+SELECT u.username, o.product, o.amount, o.status
+FROM users u
+JOIN orders o ON u.id = o.user_id
+ORDER BY o.amount DESC;
+
+-- 聚合统计
+SELECT u.username, COUNT(o.id) AS order_count, SUM(o.amount) AS total_spent
+FROM users u
+LEFT JOIN orders o ON u.id = o.user_id
+GROUP BY u.username;
+
+-- 分页
+SELECT * FROM users ORDER BY id LIMIT 10 OFFSET 20;
+```
+
+### 3.5 更新和删除
+
+```sql
+-- 更新
+UPDATE users SET email = 'new_email@example.com', age = 30 WHERE id = 1;
+
+-- 删除
+DELETE FROM orders WHERE status = 'cancelled';
+
+-- 清空表（保留结构）
+TRUNCATE TABLE orders;
+```
+
+---
+
+## 4. Dolt Git 版本控制（核心能力）
+
+这是 Dolt 区别于普通 MySQL 的独有功能——数据像 Git 仓库一样可分支、提交、回滚。
+
+### 4.1 提交（Commit）
+
+```sql
+-- 查看当前状态（哪些表有未提交的变更）
+SELECT * FROM dolt_status;
+
+-- 提交所有变更
+CALL DOLT_COMMIT('-A', '-m', 'feat: add user table with seed data');
+
+-- 只提交特定表
+CALL DOLT_COMMIT('-m', 'fix: update prices', 'products', 'orders');
+```
+
+### 4.2 查看历史
+
+```sql
+-- 提交日志（类似 git log）
+SELECT commit_hash, committer, date, message FROM dolt_log ORDER BY date DESC;
+
+-- 查看某条记录的完整历史
+SELECT * FROM dolt_history_users WHERE id = 1 ORDER BY commit_date;
+```
+
+### 4.3 查看差异（Diff）
+
+```sql
+-- 工作区 vs HEAD（未提交的变更）
+SELECT * FROM dolt_diff_users;
+
+-- 按变更类型过滤
+SELECT to_username, to_email, from_email, diff_type
+FROM dolt_diff_users
+WHERE diff_type = 'modified';
+
+-- 查看某个 commit 的变更
+SELECT * FROM dolt_commit_diff_products
+WHERE to_commit = 'bh8kgkd7l19dv6lkv5u45srlkmshh4id';
+
+-- 对比任意两个 commit
+SELECT * FROM dolt_diff('<hash_old>', '<hash_new>', 'products');
+
+-- 查看哪些表在哪些 commit 有变更（全局视图）
+SELECT * FROM dolt_diff WHERE data_change = 1;
+```
+
+### 4.4 分支管理
+
+```sql
+-- 创建分支
+CALL DOLT_BRANCH('experiment');
+
+-- 查看分支列表
+SELECT * FROM dolt_branches;
+
+-- 切换分支
+CALL DOLT_CHECKOUT('experiment');
+
+-- 在分支上做修改...
+UPDATE users SET email = 'test@test.com' WHERE id = 1;
+CALL DOLT_COMMIT('-A', '-m', 'experiment: change email');
+
+-- 切回主分支
+CALL DOLT_CHECKOUT('main');
+
+-- 合并分支
+CALL DOLT_MERGE('experiment');
+
+-- 删除分支
+CALL DOLT_BRANCH('-d', 'experiment');
+```
+
+### 4.5 回滚
+
+```sql
+-- 回滚到指定 commit（慎用，会丢失后续变更）
+CALL DOLT_RESET('--hard', '<commit_hash>');
+
+-- 回滚单个表到指定 commit
+CALL DOLT_CHECKOUT('<commit_hash>', 'users');
+```
+
+### 4.6 远程协作（Clone / Push / Pull）
+
+```bash
+# 在另一台机器上 clone 整个数据库
+dolt clone http://115.29.199.130:3306/my_app
+
+# push/pull 变更（类似 git）
+dolt push origin main
+dolt pull origin main
+```
+
+---
+
+## 5. 文件桶系统（类 S3 存储）
+
+`file_buckets` 数据库实现了带版本控制的文件存储系统。
+
+### 5.1 结构
+
+```sql
+-- 桶（容器）表
+CREATE TABLE buckets (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(100) NOT NULL UNIQUE,   -- 桶名
+    description VARCHAR(500),             -- 描述
+    is_public BOOLEAN DEFAULT FALSE,      -- 是否公开
+    max_file_mb INT DEFAULT 100,          -- 单文件上限
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 文件表
+CREATE TABLE files (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    bucket_id INT NOT NULL,               -- 所属桶
+    path VARCHAR(500) NOT NULL,           -- 虚拟路径 /photos/2024/beach.jpg
+    filename VARCHAR(255) NOT NULL,        -- 文件名
+    mime_type VARCHAR(100),               -- MIME 类型
+    size_bytes BIGINT DEFAULT 0,          -- 文件大小
+    content LONGBLOB,                     -- 文件内容（最大 4GB）
+    checksum VARCHAR(64),                 -- SHA256 校验
+    tags JSON,                            -- 自定义标签
+    meta JSON,                            -- 自定义元数据
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (bucket_id) REFERENCES buckets(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_path (bucket_id, path)
+);
+```
+
+### 5.2 创建桶
+
+```sql
+-- 创建新桶
+INSERT INTO buckets (name, description, is_public, max_file_mb)
+VALUES ('photos', '用户相册', TRUE, 20);
+
+INSERT INTO buckets (name, description, is_public, max_file_mb)
+VALUES ('contracts', '合同文件', FALSE, 100);
+
+-- 查看所有桶
+SELECT * FROM buckets;
+```
+
+### 5.3 上传文件
+
+```sql
+-- 上传单个文件
+INSERT INTO files (bucket_id, path, filename, mime_type, size_bytes, content, checksum, tags, meta)
+VALUES (
+    1,                                  -- bucket_id
+    '/2024/summer/beach.jpg',          -- 虚拟路径
+    'beach.jpg',                        -- 文件名
+    'image/jpeg',                       -- MIME 类型
+    123456,                             -- 字节数
+    ?,                                  -- 文件二进制内容（参数绑定）
+    'sha256xxxxx',                      -- SHA256 校验和
+    '{"location": "beach", "camera": "iPhone"}',   -- 标签
+    '{"uploader": "alice", "source": "mobile"}'     -- 元数据
+);
+
+-- Python 上传示例
+def upload_file(bucket_name, path, filename, mime_type, content_bytes, tags=None, meta=None):
+    cur.execute("SELECT id FROM buckets WHERE name = %s", (bucket_name,))
+    bucket_id = cur.fetchone()[0]
+    checksum = hashlib.sha256(content_bytes).hexdigest()
+
+    cur.execute(
+        "INSERT INTO files (bucket_id, path, filename, mime_type, size_bytes, content, checksum, tags, meta) "
+        "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+        (bucket_id, path, filename, mime_type, len(content_bytes),
+         content_bytes, checksum, json.dumps(tags), json.dumps(meta))
+    )
+```
+
+### 5.4 查询文件
+
+```sql
+-- 列出某个桶内的所有文件
+SELECT f.path, f.filename, f.mime_type, f.size_bytes
+FROM files f
+JOIN buckets b ON f.bucket_id = b.id
+WHERE b.name = 'photos';
+
+-- 前缀搜索（子目录）
+SELECT path, filename FROM files WHERE path LIKE '/2024/summer/%';
+
+-- 按 MIME 类型过滤（找所有图片）
+SELECT path, filename FROM files WHERE mime_type LIKE 'image/%';
+
+-- 按自定义标签过滤（JSON 查询）
+SELECT path, filename, tags
+FROM files
+WHERE JSON_EXTRACT(tags, '$.camera') = 'iPhone';
+
+-- 按自定义元数据过滤
+SELECT path, filename, meta
+FROM files
+WHERE JSON_EXTRACT(meta, '$.uploader') = 'alice';
+```
+
+### 5.5 下载/读取文件
+
+```sql
+-- 查询文件元数据
+SELECT filename, mime_type, size_bytes, checksum, created_at
+FROM files
+WHERE path = '/2024/summer/beach.jpg';
+
+-- 读取文件内容
+SELECT filename, mime_type, content FROM files WHERE path = '/2024/summer/beach.jpg';
+```
+
+```python
+# Python 下载文件
+cur.execute("SELECT filename, content FROM files WHERE path = %s", (path,))
+row = cur.fetchone()
+with open(f"./downloads/{row[0]}", 'wb') as f:
+    f.write(row[1])
+```
+
+### 5.6 更新和删除
+
+```sql
+-- 替换文件（更新内容 + 元数据）
+UPDATE files
+SET content = ?, size_bytes = ?, checksum = ?,
+    meta = JSON_SET(meta, '$.version', '2.0')
+WHERE path = '/2024/summer/beach.jpg';
+
+-- 删除单个文件
+DELETE FROM files WHERE path = '/2024/summer/beach.jpg';
+
+-- 删除整个桶（级联删除桶内所有文件）
+DELETE FROM buckets WHERE name = 'photos';
+```
+
+### 5.7 桶统计
+
+```sql
+-- 每个桶的文件数和总大小
+SELECT
+    b.name,
+    b.description,
+    COUNT(f.id) AS file_count,
+    COALESCE(SUM(f.size_bytes), 0) AS total_bytes,
+    ROUND(COALESCE(SUM(f.size_bytes), 0) / 1048576, 2) AS total_mb
+FROM buckets b
+LEFT JOIN files f ON b.id = f.bucket_id
+GROUP BY b.name, b.description
+ORDER BY total_bytes DESC;
+```
+
+### 5.8 文件的 Git 版本追踪
+
+```sql
+-- 查看某个文件的所有历史版本
+SELECT * FROM dolt_history_files
+WHERE path = '/2024/summer/beach.jpg'
+ORDER BY commit_date;
+
+-- 对比两次上传的差异
+SELECT * FROM dolt_commit_diff_files
+WHERE to_commit = '<latest_commit_hash>';
+```
+
+---
+
+## 6. 数据导出/导入
+
+### 6.1 全量备份
+
+```bash
+# 导出整个数据库
+mysqldump -h115.29.199.130 -P3306 -uroot my_app > my_app_backup.sql
+
+# 导入恢复
+mysql -h115.29.199.130 -P3306 -uroot my_app < my_app_backup.sql
+
+# 导出所有数据库
+mysqldump -h115.29.199.130 -P3306 -uroot --all-databases > full_backup.sql
+```
+
+### 6.2 导出 CSV
+
+```bash
+# 命令行导出
+mysql -h115.29.199.130 -P3306 -uroot my_app \
+  -e "SELECT * FROM users" | sed 's/\t/,/g' > users.csv
+
+# 带表头
+mysql -h115.29.199.130 -P3306 -uroot my_app \
+  -e "SELECT 'id','username','email','age' UNION ALL SELECT id,username,email,age FROM users" \
+  | sed 's/\t/,/g' > users_with_header.csv
+```
+
+### 6.3 Python 脚本导入导出
+
+```python
+# 导出表到 CSV
+import csv
+cur.execute("SELECT * FROM users")
+with open('users.csv', 'w', newline='') as f:
+    writer = csv.writer(f)
+    writer.writerow([d[0] for d in cur.description])  # header
+    writer.writerows(cur.fetchall())
+
+# 从 CSV 导入
+import csv
+with open('users.csv', 'r') as f:
+    reader = csv.DictReader(f)
+    for row in reader:
+        cur.execute(
+            "INSERT INTO users (username, email, age) VALUES (%s,%s,%s)",
+            (row['username'], row['email'], row['age'])
+        )
+```
+
+---
+
+## 7. 安全建议
+
+### 7.1 设置 root 密码（强烈建议）
+
+```sql
+-- 为 root@'%' 设置密码
+ALTER USER 'root'@'%' IDENTIFIED BY 'Your_Str0ng_P@ssword';
+FLUSH PRIVILEGES;
+
+-- 设置后连接需要 -p 参数
+-- mysql -h115.29.199.130 -P3306 -uroot -p
+```
+
+### 7.2 创建应用专用用户
+
+```sql
+-- 创建受限用户（只能操作 my_app 数据库）
+CREATE USER 'app_user'@'%' IDENTIFIED BY 'app_password_123';
+
+-- 授予 my_app 的 CRUD 权限
+GRANT SELECT, INSERT, UPDATE, DELETE ON my_app.* TO 'app_user'@'%';
+
+-- 授予 file_buckets 的权限
+GRANT SELECT, INSERT, UPDATE, DELETE ON file_buckets.* TO 'app_user'@'%';
+
+FLUSH PRIVILEGES;
+```
+
+### 7.3 创建只读用户
+
+```sql
+CREATE USER 'readonly'@'%' IDENTIFIED BY 'readonly_123';
+GRANT SELECT ON my_app.* TO 'readonly'@'%';
+GRANT SELECT ON file_buckets.* TO 'readonly'@'%';
+FLUSH PRIVILEGES;
+```
+
+### 7.4 查看和管理用户
+
+```sql
+-- 查看所有用户
+SELECT user, host FROM mysql.user;
+
+-- 删除用户
+DROP USER 'old_user'@'%';
+
+-- 查看用户权限
+SHOW GRANTS FOR 'app_user'@'%';
+```
+
+---
+
+## 8. 服务器管理
+
+### 8.1 Dolt 服务管理
+
+```bash
+# SSH 到服务器
+ssh root@115.29.199.130
+
+# 服务控制
+systemctl status dolt.service    # 查看状态
+systemctl stop dolt.service      # 停止
+systemctl start dolt.service     # 启动
+systemctl restart dolt.service   # 重启
+
+# 查看日志
+journalctl -u dolt.service -f    # 实时日志
+journalctl -u dolt.service -n 50 # 最近 50 条
+
+# Dolt 版本
+/usr/local/bin/dolt version
+
+# 数据目录
+ls -la /var/lib/dolt/
+```
+
+### 8.2 直接操作数据库文件（无需 MySQL 协议）
+
+```bash
+# 在服务器上直接用 dolt CLI 操作
+cd /var/lib/dolt
+dolt --data-dir /var/lib/dolt sql -q "SHOW DATABASES"
+dolt --data-dir /var/lib/dolt sql -q "SELECT * FROM my_app.users"
+
+# 用 dolt CLI 做 Git 操作
+dolt --data-dir /var/lib/dolt log
+dolt --data-dir /var/lib/dolt branch
+dolt --data-dir /var/lib/dolt diff
+```
+
+---
+
+## 9. 结构总结参考
+
+### 核心 SQL 语句速查
+
+| 操作 | SQL |
+|------|-----|
+| 创建数据库 | `CREATE DATABASE name;` |
+| 创建表 | `CREATE TABLE name (...);` |
+| 插入 | `INSERT INTO table VALUES (...);` |
+| 查询 | `SELECT cols FROM table WHERE ... ORDER BY ... LIMIT ...;` |
+| JOIN | `SELECT * FROM a JOIN b ON a.id = b.a_id;` |
+| 更新 | `UPDATE table SET col=val WHERE ...;` |
+| 删除 | `DELETE FROM table WHERE ...;` |
+| 提交 | `CALL DOLT_COMMIT('-A', '-m', 'msg');` |
+| 查看日志 | `SELECT * FROM dolt_log;` |
+| 查看差异 | `SELECT * FROM dolt_diff_tablename;` |
+| 查看历史 | `SELECT * FROM dolt_history_tablename;` |
+| 创建分支 | `CALL DOLT_BRANCH('name');` |
+| 切换分支 | `CALL DOLT_CHECKOUT('name');` |
+| 回滚 | `CALL DOLT_RESET('--hard', 'hash');` |
+
+### Dolt 系统表一览
+
+| 系统表/函数 | 用途 |
+|-------------|------|
+| `dolt_status` | 当前工作区状态 |
+| `dolt_log` | 提交历史 |
+| `dolt_diff` | 全局变更摘要（哪些表在哪些 commit 变了） |
+| `dolt_diff_<table>` | 某表工作区 vs HEAD 差异 |
+| `dolt_commit_diff_<table>` | 某表在某 commit 的变更 |
+| `dolt_history_<table>` | 某表的行级历史 |
+| `dolt_branches` | 分支列表 |
+| `dolt_version()` | Dolt 版本号 |
+| `dolt_diff(from,to,table)` | 两个 commit/分支之间的差异 |
+
+---
+
+## 10. 故障排查
+
+### 连接被拒绝
+```bash
+# 检查端口是否开放（从本地）
+nc -zv 115.29.199.130 3306
+
+# 在服务器上检查
+ss -tlnp | grep 3306
+systemctl status dolt.service
+```
+
+### 服务无法启动
+```bash
+# 查看日志
+journalctl -u dolt.service -n 50 --no-pager
+
+# 常见原因：端口被占用
+ss -tlnp | grep 3306
+```
+
+### 性能建议
+- 单文件 BLOB 建议 < 100MB
+- 超大文件存 OSS/S3，Dolt 只存 URL + metadata
+- 批量 INSERT 使用事务包裹，每 1000 条一批
+- 大量文件查询时用 `path LIKE '/prefix/%'` 走索引
+
+---
+
+> 📌 本手册对应服务器 `115.29.199.130`，最后更新 2026-06-22
+
+
+研究一下将规则库页面连接到这个数据库的方案，要求在页面实现文件上传下载预览检索和查看diff情况
+[2026-06-22] Base directory for this skill: /home/admin/.claude/skills/1d-platform-dev
+
+# OneDay / 1d 平台全栈开发指南
+
+> **如何使用本 skill**：本文件是索引，详细内容在子文件中。
+> 遇到具体问题时，用 Read 工具读取对应子文件获取完整代码和排查步骤。
+
+## 平台速查
+
+**入口**：`https://1d.alibaba-inc.com/` | 预发：`https://pre-1d.alibaba-inc.com/`
+
+**五种应用类型**
+
+| 类型 | 特点 | 适用场景 |
+|------|------|---------|
+| 聊天助手 | 多轮对话，上下文持续保存 | 客服、知识问答 |
+| Chatflow | 节点编排对话流，多轮记忆+流式输出 | 复杂多轮对话 |
+| Workflow | 自动化批处理，无 Memory，有结束节点 | 数据管线、定时任务 |
+| Agent | 任务分解→工具调用→迭代执行 | 报表分析、规划 |
+| 文本生成型 | 表单+结果，上下文仅当次有效 | 翻译、文本分类 |
+
+**四大核心能力模块**
+
+| 模块 | 说明 |
+|------|------|
+| **创作** | 自然语言 → 完整可运行应用，内置数据库+AI 工作流，关联 Git |
+| **规划** | 自然语言 → 长网页/PPT，联网查询数据 |
+| **Make** | 无限画布，AI 图像海报生成 |
+| **工作流** | 接入 MCP/HTTP/ODPS/钉钉等工具，自动化流程 |
+
+## WebContainer 核心约束（最高频踩坑）
+
+```
+OneDay = webpack 5 + webpack-dev-server 4.x + HashRouter + allowedHosts all + historyApiFallback + anpm
+双层架构 = webpack-dev-server:3019 → proxy /api → Express:3020
+Express启动 = predev 钩子后台拉起，禁止在 webpack 钩子中 require()
+永远不要用 Vite / esbuild / rollup / BrowserRouter / http.createServer()
+```
+
+**OneDay Cloud 核心约束**
+
+```
+必须用 @ali/oneday-frontend-sdk，禁止直接用 @supabase/supabase-js
+externals 必须用 var 前缀格式（不是 commonjs）
+项目设置 → 数据库 → 开启 OneDay Cloud（否则 token=undefined → 403）
+```
+
+## 文件目录
+
+需要详细内容时，Read 对应文件：
+
+| 子文件 | 内容 | 何时读取 |
+|--------|------|---------|
+| `webcontainer.md` | webpack配置、Express启动、代理、externals、路由、/_p/前缀修复、常见问题速查表 | 项目跑不起来、白屏、API失败、发布后白屏、API返回HTML |
+| `oneday-cloud.md` | SDK初始化（含容错）、CRUD、Storage、Realtime、Migration DDL、Cloud连接修复指南 | 数据库连不上、RLS报错、SDK初始化失败 |
+| `workflow.md` | 节点全景、系统变量、并行限制、异常处理、错误类型、调试功能、结构化输出、LLM/代码执行/迭代/变量赋值详解、配置大模型、Webhook/调度、嵌入前端、附加功能 | 编排 Workflow/Chatflow、节点报错、配置模型 |
+| `agent-tools-auth.md` | Agent版本/模式/MCP、Skill Agent配置、ClawHub技能平台、Connector连接器、25+内置工具、ODPS/Holo/SLS数据源、钉钉集成/MCP表格、MetaQ消息、事件触发器、用户认证(JWKS/BUC)、知识库(RAG)、Browser Use | Agent开发、工具接入、鉴权、知识库、浏览器自动化 |
+| `import-guide.md` | 从 Bolt/v0/Claude Code 等平台迁移：五层根因、自检命令、三种迁移路径 | 外部项目导入后白屏/加载失败 |
+| `reference.md` | 平台限制速查表、五种应用类型、四大模块、废弃功能、云函数、HTML导入、导入已有项目、管理协作、版本管理、OneDay Note/Design/Task、数据取回、API扩展、快捷键、参考链接 | 查限制数值、废弃替代、云函数问题、管理功能、参考链接 |
+| `cloud-preview.md` | Cloud CLI 容器预览服务：端口映射API、正确启动流程、常见报错排查 | 云端容器中启动HTTP服务预览 |
+
+## 常见问题 → 对应文件
+
+| 问题现象 | 读哪个文件 |
+|---------|-----------|
+| 预览空白 / 卡在90% / Cannot GET / 发布后白屏 | `webcontainer.md` |
+| API 返回 HTML 而非 JSON / /_p/ 前缀问题 | `webcontainer.md` |
+| 外部项目导入后加载失败 | `import-guide.md` |
+| Cloud连不上 / Bearer undefined / RLS 403 | `oneday-cloud.md` |
+| Workflow节点报错 / 并行异常 / 结构化输出失败 | `workflow.md` |
+| 配置大模型 / 免费额度用完 / API-KEY申请 | `workflow.md` |
+| ODPS查询失败 / 鉴权报错 / 钉钉集成 | `agent-tools-auth.md` |
+| Agent开发 / Skill Agent / ClawHub / Connector | `agent-tools-auth.md` |
+| 知识库配置 / RAG / 元数据 / 数据导入 | `agent-tools-auth.md` |
+| Browser Use / 浏览器自动化 | `agent-tools-auth.md` |
+| 查限制数值 / 废弃功能 / 云函数CI失败 | `reference.md` |
+| 应用类型选择 / 版本管理 / 团队权限 | `reference.md` |
+| OneDay Note / Design / Task | `reference.md` |
+| 导入已有项目 / HTML导入 / Studio模式 | `reference.md` |
+| Cloud CLI 容器 localhost 不通 / 端口映射 | `cloud-preview.md` |
+[2026-06-22] 不保留任何本地数据作为离线降频，将当前的本地数据同步到dolt上
+[2026-06-22] [Request interrupted by user for tool use]
+[2026-06-22] 对以上方案进行审计，根据1d平台开发适配技能，看看落地到1d平台的可行度
+[2026-06-22] AKID-REDACTED
+[2026-06-22] 加载知识库失败: API /api/dolt/files?pageSize=500 返回 HTML 而非 JSON（HTTP 200）。可能原因：1D 平台 /_p/{port}/ 前缀未重写、proxy 未配置、或路由不存在。响应前 100 字符： <!DOCTYPE html> <html> <head> <meta name="data-spm" data-spm-protocol="i" content="a21z7b" />
+[2026-06-22] 加载知识库失败: API /api/dolt/buckets 返回 HTML 而非 JSON（HTTP 200）。响应前 100 字符： <!DOCTYPE html> <html> <head> <meta name="data-spm" data-spm-protocol="i" content="a21z7b" />
+[2026-06-22] 问题很清晰：规则库页面调用 /api/dolt/files 接口，但该接口需要代理到外部 Dolt 服务（115.29.199.130:9090），在 1D 平台 WebC 环境中该服务不可达，Express 代理失败后返回了 HTML 错误页。
+
+https://1d-workflow.alibaba-inc.com/v1，key：app-RFpbBnSXEPmN7ruEOv9RjbK8，使用这个工作流调用http试试
+[2026-06-22] [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+at console.<computed>(chobitsu:25:294207)
+at tryGetClient(main.js:165548:17)
+at waitForOneDayReady(main.js:165601:25)
+at ensureSupabaseReady(main.js:165902:20)
+at init(main.js:170973:33)
+
+Dolt 服务暂不可用，当前显示内置知识库（只读），共 119 条规则
+[2026-06-22] 加载知识库失败: API /_p/3000/api/dolt/files?pageSize=500 返回 HTML 而非 JSON（HTTP 200）。响应前 100 字符：<!DOCTYPE html> <html lang="en"> <head> <meta charset="utf-8"> <title>Error</title> </head> <body> <
+
+这个报错是什么？
+[2026-06-22] 加载知识库失败: API /_p/3000/api/dolt/files?pageSize=500 返回 HTML 而非 JSON（HTTP 200）。响应前 100 字符：<!DOCTYPE html> <html lang="en"> <head> <meta charset="utf-8"> <title>Error</title> </head> <body> <
+
+仍然是这个[oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+at console.<computed>(chobitsu:25:294207)
+at tryGetClient(main.js:165433:17)
+at waitForOneDayReady(main.js:165486:25)
+at ensureSupabaseReady(main.js:165787:20)
+at init(main.js:170858:33)
+console.<computed> @ chobitsu:25:294207
+[2026-06-22] 加载知识库失败: API /_p/3000/api/dolt/files?pageSize=500 返回 HTML 而非 JSON（HTTP 200）。响应前 100 字符：<!DOCTYPE html> <html lang="en"> <head> <meta charset="utf-8"> <title>Error</title> </head> <body> <
+
+[server] 数据库模式: 内存 (无状态)
+[server] GitLab KB 代理未配置 (GITLAB_KB_TOKEN 为空)，使用本地 knowledge-base/ 降级
+[server] Swagger 文档已注册 → /api/docs
+[kb-file-map] 已建立映射: 22 条
+[server] 教培Agent API 已启动 → http://0.0.0.0:3020
+[server] 健康检查: http://0.0.0.0:3020/health
+实例: 0-f20e9daf95e26812
+IP: 33.63.147.89
+
+加载知识库失败: API /_p/3000/api/dolt/files?pageSize=500 返回 HTML 而非 JSON（HTTP 200）。响应前 100 字符：<!DOCTYPE html> <html lang="en"> <head> <meta charset="utf-8"> <title>Error</title> </head> <body> <
+
+
+[oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+at console.<computed>(chobitsu:25:294207)
+at tryGetClient(main.js:165433:17)
+at waitForOneDayReady(main.js:165486:25)
+at ensureSupabaseReady(main.js:165787:20)
+at init(main.js:170858:33)
+[2026-06-22] 版本：91f843b
+14:15:51
+[INFO]
+
+> smart-training-agent-server@0.1.0 start
+> node index.js
+
+[server] 数据库模式: 内存 (无状态)
+[server] GitLab KB 代理未配置 (GITLAB_KB_TOKEN 为空)，使用本地 knowledge-base/ 降级
+[server] Swagger 文档已注册 → /api/docs
+[kb-file-map] 已建立映射: 22 条
+[server] 教培Agent API 已启动 → http://0.0.0.0:3020
+[server] 健康检查: http://0.0.0.0:3020/health
+实例: 0-c944cbfcc2e94e14
+IP: 33.7.202.47
+
+
+已转到 https://1d.alibaba-inc.com/_p/3000/index.html
+index.html:72 [oneday-bootstrap] ONEDAY_CONFIG 未找到, 等待 postMessage...
+main.js:179292 [webpack-dev-server] Server started: Hot Module Replacement enabled, Live Reloading enabled, Progress disabled, Overlay enabled.
+main.js:180895 [HMR] Waiting for update signal from WDS...
+main.js:149209 Download the React DevTools for a better development experience: https://reactjs.org/link/react-devtools
+main.js:165433 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+tryGetClient @ main.js:165433
+./src/onedaycloud/safeClient.ts @ main.js:165442
+__webpack_require__ @ main.js:185063
+fn @ main.js:185355
+./src/onedaycloud/supabase.ts @ main.js:165776
+__webpack_require__ @ main.js:185063
+fn @ main.js:185355
+./src/shared/services/cloudSyncService.ts @ main.js:169321
+__webpack_require__ @ main.js:185063
+fn @ main.js:185355
+./src/shared/services/staffStore.ts @ main.js:176090
+__webpack_require__ @ main.js:185063
+fn @ main.js:185355
+./src/shared/services/authService.ts @ main.js:168339
+__webpack_require__ @ main.js:185063
+fn @ main.js:185355
+./src/shared/context/AppIdentityContext.tsx @ main.js:167424
+__webpack_require__ @ main.js:185063
+fn @ main.js:185355
+./src/main.tsx @ main.js:158904
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 Warning: [antd: Spin] `tip` only work in nest or fullscreen pattern.
+console.error @ oneday-preview-plugin-0427.js:2
+warning @ main.js:117315
+call @ main.js:117336
+warningOnce @ main.js:117343
+_warning @ main.js:23165
+typeWarning @ main.js:23198
+Spin @ main.js:55127
+renderWithHooks @ main.js:134804
+mountIndeterminateComponent @ main.js:139417
+beginWork @ main.js:140940
+beginWork$1 @ main.js:146779
+performUnitOfWork @ main.js:145913
+workLoopSync @ main.js:145819
+renderRootSync @ main.js:145787
+performConcurrentWorkOnRoot @ main.js:145091
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 ⚠️ React Router Future Flag Warning: React Router will begin wrapping state updates in `React.startTransition` in v7. You can use the `v7_startTransition` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_starttransition.
+console.warn @ oneday-preview-plugin-0427.js:2
+warnOnce @ main.js:152109
+logDeprecation @ main.js:152112
+logV6DeprecationWarnings @ main.js:152115
+（匿名） @ main.js:150330
+commitHookEffectListMount @ main.js:142503
+commitPassiveMountOnFiber @ main.js:144284
+commitPassiveMountEffects_complete @ main.js:144244
+commitPassiveMountEffects_begin @ main.js:144231
+commitPassiveMountEffects @ main.js:144219
+flushPassiveEffectsImpl @ main.js:146392
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 ⚠️ React Router Future Flag Warning: Relative route resolution within Splat routes is changing in v7. You can use the `v7_relativeSplatPath` future flag to opt-in early. For more information, see https://reactrouter.com/v6/upgrading/future#v7_relativesplatpath.
+console.warn @ oneday-preview-plugin-0427.js:2
+warnOnce @ main.js:152109
+logDeprecation @ main.js:152112
+logV6DeprecationWarnings @ main.js:152118
+（匿名） @ main.js:150330
+commitHookEffectListMount @ main.js:142503
+commitPassiveMountOnFiber @ main.js:144284
+commitPassiveMountEffects_complete @ main.js:144244
+commitPassiveMountEffects_begin @ main.js:144231
+commitPassiveMountEffects @ main.js:144219
+flushPassiveEffectsImpl @ main.js:146392
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+tryGetClient @ main.js:165433
+getOneDayClient @ main.js:165445
+getOneDaySupabase @ main.js:165449
+getSupabase @ main.js:170786
+init @ main.js:170855
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+commitPassiveMountOnFiber @ main.js:144284
+commitPassiveMountEffects_complete @ main.js:144244
+commitPassiveMountEffects_begin @ main.js:144231
+commitPassiveMountEffects @ main.js:144219
+flushPassiveEffectsImpl @ main.js:146392
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+main.js:170857 [dataService] 同步获取 Supabase 失败，启用异步等待…
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+tryGetClient @ main.js:165433
+getOneDayClient @ main.js:165445
+getSupabase @ main.js:165779
+ensureSupabaseReady @ main.js:165782
+init @ main.js:170858
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+commitPassiveMountOnFiber @ main.js:144284
+commitPassiveMountEffects_complete @ main.js:144244
+commitPassiveMountEffects_begin @ main.js:144231
+commitPassiveMountEffects @ main.js:144219
+flushPassiveEffectsImpl @ main.js:146392
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+tryGetClient @ main.js:165433
+getOneDayClient @ main.js:165445
+waitForOneDayReady @ main.js:165479
+ensureSupabaseReady @ main.js:165787
+init @ main.js:170858
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+commitPassiveMountOnFiber @ main.js:144284
+commitPassiveMountEffects_complete @ main.js:144244
+commitPassiveMountEffects_begin @ main.js:144231
+commitPassiveMountEffects @ main.js:144219
+flushPassiveEffectsImpl @ main.js:146392
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+tryGetClient @ main.js:165433
+getOneDayClient @ main.js:165445
+getOneDaySupabase @ main.js:165449
+getSupabase @ main.js:170786
+init @ main.js:170855
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+invokePassiveEffectMountInDEV @ main.js:144507
+invokeEffectsInDev @ main.js:146704
+commitDoubleInvokeEffectsInDEV @ main.js:146683
+flushPassiveEffectsImpl @ main.js:146409
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+main.js:170857 [dataService] 同步获取 Supabase 失败，启用异步等待…
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+tryGetClient @ main.js:165433
+getOneDayClient @ main.js:165445
+getSupabase @ main.js:165779
+ensureSupabaseReady @ main.js:165782
+init @ main.js:170858
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+invokePassiveEffectMountInDEV @ main.js:144507
+invokeEffectsInDev @ main.js:146704
+commitDoubleInvokeEffectsInDEV @ main.js:146683
+flushPassiveEffectsImpl @ main.js:146409
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+tryGetClient @ main.js:165433
+getOneDayClient @ main.js:165445
+waitForOneDayReady @ main.js:165479
+ensureSupabaseReady @ main.js:165787
+init @ main.js:170858
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+invokePassiveEffectMountInDEV @ main.js:144507
+invokeEffectsInDev @ main.js:146704
+commitDoubleInvokeEffectsInDEV @ main.js:146683
+flushPassiveEffectsImpl @ main.js:146409
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+ensureSupabaseReady @ main.js:165787
+init @ main.js:170858
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+commitPassiveMountOnFiber @ main.js:144284
+commitPassiveMountEffects_complete @ main.js:144244
+commitPassiveMountEffects_begin @ main.js:144231
+commitPassiveMountEffects @ main.js:144219
+flushPassiveEffectsImpl @ main.js:146392
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+ensureSupabaseReady @ main.js:165787
+init @ main.js:170858
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+invokePassiveEffectMountInDEV @ main.js:144507
+invokeEffectsInDev @ main.js:146704
+commitDoubleInvokeEffectsInDEV @ main.js:146683
+flushPassiveEffectsImpl @ main.js:146409
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+ensureSupabaseReady @ main.js:165787
+init @ main.js:170858
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+commitPassiveMountOnFiber @ main.js:144284
+commitPassiveMountEffects_complete @ main.js:144244
+commitPassiveMountEffects_begin @ main.js:144231
+commitPassiveMountEffects @ main.js:144219
+flushPassiveEffectsImpl @ main.js:146392
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+ensureSupabaseReady @ main.js:165787
+init @ main.js:170858
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+invokePassiveEffectMountInDEV @ main.js:144507
+invokeEffectsInDev @ main.js:146704
+commitDoubleInvokeEffectsInDEV @ main.js:146683
+flushPassiveEffectsImpl @ main.js:146409
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+ensureSupabaseReady @ main.js:165787
+init @ main.js:170858
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+commitPassiveMountOnFiber @ main.js:144284
+commitPassiveMountEffects_complete @ main.js:144244
+commitPassiveMountEffects_begin @ main.js:144231
+commitPassiveMountEffects @ main.js:144219
+flushPassiveEffectsImpl @ main.js:146392
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+ensureSupabaseReady @ main.js:165787
+init @ main.js:170858
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+invokePassiveEffectMountInDEV @ main.js:144507
+invokeEffectsInDev @ main.js:146704
+commitDoubleInvokeEffectsInDEV @ main.js:146683
+flushPassiveEffectsImpl @ main.js:146409
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+ensureSupabaseReady @ main.js:165787
+init @ main.js:170858
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+commitPassiveMountOnFiber @ main.js:144284
+commitPassiveMountEffects_complete @ main.js:144244
+commitPassiveMountEffects_begin @ main.js:144231
+commitPassiveMountEffects @ main.js:144219
+flushPassiveEffectsImpl @ main.js:146392
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+ensureSupabaseReady @ main.js:165787
+init @ main.js:170858
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+invokePassiveEffectMountInDEV @ main.js:144507
+invokeEffectsInDev @ main.js:146704
+commitDoubleInvokeEffectsInDEV @ main.js:146683
+flushPassiveEffectsImpl @ main.js:146409
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+ensureSupabaseReady @ main.js:165787
+init @ main.js:170858
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+commitPassiveMountOnFiber @ main.js:144284
+commitPassiveMountEffects_complete @ main.js:144244
+commitPassiveMountEffects_begin @ main.js:144231
+commitPassiveMountEffects @ main.js:144219
+flushPassiveEffectsImpl @ main.js:146392
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+ensureSupabaseReady @ main.js:165787
+init @ main.js:170858
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+invokePassiveEffectMountInDEV @ main.js:144507
+invokeEffectsInDev @ main.js:146704
+commitDoubleInvokeEffectsInDEV @ main.js:146683
+flushPassiveEffectsImpl @ main.js:146409
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+ensureSupabaseReady @ main.js:165787
+init @ main.js:170858
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+commitPassiveMountOnFiber @ main.js:144284
+commitPassiveMountEffects_complete @ main.js:144244
+commitPassiveMountEffects_begin @ main.js:144231
+commitPassiveMountEffects @ main.js:144219
+flushPassiveEffectsImpl @ main.js:146392
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+ensureSupabaseReady @ main.js:165787
+init @ main.js:170858
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+invokePassiveEffectMountInDEV @ main.js:144507
+invokeEffectsInDev @ main.js:146704
+commitDoubleInvokeEffectsInDEV @ main.js:146683
+flushPassiveEffectsImpl @ main.js:146409
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+ensureSupabaseReady @ main.js:165787
+init @ main.js:170858
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+commitPassiveMountOnFiber @ main.js:144284
+commitPassiveMountEffects_complete @ main.js:144244
+commitPassiveMountEffects_begin @ main.js:144231
+commitPassiveMountEffects @ main.js:144219
+flushPassiveEffectsImpl @ main.js:146392
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+ensureSupabaseReady @ main.js:165787
+init @ main.js:170858
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+invokePassiveEffectMountInDEV @ main.js:144507
+invokeEffectsInDev @ main.js:146704
+commitDoubleInvokeEffectsInDEV @ main.js:146683
+flushPassiveEffectsImpl @ main.js:146409
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+ensureSupabaseReady @ main.js:165787
+init @ main.js:170858
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+commitPassiveMountOnFiber @ main.js:144284
+commitPassiveMountEffects_complete @ main.js:144244
+commitPassiveMountEffects_begin @ main.js:144231
+commitPassiveMountEffects @ main.js:144219
+flushPassiveEffectsImpl @ main.js:146392
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+ensureSupabaseReady @ main.js:165787
+init @ main.js:170858
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+invokePassiveEffectMountInDEV @ main.js:144507
+invokeEffectsInDev @ main.js:146704
+commitDoubleInvokeEffectsInDEV @ main.js:146683
+flushPassiveEffectsImpl @ main.js:146409
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+ensureSupabaseReady @ main.js:165787
+init @ main.js:170858
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+commitPassiveMountOnFiber @ main.js:144284
+commitPassiveMountEffects_complete @ main.js:144244
+commitPassiveMountEffects_begin @ main.js:144231
+commitPassiveMountEffects @ main.js:144219
+flushPassiveEffectsImpl @ main.js:146392
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+ensureSupabaseReady @ main.js:165787
+init @ main.js:170858
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+invokePassiveEffectMountInDEV @ main.js:144507
+invokeEffectsInDev @ main.js:146704
+commitDoubleInvokeEffectsInDEV @ main.js:146683
+flushPassiveEffectsImpl @ main.js:146409
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+ensureSupabaseReady @ main.js:165787
+init @ main.js:170858
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+commitPassiveMountOnFiber @ main.js:144284
+commitPassiveMountEffects_complete @ main.js:144244
+commitPassiveMountEffects_begin @ main.js:144231
+commitPassiveMountEffects @ main.js:144219
+flushPassiveEffectsImpl @ main.js:146392
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+ensureSupabaseReady @ main.js:165787
+init @ main.js:170858
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+invokePassiveEffectMountInDEV @ main.js:144507
+invokeEffectsInDev @ main.js:146704
+commitDoubleInvokeEffectsInDEV @ main.js:146683
+flushPassiveEffectsImpl @ main.js:146409
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+ensureSupabaseReady @ main.js:165787
+init @ main.js:170858
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+commitPassiveMountOnFiber @ main.js:144284
+commitPassiveMountEffects_complete @ main.js:144244
+commitPassiveMountEffects_begin @ main.js:144231
+commitPassiveMountEffects @ main.js:144219
+flushPassiveEffectsImpl @ main.js:146392
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+ensureSupabaseReady @ main.js:165787
+init @ main.js:170858
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+invokePassiveEffectMountInDEV @ main.js:144507
+invokeEffectsInDev @ main.js:146704
+commitDoubleInvokeEffectsInDEV @ main.js:146683
+flushPassiveEffectsImpl @ main.js:146409
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+ensureSupabaseReady @ main.js:165787
+init @ main.js:170858
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+commitPassiveMountOnFiber @ main.js:144284
+commitPassiveMountEffects_complete @ main.js:144244
+commitPassiveMountEffects_begin @ main.js:144231
+commitPassiveMountEffects @ main.js:144219
+flushPassiveEffectsImpl @ main.js:146392
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+ensureSupabaseReady @ main.js:165787
+init @ main.js:170858
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+invokePassiveEffectMountInDEV @ main.js:144507
+invokeEffectsInDev @ main.js:146704
+commitDoubleInvokeEffectsInDEV @ main.js:146683
+flushPassiveEffectsImpl @ main.js:146409
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+ensureSupabaseReady @ main.js:165787
+init @ main.js:170858
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+commitPassiveMountOnFiber @ main.js:144284
+commitPassiveMountEffects_complete @ main.js:144244
+commitPassiveMountEffects_begin @ main.js:144231
+commitPassiveMountEffects @ main.js:144219
+flushPassiveEffectsImpl @ main.js:146392
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+ensureSupabaseReady @ main.js:165787
+init @ main.js:170858
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+invokePassiveEffectMountInDEV @ main.js:144507
+invokeEffectsInDev @ main.js:146704
+commitDoubleInvokeEffectsInDEV @ main.js:146683
+flushPassiveEffectsImpl @ main.js:146409
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+ensureSupabaseReady @ main.js:165787
+init @ main.js:170858
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+commitPassiveMountOnFiber @ main.js:144284
+commitPassiveMountEffects_complete @ main.js:144244
+commitPassiveMountEffects_begin @ main.js:144231
+commitPassiveMountEffects @ main.js:144219
+flushPassiveEffectsImpl @ main.js:146392
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+ensureSupabaseReady @ main.js:165787
+init @ main.js:170858
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+invokePassiveEffectMountInDEV @ main.js:144507
+invokeEffectsInDev @ main.js:146704
+commitDoubleInvokeEffectsInDEV @ main.js:146683
+flushPassiveEffectsImpl @ main.js:146409
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+ensureSupabaseReady @ main.js:165787
+init @ main.js:170858
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+commitPassiveMountOnFiber @ main.js:144284
+commitPassiveMountEffects_complete @ main.js:144244
+commitPassiveMountEffects_begin @ main.js:144231
+commitPassiveMountEffects @ main.js:144219
+flushPassiveEffectsImpl @ main.js:146392
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+ensureSupabaseReady @ main.js:165787
+init @ main.js:170858
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+invokePassiveEffectMountInDEV @ main.js:144507
+invokeEffectsInDev @ main.js:146704
+commitDoubleInvokeEffectsInDEV @ main.js:146683
+flushPassiveEffectsImpl @ main.js:146409
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+ensureSupabaseReady @ main.js:165787
+init @ main.js:170858
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+commitPassiveMountOnFiber @ main.js:144284
+commitPassiveMountEffects_complete @ main.js:144244
+commitPassiveMountEffects_begin @ main.js:144231
+commitPassiveMountEffects @ main.js:144219
+flushPassiveEffectsImpl @ main.js:146392
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] SDK 等待超时 (8000ms)，仍未就绪
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+waitForOneDayReady @ main.js:165493
+await in waitForOneDayReady
+ensureSupabaseReady @ main.js:165787
+init @ main.js:170858
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+commitPassiveMountOnFiber @ main.js:144284
+commitPassiveMountEffects_complete @ main.js:144244
+commitPassiveMountEffects_begin @ main.js:144231
+commitPassiveMountEffects @ main.js:144219
+flushPassiveEffectsImpl @ main.js:146392
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+getOneDayClient @ main.js:165445
+getOneDaySupabase @ main.js:165449
+getSupabase @ main.js:170786
+init @ main.js:170859
+await in init
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+commitPassiveMountOnFiber @ main.js:144284
+commitPassiveMountEffects_complete @ main.js:144244
+commitPassiveMountEffects_begin @ main.js:144231
+commitPassiveMountEffects @ main.js:144219
+flushPassiveEffectsImpl @ main.js:146392
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+chobitsu:25 [dataService] Supabase 客户端: null
+oneday-preview-plugin-0427.js:2 [dataService] Supabase 未就绪，等待 SDK 注入（最多 8s）...
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+init @ main.js:170863
+await in init
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+commitPassiveMountOnFiber @ main.js:144284
+commitPassiveMountEffects_complete @ main.js:144244
+commitPassiveMountEffects_begin @ main.js:144231
+commitPassiveMountEffects @ main.js:144219
+flushPassiveEffectsImpl @ main.js:146392
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+getOneDayClient @ main.js:165445
+waitForOneDayReady @ main.js:165479
+init @ main.js:170865
+await in init
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+commitPassiveMountOnFiber @ main.js:144284
+commitPassiveMountEffects_complete @ main.js:144244
+commitPassiveMountEffects_begin @ main.js:144231
+commitPassiveMountEffects @ main.js:144219
+flushPassiveEffectsImpl @ main.js:146392
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+ensureSupabaseReady @ main.js:165787
+init @ main.js:170858
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+invokePassiveEffectMountInDEV @ main.js:144507
+invokeEffectsInDev @ main.js:146704
+commitDoubleInvokeEffectsInDEV @ main.js:146683
+flushPassiveEffectsImpl @ main.js:146409
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] SDK 等待超时 (8000ms)，仍未就绪
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+waitForOneDayReady @ main.js:165493
+await in waitForOneDayReady
+ensureSupabaseReady @ main.js:165787
+init @ main.js:170858
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+invokePassiveEffectMountInDEV @ main.js:144507
+invokeEffectsInDev @ main.js:146704
+commitDoubleInvokeEffectsInDEV @ main.js:146683
+flushPassiveEffectsImpl @ main.js:146409
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+getOneDayClient @ main.js:165445
+getOneDaySupabase @ main.js:165449
+getSupabase @ main.js:170786
+init @ main.js:170859
+await in init
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+invokePassiveEffectMountInDEV @ main.js:144507
+invokeEffectsInDev @ main.js:146704
+commitDoubleInvokeEffectsInDEV @ main.js:146683
+flushPassiveEffectsImpl @ main.js:146409
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+chobitsu:25 [dataService] Supabase 客户端: null
+oneday-preview-plugin-0427.js:2 [dataService] Supabase 未就绪，等待 SDK 注入（最多 8s）...
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+init @ main.js:170863
+await in init
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+invokePassiveEffectMountInDEV @ main.js:144507
+invokeEffectsInDev @ main.js:146704
+commitDoubleInvokeEffectsInDEV @ main.js:146683
+flushPassiveEffectsImpl @ main.js:146409
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+getOneDayClient @ main.js:165445
+waitForOneDayReady @ main.js:165479
+init @ main.js:170865
+await in init
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+invokePassiveEffectMountInDEV @ main.js:144507
+invokeEffectsInDev @ main.js:146704
+commitDoubleInvokeEffectsInDEV @ main.js:146683
+flushPassiveEffectsImpl @ main.js:146409
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+init @ main.js:170865
+await in init
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+commitPassiveMountOnFiber @ main.js:144284
+commitPassiveMountEffects_complete @ main.js:144244
+commitPassiveMountEffects_begin @ main.js:144231
+commitPassiveMountEffects @ main.js:144219
+flushPassiveEffectsImpl @ main.js:146392
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+init @ main.js:170865
+await in init
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+invokePassiveEffectMountInDEV @ main.js:144507
+invokeEffectsInDev @ main.js:146704
+commitDoubleInvokeEffectsInDEV @ main.js:146683
+flushPassiveEffectsImpl @ main.js:146409
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+init @ main.js:170865
+await in init
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+commitPassiveMountOnFiber @ main.js:144284
+commitPassiveMountEffects_complete @ main.js:144244
+commitPassiveMountEffects_begin @ main.js:144231
+commitPassiveMountEffects @ main.js:144219
+flushPassiveEffectsImpl @ main.js:146392
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+init @ main.js:170865
+await in init
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+invokePassiveEffectMountInDEV @ main.js:144507
+invokeEffectsInDev @ main.js:146704
+commitDoubleInvokeEffectsInDEV @ main.js:146683
+flushPassiveEffectsImpl @ main.js:146409
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+init @ main.js:170865
+await in init
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+commitPassiveMountOnFiber @ main.js:144284
+commitPassiveMountEffects_complete @ main.js:144244
+commitPassiveMountEffects_begin @ main.js:144231
+commitPassiveMountEffects @ main.js:144219
+flushPassiveEffectsImpl @ main.js:146392
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+init @ main.js:170865
+await in init
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+invokePassiveEffectMountInDEV @ main.js:144507
+invokeEffectsInDev @ main.js:146704
+commitDoubleInvokeEffectsInDEV @ main.js:146683
+flushPassiveEffectsImpl @ main.js:146409
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+init @ main.js:170865
+await in init
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+commitPassiveMountOnFiber @ main.js:144284
+commitPassiveMountEffects_complete @ main.js:144244
+commitPassiveMountEffects_begin @ main.js:144231
+commitPassiveMountEffects @ main.js:144219
+flushPassiveEffectsImpl @ main.js:146392
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+init @ main.js:170865
+await in init
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+invokePassiveEffectMountInDEV @ main.js:144507
+invokeEffectsInDev @ main.js:146704
+commitDoubleInvokeEffectsInDEV @ main.js:146683
+flushPassiveEffectsImpl @ main.js:146409
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+init @ main.js:170865
+await in init
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+commitPassiveMountOnFiber @ main.js:144284
+commitPassiveMountEffects_complete @ main.js:144244
+commitPassiveMountEffects_begin @ main.js:144231
+commitPassiveMountEffects @ main.js:144219
+flushPassiveEffectsImpl @ main.js:146392
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+init @ main.js:170865
+await in init
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+invokePassiveEffectMountInDEV @ main.js:144507
+invokeEffectsInDev @ main.js:146704
+commitDoubleInvokeEffectsInDEV @ main.js:146683
+flushPassiveEffectsImpl @ main.js:146409
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+init @ main.js:170865
+await in init
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+commitPassiveMountOnFiber @ main.js:144284
+commitPassiveMountEffects_complete @ main.js:144244
+commitPassiveMountEffects_begin @ main.js:144231
+commitPassiveMountEffects @ main.js:144219
+flushPassiveEffectsImpl @ main.js:146392
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+init @ main.js:170865
+await in init
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+invokePassiveEffectMountInDEV @ main.js:144507
+invokeEffectsInDev @ main.js:146704
+commitDoubleInvokeEffectsInDEV @ main.js:146683
+flushPassiveEffectsImpl @ main.js:146409
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+init @ main.js:170865
+await in init
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+commitPassiveMountOnFiber @ main.js:144284
+commitPassiveMountEffects_complete @ main.js:144244
+commitPassiveMountEffects_begin @ main.js:144231
+commitPassiveMountEffects @ main.js:144219
+flushPassiveEffectsImpl @ main.js:146392
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+init @ main.js:170865
+await in init
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+invokePassiveEffectMountInDEV @ main.js:144507
+invokeEffectsInDev @ main.js:146704
+commitDoubleInvokeEffectsInDEV @ main.js:146683
+flushPassiveEffectsImpl @ main.js:146409
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+init @ main.js:170865
+await in init
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+commitPassiveMountOnFiber @ main.js:144284
+commitPassiveMountEffects_complete @ main.js:144244
+commitPassiveMountEffects_begin @ main.js:144231
+commitPassiveMountEffects @ main.js:144219
+flushPassiveEffectsImpl @ main.js:146392
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+init @ main.js:170865
+await in init
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+invokePassiveEffectMountInDEV @ main.js:144507
+invokeEffectsInDev @ main.js:146704
+commitDoubleInvokeEffectsInDEV @ main.js:146683
+flushPassiveEffectsImpl @ main.js:146409
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+init @ main.js:170865
+await in init
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+commitPassiveMountOnFiber @ main.js:144284
+commitPassiveMountEffects_complete @ main.js:144244
+commitPassiveMountEffects_begin @ main.js:144231
+commitPassiveMountEffects @ main.js:144219
+flushPassiveEffectsImpl @ main.js:146392
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+init @ main.js:170865
+await in init
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+invokePassiveEffectMountInDEV @ main.js:144507
+invokeEffectsInDev @ main.js:146704
+commitDoubleInvokeEffectsInDEV @ main.js:146683
+flushPassiveEffectsImpl @ main.js:146409
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+init @ main.js:170865
+await in init
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+commitPassiveMountOnFiber @ main.js:144284
+commitPassiveMountEffects_complete @ main.js:144244
+commitPassiveMountEffects_begin @ main.js:144231
+commitPassiveMountEffects @ main.js:144219
+flushPassiveEffectsImpl @ main.js:146392
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+init @ main.js:170865
+await in init
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+invokePassiveEffectMountInDEV @ main.js:144507
+invokeEffectsInDev @ main.js:146704
+commitDoubleInvokeEffectsInDEV @ main.js:146683
+flushPassiveEffectsImpl @ main.js:146409
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+init @ main.js:170865
+await in init
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+commitPassiveMountOnFiber @ main.js:144284
+commitPassiveMountEffects_complete @ main.js:144244
+commitPassiveMountEffects_begin @ main.js:144231
+commitPassiveMountEffects @ main.js:144219
+flushPassiveEffectsImpl @ main.js:146392
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+init @ main.js:170865
+await in init
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+invokePassiveEffectMountInDEV @ main.js:144507
+invokeEffectsInDev @ main.js:146704
+commitDoubleInvokeEffectsInDEV @ main.js:146683
+flushPassiveEffectsImpl @ main.js:146409
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+init @ main.js:170865
+await in init
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+commitPassiveMountOnFiber @ main.js:144284
+commitPassiveMountEffects_complete @ main.js:144244
+commitPassiveMountEffects_begin @ main.js:144231
+commitPassiveMountEffects @ main.js:144219
+flushPassiveEffectsImpl @ main.js:146392
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+init @ main.js:170865
+await in init
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+invokePassiveEffectMountInDEV @ main.js:144507
+invokeEffectsInDev @ main.js:146704
+commitDoubleInvokeEffectsInDEV @ main.js:146683
+flushPassiveEffectsImpl @ main.js:146409
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+init @ main.js:170865
+await in init
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+commitPassiveMountOnFiber @ main.js:144284
+commitPassiveMountEffects_complete @ main.js:144244
+commitPassiveMountEffects_begin @ main.js:144231
+commitPassiveMountEffects @ main.js:144219
+flushPassiveEffectsImpl @ main.js:146392
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+init @ main.js:170865
+await in init
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+invokePassiveEffectMountInDEV @ main.js:144507
+invokeEffectsInDev @ main.js:146704
+commitDoubleInvokeEffectsInDEV @ main.js:146683
+flushPassiveEffectsImpl @ main.js:146409
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+init @ main.js:170865
+await in init
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+commitPassiveMountOnFiber @ main.js:144284
+commitPassiveMountEffects_complete @ main.js:144244
+commitPassiveMountEffects_begin @ main.js:144231
+commitPassiveMountEffects @ main.js:144219
+flushPassiveEffectsImpl @ main.js:146392
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+init @ main.js:170865
+await in init
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+invokePassiveEffectMountInDEV @ main.js:144507
+invokeEffectsInDev @ main.js:146704
+commitDoubleInvokeEffectsInDEV @ main.js:146683
+flushPassiveEffectsImpl @ main.js:146409
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+init @ main.js:170865
+await in init
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+commitPassiveMountOnFiber @ main.js:144284
+commitPassiveMountEffects_complete @ main.js:144244
+commitPassiveMountEffects_begin @ main.js:144231
+commitPassiveMountEffects @ main.js:144219
+flushPassiveEffectsImpl @ main.js:146392
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+init @ main.js:170865
+await in init
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+invokePassiveEffectMountInDEV @ main.js:144507
+invokeEffectsInDev @ main.js:146704
+commitDoubleInvokeEffectsInDEV @ main.js:146683
+flushPassiveEffectsImpl @ main.js:146409
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+init @ main.js:170865
+await in init
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+commitPassiveMountOnFiber @ main.js:144284
+commitPassiveMountEffects_complete @ main.js:144244
+commitPassiveMountEffects_begin @ main.js:144231
+commitPassiveMountEffects @ main.js:144219
+flushPassiveEffectsImpl @ main.js:146392
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] SDK 等待超时 (8000ms)，仍未就绪
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+waitForOneDayReady @ main.js:165493
+await in waitForOneDayReady
+init @ main.js:170865
+await in init
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+commitPassiveMountOnFiber @ main.js:144284
+commitPassiveMountEffects_complete @ main.js:144244
+commitPassiveMountEffects_begin @ main.js:144231
+commitPassiveMountEffects @ main.js:144219
+flushPassiveEffectsImpl @ main.js:146392
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [dataService] OneDay Cloud 不可用，使用本地 localStorage 模式运行
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+init @ main.js:170869
+await in init
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+commitPassiveMountOnFiber @ main.js:144284
+commitPassiveMountEffects_complete @ main.js:144244
+commitPassiveMountEffects_begin @ main.js:144231
+commitPassiveMountEffects @ main.js:144219
+flushPassiveEffectsImpl @ main.js:146392
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+chobitsu:25 [App] ✅ 数据初始化完成, 来源: cloud
+oneday-preview-plugin-0427.js:2 [oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+tryGetClient @ main.js:165433
+waitForOneDayReady @ main.js:165486
+await in waitForOneDayReady
+init @ main.js:170865
+await in init
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+invokePassiveEffectMountInDEV @ main.js:144507
+invokeEffectsInDev @ main.js:146704
+commitDoubleInvokeEffectsInDEV @ main.js:146683
+flushPassiveEffectsImpl @ main.js:146409
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [oneday] SDK 等待超时 (8000ms)，仍未就绪
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+waitForOneDayReady @ main.js:165493
+await in waitForOneDayReady
+init @ main.js:170865
+await in init
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+invokePassiveEffectMountInDEV @ main.js:144507
+invokeEffectsInDev @ main.js:146704
+commitDoubleInvokeEffectsInDEV @ main.js:146683
+flushPassiveEffectsImpl @ main.js:146409
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [dataService] OneDay Cloud 不可用，使用本地 localStorage 模式运行
+console.warn @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+init @ main.js:170869
+await in init
+（匿名） @ main.js:167451
+Promise.then
+（匿名） @ main.js:167450
+commitHookEffectListMount @ main.js:142503
+invokePassiveEffectMountInDEV @ main.js:144507
+invokeEffectsInDev @ main.js:146704
+commitDoubleInvokeEffectsInDEV @ main.js:146683
+flushPassiveEffectsImpl @ main.js:146409
+flushPassiveEffects @ main.js:146337
+（匿名） @ main.js:146122
+workLoop @ main.js:158024
+flushWork @ main.js:157997
+performWorkUntilDeadline @ main.js:158291
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+performWorkUntilDeadline @ main.js:158296
+postMessage
+schedulePerformWorkUntilDeadline @ main.js:158332
+requestHostCallback @ main.js:158346
+unstable_scheduleCallback @ main.js:158199
+scheduleCallback$1 @ main.js:146890
+ensureRootIsScheduled @ main.js:145036
+scheduleUpdateOnFiber @ main.js:144884
+updateContainer @ main.js:148211
+ReactDOMHydrationRoot.render.ReactDOMRoot.render @ main.js:148667
+./src/main.tsx @ main.js:158920
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186414
+（匿名） @ main.js:186416
+chobitsu:25 [App] ✅ 数据初始化完成, 来源: cloud
+main.js:178418 WebSocket connection to 'wss://1d.alibaba-inc.com:3000/ws' failed: 
+WebSocketClient @ main.js:178418
+initSocket @ main.js:180219
+./node_modules/_webpack-dev-server@4.15.2@webpack-dev-server/client/index.js?protocol=ws%3A&hostname=0.0.0.0&port=3000&pathname=%2Fws&logging=info&overlay=false&reconnect=10&hot=true&live-reload=true @ main.js:178798
+__webpack_require__ @ main.js:185063
+（匿名） @ main.js:186412
+（匿名） @ main.js:186416
+oneday-preview-plugin-0427.js:2 [webpack-dev-server] Event {isTrusted: true, type: 'error', target: WebSocket, currentTarget: WebSocket, eventPhase: 2, …}
+console.error @ oneday-preview-plugin-0427.js:2
+console.<computed> @ chobitsu:25
+logger @ main.js:179300
+（匿名） @ main.js:179441
+error @ main.js:178963
+WebSocketClient.client.onerror @ main.js:178420
+chobitsu:25 [webpack-dev-server] Disconnected!
+chobitsu:25 [webpack-dev-server] Trying to reconnect...
+[2026-06-22] 加载知识库失败: Dolt 前端中继未配置（缺 DOLT_WORKFLOW_KEY/DOLT_API_URL/DOLT_API_TOKEN）
+[2026-06-22] 文档加载失败: Can't find end of central directory : is this a zip file ? If it is, see https://stuk.github.io/jszip/documentation/howto/read_zip.html
+
+所有文档都显示这个
+[2026-06-22] 现在文档都显示正常内容了，但是完全没有正确渲染为可读的。格式、图片、链接、表格全部都没有正常显示。当我上传doc、excel、txt、md等，怎么直接显示出来？怎么调整文件储存结构？怎么在页面上直接修改文件保存为新版本？怎样做是负担最轻效果最优的？如果实在解决不了，我可以将原始数据全部转化为json或是md
+[2026-06-22] 现在再试一下
+[2026-06-22] 好了，再试一下
+[2026-06-22] Start 节点的输入变量 post是body
+HTTP 请求节点：输入也是body
+[2026-06-22] 你能不能直接生成DSL文件，然后我导入工作流
+[2026-06-22] 保存在当下的项目根目录里
+[2026-06-22] app-Q5JoUqN2kxba24pBikLImA8q这个是你更改好的
+[2026-06-22] 1.表格、图片、链接、格式还是没有渲染。
+2.在点击使用版本历史对比功能时，出现报错获取 diff 失败: 工作流执行失败: 请求失败，已达最大重试次数，请检查网络连接
+[2026-06-22] https://mcp-gw.dingtalk.com/server/745df8ec2069b8c258848375597b349e14e77fc39067836422df81fb780a619d?key=9b8398cdd13651e830fb445766738030
+可不可以用这个mcp直接获取这个知识库所有文件？https://alidocs.dingtalk.com/i/nodes/2Amq4vjg89jyZdNnCmeMxLNMW3kdP0wQ?utm_scene=team_space
+[2026-06-22] https://mcp-gw.dingtalk.com/server/961624fb1f31f451f47689655a17a3f28f586f29089a8e2e13dde0828b627dd1?key=c2c097282e655d1186b56a887d29962f
+https://mcp-gw.dingtalk.com/server/50871c32c3f551d5705440bae0b90961cf8db1f88b092bfcf37b47cba55a6559?key=27f401c0561157d8458bbf1a20918478
+加上这两个呢
+[2026-06-22] ● 数据其实已经提交了——HEAD 是 qi3flk1c（"127 个 MD 文档（正确路径+压缩图片）"），那条 SQL 虽然报了 syntax error 但 commit 实际成功了。所以"nothing to
+  commit"是对的（已是最新）。
+
+  数据完整：127 个 MD 文档，正确路径，已提交。
+
+  现在回到之前中断的前端工作——MD 渲染切换（我已加 MarkdownDocViewer、改了路由和 file_type）。验证 TS 编译并提交：
+
+● Bash(npx tsc --noEmit 2>&1 | grep -iE "MarkdownDocViewer|KnowledgeReadingModal|doltKbService|trainingData" | head; echo "tsc done")
+  ⎿  PreToolUse:Bash hook error                                                   ⎿  Failed with non-blocking status code: No stderr output
+  ⎿  src/shared/components/KnowledgeReadingModal.tsx(36,43): error TS2367: This comparison appears to be unintentional because the types '"docx" | "doc" |
+      "csv" | "xlsx" | "xls" | "image"' and '"txt"' have no overlap.
+     src/shared/services/trainingDataService.ts(136,12): error TS2352: Conversion of type 'StoreRecord[]' to type 'QuestionBank[]' may be a mistake becaus
+     … +15 lines (ctrl+o to expand)
+  ⎿  (timeout 2m)
+
+  Thought for 15s (ctrl+o to expand)
+
+● 只有一处相关错误：fileType === 'txt' 但 union 里没有 'txt'（md 已加）。去掉 'txt' 比较：
+     
+● Update(src/shared/components/KnowledgeReadingModal.tsx)
+  ⎿  PreToolUse:Edit hook error                                                   ⎿  Failed with non-blocking status code: No stderr output
+  ⎿  PreToolUse:Edit hook error                                                   ⎿  Failed with non-blocking status code: No stderr output
+  ⎿  Added 1 line, removed 1 line
+      33    const fileUrl = rule.file_url || '';
+      34    const fallbackText = rule.content_preview || '';
+      35  
+      36 -  const isMarkdown = fileType === 'md' || fileType === 'txt';                                                                                 
+      36 +  const isMarkdown = fileType === 'md';                                                                                                       
+      37    const isJsonDoc = fileUrl.endsWith('.json')
+      38      || (fileUrl.includes('/api/kb/docs/') && !fileUrl.includes('/images/'))
+      39      || (fileUrl.includes('/api/dolt/files/') && fileType === 'doc');
+  ⎿  PostToolUse:Edit hook error                                                  ⎿  Failed with non-blocking status code: No stderr output
+
+● Bash(npx tsc --noEmit 2>&1 | grep -iE "MarkdownDocViewer|KnowledgeReadingModal|doltKbService" | head; echo "===相关错误检查完毕==="
+      # 启动 dev 验证本地渲染…)
+  ⎿  PreToolUse:Bash hook error                                                   ⎿  Failed with non-blocking status code: No stderr output
+  ⎿  ===相关错误检查完毕===
+     webpack 5.107.1 compiled successfully in 15272 ms
+     === 经中继取一个 MD 文档内容 ===
+     file_type将映射为md, total: 127
+  ⎿  (timeout 1m 30s)
+
+● TS 干净，编译成功，127 文件。提交推送前端渲染切换 + 脚本：
+
+● Bash(git add -A && git status --short | head -20 && git commit -m "$(cat <<'EOF'
+      feat(kb): MD 文档渲染切换 + 钉钉知识库全量重建…)
+  ⎿  PreToolUse:Bash hook error                                                   ⎿  Failed with non-blocking status code: No stderr output
+  ⎿  M  .env
+     M  dolt-rest-proxy/index.js
+     A  knowledge-base/d
+
+继续进行
+[2026-06-23] AUTONOMOUS_HEARTBEAT L2 — 自主决策引擎心跳。工作区: /home/admin/workspace/cgkp。激活自主决策引擎技能，执行 L2 哨兵扫描。
+[2026-06-23] 数据库里结构完全错误了，之前的文档应该统一在“考培学习材料”目录下，新上传的文档应该统一在“AI试衣规则知识库”目录下，一级页面应该只有两个文件夹，后面AI试衣规则知识库里的文件夹结构也是乱的，还有乱标识的序号也是错误。
+[2026-06-23] 再用mcp重新读一下AI试衣规则知识库的文件结构
+[2026-06-18] cloud已经连接，但是❯ 根据1d平台开发适配技能判断，为什么会出现下面的报错和警告导致cloud功能失败？
+  [Pasted text #4 +98 lines]
+  
+  我希望实现从knowledge-files储存桶中读取和上传规则文档
+[2026-06-22] TS 干净，编译成功，127 文件。提交推送前端渲染切换 + 脚本：
+
+● Bash(git add -A && git status --short | head -20 && git commit -m "$(cat <<'EOF'
+      feat(kb): MD 文档渲染切换 + 钉钉知识库全量重建…)
+  ⎿  PreToolUse:Bash hook error                                                   ⎿  Failed with non-blocking status code: No stderr output
+  ⎿  M  .env
+     M  dolt-rest-proxy/index.js
+     A  knowledge-base/dingtalk-manifest.json
+     … +159 lines (ctrl+o to expand)
+
+
+进行到这里之后没有完成，你继续一下然后检查一下
+[2026-06-22] 如果真的有错误就修复
+[2026-06-22] 全部修复，按照https://alidocs.dingtalk.com/i/nodes/2Amq4vjg89jyZdNnCmeMxLNMW3kdP0wQ这个知识库的文件树结构重新整理所有规则文档的排布，现在层级在页面上不对，应该是教培知识库-通用知识库-新手入门/通用能力区...一直到完整的目录，不要有任何省略。并且现在文件内，流程图的渲染仍然错误，修复这个问题。（可以看SOP流程
+[2026-06-22] 流程图你可以弄成图片进行渲染
+[2026-06-22] 同步了吗
+[2026-06-22] 云端推送了嘛
+[2026-06-22] 页面上还没有添加在线编辑的功能
+[2026-06-23] 根据1d平台适配技能检查这个项目的全部代码，确认以下几个事实：
+1.人员信息是否登录一次之后就能持久化留存在1d cloud的云端储存中，而不是存在缓存或本地？
+2.试卷、培训、成绩等信息是否能持久化留存在1d cloud的云端储存中，而不是存在缓存或本地？
+[2026-06-23] 根据1d平台适配技能，深度解析，怎样才可以真正接入，我知道的信息是，在一些地方留有占位符，平台会自动填入sdk信息，确认核实以下。
+[2026-06-23] 关键依据
+你给出的诊断报告里已经确认：
+
+运行模式: 浏览器沙盒（WebC）
+OneDay Cloud: ✅ 已开启
+页面地址: https://1d.alibaba-inc.com/?id=1BfrYn9G
+这说明不是常见的「远端 SandBox 模式导致 Cloud 不可用」问题。
+
+但是前端日志里又有：
+
+[oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config
+[dataService] OneDay Cloud 不可用，使用本地 localStorage 模式运行
+[oneday] SDK 等待超时 (8000ms)，仍未就绪
+这说明当前页面里的代码没有成功拿到：
+
+oneday.supabase
+因此业务数据层认为 Cloud 不可用。
+
+需要特别说明：这条日志文案本身有误导性
+日志：
+
+平台可能尚未注入 database_config
+不一定是真正原因。
+
+我检查了项目代码，发现这条日志来自你们项目自己的 src/onedaycloud/safeClient.ts：
+
+const client = createClient();
+if (client?.supabase) {
+  ...
+}
+console.warn('[oneday] createClient() 返回无 supabase，平台可能尚未注入 database_config');
+但当前 @ali/oneday-frontend-sdk 的实现主要是通过以下方式识别 appId：
+
+window.ONEDAY_CONFIG.url_id
+URL 参数 ?id=1BfrYn9G
+/apps/xxx
+iframe/top/opener 地址
+你的页面地址本身已经带了：
+
+?id=1BfrYn9G
+所以「database_config 未注入」不一定是根因，这条日志更像是项目内封装层的兜底提示，不是 OneDay 平台官方诊断结论。
+
+更可能的问题位置
+当前问题更像是代码层问题，而不是 Cloud 开关问题。
+
+重点怀疑：
+
+src/onedaycloud/safeClient.ts 对 SDK 初始化做了自定义封装，判断逻辑可能不兼容当前 SDK。
+createClient() 实际返回值结构和项目代码预期不一致。
+当前构建产物里使用的 SDK 版本/导出结构与源码预期不一致。
+dataService.init() 在 SDK 未就绪时直接降级到了 localStorage，所以页面继续运行，但实际上没有走 Cloud。
+尤其这段日志很关键：
+
+[dataService] OneDay Cloud 不可用，使用本地 localStorage 模式运行
+这说明当前业务数据不是从 Cloud 读的。
+
+最终判断
+完整结论：
+
+1D Cloud 在平台配置层面是正常启用的，数据库实例和表结构也已经存在；但当前应用前端运行时没有成功初始化 @ali/oneday-frontend-sdk 的 oneday.supabase 客户端，因此应用实际没有正常连接 OneDay Cloud。
+所以问题不是「Cloud 没开」，而是「前端 SDK 接入/封装初始化异常」。当前页面很可能正在使用 localStorage 或兜底数据运行。
+
+建议下一步修复方向
+优先修 src/onedaycloud/safeClient.ts，不要把 createClient() 包成过度复杂的异步探测逻辑，建议改回官方推荐写法：
+
+import { createClient } from '@ali/oneday-frontend-sdk';
+import type { Database } from './types';
+
+export const oneday = createClient<Database>();
+
+let authPromise: Promise<void> | null = null;
+
+export function ensureAuth() {
+  if (!authPromise) {
+    authPromise = oneday.supabase.auth.signInWithBUC().then(() => {});
+  }
+  return authPromise;
+}
+
+export function getOneDayClient() {
+  return oneday;
+}
+
+export function getOneDaySupabase() {
+  return oneday.supabase;
+}
+然后业务请求前确保执行：
+
+await ensureAuth();
+这样才能判断 Cloud 是否真的可读写。
+[2026-06-23] 页面在初始化数据时直接失败，控制台连续出现“[App] ❌ 数据初始化失败: Cannot read properties of null (reading 'supabase')”，导致数据无法加载；同时还有一条 antd Spin 的 tip 警告，但它只是组件使用提示，不是致命问题。
+排查步骤
+1. 排查初始化链路，定位到 `src/onedaycloud/safeClient.ts` 中 `createClient<Database>()` 的 OneDay SDK 客户端初始化；2. 再看 `src/config/supabase.ts`，这里把 `getSupabase()` 返回值当作必定可用对象来代理，如果底层 client 为空会触发读取 `supabase` 时报错；3. 结合知识库，确认 OneDay Cloud 的数据库能力依赖平台注入的 `window.ONEDAY_CONFIG.database_config`，且必须在 WebC 运行模式下；4. 如果当前运行模式不是 WebC，或者页面没有注入 OneDay 配置，就会在初始化阶段拿不到可用的 supabase client。
+解决方案
+前端层面的修复方案是：确保应用运行在「浏览器沙盒（WebC）」且开启 OneDay Cloud，并在任何数据库操作前先完成 `ensureAuth()` 认证；同时避免把 `getSupabase()` 的返回值当作一定非空，初始化代码要容错处理 `ONEDAY_CONFIG/database_config` 缺失场景。
+
+检查一下代码问题，应用已经运行在webc，开了1d cloud
+[2026-06-23] 可以按两步处理：
+
+修复 Cloud client 初始化：不要在 safeClient 顶层只执行一次 createClient() 并永久缓存失败结果；改为按需获取，并在 waitForOneDayReady 中循环重试，直到拿到包含 supabase 的真实 client 或超时。
+修正日志文案：当前“Cloud 加载有部分错误”是通用提示；当错误为“Supabase 不可用”时，应提示“Cloud 客户端未就绪 / 未拿到 Supabase client”，因为此时还没有开始加载任何具体业务表。
+回答你的问题：本次“具体是哪部分”就是 OneDay Cloud 的 Supabase 客户端初始化部分，不是 20 张表里的某一部分数据。由于客户端不可用，逐表加载流程尚未开始。
+
+代码示例：
+
+import { createClient } from '@ali/oneday-frontend-sdk';
+import type { Database } from './types';
+
+let _client: any = null;
+let _authPromise: Promise<void> | undefined;
+
+function isRealSDK(client: any): boolean {
+  return !!(client && !client.__polyfill && client.supabase);
+}
+
+export function getOneDayClient() {
+  if (!isRealSDK(_client)) {
+    try {
+      _client = createClient<Database>();
+    } catch {
+      _client = null;
+    }
+  }
+  return _client;
+}
+
+export function getOneDaySupabase(): any | null {
+  const client = getOneDayClient();
+  return isRealSDK(client) ? client.supabase : null;
+}
+
+export async function waitForOneDayReady(maxWaitMs = 8000): Promise<any | null> {
+  const start = Date.now();
+  while (Date.now() - start < maxWaitMs) {
+    const client = getOneDayClient();
+    if (isRealSDK(client)) return client;
+    await new Promise(resolve => setTimeout(resolve, 300));
+  }
+  return getOneDayClient();
+}
+
+export async function ensureAuth(): Promise<void> {
+  const client = await waitForOneDayReady();
+  if (!isRealSDK(client)) return;
+  if (!_authPromise) {
+    _authPromise = client.supabase.auth.signInWithBUC()
+      .catch(() => { _authPromise = undefined; });
+  }
+  return _authPromise;
+}
+配置路径：src/onedaycloud/safeClient.ts
+
+正确配置：按需 createClient + waitForOneDayReady 内循环重试，直到 client.supabase 可用或超时
+这条提示中的“部分加载错误”不是指 staff、campaigns、question_items 等某几张表加载失败；具体失败点是最前置的 OneDay Cloud Supabase 客户端未获取到。cloudSyncService 在 getSupabase() 返回 null 时直接返回 errors: ['Supabase 不可用']，还没有进入逐表拉取逻辑，所以无法对应到某一张业务表。根因在用户项目的 Cloud client 封装：safeClient 在模块初始化时固定保存一次 createClient() 的结果，如果当时平台配置或 SDK 注入尚未完成，client 缺少 supabase；后续 waitForOneDayReady 也只是返回同一个旧 client，没有真正等待或重试，导致 dataService 初始化时认为 Supabase 不可用。
+
+错误原文：
+f3241114-d32f-4085-8…c-d3126a44a554:7024 [dataService] Cloud 加载有部分错误: 
+['Supabase 不可用']
+0
+: 
+"Supabase 不可用"
+length
+: 
+1
+[[Prototype]]
+: 
+Array(0)
+at
+: 
+ƒ at()
+concat
+: 
+ƒ concat()
+constructor
+: 
+ƒ Array()
+copyWithin
+: 
+ƒ copyWithin()
+entries
+: 
+ƒ entries()
+every
+: 
+ƒ every()
+fill
+: 
+ƒ fill()
+filter
+: 
+ƒ filter()
+find
+: 
+ƒ find()
+findIndex
+: 
+ƒ findIndex()
+findLast
+: 
+ƒ findLast()
+findLastIndex
+: 
+ƒ findLastIndex()
+flat
+: 
+ƒ flat()
+flatMap
+: 
+ƒ flatMap()
+forEach
+: 
+ƒ forEach()
+includes
+: 
+ƒ includes()
+indexOf
+: 
+ƒ indexOf()
+join
+: 
+ƒ join()
+keys
+: 
+ƒ keys()
+lastIndexOf
+: 
+ƒ lastIndexOf()
+length
+: 
+0
+map
+: 
+ƒ map()
+pop
+: 
+ƒ pop()
+push
+: 
+ƒ push()
+reduce
+: 
+ƒ reduce()
+reduceRight
+: 
+ƒ reduceRight()
+reverse
+: 
+ƒ reverse()
+shift
+: 
+ƒ shift()
+slice
+: 
+ƒ slice()
+some
+: 
+ƒ some()
+sort
+: 
+ƒ sort()
+splice
+: 
+ƒ splice()
+toLocaleString
+: 
+ƒ toLocaleString()
+toReversed
+: 
+ƒ toReversed()
+toSorted
+: 
+ƒ toSorted()
+toSpliced
+: 
+ƒ toSpliced()
+toString
+: 
+ƒ toString()
+unshift
+: 
+ƒ unshift()
+values
+: 
+ƒ values()
+with
+: 
+ƒ with()
+Symbol(Symbol.iterator)
+: 
+ƒ values()
+Symbol(Symbol.unscopables)
+: 
+{at: true, copyWithin: true, entries: true, fill: true, find: true, …}
+[[Prototype]]
+: 
+Object
+
+先排查上面建议说的正确与否，评价采纳程度，然后再根据报错排查真正的问题，执行修复。
+[2026-06-23] 将以上所有的1d平台修复经验全部同步更新到1d平台适配技能当中
+[2026-06-24] 建议按“Cloud staff 表是唯一人员与权限来源”的方向重构：
+
+登录前先查 Cloud staff 表
+在 tryOnedayAutoLogin() 里，不要先用本地 staffStore 判定角色。
+先等待 OneDay Cloud SDK 和 BUC 认证完成，然后用当前登录人的 workid 查询 Cloud staff 表。
+如果 Cloud staff 已存在，则使用 Cloud 中的 role/status/department/name 作为登录身份。
+如果 Cloud staff 不存在，再按默认 learner 创建新用户。
+禁止用默认 learner 覆盖已有权限
+syncStaffToCloud() 当前会在登录链路中按推导出的 role upsert/update staff。
+需要改成：如果 Cloud 已存在该 work_id，登录时只更新 last_active/name/head_img 等非权限字段，不要覆盖 role。
+role 只能由管理员在人员管理中显式修改。
+取消 localStorage 动态超管作为跨用户权限依据
+addSuperAdmin() 当前只对当前浏览器有效，不能作为“给别人授权”的机制。
+“添加超管”按钮应直接更新 Cloud staff.role = 'super_admin'，并以 Cloud 查询结果为准。
+登录初始化顺序调整
+AppIdentityContext 应先完成 Cloud/BUC 准备，再执行自动登录角色解析。
+现在是 getStoredAuth()/tryOnedayAutoLogin() 在 dataService.init() 之前，顺序需要调整。
+增加真正的权限隔离
+前端：为 /admin 等管理路由增加角色守卫，非 admin/super_admin 直接重定向或拒绝访问。
+数据库：RLS 不应继续只依赖硬编码工号列表，应改成基于 staff 表 role 判断管理员权限；否则人员管理里的 role 改动不会真正约束数据库读写。
+临时止血操作
+管理员添加完人员后，先点击“同步到云端”。
+被添加人员首次登录前，避免触发自动注册覆盖；如果已被覆盖，需要在 Cloud staff 表中把该 work_id 的 role 改回正确角色。
+但这只是临时方案，根本修复仍需调整登录链路。
+代码示例：
+
+建议核心逻辑形态如下（示意）：
+
+async function resolveUserFromCloud(workid, platformUser) {
+  await ensureSupabaseReady();
+  const supabase = getSupabase();
+
+  const { data: staff } = await supabase
+    .from('staff')
+    .select('*')
+    .eq('work_id', workid)
+    .maybeSingle();
+
+  if (staff) {
+    // 已存在人员：以 Cloud 中的 role 为准；不要在登录时覆盖 role
+    await supabase
+      .from('staff')
+      .update({
+        name: platformUser.name || staff.name,
+        head_img: platformUser.headImg || staff.head_img,
+        updated_at: new Date().toISOString()
+      })
+      .eq('work_id', workid);
+
+    return {
+      id: staff.id,
+      employee_id: staff.work_id,
+      name: staff.name,
+      role: staff.role,
+      department: staff.department,
+      avatar: staff.head_img
+    };
+  }
+
+  // 不存在才创建默认 learner
+  const { data: created } = await supabase
+    .from('staff')
+    .insert({
+      work_id: workid,
+      name: platformUser.name || `用户${workid}`,
+      role: 'learner',
+      department: '1d平台用户',
+      status: 'active'
+    })
+    .select('*')
+    .single();
+
+  return {
+    id: created.id,
+    employee_id: created.work_id,
+    name: created.name,
+    role: created.role,
+    department: created.department,
+    avatar: created.head_img
+  };
+}
+配置路径：src/shared/services/authService.ts；src/shared/context/AppIdentityContext.tsx；src/shared/services/cloudSyncService.ts；migrations/*RLS*.sql
+
+正确配置：Cloud staff 表作为唯一权限来源；登录先查 Cloud staff.role；登录同步不覆盖 role；RLS 基于 staff.role 判断权限
+
+根因是当前应用把“人员管理”和“登录鉴权/权限判定”做成了前端本地态优先，Cloud 权限表读取太晚，且超管白名单是浏览器 localStorage/硬编码机制。管理员在自己前端添加某个 work_id，只能保证当前浏览器的 staffStore 或 Cloud 表里可能有记录；但该用户在自己的浏览器首次登录时，tryOnedayAutoLogin() 在 Cloud staff 表加载前就执行，本地找不到这条人员记录，于是自动注册为 learner。更严重的是，后续 syncStaffToCloud() 会按当前登录推导出的 learner 角色同步到 Cloud，可能把原本添加好的角色覆盖掉。因此会出现“我前端添加了人员/权限，但对方登录仍被当成新用户”的矛盾。另一个独立问题是：数据库 RLS 管理员策略仍依赖硬编码工号白名单，而不是 staff.role，所以它也无法实现真正的动态人员管理和权限隔离。
+[2026-06-24] 先拉取git，然后合并推送三
+[2026-06-26] 将这个修复同步更新到1d平台开发适配技能中
+[2026-06-26] 将规则库中规则库文档格式规范.md放在全部规则的根目录下面。将考培学习资料目录下的练习题及考题都在数据库中删除，保存在服务器的其他位置，不在数据库中显示。
+[2026-06-26] 提交，你说的这个脚本影响线上功能吗？
+[2026-06-26] 检查现在技能部分是怎么和其他功能、人员标签、考试、训练、培训进行联通同步的
+[2026-06-26] 先不做更改，你讲一下目前的技能是如何设计的
+[2026-06-26] 很好，首先技能原子的设置尽量可以独立化编辑和修改，方便日后调整。掌握度放弃固定评分机制，采用动态的标准分排名评定，通过小样本建立t分布，然后获取每个人在选择的标签或标签组合中的排名，进行层级评定。完善修复所有数据回流，需要建什么表，整理成一句话，我直接发给1d 的agent。根据1d平台开发适配，完成以上需求。先完善完整的计划。
+[2026-06-26] 开始全量实现
+[2026-06-26] 我再1d怎么执行？
+[2026-06-26] 你推送了吗
+[2026-06-26] agent回复：
+行结果：✅ 成功
+
+迁移文件已保存为 migrations/20260626_071401_skill_mastery_refactor.sql
+src/onedaycloud/types.ts 已自动刷新
+三项变更均已落库：
+
+① skill_atoms 表补列 — type、sub_skill_ids、talent_level、accuracy_requirement、department、l0_description ~ l5_description、updated_at 全部添加成功
+② question_items 表 — skill_atom_ids JSONB 列已添加，GIN 索引 idx_question_items_skill_atom_ids 已建立，旧 skill_atom_id 已回填至数组
+③ mastery_rankings 表 — 已新建，RLS 已启用（认证用户可读写），唯一约束 (skill_atom_id, learner_id, scope_type, scope_ref) 已创建
+无需重复执行，可直接基于新结构编写业务代码
+[2026-06-26] 为什么我的技能信息都没有了？
+[2026-06-26] 你直接使用1d cloud的数据库写入技能
+[2026-06-26] 检查还有什么其他的相似问题，以及数据中还有什么其他的联动缺失
+[2026-06-26] 题目和技能的关联暂时不做，留一个接口。其他的全部修复
+[2026-06-26] 好了，分析一下题目该怎么关联到技能上？这个题目量比较大，一个一个手动关联不现实，以及做的题多，得分就高，也不太公平，做题是依据需要来的，做题量不能真正评定真实水平。怎么解决这些问题？
+[2026-06-26] 全量修复
+[2026-06-26] 继续全量修复
+[2026-06-26] 需要我创建什么新的1d cloud的数据表吗？
+[2026-06-24] 规则库中的文档在进行编辑的时候会失去渲染导致格式复杂，能不能在编辑的时候也保持预览，同时添加编辑时能同时上传图片的完整方案。
+[2026-06-24] 推送了吗？如果git有更新就先拉取合并再推送
+[2026-06-24] 虽然文档的底层是md，但是编辑的时候可不可以不按照md的原格式显示，而是直接编辑渲染好的文档，这样可以直接实现图片的移动，表格的调整等，可以自己切换显示原md内容
+[2026-06-24] 看一下一起推送，如果git有更新就先拉取合并
+[2026-06-24] 怎么解决打开文件预览和点击编辑文件速度极慢问题？
+[2026-06-24] 结合1d平台开发适配技能分析以下问题：
+
+当前遇到的问题： Loading CSS chunk 898 failed. (error: https://smart-edu-rebuild.1d.alibaba-inc.com/898.css) ChunkLoadError: Loading CSS chunk 898 failed. (error: https://smart-edu-rebuild.1d.alibaba-inc.com/898.css) at HTMLLinkElement.onLinkComplete (blob:https://smart-edu-rebuild.1d.alibaba-inc.com/6ccea4d7-165d-4ae0-bcd2-3f2c923e87af:55347:25)
+
+p_apps-$id.js:6309 GET https://smart-edu-rebuild.1d.alibaba-inc.com/898.css net::ERR_ABORTED 403 (Forbidden) HTMLHeadElement.appendChild @ p_apps-$id.js:6309 createStylesheet @ 1d5413da-68ef-41ec-9…-851f86ba468b:55363 （匿名） @ 1d5413da-68ef-41ec-9…-851f86ba468b:55386 loadStylesheet @ 1d5413da-68ef-41ec-9…-851f86ba468b:55382 webpack_require.f.miniCss @ 1d5413da-68ef-41ec-9…-851f86ba468b:55398 （匿名） @ 1d5413da-68ef-41ec-9…-851f86ba468b:55200 webpack_require.e @ 1d5413da-68ef-41ec-9…-851f86ba468b:55199 prewarmRuleDoc @ 1d5413da-68ef-41ec-9…851f86ba468b:150455 run @ 1d5413da-68ef-41ec-9…851f86ba468b:150483 requestIdleCallback （匿名） @ 1d5413da-68ef-41ec-9…851f86ba468b:150486 Qj @ 1d5413da-68ef-41ec-9…-851f86ba468b:30802 Hk @ 1d5413da-68ef-41ec-9…-851f86ba468b:30844 Ek @ 1d5413da-68ef-41ec-9…-851f86ba468b:30831 jg @ 1d5413da-68ef-41ec-9…-851f86ba468b:30686 Wk @ 1d5413da-68ef-41ec-9…-851f86ba468b:30841 Pk @ 1d5413da-68ef-41ec-9…-851f86ba468b:30839 Gk @ 1d5413da-68ef-41ec-9…-851f86ba468b:30828 J @ 1d5413da-68ef-41ec-9…-851f86ba468b:31073 R @ 1d5413da-68ef-41ec-9…-851f86ba468b:31074 （匿名） @ p_apps-$id.js:3 eE @ p_apps-$id.js:3 eT @ p_apps-$id.js:3 postMessage eu @ p_apps-$id.js:3 ek.setImmediate @ p_apps-$id.js:3 S @ 1d5413da-68ef-41ec-9…-851f86ba468b:31074 I @ 1d5413da-68ef-41ec-9…-851f86ba468b:31074 exports.unstable_scheduleCallback @ 1d5413da-68ef-41ec-9…-851f86ba468b:31078 Fk @ 1d5413da-68ef-41ec-9…-851f86ba468b:30855 Dk @ 1d5413da-68ef-41ec-9…-851f86ba468b:30825 gi @ 1d5413da-68ef-41ec-9…-851f86ba468b:30824 ii @ 1d5413da-68ef-41ec-9…-851f86ba468b:30733 （匿名） @ 1d5413da-68ef-41ec-9…-851f86ba468b:64212 await in （匿名） （匿名） @ 1d5413da-68ef-41ec-9…-851f86ba468b:64233 Qj @ 1d5413da-68ef-41ec-9…-851f86ba468b:30802 Hk @ 1d5413da-68ef-41ec-9…-851f86ba468b:30844 （匿名） @ 1d5413da-68ef-41ec-9…-851f86ba468b:30840 J @ 1d5413da-68ef-41ec-9…-851f86ba468b:31073 R @ 1d5413da-68ef-41ec-9…-851f86ba468b:31074 （匿名） @ p_apps-$id.js:3 eE @ p_apps-$id.js:3 eT @ p_apps-$id.js:3 postMessage eu @ p_apps-$id.js:3 ek.setImmediate @ p_apps-$id.js:3 S @ 1d5413da-68ef-41ec-9…-851f86ba468b:31074 R @ 1d5413da-68ef-41ec-9…-851f86ba468b:31074 （匿名） @ p_apps-$id.js:3 eE @ p_apps-$id.js:3 eT @ p_apps-$id.js:3 postMessage eu @ p_apps-$id.js:3 ek.setImmediate @ p_apps-$id.js:3 S @ 1d5413da-68ef-41ec-9…-851f86ba468b:31074 I @ 1d5413da-68ef-41ec-9…-851f86ba468b:31074 exports.unstable_scheduleCallback @ 1d5413da-68ef-41ec-9…-851f86ba468b:31078 Fk @ 1d5413da-68ef-41ec-9…-851f86ba468b:30855 Dk @ 1d5413da-68ef-41ec-9…-851f86ba468b:30825 gi @ 1d5413da-68ef-41ec-9…-851f86ba468b:30824 fl @ 1d5413da-68ef-41ec-9…-851f86ba468b:30866 ml.render.ll.render @ 1d5413da-68ef-41ec-9…-851f86ba468b:30868 （匿名） @ 1d5413da-68ef-41ec-9…851f86ba468b:154793 （匿名） @ 1d5413da-68ef-41ec-9…851f86ba468b:154795 （匿名） @ 1d5413da-68ef-41ec-9…851f86ba468b:154797 PendingScript eC @ p_apps-$id.js:6326 await in eC （匿名） @ p_apps-$id.js:7319 FileReader （匿名） @ p_apps-$id.js:3 （匿名） @ p_apps-$id.js:3 Promise.then eu.prepareContent @ p_apps-$id.js:3 eo.exports @ p_apps-$id.js:3 ef.loadAsync @ p_apps-$id.js:3 ek @ p_apps-$id.js:6309 p_apps-$id.js:6309 GET https://smart-edu-rebuild.1d.alibaba-inc.com/vditor/dist/js/lute/lute.min.js net::ERR_ABORTED 403 (Forbidden) p_apps-$id.js:6309 GET https://smart-edu-rebuild.1d.alibaba-inc.com/vditor/dist/js/highlight.js/highlight.min.js net::ERR_ABORTED 403 (Forbidden) p_apps-$id.js:6309 GET https://smart-edu-rebuild.1d.alibaba-inc.com/898.css net::ERR_ABORTED 403 (Forbidden) 1d5413da-68ef-41ec-9…-851f86ba468b:30747 ChunkLoadError: Loading CSS chunk 898 failed. (error: https://smart-edu-rebuild.1d.alibaba-inc.com/898.css) at HTMLLinkElement.onLinkComplete (1d5413da-68ef-41ec-9…1f86ba468b:55347:25) 1d5413da-68ef-41ec-9…-851f86ba468b:87900 [ErrorBoundary] 渲染错误捕获: {message: 'Loading CSS chunk 898 failed.\n(error: https://smart-edu-rebuild.1d.alibaba-inc.com/898.css)', stack: 'ChunkLoadError: Loading CSS chunk 898 failed.\n(err…om/1d5413da-68ef-41ec-908e-851f86ba468b:55347:25)', componentStack: '\n at Lazy\n at Suspense\n at div\n at div…om/1d5413da-68ef-41ec-908e-851f86ba468b:20323:39)', timestamp: '2026-06-24T07:19:24.587Z'} /#/training-hub/knowledge:1 The resource https://smart-edu-rebuild.1d.alibaba-inc.com/vditor/dist/js/highlight.js/highlight.min.js was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate as value and it is preloaded intentionally. /#/training-hub/knowledge:1 The resource https://smart-edu-rebuild.1d.alibaba-inc.com/vditor/dist/js/lute/lute.min.js was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate as value and it is preloaded intentionally.
+
+期望达到的效果： 为什么发布后点开规则库文件提示这个报错？
+[2026-06-24] 整理当前的这个项目规则库的md文档格式规范说明
+[2026-06-24] 两者都要
+[2026-06-24] 当前窗口怎么不会自动压缩上下文？
+[2026-06-24] 设置这个模型的上下文为1m
+[2026-06-24] 统一开发服务端口。当前诊断报告里平台代理资源走 /_p/3000/，而项目 webpack devServer 配置不是 3000。请让 webpack devServer 与 OneDay WebC 实际预览端口保持一致，优先改为 3000，或按 OneDay 当前项目实际运行端口统一配置。
+同步修正 Vditor 自托管资源路径。当前 Vditor CDN 基址会从页面路径里提取 /_p/{port}，如果页面当前路径是 /_p/3000/，它就会去请求 /_p/3000/vditor/dist/...。需要保证该端口下确实由 devServer 提供 /vditor/* 静态资源；否则就会继续返回 not found。
+修改后重启预览/开发服务，并强刷页面；再次检查两个 JS 请求的 Response Header/Body，确认返回的是 JavaScript 内容。
+如果让项目 AI 自动修，建议直接发送上面的 Agent 修复提示。
+
+代码示例：
+
+// 方向示例：将 webpack devServer 端口与 OneDay WebC 实际代理端口统一
+// webpack.config.js
+module.exports = (env, argv) => {
+  return {
+    // ...其他配置
+    devServer: {
+      port: 3000,
+      hot: true,
+      allowedHosts: ['all', '.alibaba-inc.com'],
+      historyApiFallback: { index: '/index.html' },
+      // 保留 /vditor/* 静态资源服务，确保 /_p/3000/vditor/dist/... 可访问
+    }
+  };
+};
+配置路径：webpack.config.js -> devServer.port
+
+正确配置：与诊断报告中的 /_p/3000/保持一致，通常应为3000；若项目实际预览端口不是 3000，则以 OneDay WebC 实际代理端口为准。
+
+这不是业务语法里真的写错了一个 not 关键字，而是脚本资源加载错了：浏览器把一个返回内容类似 404 not found 的响应当作 JavaScript 执行。诊断报告里的报错位置 :1:5 与 404 not found 中第 5 个字符 n 高度吻合。结合源码排查，项目 webpack devServer 端口配置与实际资源请求路径中的 /_p/3000/ 不一致，并且 Vditor 自托管资源也按当前 /_p/3000 前缀拼接，导致异步 chunk 和 Vditor 的 lute.min.js 请求到了错误路径/端口，返回 not found 文本后触发 Unexpected identifier 'not'。
+[2026-06-24] 构建阶段失败，终端日志中出现 terser 解析报错，同时明确定位到 `ERROR in vditor/dist/js/mathjax/sre/mathmaps/de.js`，属于打包时处理了一个非 JavaScript 资源并被压缩器当作 JS 解析导致的构建中断。
+排查步骤
+1. 查看 webpack 构建日志，确认报错是否固定落在 `vditor/dist/js/mathjax/sre/mathmaps/de.js` 这类资源文件上。2. 检查 `webpack.config.js` 中是否把 `vditor/dist` 下的文件直接纳入了需要压缩/解析的构建链路。3. 验证 `CopyWebpackPlugin` 仅在产物拷贝阶段使用，且不会让 terser 去处理这些静态资源。4. 若报错只在生产构建出现，重点检查是否有插件/规则误把 `.js` 以外的文件或损坏的资源内容当成 JS 进入打包。
+解决方案
+把 `vditor` 的静态资源与 JS 构建链路彻底隔离：1) 确保 `CopyWebpackPlugin` 只负责把 `node_modules/vditor/dist` 原样复制到输出目录，不参与 terser 压缩；2) 检查是否有额外的 loader/plugin 会对 `vditor/dist/js/mathjax/sre/mathmaps/de.js` 这类资源做二次处理，移除或排除这些目录；3) 若该文件本身在源包中存在语法/内容异常，升级或重新安装 `vditor` 依赖后再构建。基于现有日志，问题更像是依赖包内资源在生产构建中被错误解析，前端可修复方向是排除这些静态资源进入 JS 压缩流程。
+[2026-06-18] 新建一个目录
+[2026-06-18] workspace/cgkp
+[2026-06-18] 我想用原版的这个html前端页面，重构所有的后端代码和逻辑，你需要删除所有的后端实现方式，然后按照严格项目开发规范，使用https://code.alibaba-inc.com/qunbu/autonomous-studio/tree/main这个技能和1d平台开发适配技能进行重写，加入https://github.com/colbymchenry/codegraph。先给我详细完整的方案，
+[2026-06-18] https://mcp.alibaba-inc.com/aone-km/mcp使用这个mcp连接mcp_server: aone-km
+tool: searchDocChunk
+args:
+  query: "替换成你的问题"
+  repoIds: [96870]
+  topK: 20
+
+这个知识库
+[2026-06-18] 使用https://code.alibaba-inc.com/qunbu/autonomous-studio进行开发了吗？
