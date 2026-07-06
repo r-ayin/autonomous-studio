@@ -1,0 +1,59 @@
+{
+  "case_id": "case-2026-07-07-001",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-07T00:05:00+08:00",
+  "project": "1BfrYW9R",
+  "work_unit": "Deep audit: dev-server.js + build.js + test/smoke.test.js (HTTP server, static builder, smoke harness)",
+  "situation": "audit-cycle-state.json status=cycle-complete after audit-2026-07-06-025 (moni-master) all derived_fixes resolved. Per autonomous-constraints.md §A, cycle-complete triggers full deep audit on an unaudited project. Inventory check of .claude/audits/ + audit-cycle-state history identified 1BfrYW9R (oneday-design, personal-assistant control panel UI) as unaudited candidate — distinct from previously audited 1BfrYn9G. Project is a git repo with dev-server.js (162 LOC HTTP server + reverse proxy), build.js (85 LOC static bundle validator), test/smoke.test.js (30+ tests). Skipped pure-docs/skills projects per constraints.",
+  "action": "Full deep audit of 1BfrYW9R. Read README.md, package.json, dev-server.js (full), build.js (full), test/smoke.test.js (1627/2402 lines). Traced /api/health reverse proxy data flow (upstream response accumulation), path traversal defense (normalize+join), MIME dispatch, method guard, graceful shutdown. Identified 5 findings (1H/2M/1L/1I). Wrote independent audit report to .claude/audits/audit-2026-07-06-026.md. Updated audit-cycle-state.json: status=fix-in-progress, current_audit_id=audit-2026-07-06-026, 4 derived_fixes registered (H-001/M-001/M-002/L-001, all pending). No opt-worktree commit this round — audit轮不派生 fix，下轮起逐个派生 per constraints.",
+  "files_changed": [
+    ".claude/audits/audit-2026-07-06-026.md",
+    ".claude/audit-cycle-state.json"
+  ],
+  "worktree": null,
+  "direction": "deep-audit-only",
+  "outcome": "succeeded",
+  "outcome_evidence": "audit-2026-07-06-026.md written (5 findings: H-001 upstream proxy OOM at dev-server.js:105-107 unbounded b+=c accumulation; M-001 ONEDAY_DIR arbitrary dir read at line 20; M-002 /api/* static collision at line 86/121; L-001 MIME gaps at line 27-36; I-001 build regex fragility informational). audit-cycle-state.json updated: status=fix-in-progress, pending_count=4, derived_fixes array populated with 4 entries all status=pending. No prior audit of 1BfrYW9R exists in .claude/audits/ or history array.",
+  "next_suggestion": [
+    "Next round: dispatch H-001 fix (upstream proxy size cap) as first derived_fix — highest severity, single-file route-fix on dev-server.js line 105-107. Add MAX_UPSTREAM_BYTES=64KB + destroy-on-overflow + regression test.",
+    "Subsequent rounds: dispatch M-001 (ONEDAY_DIR validation), M-002 (/api/* catch-all 404), L-001 (MIME table expansion) sequentially.",
+    "After all 4 derived_fixes merged/rejected: audit-cycle-state → cycle-complete → trigger next full deep audit on remaining unaudited candidates (engine-skills-extracted, scripts/)."
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "dev-server.js",
+      "line": 105,
+      "severity": "high",
+      "finding": "Upstream proxy response unbounded accumulation (OOM DoS): /api/health reverse proxy accumulates upstream body in `let b = ''; up.on('data', (c) => { b += c; })` with no size cap. setTimeout(2000) bounds time not bytes — malicious/失控 upstream can stream >100MB within 2s exhausting heap before timeout fires.",
+      "remediation": "Add MAX_UPSTREAM_BYTES=64KB constant. In up.on('data'), check b.length > MAX and destroy request + fail('upstream response too large'). Reuse existing fail() handler for 502 JSON response. Add regression test.",
+      "kind": "route-fix"
+    },
+    {
+      "file": "dev-server.js",
+      "line": 20,
+      "severity": "medium",
+      "finding": "ONEDAY_DIR arbitrary directory read: trusts env verbatim without validation. Path traversal defense prevents escaping dir, but if ONEDAY_DIR points to /etc or /home/admin/.ssh, every file under that dir becomes readable. Production PaaS could inherit stale/malicious env from prior job.",
+      "remediation": "At startup if ONEDAY_DIR set: resolve to absolute, verify isDirectory(), optionally constrain to known roots. Log warning if unconstrained. Defense-in-depth hardening.",
+      "kind": "route-fix"
+    },
+    {
+      "file": "dev-server.js",
+      "line": 86,
+      "severity": "medium",
+      "finding": "/api/* namespace collides with static file routing: only /api/health proxied, other /api/xxx fall through to static serve at line 121. If api/foo.json exists in served dir, GET /api/foo.json returns static content indistinguishable from API response. Future API routes silently serve stale files instead of proxying.",
+      "remediation": "Add explicit catch-all: if safePath.startsWith('/api/') && safePath !== '/api/health', return 404 JSON {status:'not found', reason:'no proxy route registered'}. Makes API namespace explicit, fails loudly. Add regression test.",
+      "kind": "route-fix"
+    },
+    {
+      "file": "dev-server.js",
+      "line": 27,
+      "severity": "low",
+      "finding": "MIME table missing common web asset types: .woff/.woff2 (fonts), .map (source maps), .txt, .xml, .wasm. Unknown extensions safely fall back to octet-stream (tested by smoke ⑳), but browsers may refuse to load fonts/wasm served as octet-stream due to strict MIME checking.",
+      "remediation": "Add .woff/.woff2/.map/.txt/.xml/.wasm entries to MIME table. Low urgency — current bundle self-contained HTML with no external font/video assets.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-026",
+  "audit_depth": "deep"
+}
