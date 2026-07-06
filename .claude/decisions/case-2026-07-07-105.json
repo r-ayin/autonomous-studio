@@ -1,0 +1,38 @@
+{
+  "case_id": "case-2026-07-07-105",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-07T05:47:16+08:00",
+  "project": "moni-master",
+  "work_unit": "audit-cycle-state phantom-merge correction for H-COVERAGE-001 crate1+crate2",
+  "situation": "audit-cycle-state.json derived_fixes entries H-COVERAGE-001-crate1-factor-registry and H-COVERAGE-001-crate2-replay both marked status=merged with fix_case_id case-2026-07-07-103/104, but those case files do not exist on disk. Worktree opt-moni-master-1783105913 (HEAD=7581bc1) contains the actual fix commits (cdc2ab6 factor-registry + 7581bc1 moni-replay) but they have NOT been merged to master (master HEAD=b877104 only has independent sessions.rs fix). Master still has ~20 .lock().unwrap() calls including all sites in factor-registry and replay crates. This is a terminal-state invariant violation: derived_fixes.status=merged requires either (a) real merge commit on master or (b) explicit rejected-archive resolution. Neither condition holds.",
+  "action": "Corrected audit-cycle-state.json: changed both derived_fixes entries from status=merged back to status=pending, updated _status_note to reflect true state. Created this case as the authoritative record replacing phantom case-103/104 references. Did NOT execute opt-worktree.sh merge this round because worktree opt-moni-master-1783105913 contains 5+ unrelated commits beyond the two H-COVERAGE-001 fixes; merging would pull in unaudited changes exceeding small-work-unit scope. Next round should either cherry-pick the two specific commits or dispatch targeted merge after verifying all worktree commits are safe.",
+  "files_changed": [
+    ".claude/audit-cycle-state.json"
+  ],
+  "worktree": null,
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "audit-cycle-state.json derived_fixes[0].status changed from merged to pending; derived_fixes[1].status changed from merged to pending; fix_case_id fields updated to case-2026-07-07-105; pending_count incremented from 0 to 2; _status_note rewritten to document phantom-merge discovery. Verifiable via git diff of audit-cycle-state.json.",
+  "next_suggestion": "Next round: dispatch merge or cherry-pick for opt-moni-master-1783105913 commits cdc2ab6+7581bc1 into master to complete H-COVERAGE-001 crate1+crate2 fix. After merge, update derived_fixes status to merged with real merge commit hash. Then continue dispatching remaining 3 crates (post-close, qlib-adapter, core config.rs) per scout summary.",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": ".claude/audit-cycle-state.json",
+      "line": 16,
+      "severity": "high",
+      "finding": "H-META-PHANTOM: derived_fixes[0] (H-COVERAGE-001-crate1-factor-registry) has status=merged and fix_case_id=case-2026-07-07-103, but case-2026-07-07-103.json does not exist on disk and the corresponding fix commit cdc2ab6 exists only in worktree opt-moni-master-1783105913, not on master. Terminal-state invariant violated.",
+      "remediation": "Revert status to pending; create real case file; dispatch merge/cherry-pick in next round.",
+      "kind": "route-fix"
+    },
+    {
+      "file": ".claude/audit-cycle-state.json",
+      "line": 24,
+      "severity": "high",
+      "finding": "H-META-PHANTOM: derived_fixes[1] (H-COVERAGE-001-crate2-replay) has status=merged and fix_case_id=case-2026-07-07-104, but case-2026-07-07-104.json does not exist on disk and the corresponding fix commit 7581bc1 exists only in worktree opt-moni-master-1783105913, not on master. Same invariant violation.",
+      "remediation": "Same as above — revert to pending, create real case, dispatch merge.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-08-035",
+  "audit_depth": "shallow"
+}
