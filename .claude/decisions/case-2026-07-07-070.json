@@ -1,0 +1,31 @@
+{
+  "case_id": "case-2026-07-07-070",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-07T00:50:00+08:00",
+  "project": "personal-assistant",
+  "work_unit": "api:m004-reminder-length",
+  "situation": "audit-2026-07-07-027 M-004 pending route-fix: POST /reminders accepts unbounded 'what' string, enables resource exhaustion / UI DoS. Prior dispatch blocked by diverged opt-api-1783193708 worktree (cp-guard skipped api.py). Per memory 'Stack on diverged wt escape hatch', opened fresh worktree off main and applied fix directly.",
+  "action": "Added pydantic Field(max_length=500) constraint to ReminderIn.what in personal_assistant/api.py. Created new worktree auto/opt-api-m004-1783356800 off main (bypassing diverged opt-api-1783193708), committed and pushed.",
+  "files_changed": ["personal_assistant/api.py"],
+  "worktree": "opt-api-m004-1783356800",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 28d7518 on auto/opt-api-m004-1783356800 pushed to origin. grep confirms line 400: 'what: str = Field(max_length=500)'. CR link: https://code.alibaba-inc.com/qunbu/personal-assistant/codereview/new?from=main&to=auto/opt-api-m004-1783356800",
+  "next_suggestion": [
+    "Merge or reject opt-api-m004-1783356800 (M-004 fix). After resolution, audit-cycle-state will reach cycle-complete → triggers next full audit.",
+    "Archive 15 stale personal-assistant worktrees (opt-api-1783193708 etc.) — most are from prior audit cycles with no human merge."
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "personal_assistant/api.py",
+      "line": 400,
+      "severity": "medium",
+      "finding": "ReminderIn.what field had no max_length constraint — unbounded string stored verbatim in SQLite, enabling resource exhaustion and UI DoS",
+      "remediation": "Added Field(max_length=500) to enforce input length bound at API layer",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-027",
+  "audit_depth": "deep"
+}
