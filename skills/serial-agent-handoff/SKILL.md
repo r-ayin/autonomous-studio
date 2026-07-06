@@ -194,7 +194,7 @@ NO COMPLETION CLAIM WITHOUT FRESH VERIFICATION EVIDENCE
      3. **跨项目**：其他项目（如 chuizhihua）的 Playwright 脚本、`workspace/server/playwright-manager`
      - **三层都查过且确认不可用**，才能停手问用户。**禁止跳过查直接说"没工具做不了 E2E"**——这是能力盲区，工具常在手边却声称没有
      - **禁止用"webpack 构建通过"冒充功能验证**——构建只验编译不验交互
-     - 本地预览看不见数据时（如 OneDay SDK 占位符 SB_KEY 非嵌入拿不到真实 key）：要么配环境变量 `SUPABASE_KEY=真实值 npm run dev`，要么 testMode+mock，要么在 OneDay 平台嵌入环境跑。不要用"看不见数据"跳过 E2E
+     - **本地预览看不见数据时怎么办**：先确认 dev server 端口对不对（从 `npm run dev` 输出里找 `Loopback: http://localhost:XXXX/`，不一定是 8080，本项目实际 3019）。再 curl sbproxy 查同表有没有数据（`<<PLACEHOLDER>>` 占位符走 oneday-sbproxy 服务端注入真实 key，能读能写，**不是阻断点**——禁止声称"SDK 占位符拿不到真实 key 所以 E2E 跑不了"）：没数据用 curl INSERT 种一条再刷新 UI；DB 有数据但 UI 空查前端 client appId/RLS。都查过仍空才考虑 testMode+mock 或 OneDay 平台嵌入环境。**不要用"看不见数据"跳过 E2E**，详见 `~/.claude/skills/autonomous-studio/phases/phase-ship.md` ④ E2E 方法论。
 3. 验证通过 → 更新 handoff 文件 → 继续下一个 Worker
 4. 验证失败 → 给 Worker 错误信息重试一次 → 仍失败 → 回滚 Worker 改动、记录失败原因到 handoff、停下问用户
 

@@ -25,10 +25,27 @@
 
 ### E2E 方法论（V9.3 沉淀，必读）
 
-**本地 Playwright 看 UI + curl 查 DB 写入 = 完整 E2E**，不用配 SB_KEY：
-- Playwright 跑本地 dev server（`webpack serve` 自动起），点按钮看 UI 交互/状态变化
-- curl `<<PLACEHOLDER>>` 查数据库（oneday-sbproxy 系统注入真实 key，能读能写），验数据真写入
-- 两者结合 = 功能 + 数据双验证。前端 SDK 本地非嵌入拿不到 SB_KEY 时，用这套组合，不要用"构建通过"冒充
+**核心认知：`<<PLACEHOLDER>>` 不是阻断点。** oneday-sbproxy 服务端会把字面占位符 `<<PLACEHOLDER>>` 自动替换成真实 key——所以无论 curl 还是前端 SDK（`@ali/oneday-frontend-sdk` 不传 key 时默认用 `<<PLACEHOLDER>>`），走 sbproxy 都能正常读写。**禁止声称「SDK 占位符拿不到真实 key 所以 E2E 跑不了」——这是错的，placeholder 走 sbproxy 就是能跑。** 本地非嵌入环境能读能写，不需要配真实 key、不需要上 OneDay 平台。
+
+**本地 Playwright 看 UI + curl 查 DB = 完整 E2E**，两者结合才是功能+数据双验证：
+- **起 dev server**：`npm run dev`（或项目对应命令）。**端口从命令输出里找**——不一定是 8080，本项目实际是 3019。看输出里 `Loopback: http://localhost:XXXX/` 那行。起不来或连不上先确认端口对不对，别假设。
+- **Playwright 看 UI**：用 `npx playwright test e2e/<功能名>.spec.ts` 跑本地 dev server，点按钮看 UI 交互/状态变化。Playwright config 里的 baseURL 要对上 dev server 实际端口。
+- **curl 查/种 DB**：用 sbproxy 直读直写数据库，验数据真写入、或给 UI 喂数据。模板：
+  ```
+  # 读（APP_ID 从项目 onedaycloud/AGENTS.md 或 CLAUDE.md 找，如 1BSoUdqQ）
+  curl -s 'https://oneday-sbproxy.alibaba-inc.com/<APP_ID>/rest/v1/<表名>?select=*&limit=5' \
+    -H 'apikey: <<PLACEHOLDER>>' -H 'Authorization: Bearer <<PLACEHOLDER>>' -H 'oneday-app-id: <APP_ID>'
+  # 写
+  curl -s -X POST 'https://oneday-sbproxy.alibaba-inc.com/<APP_ID>/rest/v1/<表名>' \
+    -H 'apikey: <<PLACEHOLDER>>' -H 'Authorization: Bearer <<PLACEHOLDER>>' -H 'oneday-app-id: <APP_ID>' \
+    -H 'Content-Type: application/json' -H 'Prefer: return=representation' -d '<JSON>'
+  ```
+  验通不通：先 `curl .../rest/v1/<表>?select=*&limit=1`，返回真实数据/真实 PG 错误（如列名错）= 通了；返回 401/403 = 占位符没被注入（罕见，查 APP_ID 和 header）。
+
+**UI 数据为空时怎么办（不是跳过的理由）**：
+1. curl 同表确认 DB 里有没有数据。没数据 → 用 curl INSERT 种一条（带对应状态/字段），再刷新 UI 看。
+2. DB 有数据但 UI 空 → 查前端 client 配置（appId 对不对、是否走 sbproxy）、查 RLS（anon 角色有没有读权限）。
+3. 都查过仍 UI 空 → 才考虑 testMode+mock 或 OneDay 平台嵌入环境。**禁止第一步就跳过、禁止用"构建通过"冒充。**
 
 **三层查工具**（查过才能声称"没工具"，禁止跳过）：
 1. 项目自身：`package.json` 的 `@playwright/test`、`playwright.config.ts`、`e2e/` 目录、`*.spec.ts`
