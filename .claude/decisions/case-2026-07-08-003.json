@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-07-08-003",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-08T01:15:00+08:00",
+  "project": "shizi",
+  "work_unit": "sidepanel handleDeleteText/onDeleteItem idx→id consistency fix (audit-037 SH-SIDE-L-001)",
+  "situation": "audit-2026-07-08-037 SH-SIDE-L-001 finding: SidePanelApp.tsx:915 onDeleteText passes array index i instead of VerifiedText.id. Inconsistent with SH-M-005 fix at line 143-145 where deletedStack uses id-based Set for refilter reconciliation. If result.details is reordered or filtered between delete and refilter, idx-based deletion removes wrong entry.",
+  "action": "Changed handleDeleteText signature from (idx:number) to (id:string), use result.details.find(d=>d.id===id) + filter(d=>d.id!==id). Updated Overlay.onDeleteText prop type + call site (line 915 t.id). Updated ResultPanel.onDeleteItem signature + call site (line 122 item.id). All changes in existing opt-sidepanel worktree copy then committed via opt-worktree.sh which opened new route-fix worktree opt-sidepanel-id-delete-1783378486.",
+  "files_changed": [
+    "src/sidepanel/SidePanelApp.tsx",
+    "src/popup/ResultPanel.tsx"
+  ],
+  "worktree": "opt-sidepanel-id-delete-1783378486",
+  "direction": "sidepanel-id-delete",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit pushed to origin/auto/opt-sidepanel-id-delete-1783378486; git worktree list shows /home/admin/workspace/.opt-worktrees/shizi/opt-sidepanel-id-delete-1783378486; TypeScript signatures consistent across SidePanelApp+Overlay+ResultPanel; no remaining idx-based delete paths in grep output.",
+  "next_suggestion": "等待人工 review+merge opt-sidepanel-id-delete-1783378486；merge 后把 audit-cycle-state derived_fixes SH-SIDE-L-001 status 改 merged → cycle-complete → 触发下一轮全量审计。shizi PROGRESS.md stale 7.8 天（scout #1），merge 后可顺手刷新。",
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-08-037",
+  "audit_depth": "shallow"
+}
