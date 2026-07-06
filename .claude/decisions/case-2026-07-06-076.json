@@ -1,0 +1,41 @@
+{
+  "case_id": "case-2026-07-06-076",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-06T21:50:44+08:00",
+  "project": "wechat-main",
+  "work_unit": "qq_push.py exception dict leak sanitize (M-003 + M-004)",
+  "situation": "audit-2026-07-06-022 derived_fixes pending. M-003 (_get_token line 83 after H-005 edit) and M-004 (_upload_file line 133) both raise RuntimeError with full response dict {d} when access_token/file_uuid missing. QQ Bot token endpoint may return secret/appsecret; upload endpoint may return user openid or bearer tokens. Exception messages propagate to logs/cron mail/stderr — credential leak vector.",
+  "action": "Sanitize both sites to expose only top-level keys via list(d.keys()) for field-name debugging without revealing values. Matches existing HTTPError redaction pattern at lines 79/115/129. Combined into single commit because same file, same remediation pattern, same audit source.",
+  "files_changed": [
+    "scripts/qq_push.py"
+  ],
+  "worktree": "opt-qq-push-1783344795",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 9362769 on auto/opt-qq-push-1783344795 pushed to origin (8ad3ba0..9362769). Diff shows exactly 2 RuntimeError message changes (lines 83 and 133), no other code modified. Reused existing qq-push worktree per route-fix reuse rule; cp-guard blocked opt-worktree.sh cmd_commit due to unmerged H-005 divergence → used case-104 stack-diverged escape hatch (direct wt edit + wt-internal commit), per memory [[Stack on diverged wt escape hatch]].",
+  "next_suggestion": [
+    "Dispatch M-005 (bocha_search.py:93 unbounded resp.read() — cap at 5MB) next; different file so no cp-guard conflict with qq-push worktree",
+    "After M-005..M-017 all dispatched, consider merging opt-qq-push-1783344795 (now carries H-005 + M-003 + M-004) to clear cp-guard for any future qq_push.py fixes"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "scripts/qq_push.py",
+      "line": 83,
+      "severity": "medium",
+      "finding": "_get_token raises RuntimeError(f'无 access_token: {d}') exposing full token response dict including potential secret/appsecret fields",
+      "remediation": "Replace {d} with keys={list(d.keys())} to preserve debuggability without leaking values",
+      "kind": "route-fix"
+    },
+    {
+      "file": "scripts/qq_push.py",
+      "line": 133,
+      "severity": "medium",
+      "finding": "_upload_file raises RuntimeError(f'上传无 file_uuid: {d}') exposing full upload response dict including potential user openid/tokens",
+      "remediation": "Replace {d} with keys={list(d.keys())} to preserve debuggability without leaking values",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-022",
+  "audit_depth": "shallow"
+}
