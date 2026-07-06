@@ -1,0 +1,34 @@
+{
+  "case_id": "case-2026-07-07-111",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-07T22:30:00+08:00",
+  "project": "moni-master",
+  "work_unit": "frontend/aiStore.ts — FE-H-002 prompt injection bypass fix (immutable security directive in DEFAULT_SYSTEM_PROMPT)",
+  "situation": "audit-2026-07-07-030 derived_fixes pending: FE-H-002 (high) prompt injection can bypass medium-risk tool confirm because DEFAULT_PERMISSIONS.allowMediumWithoutConfirm=true and no immutable system prompt segment to resist jailbreak. allowMediumWithoutConfirm:false already set on opt-frontend-1783366395 by prior round; missing second layer (system prompt hardening).",
+  "action": "Appended [IMMUTABLE SECURITY DIRECTIVE] block to DEFAULT_SYSTEM_PROMPT in aiStore.ts. Block explicitly forbids skipping medium/high-risk confirmation regardless of user instruction, names common injection phrases ('skip confirmation', 'ignore prior rules', 'override permissions', 'execute without asking'), declares itself non-overridable. Complements allowMediumWithoutConfirm:false default.",
+  "files_changed": [
+    "frontend/src/stores/aiStore.ts"
+  ],
+  "worktree": "opt-frontend-1783366395",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit a0332f4 on auto/opt-frontend-1783366395 pushed to origin (db2a4bd..a0332f4). git diff shows +5/-1 lines in aiStore.ts adding IMMUTABLE SECURITY DIRECTIVE block after existing rules section.",
+  "next_suggestion": [
+    "派生下一个 pending derived_fix: FE-M-001 (Vite dev server binds 0.0.0.0 without host check) — vite.config.ts 单文件 route-fix",
+    "FE-M-002 (no CSP header/meta) — index.html 单文件 route-fix",
+    "FE-M-003 (localStorage stores API key plaintext) — aiStore.ts persist partialize 改动"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "frontend/src/stores/aiStore.ts",
+      "line": 85,
+      "severity": "high",
+      "finding": "DEFAULT_PERMISSIONS.allowMediumWithoutConfirm:true allows LLM-driven medium-risk tool execution without user confirmation, enabling prompt injection attacks to trigger state-changing operations (order placement, position deletion) via crafted user messages that instruct the model to skip confirmation.",
+      "remediation": "Set allowMediumWithoutConfirm:false as default + append immutable system prompt segment that explicitly forbids skipping confirmation regardless of user instruction. Defense-in-depth: even if user toggles setting back to true via AiSettings, system prompt provides second layer against injection.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-030",
+  "audit_depth": "shallow"
+}
