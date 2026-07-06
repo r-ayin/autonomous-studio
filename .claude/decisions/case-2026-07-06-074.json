@@ -1,0 +1,31 @@
+{
+  "case_id": "case-2026-07-06-074",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-06T21:34:40+08:00",
+  "project": "wechat-main",
+  "work_unit": "qq_push.py .env permission validation (H-005)",
+  "situation": "audit-2026-07-06-022 derived fix dispatch. H-005 HIGH: qq_push.py:42 _load_env reads /opt/wanxia/.env without checking file mode; if permissions widened to group/world-readable, QQ_APP_ID/QQ_CLIENT_SECRET leak silently to any local user.",
+  "action": "Add stat-mode check before reading .env: reject with chmod 600 remediation message if mode & 0o077 != 0; stat failure also skips load safely. Single-file route-fix via opt-worktree escape hatch (cp-guard skipped due to prior unmerged wt divergence; direct wt edit + wt-internal commit per case-104 pattern).",
+  "files_changed": ["scripts/qq_push.py"],
+  "worktree": "opt-qq-push-1783344795",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 8ad3ba0 on auto/opt-qq-push-1783344795 pushed to origin (https://code.alibaba-inc.com/qunbu/wechat/codereview/new?from=main&to=auto/opt-qq-push-1783344795). Diff: +24/-10 lines in scripts/qq_push.py _load_env function adds mode & 0o077 guard with stderr warning.",
+  "next_suggestion": [
+    "Dispatch M-001 mail_push.py:61 HTML attachment unbounded read_bytes — cap at 10MB",
+    "Dispatch M-002 qq_push.py:94 upload file unbounded read + multipart in memory — cap at 20MB"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "scripts/qq_push.py",
+      "line": 42,
+      "severity": "high",
+      "finding": "_load_env reads /opt/wanxia/.env without verifying file permission; world-readable .env leaks QQ bot credentials to any local user",
+      "remediation": "stat mode check: reject if mode & 0o077 != 0 with chmod 600 remediation message",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-022",
+  "audit_depth": "shallow"
+}
