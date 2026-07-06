@@ -1,0 +1,42 @@
+{
+  "case_id": "case-2026-07-06-086",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-06T23:45:00+08:00",
+  "project": "wanxia-edit",
+  "work_unit": "credential-decoupling (H-001 + H-002 from audit-2026-07-06-023)",
+  "situation": "audit-2026-07-06-023 derived_fixes H-001 (generate-content.js:95 hardcoded /opt/personal-assistant/.env) and H-002 (poetic_intro.py:20 same). After applying in-place edits, discovered wanxia-edit is NOT a git repository — no .git, no main branch, opt-worktree.sh cannot init worktree. Same drift-repair pattern as FinanceTracker audit-019. All remaining 12 pending fixes (H-003..L-003) would hit identical blocker.",
+  "action": "Applied H-001/H-002 fixes in-place on working tree before discovering non-git status. Then batch-archived all 14 derived_fixes as rejected (non-git-project). Working-tree edits for H-001/H-002 preserved for user to initialize repo later if desired. Remaining 12 fixes never touched disk. Cycle marked cycle-complete.",
+  "files_changed": [
+    "/home/admin/workspace/wanxia-edit/generate-content.js",
+    "/home/admin/workspace/wanxia-edit/poetic_intro.py"
+  ],
+  "worktree": null,
+  "direction": "wanxia-edit:credential-decoupling",
+  "outcome": "rejected",
+  "outcome_evidence": "bash scripts/opt-worktree.sh /home/admin/workspace/wanxia-edit commit ... returned 'fatal: not a git repository'; ls -la /home/admin/workspace/wanxia-edit/.git → No such file or directory; find confirms only non-git directory at /home/admin/workspace/wanxia-edit. In-place edits applied but uncommittable via sanctioned pipeline.",
+  "next_suggestion": [
+    "Continue dispatching remaining 12 pending derived_fixes from audit-2026-07-06-023 (H-003, H-004, H-005, M-001..M-007, L-001, L-003) — check each target file's project for git status before attempting commit",
+    "If wanxia-edit should be a git repo, user needs to `cd /home/admin/workspace/wanxia-edit && git init && git add -A && git commit -m 'initial'` before engine can manage fixes through opt-worktree"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "generate-content.js",
+      "line": 95,
+      "severity": "high",
+      "finding": "H-001: readFileSync('/opt/personal-assistant/.env') hardcodes cross-project credential path — wanxia-edit reads personal-assistant's .env directly, coupling deployment layouts and leaking credentials across project boundaries",
+      "remediation": "Read process.env.DEEPSEEK_API_KEY instead; env.js already injects .env into process.env at startup",
+      "kind": "route-fix"
+    },
+    {
+      "file": "poetic_intro.py",
+      "line": 20,
+      "severity": "high",
+      "finding": "H-002: open('/opt/personal-assistant/.env') same cross-project credential coupling as H-001, Python variant",
+      "remediation": "Prefer os.environ.get('DEEPSEEK_API_KEY'); fallback to local .env relative to __file__; remove /opt/personal-assistant/.env reference",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-023",
+  "audit_depth": "shallow"
+}
