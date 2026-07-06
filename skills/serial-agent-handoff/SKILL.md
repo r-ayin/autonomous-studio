@@ -10,6 +10,7 @@ triggers:
   - "handoff"
   - "子agent开发"
 repository: https://code.alibaba-inc.com/qunbu/serial-agent-handoff
+version: 1.0.0
 ---
 
 # Serial Agent Handoff

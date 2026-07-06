@@ -1,6 +1,6 @@
 ---
 name: zujianfuyon
-version: 1.0.0
+version: 1.0.1
 description: 组件复用库 — 公共可复用组件仓库（gitlab.alibaba-inc.com/xiqxhq/zujianfuyon）。触发词："用组件仓库的 xxx"、"从组件仓库拉取"、"有没有现成组件"、"写入组件仓库"、"抽离到复用仓库"。支持拉取组件到当前项目、或将代码抽离收录到仓库（推送前需用户确认）。
 metadata:
   author: xiqxhq

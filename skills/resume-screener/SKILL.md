@@ -2,6 +2,7 @@
 name: resume-screener
 description: AI简历筛选技能。根据历史通过/不通过数据学到的招聘偏好，自动筛选新简历并给出评估建议。当用户提到"筛简历"、"简历筛选"、"评估简历"、"看看这个简历"、"这个人适合吗"、"帮我筛一下"、"resume screening"等场景时使用此技能。也适用于用户上传PDF简历并询问是否合适的情况。
 repository: https://code.alibaba-inc.com/qunbu/resume-screener
+version: 1.0.1
 ---
 
 # 简历筛选技能

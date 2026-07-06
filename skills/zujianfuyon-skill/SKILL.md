@@ -1,6 +1,6 @@
 ---
 name: zujianfuyon-skill
-version: 1.0.0
+version: 1.0.1
 description: 组件复用技能 — 管理通用可复用组件仓库（zujianfuyon）。触发词："复用这个组件"、"从组件仓库拉取"、"写入组件仓库"。支持双向操作：从业务项目抽离组件到仓库，或从仓库拉取组件到当前项目。当某段代码反复修 bug ≥3 次后稳定时，应主动建议收录。
 metadata:
   author: xiqxhq

@@ -8,6 +8,7 @@ description: |
   即使用户只是丢来一个Skill目录、GitHub仓库链接或一段SKILL.md说"帮我看看怎么改"，只要上下文是想让Skill变得更好用、更可传播，都应该触发。
   不要用于从零创建一个新Skill（用skill-creator）、不要用于普通的代码review（用code-review）、不要用于改写一段和Skill资产无关的普通提示语。
 repository: https://code.alibaba-inc.com/qunbu/luban
+version: 1.0.0
 ---
 
 # 鲁班 | Skill打磨工坊

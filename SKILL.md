@@ -9,6 +9,24 @@ description: >-
   或任何涉及研发流程阶段管理的操作。
 model: sonnet
 repository: https://code.alibaba-inc.com/qunbu/autonomous-studio
+version: 1.0.1
+files:
+  - SKILL.md
+  - studio-inject.md
+  - studio-pipeline.md
+  - decision-agent-prompt.md
+  - OPTIMIZATION-WORKFLOW.md
+  - PIPELINE-GATE.md
+  - GATES.md
+  - SETUP.md
+  - ALIASES.md
+  - phases/
+  - scripts/
+  - hooks/
+  - autonomous-engine/
+  - skills/
+  - runner-exec/
+  - evals/
 ---
 
 # Autonomous Studio v6.1
