@@ -1,0 +1,32 @@
+{
+  "case_id": "case-2026-07-06-079",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-06T22:15:00+08:00",
+  "project": "wechat-main",
+  "work_unit": "M-009 pipeline.py _save non-atomic write (audit-2026-07-06-022)",
+  "situation": "audit-2026-07-06-022 deep audit of wechat-main flagged M-009: pipeline.py:77 _save uses direct p.write_text(), crash/interrupt can leave torn JSON, next _load json.loads fails and halts pipeline. Dispatched as derived_fix pending.",
+  "action": "Before creating new opt-worktree commit, checked existing worktree opt-wechat-main-1783130541 history per memory 'fix-already-committed-check'. Found equivalent fix already committed as ef2c1ca 'opt(wechat-main:pipeline-atomic-save): fix(pipeline): WM-PIP-02 _save 原子写 tmp+fsync+os.replace (audit-2026-07-05-001)' — same remediation (tempfile + fsync + os.replace in same dir). Commit present on origin/auto/opt-wechat-main-1783130541. Reverted temporary main-worktree patch (git checkout -- scripts/pipeline.py). Marked derived_fix M-009 as merged (duplicate-dispatch corrected).",
+  "files_changed": [],
+  "worktree": "opt-wechat-main-1783130541 (existing, no new branch created)",
+  "direction": "wechat-main:pipeline-state-atomic (route-fix, duplicate)",
+  "outcome": "superseded",
+  "outcome_evidence": "git log --oneline auto/opt-wechat-main-1783130541 shows ef2c1ca with identical tempfile+fsync+os.replace remediation; git branch -r --contains ef2c1ca returns origin/auto/opt-wechat-main-1783130541; cp-guard correctly blocked re-patch over diverged wt file. No new commit produced because fix already exists.",
+  "next_suggestion": [
+    "Next pending derived_fix: M-010 pipeline.py:64 state loading no schema validation — add schema check",
+    "Consider merging opt-wechat-main-1783130541 to main (15+ accumulated fixes including M-009) to unblock future cp-guard collisions"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "scripts/pipeline.py",
+      "line": 77,
+      "severity": "medium",
+      "finding": "_save direct write_text non-atomic — torn JSON on crash halts pipeline on next _load (M-009)",
+      "remediation": "tempfile.mkstemp same-dir + fsync + os.replace (already applied in ef2c1ca WM-PIP-02)",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-022",
+  "audit_depth": "shallow",
+  "_note": "Duplicate-dispatch: audit-2026-07-06-022 re-flagged M-009 which was already fixed by audit-2026-07-05-001 (WM-PIP-02). Memory 'fix-already-committed-check' prevented redundant commit. Status set to merged per memory 'audit-cycle merged=dispatched' convention."
+}
