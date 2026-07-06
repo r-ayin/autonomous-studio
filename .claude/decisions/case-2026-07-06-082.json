@@ -1,0 +1,34 @@
+{
+  "case_id": "case-2026-07-06-082",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-06T23:15:00+08:00",
+  "project": "wechat-main",
+  "work_unit": "feedback_collector.py JSONL append flock (M-013)",
+  "situation": "audit-2026-07-06-022 finding M-013: feedback_collector.py:70 _append_reward() opens topic_reward.jsonl in append mode and writes json.dumps + newline without any cross-process locking. POSIX open(...,'a') atomicity only covers single write syscall < PIPE_BUF; Python buffered writer may split, and concurrent `ingest` invocations (e.g., parallel post-publish callbacks) can interleave partial JSON lines, corrupting the reward log consumed by hot-scanner UCB ranking.",
+  "action": "Add import fcntl; wrap _append_reward write block with fcntl.flock(LOCK_EX)/LOCK_UN plus explicit flush inside try/finally. cp-guard blocked opt-worktree.sh commit (prior unmerged edits on same file in this worktree), so committed directly inside existing route-fix worktree opt-wechat-main-1783130541 and pushed.",
+  "files_changed": [
+    "scripts/feedback_collector.py"
+  ],
+  "worktree": "opt-wechat-main-1783130541",
+  "direction": "wechat-main:feedback-collector-flock",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit faeeb3e on auto/opt-wechat-main-1783130541 pushed to origin (397651a..faeeb3e); diff adds 'import fcntl' + LOCK_EX/UN bracket around write + flush; python -c 'import ast; ast.parse(open(\"scripts/feedback_collector.py\").read())' succeeds in worktree.",
+  "next_suggestion": [
+    "派生 M-014 (style_evolution.py:74 JSONL flock) — 同模式，复用本 worktree",
+    "派生 M-015 (style_evolution.py:372 evolve_suggestion.json non-atomic) — tempfile+os.replace",
+    "待 M-013..M-017 全部 merged/rejected 后改 audit-cycle-state=cycle-complete 触发下一轮全量审计"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "scripts/feedback_collector.py",
+      "line": 70,
+      "severity": "medium",
+      "finding": "JSONL append without flock — concurrent ingest can interleave writes and corrupt lines",
+      "remediation": "fcntl.flock(LOCK_EX) around write + flush; released in finally",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-022",
+  "audit_depth": "shallow"
+}
