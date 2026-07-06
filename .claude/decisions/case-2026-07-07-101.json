@@ -1,0 +1,55 @@
+{
+  "case_id": "case-2026-07-07-101",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-07T23:50:00+08:00",
+  "project": "personal-assistant",
+  "work_unit": "post-audit-027 incremental deep audit (d6f650b fetch timeout + af5c873 playwright + f665031 ASCII token + 91a4c01 relay hardening)",
+  "situation": "audit-cycle-state was cycle-complete after audit-033 fixes merged. personal-assistant had 9 post-audit-027 commits including security-critical relay_bridge hardening and web/android auth changes. Triggered incremental deep audit.",
+  "action": "Deep-read relay_bridge.py (291 lines), web/api.js (164 lines), android/index.html (1528 lines), web/index.html bootstrap region. Verified d6f650b AbortController timeouts structurally address prior M-001/M-002/M-003. Verified 91a4c01 defense-in-depth (process_request pre-handshake 403 + _admit post-handshake + rate limit + per-IP/global caps + Origin whitelist + fail2ban logging). Found 1 medium gap (android liveBus no WS size cap), 2 low robustness items deferred as sub-churn-threshold, 1 info.",
+  "files_changed": [],
+  "worktree": null,
+  "direction": "audit-only",
+  "outcome": "succeeded",
+  "outcome_evidence": "audit-2026-07-07-034.md written to .claude/audits/. audit-cycle-state.json updated: status=fix-in-progress, derived_fixes=[M-ANDROID-001 pending]. No worktree created (audit round). 4 findings catalogued with line numbers and remediation sketches.",
+  "next_suggestion": [
+    "派生 M-ANDROID-001 fix: android/index.html liveBus ws.onmessage 加 256KB size cap before JSON.parse (route-fix, 1 file)",
+    "After M-ANDROID-001 merged/rejected → cycle-complete → next full audit pick moni-master frontend post-audit-030 fix verification or sunset-prediction post-merge regression check"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "android/index.html",
+      "line": 600,
+      "severity": "medium",
+      "finding": "liveBus WebSocket has no max message size cap — accepts arbitrarily large frames before JSON.parse, unlike relay_bridge server-side 64KB limit. Malicious/buggy server can freeze UI thread or exhaust mobile memory.",
+      "remediation": "Check ev.data.length against 256KB threshold before JSON.parse; drop + console.warn if exceeded. Add idle timeout to liveBus.",
+      "kind": "route-fix"
+    },
+    {
+      "file": "scripts/ecs_relay/relay_bridge.py",
+      "line": 122,
+      "severity": "low",
+      "finding": "_process_request Response construction fallback swallows exception silently. Brittle across websockets versions.",
+      "remediation": "Log inner exception in fallback branch. Add explicit version check or outer try/except that always returns valid rejection.",
+      "kind": "route-fix"
+    },
+    {
+      "file": "android/index.html",
+      "line": 597,
+      "severity": "low",
+      "finding": "liveBus retry counter resets on ws.onopen but not on first successful message. Connected-but-immediately-dropped cycles exhaust 9 retries (~8 min) with no recovery path.",
+      "remediation": "Reset retry only after first successful message exchange. Or add user-visible reconnect button.",
+      "kind": "route-fix"
+    },
+    {
+      "file": "web/api.js",
+      "line": 44,
+      "severity": "info",
+      "finding": "SLOW_PATHS only covers /recommend (60s); other LLM endpoints (/chat-log POST, /wiki/build POST, /profile GET) use default 8s. Currently safe (cached reads) but contract undocumented.",
+      "remediation": "Document timeout contract in api.js header. Update SLOW_PATHS proactively when backend adds sync LLM to new endpoint.",
+      "kind": "informational"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-034",
+  "audit_depth": "deep"
+}
