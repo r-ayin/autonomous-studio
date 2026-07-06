@@ -1,0 +1,31 @@
+{
+  "case_id": "case-2026-07-06-066",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-06T20:05:00+08:00",
+  "project": "personal-assistant",
+  "work_unit": "H-003 tunnel_client relay token log redaction",
+  "situation": "audit-2026-07-06-021 finding H-003 (high): scripts/ecs_relay/tunnel_client.py:51 prints full wss://ECS:443/ws/tunnel?token=<secret> URL to stdout. Anyone tailing logs (systemd journal, container log aggregator, debug session) sees the bearer token in plaintext → credential leak → unauthorized ECS relay access.",
+  "action": "派生 route-fix：引入 ecs_log_url 变量，把 query string 替换为 ?token=<redacted>；保留原 ecs_url 用于 websockets.connect（连接本身仍需真 token）。仅改一个文件，非公共接口，复用同 area worktree。",
+  "files_changed": ["scripts/ecs_relay/tunnel_client.py"],
+  "worktree": "opt-scripts-1783339532",
+  "direction": "scripts:tunnel-token-mask",
+  "outcome": "succeeded",
+  "outcome_evidence": "git push origin auto/opt-scripts-1783339532 成功（new branch）；worktree HEAD commit msg='fix(tunnel_client): mask relay token in stdout log to prevent credential leak (H-003 from audit-2026-07-06-021)'；Code Review URL https://code.alibaba-inc.com/qunbu/personal-assistant/codereview/new?from=main&to=auto/opt-scripts-1783339532",
+  "next_suggestion": [
+    "继续派生 H-004 (audio_relay.py:222 binds 0.0.0.0 no auth)",
+    "再下一轮 M-001 (auth.py:49 /ws/ prefix exempted but ws_xiaozhi has no self-auth)"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "scripts/ecs_relay/tunnel_client.py",
+      "line": 51,
+      "severity": "high",
+      "finding": "RELAY_TOKEN leaked in plaintext via print(f'...{ecs_url}') — ecs_url includes ?token= query string",
+      "remediation": "Introduce ecs_log_url with token replaced by <redacted>; use original ecs_url only for websockets.connect",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-021",
+  "audit_depth": "shallow"
+}
