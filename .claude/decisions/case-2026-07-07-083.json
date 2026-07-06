@@ -1,0 +1,52 @@
+{
+  "case_id": "case-2026-07-07-083",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-07T19:55:00+08:00",
+  "project": "moni-master",
+  "work_unit": "local_simulator/api.py — redact LLM api_key from /agent/state/full + /agent/settings GET/POST responses",
+  "situation": "audit-2026-07-07-029 MONI-PY-005 (HIGH): engine.config 含 llm.api_key 明文，被 /agent/state/full (line 1340) 与 /agent/settings GET (line 1347→engine.get_runtime_settings→line 138 return self.config) 直接返回给任意调用方。POST /agent/settings (line 1382) 也通过 update_runtime_settings 返回值泄漏。无鉴权下等同公开密钥。",
+  "action": "在 api.py 顶层加 _redact_config_for_api(cfg) helper：深拷贝后按 SENSITIVE_KEYS={api_key,secret,password,token,credential,private_key} 子串匹配 mask 为 ***REDACTED***（递归遍历 dict/list）。三处 endpoint 改用该 helper 包装响应：GET /agent/state/full 的 settings 字段、GET /agent/settings、POST /agent/settings。Helper 集中化便于后续扩展敏感字段清单，避免散点式遗漏。",
+  "files_changed": ["local_simulator/api.py"],
+  "worktree": "opt-local_simulator-1783352870",
+  "direction": "local_simulator:api-key-redaction",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 1f030f4 on auto/opt-local_simulator-1783352870; pushed to origin; grep confirms _redact_config_for_api defined at line 25 and referenced at lines 1369/1376/1383. direction_kind=route-fix (api.py not in .claude/public-interfaces.txt); reused existing opt-local_simulator worktree per area-match rule.",
+  "next_suggestion": [
+    "派生 MONI-PY-001 (H, SSRF via LLM chat proxy base_url) — 下一轮 fix-in-progress 优先",
+    "派生 MONI-PY-002 (M, unbounded backtest frames DoS)",
+    "派生 MONI-PY-003 (M, sync WFO blocking async loop)",
+    "派生 MONI-PY-004 (M, agent action whitelist bypass kwargs)"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "local_simulator/api.py",
+      "line": 1340,
+      "severity": "high",
+      "finding": "/agent/state/full returns raw engine.config including llm.api_key plaintext",
+      "remediation": "Wrap with _redact_config_for_api() before returning",
+      "kind": "route-fix"
+    },
+    {
+      "file": "local_simulator/api.py",
+      "line": 1347,
+      "severity": "high",
+      "finding": "/agent/settings GET returns engine.get_runtime_settings() which is raw self.config",
+      "remediation": "Wrap with _redact_config_for_api()",
+      "kind": "route-fix"
+    },
+    {
+      "file": "local_simulator/api.py",
+      "line": 1382,
+      "severity": "high",
+      "finding": "POST /agent/settings leaks config via update_runtime_settings return value",
+      "remediation": "Wrap result with _redact_config_for_api()",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-029",
+  "audit_depth": "shallow",
+  "_derived_from_finding": "MONI-PY-005",
+  "_fix_commit": "1f030f4",
+  "_fix_branch": "auto/opt-local_simulator-1783352870"
+}
