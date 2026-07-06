@@ -1,0 +1,25 @@
+{
+  "case_id": "case-2026-07-07-079",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-07T18:25:00+08:00",
+  "project": "moni-master",
+  "work_unit": "COGALPHA-04: silent MockLlmClient fallback → fail-fast on DeepSeek misconfiguration",
+  "situation": "audit-2026-07-07-028 finding COGALPHA-04 (medium, direction-shift): get_llm_client_named silently falls back to MockLlmClient when DeepSeek API key is missing/invalid. Production misconfiguration would be masked, causing deterministic mock factor expressions to pollute live trading decisions.",
+  "action": "Changed get_llm_client_named signature from Arc<dyn LlmClient> to Result<Arc<dyn LlmClient>, LlmError>. Removed internal silent fallback. get_llm_client now panics with tracing::error on construction failure (fail-fast). Re-exported get_llm_client_named + LlmError from lib.rs. Added test get_llm_client_named_deepseek_errors_without_key. All 8 tests pass.",
+  "files_changed": [
+    "moni-rs/crates/moni-cogalpha/src/llm.rs",
+    "moni-rs/crates/moni-cogalpha/src/lib.rs"
+  ],
+  "worktree": "opt-cogalpha-1783357989",
+  "direction": "cogalpha:fail-fast-llm",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 65d3e12 on auto/opt-cogalpha-1783357989 pushed to origin (e5339c0..65d3e12). cargo test -p moni-cogalpha --lib llm: 8/8 passed including new get_llm_client_named_deepseek_errors_without_key. Used case-104 escape hatch (cp-guard triggered due to prior COGALPHA-03 unmerged changes in same worktree).",
+  "next_suggestion": [
+    "派生 MC-003 fix (config read TOCTOU between canonicalize and read_to_string, config.rs:506, low direction-shift)",
+    "派生 MC-004 fix (no upper-bound sanity checks on fees/ratios in config validation, config.rs:373, low direction-shift)"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-07-028",
+  "audit_depth": "shallow"
+}
