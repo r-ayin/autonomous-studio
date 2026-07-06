@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-06-038",
+  "agent_id": "ralph-autonomous-engine",
+  "timestamp": "2026-07-06T21:10:00+08:00",
+  "project": "x-tool/一件重启脚本/remote_control",
+  "work_unit": "RC-BUG-01 派生 fix: /update_config except 路径 str(e, sort_keys=True) 非法 Python 致 error 响应自崩 → 改 str(e)",
+  "situation": "audit-2026-07-06-004 (remote_control/server.py 全量审计) 派生 15 finding，本轮 status=fix-in-progress，derived_fixes 中 RC-BUG-01(severity=medium, kind=route-fix) 仍 pending。该 finding 是真逻辑 bug：server.py:661(审计时记为 :539，因前序 RC-SEC-02/03/CFG-01 stacked commit 致行号下移) `str(e, sort_keys=True)` 调用——内置 str() 签名为 str(object='') / str(bytes, encoding, errors)，无 sort_keys 形参，抛 TypeError。触发路径：save_config 失败(line 655 raise Exception('Failed to write file'))→ 进入 except(line 657)→ 本欲返回 {\"success\":false} JSON 错误响应，但 str(e, sort_keys=True) 自身崩溃 → 客户端收到连接断开而非 JSON，掩盖真实错误、owner 无法诊断。作者显然混淆 json.dumps(e, sort_keys=True) 与 str(e)。命中 autonomous-constraints.md 自指 churn 例外（真逻辑 bug，须 audit_findings 写明 file:line + 证据，本条满足）。",
+  "action": "直编 worktree opt-remote-control-1783283520 内 一件重启脚本/remote_control/server.py line 661: `str(e, sort_keys=True)` → `str(e)`，并补 3 行注释说明根因+审计 id。1 文件 1 行实质改动（+4 -1 含注释）。未走 opt-worktree.sh cmd_commit，因 server.py 在该 wt 已与前序 RC-SEC-02/03/CFG-01/XSS/ATOMIC-02 stacked commit 分叉（wt HEAD b2a4faa vs main HEAD 85bd9e1+未合并 5 commit），cmd_commit _cp_guard 会检测到 worktree 文件 ≠ main HEAD 而 skip（case-104 escape hatch：直编 wt + wt 内 git commit）。提交后 python3 ast.parse + py_compile 验证语法通过（pre-existing SyntaxWarning at line 746 E:\\openclaw 非本次改动）。模拟验证: str(e, sort_keys=True) 确抛 TypeError，str(e) 返回 'Failed to write file'。",
+  "files_changed": ["一件重启脚本/remote_control/server.py"],
+  "worktree": "opt-remote-control-1783283520 (branch auto/opt-remote-control-1783283520, base 85bd9e1, stacked on 550baaf/f3bcff2/163f202/3299f27/d9bf64d)",
+  "direction": "remote-control:bug",
+  "outcome": "succeeded",
+  "outcome_evidence": "wt commit b2a4faa 'opt(remote-control:bug): RC-BUG-01 (audit-2026-07-06-004)...' 1 file changed 4 insertions 1 deletion; git diff HEAD~1 --stat = server.py | 5 ++++--; python3 -m py_compile 退出 0; 模拟脚本输出 'OLD str(e, sort_keys=True) -> TypeError: sort_keys is an invalid keyword argument for str' / 'NEW str(e) -> Failed to write file'; origin push 403 (x-tool origin=外部 fork r-ayin/x-tool，已知 [[x-tool-external-fork-push-403]]，disk 保留 commit 待人工 merge，与 RC-SEC-01..RC-CFG-01 同状态)",
+  "next_suggestion": "下轮继续派生 audit-2026-07-06-004 pending finding（按 severity 顺序）: RC-LEAK-02(medium, startup-enhanced.bat:39-40 gateway token 硬编码→动态读 clawdbot.json gateway.auth.token) → RC-PIN-01(medium, server.py:371,474 PIN 走 URL query→改 POST body) → RC-ATOMIC-01(medium, server.py:140-147 save_config 非原子写→tmp+os.replace)。三者均 route-fix 同 wt 可 stack。全部 pending(6 条)派完后将 audit-cycle-state.status 改 cycle-complete 触发下轮全量审计。",
+  "audit_type": "none",
+  "audit_findings": [
+    {
+      "file": "一件重启脚本/remote_control/server.py",
+      "line": 661,
+      "severity": "medium",
+      "finding": "RC-BUG-01: str(e, sort_keys=True) 非法 Python——str() 无 sort_keys 形参，抛 TypeError。save_config 失败进入 except 时本欲返回的 {\"success\":false} JSON 错误响应自身崩溃，客户端收到连接断开而非 JSON，掩盖真实错误。作者混淆 json.dumps(e, sort_keys=True) 与 str(e)。",
+      "remediation": "str(e)（去 sort_keys）。1 行。已实施于 commit b2a4faa。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-004",
+  "audit_depth": "shallow"
+}

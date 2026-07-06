@@ -1,0 +1,48 @@
+{
+  "case_id": "case-2026-07-05-063",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-05T21:30:00+08:00",
+  "project": "x-tool (ota_workflow module)",
+  "work_unit": "全量深度再审计 ota_workflow 模块（cycle-complete 触发；全工作区项目均已审过，选最大未深审模块）",
+  "situation": "audit-cycle-state.status=cycle-complete（audit-007 的 7 derived fix 3 连续 wait 轮 0/7 merged → deadlock-archive 全 rejected）→ 触发新一轮全量审计。scout-scan 显示当前工作区 10 个项目全部已在历史 audit 中深审过（autonomous-engine/autonomous-studio/shizi/x-tool/wechat-main/personal-assistant/sunset-prediction/1BfrYW9R/skills/moni-master[排除]），无未审项目。按 audit-005/007 re-audit 先例，选最久未审(2026-07-03) + 最大未深审表面 + 今日活跃演化(4 fix M08/M10/M11/M12 + L05 今日落地)的 x-tool/ota_workflow 模块做深度再审计。",
+  "action": "先尝试 ultracode workflow: 5 sonnet auditor fan-out(api/monitor/hermes_discord_bot/hermes_runtime/meituan/orchestrator 等) + 每条 finding 对抗性 sonnet verifier。结果: 5/5 pipeline stage1 全失败(subagent completed without calling StructuredOutput after 2 nudges, subagent_tokens=0, duration 1528ms — 同 audit-005/007 失败模式) → 回退主循环(GLM-5.2)直接深读 15 文件/3223 行: monitor.py(672) + interfaces/hermes_discord_bot.py(694) + hermes_runtime.py(258) + interfaces/discord_bot.py(154) + interfaces/api.py(129) + monitor_state.py(123) + orchestrator.py(205) + platforms/meituan.py(215) + parser.py(105) + interfaces/cli.py(141) + risk.py(32) + storage.py(33) + config.py(89) + utils.py(63) + __main__.py(5)。核验今日 5 fix 持有性 + 挖新 bug。产出 audit-2026-07-05-008.md report(13 findings) + audit-cycle-state.json 12 derived_fixes(pending) + status→fix-in-progress。本轮不派生 fix(下轮起逐个派生)。",
+  "files_changed": [
+    "/home/admin/workspace/autonomous-studio/.claude/audits/audit-2026-07-05-008.md (new, 13 findings deep audit report)",
+    "/home/admin/workspace/autonomous-studio/.claude/audit-cycle-state.json (status cycle-complete→fix-in-progress, 12 pending derived_fixes, history +1, wait_round_count 3→0, last_audit_* 刷新)"
+  ],
+  "worktree": "none (audit-only round, 不派生 fix, 不开 worktree)",
+  "direction": "audit-cycle: x-tool ota_workflow re-audit → fix-in-progress",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "audit-2026-07-05-008.md 写入 .claude/audits/ (13 findings: 1 HIGH OTA-H-001 / 6 MED OTA-M-001..M-006 / 4 LOW OTA-L-001..L-004 / 2 INFO, 每条 file:line+evidence+remediation+kind)",
+    "audit-cycle-state.json: status='fix-in-progress', pending_count=12, derived_fixes 12 条全 status=pending, current_audit_id='audit-2026-07-05-008', history 长度 28→29",
+    "今日 fix 核验: M08(meituan.py:90-92 is-not-None fallback ✅) / M10(monitor.py:469-475 >50% critical ✅) / M11(discord_bot.py:146 env-only ✅ 但 hermes_discord_bot.py:664 仍 config fallback ⚠️→衍生 OTA-M-001) / M12(hermes_discord_bot.py:33-46 _resolve_room_cleanup_state_path ✅) / L05(monitor_state.py:32-37 JSONDecodeError/OSError 分流 ✅)",
+    "HIGH 头条 OTA-H-001: api.py 全 endpoint 无 auth dependency + cli.py:113 bind host 听命 config(可 0.0.0.0) + orchestrator.py:124 auto_confirm=True 绕过 risk.level==HIGH 确认 → 本机任意进程/非 loopback 则全网可改任意房型到任意价格",
+    "subagent fan-out 全失败 5/5 pipeline failed(completed without StructuredOutput, 0 tokens, 1528ms) → 主循环深读回退成功产出 13 findings(同 audit-005/007 precedent)"
+  ],
+  "next_suggestion": [
+    "下轮(status=fix-in-progress): 派生 #1 优先级最高 fix = OTA-H-001a (api.py token auth dependency, HIGH security) — 走 opt-worktree.sh commit 'security:ota-workflow-api-auth' 指定 interfaces/api.py",
+    "继派 OTA-H-001b (cli.py bind allowlist) + OTA-H-001c (orchestrator HIGH auto_confirm guard, 合并 M-006, 同 orchestrator.py 与 OTA-M-004 cancel-race 可 stack 同 worktree)",
+    "之后按优先级 4-12 派 M-001..M-005 / L-001..L-004（同文件 stack: hermes_discord_bot.py M-001+L-003 / monitor.py M-002+L-002 / orchestrator.py H-001c+M-004 / monitor_state+storage 各自原子写）",
+    "全部 12 derived_fixes merged|rejected 后 status→cycle-complete 触发下一轮全量审计（届时可考虑 moni-master 后端 python 脚本，前端重构禁令不影响 backend 审计）",
+    "⚠️ 历史 deadlock 模式: audit-005/006/007 的 derived fix 全 3-wait-round 0/merged → rejected-archive。本次 12 fix 可能同 deadlock。建议用户人工 merge 至少 HIGH OTA-H-001a/b/c（真实价格安全缺口）"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {"file": "ota_workflow/interfaces/api.py + interfaces/cli.py:113 + orchestrator.py:116-126", "line": 0, "severity": "high", "finding": "OTA-H-001: HTTP API 全无认证 + /v1/tasks/execute 可执行真实改价 + auto_confirm 绕过 HIGH 风险。api.py 无 auth dep, cli.py bind host 听命 config(可 0.0.0.0), orchestrator auto_confirm=True 越级 HIGH risk。本机任意进程/非 loopback 全网可改任意房型任意价格。", "remediation": "3 route-fix: (a) api.py X-OTA-Token auth dep (env OTA_API_TOKEN, 未设 401); (b) cli.py bind host allowlist 拒 0.0.0.0/:: 非 loopback; (c) orchestrator execute_* 若 risk.level==HIGH 则无视 auto_confirm 强制确认。", "kind": "route-fix"},
+    {"file": "ota_workflow/interfaces/hermes_discord_bot.py", "line": 664, "severity": "medium", "finding": "OTA-M-001: run_bot `token = os.getenv(token_env_var) or discord_config.get('token')` 仍 config fallback；M11 只补 discord_bot.py 没补 hermes bridge。token 可能落 committed config。", "remediation": "删 `or discord_config.get('token')`，env-only + RuntimeError+lock.release 对齐 discord_bot.py:146。", "kind": "route-fix"},
+    {"file": "ota_workflow/monitor.py", "line": 510, "severity": "medium", "finding": "OTA-M-002: 恢复告警一次性。_record_service_health 恢复分支 _send_alert(recovered_key, repeat=False)，首次 mark 后永不清理，第二次 down→up 时 _should_send_event(repeat=False) 命中已存在 event 返 False → 恢复静默。", "remediation": "down 转换时 pop recovered event 使下次恢复重新触发；或恢复改 repeat=True 配 repeat_alert_minutes 节流。", "kind": "route-fix"},
+    {"file": "ota_workflow/monitor_state.py", "line": 39, "severity": "medium", "finding": "OTA-M-003: _save_json 直接 write_text 非原子；崩溃即 state.json 截断 → load_state 返空 → 全部告警去重 events 丢失 → 重复/漏告警。同类 AE-NEW-001/004。", "remediation": "temp file + os.replace 原子替换(save_state/save_routes/write_review/write_last_run 全覆盖)。", "kind": "route-fix"},
+    {"file": "ota_workflow/orchestrator.py", "line": 143, "severity": "medium", "finding": "OTA-M-004: cancel_task 不获取 execution_lock；RUNNING 期间 cancel 设 CANCELED 被 confirm_task:169 最终 save 覆盖回 SUCCEEDED → 用户见已取消但改价照常完成。", "remediation": "cancel_task 加 `if record.status==RUNNING: return record`；或置 cancel_requested flag, confirm 终态前 reload 检查。", "kind": "route-fix"},
+    {"file": "ota_workflow/platforms/meituan.py", "line": 70, "severity": "medium", "finding": "OTA-M-005: verify 阶段不校验 verify_result.ok，只读 afterPrice/beforePrice；post-save 读脚本失败仍 success=True → 失败改价报成功。apply 阶段 :58 校验 ok，verify 阶段没校验。", "remediation": "verify 后 `if not verify_result.get('ok'): raise RuntimeError(...)` 落入 :105 except 标 FAILED。", "kind": "route-fix"},
+    {"file": "ota_workflow/orchestrator.py", "line": 124, "severity": "medium", "finding": "OTA-M-006(并入 H-001c): execute_text/execute_structured `if auto_confirm or not requires_confirmation: confirm_task` — auto_confirm=True 即使 risk.level==HIGH(越界价格)也直接执行，绕过确认。", "remediation": "execute_* 开头 `if auto_confirm and risk.level==HIGH: raise ValueError('HIGH 风险不允许 auto_confirm')`。与 H-001c 同 fix。", "kind": "route-fix"},
+    {"file": "ota_workflow/hermes_runtime.py", "line": 13, "severity": "low", "finding": "OTA-L-001: DEFAULT_HERMES_ENV_PATH 硬编码 `\\\\wsl$\\Ubuntu\\root\\.hermes\\.env`，非 Ubuntu/non-root WSL 静默 None → Hermes API key not found。M12 同类遗留。", "remediation": "env HERMES_ENV_PATH 优先，兜底 ~/.hermes/.env cross-platform，对齐 _resolve_room_cleanup_state_path。", "kind": "route-fix"},
+    {"file": "ota_workflow/monitor.py", "line": 131, "severity": "low", "finding": "OTA-L-002: DiscordNotifier.send 第 N chunk raise_for_status 抛 HTTPError 传播 _send_alert 吞 sent=False event 不 mark → 下轮重发已成功 chunk 1。", "remediation": "send 追踪已发 chunk 返部分成功；或 _send_alert 对部分发送也 mark event 防重发。", "kind": "route-fix"},
+    {"file": "ota_workflow/interfaces/hermes_discord_bot.py", "line": 388, "severity": "low", "finding": "OTA-L-003: TaskActionView confirm/cancel/status 按钮只 except requests.RequestException；response.json ValueError / _send_followup_with_retry 重试耗尽 RuntimeError 裸逃 → 无干净用户提示。", "remediation": "except 加 Exception 兜底, followup 发友好错误。", "kind": "route-fix"},
+    {"file": "ota_workflow/storage.py", "line": 27, "severity": "low", "finding": "OTA-L-004: FileTaskStore.save 直接 write_text 非原子；confirm_task:169 最终 save 崩溃即 task 文件截断 → 任务状态丢失(已生效改价无记录/可能重试)。", "remediation": "temp + os.replace 原子写。同类 OTA-M-003。", "kind": "route-fix"},
+    {"file": "ota_workflow/hermes_runtime.py", "line": 149, "severity": "info", "finding": "OTA-I-001: HermesEndpointResolver.request(start_if_needed=True 默认) endpoint 不可达时 _start_gateway_in_wsl nohup 拉起常驻 gateway daemon — 请求路径产生长生命周期副作用。", "remediation": "INFO 不派 fix；可加启动日志显式化。", "kind": "route-fix"},
+    {"file": "ota_workflow/utils.py", "line": 22, "severity": "info", "finding": "OTA-I-002: generate_task_id 用 datetime.now()(local tz) 时间戳前缀；跨时区非单调。", "remediation": "INFO 不派 fix；如需对齐改 datetime.now(timezone.utc)。", "kind": "route-fix"}
+  ],
+  "audit_id": "audit-2026-07-05-008",
+  "audit_depth": "deep"
+}

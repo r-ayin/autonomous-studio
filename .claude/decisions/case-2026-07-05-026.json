@@ -1,0 +1,77 @@
+{
+  "case_id": "case-2026-07-05-026",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-06T01:10:00Z",
+  "project": "personal-assistant",
+  "work_unit": "瞭望轮 + deadlock-archive：audit-2026-07-05-002 派生 6 route-fix 连续 3 轮 wait 无人 merge → 死锁保护触发，全 6 rejected-archive，cycle-complete → 下轮触发新全量审计",
+  "situation": "audit-cycle-state.status=fix-in-progress, current_audit_id=audit-2026-07-05-002 (personal-assistant), derived_fixes 6 条全 status=pending 且全已 dispatched（_dispatch_commit 6a91312/23c8651/92269fd/159caa6/d646a40/06fafd7 stack 于 opt-api-1783193708）。本轮 step 0 读 audit-cycle-state 见 _wait_round_count=2（case-025 已记 1→2 + '下轮再无 merge → deadlock-archive → cycle-complete'）。无 status=pending 且未 dispatch 的 finding 可派生（避免 duplicate worktree）。跑 scout-scan + 验证 merge 状态决定本轮走向。",
+  "action": "1) 跑 scout-scan.py --workspace /home/admin/workspace 拿 10 项目健康快照。2) 验证 personal-assistant 6 dispatched commit 是否已落 main：git merge-base --is-ancestor 对 6a91312/23c8651/92269fd/159caa6/d646a40/06fafd7 对 main HEAD(580c4aa) 全 NOT-in-main（pending）；main HEAD 4h 前未移动。3) git worktree list 确认 opt-api-1783193708 worktree 存在 HEAD=06fafd7；git ls-remote --heads origin auto/opt-api-1783193708 返 06fafd7 证 origin 分支完整保留。4) 触发死锁保护（用户定: 同状态连续 3 次无进展 → 跳到下个项目/下一审计周期；与 audit-2026-07-05-001 wechat-main 同型）：6 derived_fixes 全 status pending→rejected（deadlock-archive），audit-cycle-state.status fix-in-progress→cycle-complete，next_audit_trigger_reason=pending-fixes-cleared，_wait_round_count 重置。worktree opt-api-1783193708 + 分支 auto/opt-api-1783193708 完整保留 disk+origin 不删（待人工后 merge，与 wechat-main/kaoqin/open-design 等先例一致）。5) history 追加 audit-2026-07-05-002 完结条目（fixes_merged_at=deadlock-archive, fixes_merged_commits=[]）。本轮无代码变更（files_changed=[]），无新 worktree，未触发自指 churn。",
+  "files_changed": [],
+  "worktree": "opt-api-1783193708（保留 disk+origin，HEAD=06fafd7，6 层 stack 06fafd7→d646a40→159caa6→92269fd→23c8651→6a91312→580c4aa(main)，fast-forward 路径仍干净可人工 merge）",
+  "direction": "route-fix（全 6 finding kind=route-fix，stack 于单一 worktree opt-api-1783193708，无 direction-shift）",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "git merge-base --is-ancestor 6a91312 580c4aa → exit 1 (NOT-in-main); 同 23c8651/92269fd/159caa6/d646a40/06fafd7 全 NOT-in-main（6/6 pending 未 merge）",
+    "git -C personal-assistant rev-parse HEAD → 580c4aae71eb3e69f0b0388d4025f02658e76b76（4h 前提交，main 未移动）",
+    "git worktree list → .opt-worktrees/personal-assistant/opt-api-1783193708 HEAD=06fafd7 [auto/opt-api-1783193708]（worktree 完整在盘）",
+    "git ls-remote --heads origin auto/opt-api-1783193708 → 06fafd7fcdb877805ff7579304541b1426194255 refs/heads/auto/opt-api-1783193708（origin 分支完整保留）",
+    "git log --oneline -3 auto/opt-api-1783193708 → 06fafd7 (PA-WEB-01) / d646a40 (PA-STOR-01) / 159caa6 (PA-UPL-01)（stack 顶端 3 commit 可追溯）",
+    "scout-scan.py 输出：personal-assistant dirty=16/5wt(待合并3空2)，未报 worktree 丢失",
+    "_wait_round_count 2→3（本轮为第 3 轮连续无 merge）→ 死锁保护触发阈值"
+  ],
+  "next_suggestion": "下轮（新 context）step 0 读 audit-cycle-state.status=cycle-complete → 触发新一轮全量审计（deep audit）。候选未深度审过项目：sunset-prediction（114 文件，routes/sse-heartbeat 已有 opt worktree）/ shizi（109 文件，2026-07-03 已审 audit-2026-07-03-011 标 audited 跳过）/ 1BfrYW9R（1BfrYn9G server+storage+auth，audit-2026-07-03-014 已审跳过）/ autonomous-engine（37 文件，scout #1 score=1.0 但缺 planning/ 是文档任务非 bugfix，属引擎机械慎审）/ moni（受 DO NOT 排除前端重构）。建议下一审计目标：sunset-prediction（未审过 + 中等规模 114 文件 + 有 sse-heartbeat 信号）。人工若想 salvage personal-assistant 6 fix，可直接 git merge --ff-only auto/opt-api-1783193708 到 main（fast-forward 干净无冲突，6 commit stack 完整）。另外提醒：opt-api-1783193708 之外还有 4 个 stale PA worktree（opt-refactor/opt-storage/opt-verify/opt-web）可清。",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "personal_assistant/api.py",
+      "line": 15,
+      "severity": "high",
+      "finding": "[deadlock-archive] PA-API-02 CORS allow_origins=* 全开放——已派生 fix case-018 (commit 6a91312) stack 于 opt-api-1783193708，连续 3 轮 wait 无人工 merge，本轮 deadlock-archive。worktree+分支保留 disk+origin 待人工 salvage。",
+      "remediation": "人工 git merge --ff-only auto/opt-api-1783193708（6 commit stack fast-forward 干净）或直接 cherry-pick 6a91312。",
+      "kind": "route-fix"
+    },
+    {
+      "file": "personal_assistant/api.py",
+      "line": 45,
+      "severity": "high",
+      "finding": "[deadlock-archive] PA-API-03 /settings/llm 任意 base_url SSRF+PII+凭证外泄——已派生 fix case-019 (commit 23c8651)，deadlock-archive。",
+      "remediation": "人工 merge auto/opt-api-1783193708 或 cherry-pick 23c8651。",
+      "kind": "route-fix"
+    },
+    {
+      "file": "personal_assistant/llm.py",
+      "line": 323,
+      "severity": "medium",
+      "finding": "[deadlock-archive] PA-LLM-01 _post_json resp.read() 无字节 cap + http:// base_url 允许——已派生 fix case-020 (commit 92269fd)，deadlock-archive。",
+      "remediation": "人工 merge auto/opt-api-1783193708 或 cherry-pick 92269fd。",
+      "kind": "route-fix"
+    },
+    {
+      "file": "personal_assistant/api.py",
+      "line": 291,
+      "severity": "medium",
+      "finding": "[deadlock-archive] PA-UPL-01 /inbox/upload 无 body size cap → OOM——已派生 fix case-021 (commit 159caa6)，deadlock-archive。",
+      "remediation": "人工 merge auto/opt-api-1783193708 或 cherry-pick 159caa6。",
+      "kind": "route-fix"
+    },
+    {
+      "file": "personal_assistant/storage.py",
+      "line": 143,
+      "severity": "medium",
+      "finding": "[deadlock-archive] PA-STOR-01 save_persona_version 非原子 DB+file——已派生 fix case-022 (commit d646a40)，deadlock-archive。",
+      "remediation": "人工 merge auto/opt-api-1783193708 或 cherry-pick d646a40。",
+      "kind": "route-fix"
+    },
+    {
+      "file": "personal_assistant/web.py",
+      "line": 39,
+      "severity": "low",
+      "finding": "[deadlock-archive] PA-WEB-01 _fetch/_generic 无 cap + base_url 无 scheme——已派生 fix case-023 (commit 06fafd7)，deadlock-archive。",
+      "remediation": "人工 merge auto/opt-api-1783193708 或 cherry-pick 06fafd7（stack 顶）。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-002",
+  "audit_depth": "shallow",
+  "_role": "瞭望轮 + deadlock-archive（非审计轮本身；audit_depth=shallow 因本轮不深读源码，仅验证 merge 状态 + 触发死锁保护。父审计 audit-2026-07-05-002 已 deep 审过 14 源文件，6 finding 全 dispatched，本轮只做 wait→archive 收尾）"
+}

@@ -1,0 +1,29 @@
+{
+  "case_id": "case-2026-07-05-002",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-05T01:30:00Z",
+  "project": "wechat-main",
+  "work_unit": "派生 fix WM-PIP-01（HIGH）：pipeline.py cmd_next 把 LLM 命名文章路径裸替换进 __ARTICLE__ → bash STEP.cmd 的 shell 注入；改用 shlex.quote + 未解析时阻断",
+  "situation": "audit-2026-07-05-001 finding WM-PIP-01：scripts/pipeline.py:218-220 cmd_next 用 cmd.replace(\"__ARTICLE__\", art) 把 _resolve_article() 返回的文件路径（output/wechat_articles/*/{slug}_*_{date}*.md glob 命中，文件名含 LLM 生成的中文标题）裸替换进 cmd 字符串，agent-loop 随后 bash STEP.cmd 执行。模板 'python script-verifier/verifier.py extract __ARTICLE__ -o ...' 中 __ARTICLE__ 无引号。标题含空格 → argparse 收到断裂 path 段（extract 静默读不到文件，FALSIFIED=0 误过门禁）；标题含 ;/$()/反引号 → 命令注入（RCE）。art 为空时旧逻辑追加 '  # ⚠ 文章未找到' 注释继续执行，残留 __ARTICLE__ 字面进 bash。全程无 shlex.quote。",
+  "action": "1) pipeline.py 顶部加 import shlex。2) cmd_next 的 __ARTICLE__ 分支改为：art = _resolve_article(...)；若 not art → raise SystemExit 阻断（不让 __ARTICLE__ 字面/残占位符进 bash）；否则 cmd = cmd.replace('__ARTICLE__', shlex.quote(art))——shlex.quote 对含空格/中文/;/$()/` 的路径产单引号包裹的 shell-safe token，对正常路径无副作用。3) steps.py 模板不动（替换点唯一在 cmd_next，集中修复即可覆盖所有 __ARTICLE__ 使用点）。audit-log 埋点：本 fix 触及外部调用边界（bash 执行 LLM 命名路径），但改动是输入侧 sanitize 而非新增外部调用，wechat-main/.audit/ 已有 audit JSONL 通道记录 agent-loop bash 执行；无需新增埋点文件。",
+  "files_changed": ["scripts/pipeline.py"],
+  "worktree": "opt-wechat-main-1783130541",
+  "direction": "wechat-main:security",
+  "outcome": "succeeded",
+  "outcome_evidence": "ast.parse(scripts/pipeline.py) 通过（OK syntax）；shlex.quote('output/.../slug_标题_含空格_2026-07-05.md') → \"'output/.../slug_标题_含空格_2026-07-05.md'\"（含空格路径被单引号包裹）；shlex.quote('slug_evil;rm -rf /_2026.md') → \"'slug_evil;rm -rf /_2026.md'\"（; 注入被中和）；opt-worktree.sh commit 成功：'✓ 提交到 opt-wechat-main-1783130541 方向=wechat-main:security'；push 成功：'a4eee50..4ba2fc6 HEAD -> auto/opt-wechat-main-1783130541'（origin 已同步，CR 链接已生成 https://code.alibaba-inc.com/qunbu/wechat/codereview/new?from=main&to=auto/opt-wechat-main-1783130541）。direction_kind 自动判定 route-fix（pipeline.py 不在 public-interfaces.txt，复用同 area worktree）。",
+  "next_suggestion": "下轮派生 WM-GATE-01（pipeline-gate.sh:213 双前缀致 3 个 advisory checker 静默失效）——可与 WM-FC-01 + WM-VER-02 合并为'QA 门禁静默放行链'单 fix case（三者共构成 DATA 声明无数值佐证即 VERIFIED 的绕过链，同根因，1-3 文件可搞定）。WM-PIP-01 已 push 待人工 merge，CR 链接见 outcome_evidence；若连续 3 轮无人 merge 则按 drift-repair 模式归档 rejected-archive。WM-PIP-02/WM-BOCHA-01/WM-VER-02 原子写为同模式可合并一 case。",
+  "audit_type": "none",
+  "audit_findings": [
+    {
+      "file": "scripts/pipeline.py",
+      "line": "218-220",
+      "severity": "high",
+      "finding": "WM-PIP-01：cmd_next 用 cmd.replace('__ARTICLE__', art) 裸替换 LLM 命名文章路径进 bash STEP.cmd，无 shlex.quote；标题含空格致 extract 静默失败（FALSIFIED=0 误过门禁），含 ;/$() 致命令注入 RCE。art 为空时追加注释继续，残留 __ARTICLE__ 字面进 bash。",
+      "remediation": "import shlex；art 为空 raise SystemExit 阻断；art 非空用 shlex.quote(art) 替换。已实施。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-001",
+  "audit_depth": "shallow",
+  "_note": "派生 fix case，父审计 audit-2026-07-05-001 finding WM-PIP-01。audit-cycle-state.derived_fixes[WM-PIP-01].fix_case_id 设为本 case_id，status 维持 pending（待人工 merge auto/opt-wechat-main-1783130541 后改 merged，或 3 轮 drift 后 rejected）。本 case audit_depth=shallow（派生 fix 阶段非全量审计）。"
+}

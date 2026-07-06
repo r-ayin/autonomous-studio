@@ -1,0 +1,35 @@
+{
+  "case_id": "case-2026-07-05-020",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-06T00:10:00Z",
+  "project": "personal-assistant",
+  "work_unit": "派生 fix PA-LLM-01：personal_assistant/llm.py — _post_json sink 响应字节上限 5MB（流式分块截断防 OOM）+ sink 层 scheme 防御深度（非 http/https 拒、http 仅 loopback），堵恶意/失控上游 OOM/DoS + 凭证明文上链",
+  "situation": "audit-cycle-state.status=fix-in-progress（audit-2026-07-05-002 personal-assistant 全量审计 10 findings，6 route-fix pending，pending_count=6）。已派生 #1 PA-API-02（case-018, 6a91312）+ #2 PA-API-03（case-019, 23c8651）均 opt-api-1783193708 待人工 merge。本轮取 priority#3 PA-LLM-01：llm.py:323-333 _post_json 用 urllib.request.urlopen 后 resp.read() 全量读响应无字节上限，60s timeout 只限挂钟不限字节。base_url 经 /settings/llm 可被改（PA-API-03 已在构造器 _validate_base_url 堵 scheme/host，但 sink 层 _post_json 仍裸 read()）→ 恶意/失控 https provider 返 GB 级响应 → 进程 OOM/DoS。审计另注 base_url 允许 http:// 凭证明文上链——构造器层已由 PA-API-03 堵，但 sink 层无防御深度（未来 _post_json 若被直传未校验 URL 则旁路）。镜像 wechat-main audit WM-BOCHA-02。",
+  "action": "1 文件 route-fix（llm.py；llm.py 不在 .claude/public-interfaces.txt → route-fix 复用同 area worktree；测试 tests/test_llm_config.py 为第 2 文件，1-3 文件预算内）。\n\nllm.py _post_json 改动：(1) 新增模块常量 _MAX_RESPONSE_BYTES = 5*1024*1024（5MB，足以容纳任何合法 LLM JSON 响应，实测远 < 1MB）；(2) sink 层 scheme 防御深度——urllib.parse.urlparse(url) 取 scheme/host，非 http/https 抛 ValueError（拒 file:///data: 等任意 scheme），http 且 host 非 _LOOPBACK_HOSTS 抛 ValueError（与构造器 _validate_base_url 一致，覆盖未来 _post_json 被直传未校验 URL 情形）；(3) 流式分块读——resp.read(65536) 循环累计 total，超 _MAX_RESPONSE_BYTES 即 raise RuntimeError('LLM response exceeded ... (PA-LLM-01 guard)') 中止，b''.join(chunks) 后 json.loads。原 timeout 逻辑（config llm.request_timeout_s）保留。\n\ntests/test_llm_config.py 改动：+4 测真实 _post_json sink（不走 _fake_post 替身）：(a) test_post_json_under_cap_parses——伪 urlopen 返 < 5MB 合法 JSON，断言解析 ok；(b) test_post_json_over_cap_raises——伪 urlopen 返 100 块×65536=6.4MB > 5MB，断言 RuntimeError 含 'exceeded'+'PA-LLM-01'；(c) test_post_json_rejects_http_non_loopback——http://attacker.com 抛 ValueError 含 loopback/https；(d) test_post_json_rejects_non_http_scheme——file:///etc/passwd 抛 ValueError 含 scheme。新增 _FakeResp 上下文管理器伪对象 + _patch_urlopen 辅助（finally 还原 urllib.request.urlopen 防污染其他测）。_REAL_POST_JSON = llm._post_json 在模块导入时捕获原函数对象（其他测后换 _fake_post 不影响此引用）。\n\n提交方式：case-104 escape hatch（直编 opt-wt 版本后 wt 内提交）。原因同 case-019：opt-api-1783193708 已含未合并 PA-API-02（6a91312）+ PA-API-03（23c8651），cmd_commit 的 cp-guard 检测 target llm.py vs main HEAD 不同会跳过（防抹掉前轮未合并改动），无法 cp-stack。故直编 worktree 内 llm.py/test_llm_config.py + worktree 内 git commit（auto/opt-api-1783193708 分支，非 main/master——commit-gate 不拦）+ git push origin（reference-transaction hook 仅拦 main/master，auto/opt-* 放行）。\n\n埋点：本 finding 触及'外部调用（HTTP 出站）'+'凭证（api_key 经 base_url 发出）'敏感路径类别，但修复是 sink 层响应字节 cap + scheme gate（防御性 abort/拒绝），不新增出站调用、不写 audit logger——cap 触发即 RuntimeError 上抛由调用方 _sanitize_error_body 脱敏后报错（AnthropicProxyLLM 已有 last_err 链），无新增副作用可埋。llm.py 无既有 audit logger 复用点（case-019 已确认）。故不强埋 audit-log JSONL。",
+  "files_changed": [
+    "personal_assistant/llm.py (_post_json 重写：+_MAX_RESPONSE_BYTES 常量 +sink 层 urlparse scheme/host 校验 +流式分块 read(65536) 累计 cap+RuntimeError，~30 行净增；_LOOPBACK_HOSTS 复用上轮 PA-API-03 已加)",
+    "tests/test_llm_config.py (+_FakeResp 伪 urlopen 上下文管理器 +_patch_urlopen 辅助 +_REAL_POST_JSON 捕获 +4 个 test_post_json_* 测真实 sink，~75 行净增)"
+  ],
+  "worktree": "opt-api-1783193708 (branch auto/opt-api-1783193708；route-fix 复用——上轮 PA-API-02/PA-API-03 已建此 wt，本轮 case-104 直编+wt 内提交 stack 于其上；HEAD 92269fd；已 push origin/auto/opt-api-1783193708 23c8651..92269fd)",
+  "direction": "api:llm-post-json-cap (route-fix; judge_direction_kind 判定：llm.py 不在 public-interfaces.txt → route-fix，非 direction-shift；同 area 'api' 复用 opt-api-1783193708)",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "pytest tests/ 全量 → 103 passed in 4.38s（99→103，+4 新 PA-LLM-01 sink 测，零回归）",
+    "pytest tests/test_llm_config.py → 含 4 个新 test_post_json_* 全绿（under-cap 解析 / over-cap RuntimeError / http非loopback ValueError / file:// ValueError）",
+    "cli e2e test（python3 -m personal_assistant.cli test）→ ✅ PASS 转录→说话人→记忆→蒸馏→日历→提醒→对话 全链路跑通（stub 后端不走真实 _post_json 但确认零语法/导入回归）",
+    "worktree git commit → [auto/opt-api-1783193708 92269fd] 'opt(api:llm-post-json-cap): fix(llm): PA-LLM-01 _post_json 响应字节上限 5MB + sink 层 scheme 校验...' 2 files changed 107 insertions 2 deletions",
+    "git push origin auto/opt-api-1783193708 → '23c8651..92269fd auto/opt-api-1783193708 -> auto/opt-api-1783193708'（remote Code Review 链接已生成）",
+    "防御深度验证：_post_json sink 层 scheme 校验独立于构造器 _validate_base_url——即使未来旁路入口直传 http://attacker.com 或 file:// URL 给 _post_json，sink 层 ValueError 拦截；5MB cap 对合法 LLM JSON 响应（实测 < 1MB）零误杀"
+  ],
+  "next_suggestion": [
+    "下轮 status 仍 fix-in-progress（pending_count=6 不变——PA-API-02/PA-API-03/PA-LLM-01 已 dispatched 待人工 merge，未 terminal）→ 派生 priority#4 PA-UPL-01（api.py /inbox/upload await request.body() 无 size cap + transcript.read_text 全量 → OOM；加 Content-Length/body 字节上限返 413，1 文件 route-fix api.py）",
+    "随后 PA-STOR-01（storage.py save_persona_version 非原子 DB+file → 改 file temp+os.replace 先于 commit DB）/ PA-WEB-01（web.py _fetch/_generic r.read() 无 cap + base_url 无 scheme，config-gated 低危）逐个派生",
+    "提醒：opt-api-1783193708 现含 3 个未合并 commit（6a91312 PA-API-02 + 23c8651 PA-API-03 + 92269fd PA-LLM-01），opt-storage-1782988687 / opt-web-1782977902 亦待合并；personal-assistant 待合并 worktree 积压 3 个，需人工 merge 落 main 后 derived_fixes 对应 status pending→merged",
+    "PA-UPL-01 改 api.py——同 opt-api-1783193708 已含未合并 PA-API-02 改 api.py，cp-guard 仍会跳过，续走 case-104 直编 stack；或等 PA-API-02 merge 后走 cmd_commit 常规路径",
+    "2 structural debt（SD-PA-01 零认证框架 / SD-PA-02 prompt 注入防御）需用户授权更大单位后再动；全部 6 route-fix 落定后 audit-cycle-state.status=cycle-complete → 下一次全量审计候选 sunset-prediction（42 文件未审）/ autonomous-engine（7 文件未审）"
+  ],
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-05-002",
+  "audit_depth": "shallow"
+}

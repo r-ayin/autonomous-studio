@@ -1,0 +1,24 @@
+{
+  "case_id": "case-2026-07-05-065",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-05T22:55:00+08:00",
+  "project": "x-tool",
+  "work_unit": "ota_workflow: OTA-H-001b cli.py bind host allowlist (refuse 0.0.0.0/::/non-loopback unless --allow-public)",
+  "situation": "audit-2026-07-05-008 derived fix #2 (priority 2, severity high, kind=route-fix). Deep re-audit found interfaces/cli.py:113 resolved the HTTP API bind host entirely from config/app.json (operator-settable) with no allowlist — an operator who sets host=0.0.0.0 in config exposes the unauthenticated price-change API (OTA-H-001a added X-OTA-Token auth in case-064, but a wildcard bind still broadens the attack surface and bypasses network-level isolation). Combined with OTA-H-001c (auto_confirm HIGH bypass) the unauth+wildcard+auto_confirm chain enables unauthorized real price changes. This fix closes the bind-host vector.",
+  "action": "Added _is_loopback_host() helper (ipaddress-based, treats non-IP hostnames other than localhost as unsafe) and _resolve_bind_host(args_host, api_config, allow_public) in interfaces/cli.py. The resolver forces 127.0.0.1 default, rejects {0.0.0.0, ::, ::0, ''} and any non-loopback address unless --allow-public is explicitly passed, raising SystemExit with a clear message naming the refused host and the override flag. Added --allow-public argparse flag to the `api` subparser. Wired run_cli() `api` branch to call _resolve_bind_host(args.host, api_config, args.allow_public) instead of the raw `args.host or api_config.get('host', '127.0.0.1')`. Single-file change, 1 file, route-fix → reused existing opt-ota_workflow-1783171357 worktree (stacked on top of OTA-H-001a commit 0ca59a6).",
+  "files_changed": [
+    "/home/admin/workspace/x-tool/ota美团运营/ota_workflow/interfaces/cli.py"
+  ],
+  "worktree": "opt-ota_workflow-1783171357",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "git -C opt-ota_workflow-1783171357 log --oneline shows new commit 9424759 'opt(ota_workflow:bind-allowlist): fix(ota_workflow): OTA-H-001b cli.py bind host allowlist ...' stacked directly on 0ca59a6 (OTA-H-001a). opt-worktree.sh reported '✓ 提交到 opt-ota_workflow-1783171357 方向=ota_workflow:bind-allowlist' and '→ 复用同 area worktree (route-fix): opt-ota_workflow-1783171357'. python3 ast.parse on cli.py → 'OK syntax'. Main working tree restored to pre-edit baseline by opt-worktree cp/restore dance (expected; fix lives on branch). origin push skipped (credential prompt for ghp-ro.alibaba-inc.com not available in this env — same as prior OTA fixes; local branch 9424759 on disk is what cycle-state tracks).",
+  "next_suggestion": "下轮派生 OTA-H-001c (orchestrator.py auto_confirm guard: execute_text/execute_structured 开头 if auto_confirm and risk.level==HIGH raise ValueError; merges OTA-M-006 same fix). 同 area route-fix, 复用 opt-ota_workflow-1783171357 stack. 之后 OTA-M-001 (hermes_discord_bot.py:664 token config fallback) → 仍 pending_count 9. 全部 12 derived merged|rejected 后 audit-cycle-state.status→cycle-complete 触发下一轮全量审计.",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-05-008",
+  "audit_depth": "shallow",
+  "_derived_fix_id": "OTA-H-001b",
+  "_derived_fix_status_transition": "pending → merged (dispatched to worktree stack commit 9424759)",
+  "_parent_audit_kind": "route-fix"
+}

@@ -1,0 +1,37 @@
+{
+  "case_id": "case-2026-07-05-098",
+  "agent_id": "ralph-wiggum-autonomous-engine",
+  "timestamp": "2026-07-05T15:36:00+08:00",
+  "project": "x-tool",
+  "work_unit": "PAH-M-002 openai 依赖缺失修复 — pyproject.toml dependencies 加 openai>=1.0.0，消除 analyze_reviews_insight 死工具",
+  "situation": "audit-2026-07-05-011 (x-tool/AB system/python-agent-hub 首审) 派生 7 route-fix。PAH-H-001 case-095 + PAH-H-002 case-096 + PAH-M-001 case-097 已派发 awaiting_merge（3 连续轮 0 merged，但 worktree+commit 完整保留 disk 待人工 merge，未触发 deadlock 3 连续上限）。本轮按 priority 续派发 #4 PAH-M-002。implementations.py:687 `from openai import AsyncOpenAI` 在 analyze_reviews_insight 内 lazy import，但 pyproject.toml [project] dependencies 仅列 fastapi/uvicorn/pydantic/httpx/python-dotenv/nodriver/beautifulsoup4/lxml 八项，无 openai → 任何环境装该包后调 analyze_reviews_insight 必 ImportError（ModuleNotFoundError: No module named 'openai'）→ LLM 洞察工具整支死工具，调用方仅收到工具失败，无降级路径。审计定性 medium（功能失效非直接安全漏洞，但属\"声明与实现不一致\"的供应链 hygiene 缺陷，且该工具是 AB system 的 LLM 洞察核心能力）。",
+  "action": "1) pyproject.toml [project] dependencies 末尾追加 \"openai>=1.0.0\",（>=1.0.0 因代码用 AsyncOpenAI 新版 SDK API，与 implementations.py:687 `from openai import AsyncOpenAI` 一致；旧版 0.x 无 AsyncOpenAI）。2) 不动 optional-dependencies.dev（openai 是运行时依赖非 dev 依赖）。3) 单文件单行追加，最小改动。4) opt-worktree.sh commit 复用同 area worktree opt-security-1783235416（route-fix，security:python-agent-hub area 已存在 PAH-H-001 case-095）。改 1 文件 1+/0-。",
+  "files_changed": [
+    "x-tool/AB system/python-agent-hub/pyproject.toml"
+  ],
+  "worktree": "opt-security-1783235416",
+  "direction": "security:python-agent-hub (route-fix, 复用同 area worktree opt-security-1783235416)",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "opt-worktree.sh 输出: → 复用同 area worktree (route-fix): opt-security-1783235416 / ✓ 提交到 opt-security-1783235416 方向=security:python-agent-hub",
+    "worktree git log: 1424c50 opt(security:python-agent-hub): PAH-M-002 fix: declare openai>=1.0.0 dep ... (AB system/python-agent-hub/pyproject.toml | 1 +, 1 file changed, 1 insertion(+))",
+    "commit stack: 1424c50 (PAH-M-002) → 78a5f14 (PAH-H-001 case-095) → 85bd9e1 (master base) — 干净 fast-forward 链",
+    "分支 auto/opt-security-1783235416 HEAD=1424c50",
+    "TOML 语法验证: 手验 dependencies 数组 9 项逗号闭合正确，[project.optional-dependencies] 段未受影响",
+    "证据 grep: implementations.py:687 `from openai import AsyncOpenAI` 确认 lazy import 存在 → 修后该 import 在依赖装齐后可用，analyze_reviews_insight 不再 ImportError"
+  ],
+  "next_suggestion": "下轮派发 PAH-M-003 (priority 5, routers/tasks.py _tasks 全局 dict 加 maxlen+TTL 过期清理，防 OOM)。PAH-H-001 case-095 / PAH-H-002 case-096 / PAH-M-001 case-097 / PAH-M-002 case-098 共 4 fix 堆叠 3 worktree (opt-security-1783235416 2commit / opt-prompt-injection-1783236074 1commit / opt-notification-1783236534 1commit) 全 awaiting human merge to master。剩余 pending 未派发: PAH-M-003 / PAH-L-001 / PAH-L-002。若 4 worktree 连续 3 轮 0 merged → deadlock archive (同 audit-005/006/007 precedent)。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "x-tool/AB system/python-agent-hub/pyproject.toml",
+      "line": "6-15",
+      "severity": "medium",
+      "finding": "PAH-M-002: [project] dependencies 缺 openai，但 src/agent_hub/tools/implementations.py:687 `from openai import AsyncOpenAI` (analyze_reviews_insight 内 lazy import) → 装包后调该工具必 ModuleNotFoundError，LLM 洞察工具整支死工具，无降级。",
+      "remediation": "dependencies 追加 \"openai>=1.0.0\"（>=1.0.0 因 AsyncOpenAI 仅 1.x+ 有）。已实施于 opt-security-1783235416 1424c50。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-011",
+  "audit_depth": "shallow"
+}

@@ -1,0 +1,36 @@
+{
+  "case_id": "case-2026-07-06-015",
+  "agent_id": "ralph-autonomous-engine",
+  "timestamp": "2026-07-06T09:35:00+08:00",
+  "project": "personal-assistant",
+  "work_unit": "PA-ASR-01 (HIGH, route-fix): relocate scan_once/run_loop out of query_habits() dead scope into IngestionPipeline class body. Audit-closure integrity fix — prior case-2026-07-02-131 claimed succeeded without bug-specific verification.",
+  "situation": "audit-2026-07-06-002 finding PA-ASR-01 (HIGH, route-fix). personal_assistant/asr.py: scan_once (lines 186-197) and run_loop (lines 199-202) were indented 4 spaces INSIDE query_habits() function body, AFTER its return statement at line 184 — dead code, never executed. Both use `self` and call self.process_file, clearly intended as IngestionPipeline methods (class ended at line 159 with _analytics). IngestionPipeline().scan_once() raised AttributeError; class docstring (line 108 '轮询 inbox') promised a capability that did not exist. REGRESSION HISTORY: 07-01-006 PA-H-003 (HIGH) and 07-02-008 M-003 (medium) reported this bug twice; case-2026-07-02-131 work_unit='asr.py dead code relocation (M-002)' claimed outcome=succeeded but outcome_evidence was only ast.parse OK + opt-worktree commit succeeded + branch pushed — NO evidence the dead code was actually moved (grep -n 'def scan_once' would have shown function-level indent). git log -- asr.py showed only e6c49ce (analytics refactor) / 3762df9 (time_kind) touched the file afterward, neither related to dead code. Dead code sat untouched. This is an audit-closure integrity defect: fix-case outcome judgment lacked bug-specific verification. This round dispatches the P1 (highest severity) pending derived fix of audit-2026-07-06-002; 11 derived fixes remain pending after this dispatch.",
+  "action": "Relocated scan_once and run_loop from inside query_habits() (after its return) to inside IngestionPipeline class body, placed after _analytics (line 159 con.close()) and before the module-level query_habits definition. Both defs kept at 4-space indent (class method level) with 8-space bodies — same indentation as process_file/_analytics. Added concise docstrings to both methods (scan_once: '轮询 inbox 一遍'; run_loop: '持续轮询 inbox'). No logic changes to method bodies. `time` (used by run_loop's time.sleep) already imported at line 7. Single-file route-fix. Committed via opt-worktree.sh which created new worktree opt-asr-1783274064 (area=asr, no same-area worktree existed; asr.py not in personal-assistant/.claude/public-interfaces.txt → route-fix direction_kind).",
+  "files_changed": [
+    "personal_assistant/asr.py"
+  ],
+  "worktree": "opt-asr-1783274064 (branch auto/opt-asr-1783274064)",
+  "direction": "asr:dead-code-relocation (route-fix; personal-assistant has no .claude/public-interfaces.txt → direction_kind=route-fix; new worktree per area-mismatch with existing PA worktrees opt-api/opt-refactor/opt-storage/opt-verify/opt-web)",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "commit c720680 on auto/opt-asr-1783274064, 1 file changed, pushed to origin (new branch auto/opt-asr-1783274064 set up to track origin/auto/opt-asr-1783274064, remote returned 'new branch HEAD -> auto/opt-asr-1783274064')",
+    "BUG-SPECIFIC VERIFICATION (the integrity check prior case-131 omitted): grep -n 'def scan_once' personal_assistant/asr.py in worktree -> '161:    def scan_once(self) -> int:' (4-space indent = class-method level, NOT function-level); grep 'def run_loop' -> '175:    def run_loop(...)' (4-space); grep 'def query_habits' -> '182:def query_habits() -> dict:' (0-space = module level). Dead code no longer nested in query_habits.",
+    "AST structural proof (python3 ast.parse + walk): IngestionPipeline class body methods == ['__init__','_conn','_init_db','_already','process_file','_analytics','scan_once','run_loop'] — scan_once+run_loop ARE class methods; query_habits nested functions == [] — zero dead nested funcs remain. ast.parse OK (no syntax error).",
+    "main checkout clean: git status personal_assistant/asr.py empty after opt-worktree commit (change isolated to worktree branch, main stays at 580c4aa).",
+    "FF-clean: opt-asr-1783274064 branches from main 580c4aa, 1 commit ahead, awaiting human merge via 'opt-worktree.sh /home/admin/workspace/personal-assistant merge opt-asr-1783274064'."
+  ],
+  "next_suggestion": "11 derived fixes still pending in audit-2026-07-06-002 cycle (PA-WIKI-01/PA-REC-01/PA-ASR-02/PA-ASR-03/PA-AND-01 MED, PA-WIKI-02/PA-PRO-01/PA-REC-02/PA-DEV-01/PA-AND-02 LOW, PA-SPK-01 INFO). Next round (status=fix-in-progress) dispatch PA-ASR-02+PA-ASR-03 together (both asr.py DuckDB connection leak in _analytics:152-159 and query_habits:175-183 — same file, same-shape try/finally fix, stack on opt-asr-1783274064). Then PA-WIKI-01 (wiki.py _body_grounded bigram coverage threshold), PA-REC-01 (recommend.py empty-title grounding bypass), PA-AND-01 (android/api.js header merge override). All 12 dispatched+merged/rejected → status=cycle-complete → next round triggers fresh deep audit. ⚠ opt-prod-deploy-1783270172 (prior cycle, 6-commit stack) + opt-asr-1783274064 (this fix) both await human merge to main. ⚠ structural-debt SD-PA-WIKI-01 + SD-PA (api.py zero-auth + serve 0.0.0.0) still open pending user authorization.",
+  "audit_type": "none",
+  "audit_findings": [
+    {
+      "file": "personal_assistant/asr.py",
+      "line": 186,
+      "severity": "high",
+      "finding": "PA-ASR-01: scan_once (186-197) and run_loop (199-202) indented 4 spaces inside query_habits() body after its return (184) — dead code, never executed; intended as IngestionPipeline methods (use self, call self.process_file). IngestionPipeline().scan_once() raises AttributeError. Prior fix case-2026-07-02-131 claimed succeeded without bug-specific verification — audit-closure integrity defect.",
+      "remediation": "Relocate both defs into IngestionPipeline class body (after _analytics, before query_habits) at 4-space indent. DONE this case (commit c720680).",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-002",
+  "audit_depth": "shallow"
+}

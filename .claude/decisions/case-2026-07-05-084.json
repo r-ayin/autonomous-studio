@@ -1,0 +1,36 @@
+{
+  "case_id": "case-2026-07-05-084",
+  "agent_id": "ralph-autonomous-studio",
+  "timestamp": "2026-07-05T14:33:35+08:00",
+  "project": "x-tool",
+  "work_unit": "pachong:notifier-xss-escape — 派生自 audit-2026-07-05-010 finding PA-H-002 (存储型 XSS)",
+  "situation": "audit-2026-07-05-010 (x-tool/pachong-master deep audit) 派生 finding PA-H-002 (priority 2, severity high, kind route-fix). notifier.py:_render_html 用 f-string 把 crawled 字段 (detail_url/title/purchaser/province) 直接拼进 <a href>/<td> 无 html.escape → 存储型 XSS：恶意公告标题或 detail_url 注入 daily-report-{date}.html，运营者浏览器/微信预览打开即执行。detail_url 也无 scheme 校验，javascript: URI 即可 XSS。本轮 status=fix-in-progress → 派生最小 route-fix。",
+  "action": "单文件改 pipeline/notifier.py: (1) 顶部加 import html + from urllib.parse import urlparse; (2) _render_html 循环内对 title/purchaser/province 跑 html.escape(..., quote=True); (3) detail_url 用 urlparse 校验 scheme in (http,https) 且 netloc 非空，否则回退 '#'，截断 javascript:/data: 等 URI。budget/final_score/level/color 仍为内部受控值不动。send_realtime 控制台/微信纯文本通道无 HTML 上下文不需转义。opt-worktree.sh 判 route-fix (notifier.py 不在 public-interfaces.txt) 新开 area=pachong worktree。",
+  "files_changed": [
+    "x-tool/pachong-master/pipeline/notifier.py"
+  ],
+  "worktree": "opt-pachong-1783229257 (auto/opt-pachong-1783229257, base=953b7eb, HEAD=f112b45, 1 commit, disk 保留; origin push 403 — x-tool fork 不允许 push, 同 opt-ota_workflow-1783171357 precedent, 待人工 opt-worktree.sh merge)",
+  "direction": "pachong:notifier-xss-escape (route-fix, 新 area — 无既有 pachong worktree, opt-worktree.sh 开新 wt 但仍 route-fix 性质)",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "git -C opt-pachong-1783229257 log --oneline -1 → f112b45 opt(pachong:notifier-xss-escape): fix(pachong): PA-H-002 ...",
+    "grep PA-H-002 /html.escape /urlparse 该文件 → 命中 9:from urllib.parse import urlparse / 105:# PA-H-002 / 107-109:html.escape(title|purchaser|province, quote=True) / 111:_parsed=urlparse(detail_url_raw)",
+    "python3 -c 'import ast; ast.parse(open(...notifier.py).read())' → syntax OK",
+    "main checkout /home/admin/workspace/x-tool/pachong-master/pipeline/notifier.py 已回滚至 master HEAD (opt-worktree cp-guard 标准行为), 改动隔离在 worktree",
+    "origin push: git push → remote: git push is not allowed / 403 (x-tool fork r-ayin/x-tool, 同 opt-ota_workflow 历史先例), worktree+local branch 完整保留待人工 merge"
+  ],
+  "next_suggestion": "下轮派 PA-M-001 (priority 3, medium, scripts/crawl_scheduler.py:63 config_dir NameError 致 config_driven 省级源全失效 — 真实可复现 NameError, route-fix 单文件). 之后 PA-M-002 (SSRF, 2文件 fetch.py+anti_detect.py)/PA-M-003 (wechat_push shell 注入, 叠 PA-I-001 同文件). 全 9 pending 派完且人工 merge/reject 后 cycle-complete → 触发新全量审计. x-tool fork push 403 历史持续, 派生 fix 仅 disk+local branch 保留, 需人工 opt-worktree.sh /home/admin/workspace/x-tool merge opt-pachong-1783229257 才能进 master.",
+  "audit_type": "security-review",
+  "audit_findings": [
+    {
+      "file": "x-tool/pachong-master/pipeline/notifier.py",
+      "line": 106,
+      "severity": "high",
+      "finding": "PA-H-002: _render_html f-string 把 crawled 字段 detail_url/title/purchaser/province 直接拼进 <a href>/<td> 无 html.escape，detail_url 亦无 scheme 校验 → 存储型 XSS（恶意公告标题/detail_url 注入 daily-report HTML，运营者打开/微信预览即执行；javascript: URI 即可 XSS 无需尖括号）",
+      "remediation": "import html + urllib.parse.urlparse; html.escape(quote=True) 转 title/purchaser/province; detail_url 校验 scheme∈(http,https) 且 netloc 非空否则 '#'",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-010",
+  "audit_depth": "shallow"
+}

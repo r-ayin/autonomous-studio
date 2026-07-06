@@ -1,0 +1,38 @@
+{
+  "case_id": "case-2026-07-05-085",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-05T13:36:04+08:00",
+  "project": "x-tool",
+  "work_unit": "pachong:config-dir-scoping — PA-M-001 route-fix: crawl_scheduler.py config_dir NameError 致 ConfigDrivenAdapter 省级适配源全静默失效",
+  "situation": "audit-2026-07-05-010 (x-tool pachong-master deep audit) finding PA-M-001 (priority 3, medium). scripts/crawl_scheduler.py:63 crawl_source() 引用 config_dir，但 config_dir 仅在 main() 局部 (line 137: config_dir = os.environ.get('CONFIG_DIR','config')) 定义。Python 函数作用域不跨函数闭包 → crawl_source 无法访问 main 的局部 config_dir。当 source_type=='config_driven' 且 adapter_yaml set (省级 ConfigDrivenAdapter 适配源路径)，line 63 os.path.join(config_dir,'..',adapter_yaml) 抛 NameError。该 NameError 发生在 crawl_source 内，被 main loop line 181-182 的 except Exception 捕获记 crawl_cycle_error 后继续下一轮 → ConfigDrivenAdapter 全部省级适配源每轮静默失败，0 采集，无告警。这是 pachong-master 的核心数据采集路径 bug，非自指 churn（业务逻辑 bug，非引擎机械文件）。",
+  "action": "把 config_dir 作为显式参数经 run_crawl_cycle → crawl_source 透传，消除对 main() 局部变量的跨函数引用。3 处签名 + 1 处调用点：(1) crawl_source 签名加 config_dir 参数；(2) run_crawl_cycle 签名加 config_dir 参数并透传给 crawl_source；(3) main() line 179 调用 run_crawl_cycle 时传 config_dir。选参数透传而非函数内自取 env，避免 env-read 重复 (DRY) 与 CONFIG_DIR 默认值漂移。单文件 route-fix，不触及 .claude/public-interfaces.txt → opt-worktree 判 route-fix 复用同 area worktree opt-pachong-1783229257。",
+  "files_changed": [
+    "x-tool/pachong-master/scripts/crawl_scheduler.py"
+  ],
+  "worktree": "opt-pachong-1783229257 (auto/opt-pachong-1783229257, base=f112b45 [PA-H-002 notifier XSS fix], HEAD=cd04b73, 2 commits stacked, disk 保留; origin push 403 x-tool fork 同 PA-H-002 先例)",
+  "direction": "route-fix (route-fix 复用 opt-pachong-1783229257)",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "python3 -m py_compile scripts/crawl_scheduler.py → COMPILE_OK (语法通过)",
+    "AST 验证: crawl_source 参数列表含 config_dir → VERIFY_OK (参数已正确加到函数签名)",
+    "git -C <wt> show --stat HEAD: commit cd04b73, pachong-master/scripts/crawl_scheduler.py | 8 ++++---- (4 insertions/4 deletions = 3 签名行 + 1 调用点行，符合预期最小改动)",
+    "git -C <wt> log --oneline -2: cd04b73 (PA-M-001) stacked on f112b45 (PA-H-002) — 同 area worktree 复用成功，2-commit 栈待人工 merge",
+    "main 工作区 crawl_scheduler.py 已被 opt-worktree restore 回原状 (line 40/124/179 无 config_dir 参数) — 改动仅存于 worktree 分支，main 干净未污染"
+  ],
+  "next_suggestion": "下轮派 PA-M-002 (priority 4, medium, SSRF via redirect: crawler/fetch.py:57 + crawler/base.py:44 + crawler/anti_detect.py:121 + scripts/crawl_scheduler.py:156 follow_redirects=True 无 host/IP 校验 + ggzy_national urljoin //evil)。涉及 2 文件 (fetch.py + anti_detect.py) 抽 _safe_url 校验，仍是 route-fix 但改动面略大，需读 fetch.py/anti_detect.py/ggzy_national.py 验证 redirect 逐跳校验落点。PA-H-002 (case-084) + PA-M-001 (case-085) 已堆叠 opt-pachong-1783229257 待人工 merge；其余 8 finding pending。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "x-tool/pachong-master/scripts/crawl_scheduler.py",
+      "line": 63,
+      "severity": "medium",
+      "finding": "PA-M-001: crawl_source() line 63 引用 config_dir，但该名仅在 main() 局部 (line 137) 定义，Python 跨函数无闭包可见性 → source_type=='config_driven' 且 adapter_yaml set 时抛 NameError，被 main loop except 吞为 crawl_cycle_error，ConfigDrivenAdapter 全部省级适配源静默 0 采集。",
+      "remediation": "config_dir 作参数经 run_crawl_cycle→crawl_source 透传 (已实施 commit cd04b73)。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-010",
+  "audit_depth": "deep",
+  "derived_fix_finding_id": "PA-M-001",
+  "derived_fix_status": "pending (dispatched, awaiting human merge of opt-pachong-1783229257 HEAD=cd04b73)"
+}

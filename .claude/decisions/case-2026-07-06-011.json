@@ -1,0 +1,52 @@
+{
+  "case_id": "case-2026-07-06-011",
+  "agent_id": "ralph-autonomous-engine",
+  "timestamp": "2026-07-06T06:20:00+08:00",
+  "project": "prod-deploy skill (.claude/skills/prod-deploy — LIVE 4-file copy)",
+  "work_unit": "PD-BATCH-01 derived fix — guard --batch-index parseInt in handleDeployBatch (scripts/report-event.js) so a missing/non-numeric value fails fast instead of producing batch_index=NaN → findBatchEvent never matches → fresh deploy_batch event every tick (duplicate events + lost status updates on the real batch).",
+  "situation": "audit-2026-07-06-001 (deep audit of prod-deploy scripts/) finding PD-BATCH-01 (LOW, route-fix) pending dispatch. fix-in-progress cycle: PD-TIME-01 (HIGH, d5c4078) + PD-HANG-01 (MED, d3a9710) + PD-TOKEN-01 (MED, 4fd4f27) already dispatched on opt-prod-deploy-1783270172. This round dispatches PD-BATCH-01 (LOW) — the next pending finding. Stacked on the same route-fix worktree (4-commit stack). Ground-truth verified before dispatch: worktree HEAD=4fd4f27, branch auto/opt-prod-deploy-1783270172, 0 behind origin/main (FF-clean).",
+  "action": "Edited LIVE copy .claude/skills/prod-deploy/scripts/report-event.js handleDeployBatch(): after `const batchIndex = parseInt(values['batch-index'], 10);` added `if (!Number.isInteger(batchIndex) || batchIndex < 0) { console.error(...); process.exit(1); }`. Rationale: parseInt(undefined/'abc',10) → NaN; NaN serializes to null in the event payload AND NaN !== NaN so findBatchEvent(taskId, NaN) never returns an existing event → the `!existing` branch fires every tick → createEvent('deploy_batch', ...) spawns a new event each call → duplicate deploy_batch events + status updates land on the wrong (newest) event, the real batch's status is stranded. Fail-fast with exit 1 + stderr naming the bad value is the correct prod behavior (a missing --batch-index is a caller bug, not silently recoverable). batchTotal/instances kept under their existing `values[x] ? parseInt : null` truthy guard (out of finding scope; a non-numeric --batch-total would store null but does not break dedup). Committed via case-104 escape hatch (direct wt edit + wt-internal git commit + git push) because opt-worktree.sh cp-guard skips files that have diverged on the wt branch — report-event.js diverged on this wt from PD-TIME-01 (d5c4078, which also touched this exact LIVE path). Per [[opt-worktree-stack-diverged-escape-hatch]] and [[opt-worktree-absolute-file-path]]. Pushed sanctioned auto/opt-prod-deploy-1783270172 branch to origin (auto/ branches auto-pushed, not main).",
+  "files_changed": [
+    ".claude/skills/prod-deploy/scripts/report-event.js"
+  ],
+  "worktree": "opt-prod-deploy-1783270172",
+  "worktree_path": "/home/admin/workspace/.opt-worktrees/autonomous-studio/opt-prod-deploy-1783270172",
+  "direction": "route-fix (area=prod-deploy, stacked on existing opt-prod-deploy-1783270172 worktree; no public-interfaces.txt file touched)",
+  "commit": "6cf2ab3",
+  "branch": "auto/opt-prod-deploy-1783270172",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "node --check .claude/skills/prod-deploy/scripts/report-event.js → SYNTAX_OK",
+    "git --no-pager diff on wt: +8 lines (Number.isInteger guard + console.error + process.exit(1) + 4-line rationale comment) inserted between parseInt and batchTotal, no other lines touched",
+    "git commit on wt → [auto/opt-prod-deploy-1783270172 6cf2ab3] 1 file changed, 8 insertions(+)",
+    "git push origin auto/opt-prod-deploy-1783270172 → 4fd4f27..6cf2ab3 pushed; remote returned Code Review link (https://code.alibaba-inc.com/qunbu/autonomous-studio/codereview/new?from=main&to=auto/opt-prod-deploy-1783270172)",
+    "git rev-list --left-right --count origin/main...HEAD → 0 4 (4 ahead, 0 behind = FF-clean for deferred human merge)",
+    "Stack verified: 6cf2ab3 (PD-BATCH-01) → 4fd4f27 (PD-TOKEN-01) → d3a9710 (PD-HANG-01) → d5c4078 (PD-TIME-01), all on auto/opt-prod-deploy-1783270172",
+    "LIVE-path verified: d5c4078 (PD-TIME-01) touched .claude/skills/prod-deploy/scripts/report-event.js (same LIVE path as this fix), confirming the LIVE 4-file copy is the audit target — consistent with [[prod-deploy-dual-divergent-copies]]."
+  ],
+  "next_suggestion": "REGRESSION FOUND — dispatch PD-TOKEN-01-LIVE next round (MED, route-fix, higher priority than PD-CONCL-01). PD-TOKEN-01 (case-010, commit 4fd4f27) added the DEVOUT_SERVER_URL host allowlist + IP-literal block to skills/prod-deploy/scripts/lib/http-base.js — the NON-LIVE 6-file refactor copy (http-base.js does NOT exist in .claude/skills/prod-deploy/scripts/lib/). The LIVE .claude/skills/prod-deploy/scripts/lib/task-client.js (getHeaders@line18, getBaseUrl@line11) + event-client.js (getHeaders@line22, getBaseUrl@line15) STILL attach CODE_PRIVATE_TOKEN/DEVOUT_TOKEN to any host DEVOUT_SERVER_URL resolves to, with NO allowlist/IP-literal block → token leak to misconfigured/DNS-rebinding host remains OPEN in the live skill. Verified: PD-HANG-01 (d3a9710) correctly landed on LIVE copy (LIVE task-client.js has fetchWithTimeout/AbortController@line43-50), but PD-TOKEN-01 missed LIVE. Fix next round: port the allowlist logic from skills/prod-deploy/scripts/lib/http-base.js into LIVE task-client.js + event-client.js getBaseUrl() (2 files, same wt escape-hatch stack). After PD-TOKEN-01-LIVE: dispatch PD-CONCL-01 (LOW, sunfire-client.js deriveConclusion dedup by timestamp desc + extract shared helper for resume-next-batch). All pending (PD-TOKEN-01-LIVE + PD-CONCL-01) merged/rejected → cycle-complete → next full audit (candidate: pick an unaudited code project; sunset-prediction + wechat-main already audited).",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": ".claude/skills/prod-deploy/scripts/report-event.js",
+      "line": 195,
+      "severity": "low",
+      "finding": "PD-BATCH-01: handleDeployBatch parsed --batch-index with parseInt(,10) and no NaN guard; missing/non-numeric value → batch_index=NaN (serializes null) + findBatchEvent never matches (NaN!==NaN) → fresh deploy_batch event created every tick → duplicate events and lost status updates on the real batch.",
+      "remediation": "Number.isInteger(batchIndex) && batchIndex>=0 guard → else console.error + process.exit(1). Implemented in this commit (6cf2ab3).",
+      "kind": "route-fix"
+    },
+    {
+      "file": ".claude/skills/prod-deploy/scripts/lib/task-client.js + .claude/skills/prod-deploy/scripts/lib/event-client.js",
+      "line": "18,22",
+      "severity": "medium",
+      "finding": "PD-TOKEN-01-LIVE (REGRESSION, discovered this round): PD-TOKEN-01 dispatch (case-010/4fd4f27) landed host allowlist on NON-LIVE skills/prod-deploy/scripts/lib/http-base.js; LIVE task-client.js getHeaders()@18 + event-client.js getHeaders()@22 still attach CODE_PRIVATE_TOKEN/DEVOUT_TOKEN to whatever host DEVOUT_SERVER_URL resolves to — no allowlist, no IP-literal block. Token leak to misconfigured/DNS-rebinding host remains OPEN in the live skill. (http-base.js absent from .claude/skills/prod-deploy/scripts/lib/.)",
+      "remediation": "Port the allowlist + IP-literal block from skills/prod-deploy/scripts/lib/http-base.js getBaseUrl() into LIVE task-client.js + event-client.js getBaseUrl() (validate host ∈ {localhost,127.0.0.1,::1,*.alibaba-inc.com}+DEVOUT_ALLOWED_HOSTS, reject IP literals unless allowlisted, throw before getHeaders attaches token). Register as new pending derived_fix PD-TOKEN-01-LIVE; dispatch next round.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-001",
+  "audit_depth": "shallow",
+  "audit_cycle_role": "derived-fix (PD-BATCH-01 dispatched from audit-2026-07-06-001; this case is the fix dispatch, not the audit itself — audit_depth=shallow because the deep audit happened in the parent audit round)",
+  "parent_audit_finding_id": "PD-BATCH-01",
+  "dispatch_status_in_cycle": "merged"
+}

@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-06-002",
+  "agent_id": "ralph-autonomous-studio",
+  "timestamp": "2026-07-06T05:20:00+08:00",
+  "project": "autonomous-studio (runner-exec)",
+  "work_unit": "派生 fix audit-017 RE-MANIFEST-01: batch-write.js manifest JSON.parse 无 schema 校验",
+  "situation": "audit-2026-07-05-017 deep audit of runner-exec/scripts/ 派生 7 route-fix，本轮 status=fix-in-progress，pending 4 (RE-MANIFEST-01/RE-SECRET-01/RE-CRED-01/RE-PATH-01)。本轮派生 RE-MANIFEST-01 (batch-write.js:60 manifest JSON.parse 无 schema 校验：files 非数组 / f.path|f.content 非 string 直达 RE-CMDI-01 注入面或 TypeError 崩溃)。runner-exec 非 .claude/public-interfaces.txt 公共接口 → route-fix 复用同 security area worktree opt-security-1783266296，stack 在 RE-EXEC-01 commit 5cff148 之上。",
+  "action": "在 worktree opt-security-1783266296 内直编 batch-write.js：(1) JSON.parse 包 try/catch，malformed JSON 报错退出而非 uncaught crash；(2) 加 schema 校验：files 必须 Array，每项 {path,content} 必须为 string，否则 console.error+process.exit(1)。node --check 通过。wt 内 git commit (非 main，commit-gate 不拦) + git push origin (Code Review 链接已生成)。",
+  "files_changed": ["runner-exec/scripts/batch-write.js"],
+  "worktree": "opt-security-1783266296",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 5bc02ab208a9fad34551964336664881a31fb1b3 stacked on parent 5cff148 (base 5cff148080adf7373faabe8faa6e96fa1023d0a7, 1 file changed +19/-1). node --check batch-write.js → SYNTAX_OK. git push origin auto/opt-security-1783266296 → 5cff148..5bc02ab pushed, Code Review URL generated. batch-write.js:60 旧 const files=JSON.parse(...) → 新 try/catch + Array.isArray 校验 + per-entry typeof string 校验，malformed/non-string manifest 不再 crash/注入面封堵。",
+  "next_suggestion": "下轮继续派生 audit-017 pending fix：RE-SECRET-01 (creds.js:14,30 空 catch + L29 sqlite3 execSync→execFileSync) + RE-CRED-01 (creds.js:7-8 硬编码 127.0.0.1:58596 无 env) 同文件可堆叠单 worktree (creds.js RE-SECRET-01+RE-CRED-01)；再下轮 RE-PATH-01 (push.js walkDir symlink 跟随)。3 个 pending 全 merged|rejected 后 audit-017 cycle-complete → 触发下一次全量审计。",
+  "audit_type": "security-review",
+  "audit_findings": [
+    {
+      "file": "runner-exec/scripts/batch-write.js",
+      "line": 60,
+      "severity": "medium",
+      "finding": "RE-MANIFEST-01: manifest JSON.parse 无 schema 校验 — files 非数组 / f.path|f.content 非 string 直达 RE-CMDI-01 单引号注入面或 TypeError 崩溃进程；malformed JSON 抛 uncaught 异常 crash",
+      "remediation": "JSON.parse 包 try/catch + Array.isArray(files) 校验 + per-entry {path,content} typeof==='string' 校验，失败 console.error+process.exit(1)",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-017",
+  "audit_depth": "deep"
+}

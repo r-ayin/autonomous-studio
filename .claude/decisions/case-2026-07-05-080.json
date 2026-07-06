@@ -1,0 +1,41 @@
+{
+  "case_id": "case-2026-07-05-080",
+  "agent_id": "ralph-autonomous",
+  "timestamp": "2026-07-05T12:25:00+08:00",
+  "project": "wechat-main",
+  "work_unit": "godtier-deep-research:scripts/computation/stats/timeseries.py cagr 负终值崩溃守卫",
+  "situation": "派生 fix（父审计 audit-2026-07-05-009，finding GD-L-003）。timeseries.py cagr 分支原守卫仅 `len(d)>=2 and d[0]>0`，未防 d[-1]<0。当序列终值为负（如营收由正转亏：d=[100,50,-200]）且 years>=2 时，`(d[-1]/d[0])**(1/years)` 对负底数取分数次幂，Python 返回 complex（如 (-2.0)**0.5 = 8.66e-17+1.4142j），随后 `round(complex, 4)` 抛 `TypeError: type complex doesn't define __round__ method`，脚本崩、CAGR 无结果、computation audit trail 在该 op 下断裂。负终值序列 CAGR 在实数域本就无解（偶次根号下负数），应返回 None 而非崩。",
+  "action": "cagr 守卫追加 `and d[-1] > 0`：`if len(d) >= 2 and d[0] > 0 and d[-1] > 0:`。负终值落到 else 返回 None。正序列计算路径不变。修复 scope 严格限定 cagr 分支，未动 sma/ema/yoy_change 与 audit() utcnow（utcnow deprecation 属独立文件/独立 finding，不在本轮 scope）。route-fix 复用同 area worktree opt-godtier-deep-research-1783223962。",
+  "files_changed": [
+    ".claude/skills/godtier-deep-research/scripts/computation/stats/timeseries.py"
+  ],
+  "worktree": "opt-godtier-deep-research-1783223962",
+  "worktree_branch": "auto/opt-godtier-deep-research-1783223962",
+  "worktree_head": "18ff42c",
+  "direction": "godtier-deep-research:cagr-negative-terminal-guard",
+  "direction_kind": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "复现崩溃：修复前 `python3 -c 'd=[100,50,-200]; years=2; round(((d[-1]/d[0])**(1/years)-1)*100,4)'` → `(d[-1]/d[0])**(1/years)` 返回 `(8.659560562354934e-17+1.4142135623730951j)` (complex)，`round(complex)` 抛 `TypeError: type complex doesn't define __round__ method`",
+    "修复后 `python3 timeseries.py --op cagr --data 100 50 -200` → `{\"result\": null, ...}` 不崩（曾崩溃）",
+    "回归 `--op cagr --data 100 121 146` → `{\"result\": 20.8305}`（(146/100)^(1/2)-1=0.2083 正确）",
+    "边界 `--op cagr --data -100 50 200`（负起点）→ null（守卫 d[0]>0 拦）；`--op cagr --data 100`（单元素）→ null（len<2 拦）",
+    "opt-worktree.sh commit 输出：`✓ 提交到 opt-godtier-deep-research-1783223962 方向=godtier-deep-research:cagr-negative-terminal-guard`，push `69b4d80..18ff42c HEAD -> auto/opt-godtier-deep-research-1783223962`",
+    "worktree HEAD=18ff42c，grep 验证 line 30 已是 `if len(d) >= 2 and d[0] > 0 and d[-1] > 0:`，line 27 含 GD-L-003 注释"
+  ],
+  "next_suggestion": "下轮派生 GD-L-004（source_hallucination.py:59-68 check_temporal_consistency 前瞻年份 false-fail，priority 8，route-fix 复用同 area worktree）。GD-L-004 merge 后 audit-2026-07-05-009 全部 derived_fixes 落定，audit-cycle-state.status 改 cycle-complete，下轮触发新全量审计（挑未深度审过项目）。",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": ".claude/skills/godtier-deep-research/scripts/computation/stats/timeseries.py",
+      "line": 27,
+      "severity": "low",
+      "finding": "cagr 守卫缺 d[-1]>0：负终值序列（d[-1]<0, years>=2）时 (neg)**(1/years) 返回 complex，round(complex) 抛 TypeError 使脚本崩、CAGR 无结果、computation audit trail 断裂。负终值 CAGR 实数域无解，应返回 None。",
+      "remediation": "守卫追加 `and d[-1] > 0`，负终值落 else 返回 None。正序列路径不变。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-009",
+  "audit_depth": "deep",
+  "parent_finding_id": "GD-L-003"
+}

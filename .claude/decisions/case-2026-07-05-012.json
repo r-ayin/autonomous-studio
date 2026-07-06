@@ -1,0 +1,40 @@
+{
+    "case_id": "case-2026-07-05-012",
+    "agent_id": "ralph-wiggum-autonomous-loop",
+    "timestamp": "2026-07-05T21:10:00Z",
+    "project": "wechat-main",
+    "work_unit": "派生 fix: WM-PIP-03 pipeline.py cmd_tool 移除冗余 dangerous-token 过滤（subprocess.run list 形式无 shell，元字符仅作字面量传子进程）",
+    "situation": "audit-2026-07-05-001 (wechat-main 全量审计) 派生的 16 条 finding 之一。上轮 case-011 派生 WM-VER-03 后，14/16 已 dispatched（9 commit stacked on opt-wechat-main-1783130541: 4ba2fc6/1092685/3b77d0a/1924fc5/4c38669/ef2c1ca/73599c0/07afce9/28652b3）。剩 2 条 undispatched pending: WM-PIP-03 (pipeline.py:348-354 cmd_tool 冗余 dangerous-token 过滤, route-fix) + WM-QQ-02 (qq_push.py 跨项目 /opt/wanxia/.env 默认值, direction-shift)。本轮按上轮 NEXT_SUGGESTION 选 WM-PIP-03：虽审计标注 'moot 因无 shell'，但冗余过滤非中性——它会误伤合法参数（如标题/参数含 ;|& 时被静默丢弃致子工具收到残缺 argv），且 docstring 谎称 '安全：rest 过滤 shell 元字符' 误导读者以为过滤是安全防线。删冗余过滤 + 修 docstring 诚实说明安全来源（list 形式 subprocess + name 白名单）属真·语义诚实修复，非 cosmetic churn。",
+    "action": "删除 cmd_tool 内 dangerous-token 过滤块（dangerous 集合 + safe_rest 循环 + ⚠️ 警告 print），rest 改为原样透传 `cmd = ['python3', str(script)] + args.rest`。docstring 重写：明确安全来源是 name 白名单（拒 ../路径分隔符）+ subprocess.run 用 list 形式（无 shell=True），参数中即使含 ;|&$() 等也只作字面量传子进程不被任何 shell 解释，故无需也不应过滤 shell 元字符（旧过滤属冗余 defense-in-depth 且误伤合法参数，已移除）。route-fix（pipeline.py 非 public-interfaces.txt 列出文件 → 复用 opt-wechat-main-1783130541 worktree）。opt-worktree.sh commit 标准流被 cp-guard 阻断（pipeline.py 在 wt 与 main HEAD 不同，9 commit stacked 未人工 merge，main HEAD c0534bd 与 wt 28652b3 分歧）→ 走 L639/case-104 sanctioned direct-edit-wt-fallback：直编 wt 副本 + wt 内 git commit + push。main 工作副本同步编辑后 git checkout -- 还原保持 main clean。",
+    "files_changed": [
+        "scripts/pipeline.py"
+    ],
+    "worktree": "opt-wechat-main-1783130541",
+    "direction": "route-fix",
+    "outcome": "succeeded",
+    "outcome_evidence": [
+        "wt 内 commit eaab4a2: '1 file changed, 5 insertions(+), 10 deletions(-)'",
+        "push 成功: '28652b3..eaab4a2  auto/opt-wechat-main-1783130541 -> auto/opt-wechat-main-1783130541' (10th stacked commit)",
+        "origin 远端 Code Review 链接回显 (code.alibaba-inc.com/qunbu/wechat/codereview/new?to=auto/opt-wechat-main-1783130541)",
+        "ast.parse 语法校验 OK (wt 副本 + main 副本均通过)",
+        "行为验证 PASS: monkeypatch subprocess.run 捕获 cmd，cmd_tool(name='steps', rest=['a;b','--flag|x']) 传给子进程的 cmd == ['python3','.../steps.py','a;b','--flag|x']——元字符 token 原样作 list 元素透传，无 shell 解释、无静默丢弃（旧逻辑会丢弃这两个 token）",
+        "main 工作副本 git checkout -- 还原，git status scripts/pipeline.py clean（真 fix 只在 opt 分支，main 永远安全）"
+    ],
+    "next_suggestion": "15/16 dispatched (10 commit stacked: 4ba2fc6/1092685/3b77d0a/1924fc5/4c38669/ef2c1ca/73599c0/07afce9/28652b3/eaab4a2)。仅剩 1 条 undispatched pending: WM-QQ-02 (qq_push.py 跨项目 /opt/wanxia/.env 默认值, direction-shift)。下轮建议派 WM-QQ-02 direction-shift（更高价值：解耦 wechat 与 wanxia 部署，qq_push 不应硬编码 /opt/wanxia/.env 默认值——需新 wt + 改默认值为本项目 .env + fallback 逻辑，触及 qq_push.py 公共行为，工作量略大但解开跨项目耦合）。派完 WM-QQ-02 后 16/16 全 dispatched，audit-cycle-state 仍 fix-in-progress 等人工 merge；待所有 dispatched fix merge|reject 落定 → status=cycle-complete → 触发下一未深审项目全量审计（wechat-main 已审不再重审）。⚠ 强烈建议人工 merge opt-wechat-main-1783130541（10 commit stacked）经 sanctioned squash；3 条 rejected-archive 历史模式提示：久不 merge 会触发 drift-repair 归档，浪费已派 fix。",
+    "audit_type": "deep-audit",
+    "audit_findings": [
+        {
+            "file": "scripts/pipeline.py",
+            "line": 348,
+            "severity": "low",
+            "finding": "WM-PIP-03: cmd_tool 的 dangerous-token 过滤集 ({;|&$()`&&||}) 缺 \\n/>/< 等且本就冗余——subprocess.run(cmd, ...) 用 list 形式无 shell=True，rest 中元字符仅作字面量传子进程不被 shell 解释，过滤不构成注入面反而误伤合法参数（含分号/管道符的标题或参数被静默丢弃致子工具收到残缺 argv）+ docstring 谎称 '安全：rest 过滤 shell 元字符' 误导读者以为过滤是安全防线。",
+            "remediation": "删除 dangerous 集合 + safe_rest 循环 + ⚠️ 警告 print，rest 原样透传；docstring 重写明确安全来源是 name 白名单 + list 形式 subprocess（无 shell），元字符作字面量不被解释，故无需过滤。",
+            "kind": "route-fix"
+        }
+    ],
+    "audit_id": "audit-2026-07-05-001",
+    "audit_depth": "deep",
+    "_dispatch_method": "direct-edit-wt-fallback (opt-worktree.sh L639/case-104 sanctioned; cp-guard blocked standard flow due to 9 unmerged stacked commits on opt-wechat-main-1783130541)",
+    "_stack_position": "10th stacked commit (28652b3..eaab4a2)",
+    "_commit": "eaab4a2"
+}

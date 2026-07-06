@@ -1,0 +1,30 @@
+{
+  "case_id": "case-2026-07-05-043",
+  "agent_id": "ralph-autonomous-studio",
+  "timestamp": "2026-07-05T08:50:00+08:00",
+  "project": "autonomous-engine",
+  "work_unit": "派生 fix (audit-2026-07-05-005 priority 10, 最后一个 pending-dispatch): protocol-check.py AE-L-001 (L70 subprocess.run 传 os.path.join(project_dir,'dummy') 虚构路径给 bootstrap.py → 依赖 bootstrap 内部 os.path.dirname(file_path) 反推项目目录的未声明隐式约定 → bootstrap 一旦改变 file_path 解析规则即静默错项目目录/自举到错位置)",
+  "situation": "audit-cycle-state.status=fix-in-progress。audit-2026-07-05-005 共 10 个 route-fix finding, 前 9 个已派发 (case-038..042, 全部栈堆在 opt-hooks-1783203936 HEAD=adfa824 待人工 merge)。本轮派发 priority 10 = AE-L-001, 是该审计周期最后一个 pending-dispatch finding (派发后 pending_count=0, awaiting_merge_count=7 commit 栈)。AE-L-001 命中 2026-07-03 反 churn 例外条款: .claude/hooks/*.py 通常禁自指润色提交, 但本 finding 是真逻辑 bug (隐式 dummy 路径契约, file:line=L70, 有 bug 证据 + x-tool 姊妹 XT-M-002 已修 2e549ce), 属例外允许。protocol-check.py 不在 .claude/public-interfaces.txt → route-fix, opt-worktree.sh 内置 judge_direction_kind 判定复用同 area worktree (opt-hooks-1783203936, hooks area), 不开新 worktree。",
+  "action": "改单文件 autonomous-engine/.claude/hooks/protocol-check.py L67-73: subprocess.run argv 第三元素从 os.path.join(project_dir, 'dummy') (虚构路径, 依赖 bootstrap dirname 反推) 改为 ['--project-dir', project_dir] (显式 flag 传真实 project_dir, 解除隐式约定)。镜像 x-tool XT-M-002 (commit 2e549ce, 2026-07-01) protocol-check.py 侧改动。注释引用 AE-L-001 + 镜像来源。注: autonomous-engine 项目无 .claude/skills/project-protocol/bootstrap.py (与 x-tool 不同, x-tool 侧 XT-M-002 还同步改了 bootstrap.py main() 加 --project-dir 解析), 故本 fix 仅改调用侧; 待 AE 后续安装 project-protocol skill 时, 调用方已正确传 --project-dir, 不会触发 dummy 路径隐式约定。1 文件 2 行改动 (1 删 1 加 + 2 行注释)。",
+  "files_changed": [
+    ".claude/hooks/protocol-check.py"
+  ],
+  "worktree": "opt-hooks-1783203936",
+  "direction": "hooks:protocol-dummy-path",
+  "outcome": "succeeded",
+  "outcome_evidence": "1) opt-worktree.sh 输出 '→ 复用同 area worktree (route-fix): opt-hooks-1783203936' + '✓ 提交到 opt-hooks-1783203936 方向=hooks:protocol-dummy-path' (route-fix 判定正确, 未误开新 worktree)。2) [push] 'adfa824..09374bb HEAD -> auto/opt-hooks-1783203936' + remote 创建 codereview 链接 https://code.alibaba-inc.com/xtool/autonomous-engine/codereview/new?from=master&to=auto/opt-hooks-1783203936 (push 成功)。3) worktree git log 栈堆确认: 985aa36(base) → d801343(AE-H-001) → 677cdb8(AE-H-002+AE-NEW-001) → 9b747ff(AE-M-001+AE-NEW-002) → 5a5e77e(AE-M-002+AE-NEW-003) → adfa824(AE-M-003+AE-NEW-004) → 09374bb(AE-L-001, 本轮), 7 commit 干净栈堆待人工 merge。4) git diff adfa824..09374bb 显示 protocol-check.py L67-73 argv 改为 [sys.executable, BOOTSTRAP_SCRIPT, '--project-dir', project_dir] + 2 行注释, 与计划一致。5) python3 -c 'import ast; ast.parse(...)' 语法验证 OK (Edit 后立即跑)。6) 主 checkout protocol-check.py 经 opt-worktree.sh cmd_commit restore 回到干净 985aa36 版 (L70 dummy), 修复仅存在于 worktree 09374bb, main 永远安全。",
+  "next_suggestion": "audit-2026-07-05-005 全 10/10 finding 已派发完毕 (case-038..043), pending_count=0, awaiting_merge_count=7 commit 栈堆在 opt-hooks-1783203936。下轮起进入 '等人工 merge' 阶段: 若本轮/下轮瞭望发现 opt-hooks-1783203936 仍 0 merge, 继续瞭望轮跑 scout-scan 快照 (不深读源码); 若连续 3 轮瞭望仍 0 merge/reject → 触发 deadlock-archive: 整栈 7 commit 一并 reject (同 sunset-prediction/personal-assistant/wechat-main 模式) 或提醒人工 review。全部 7 commit merge/reject 落定后 → audit-cycle-state.status 改 cycle-complete → 下轮触发新全量审计 (挑未深度审过的项目, 看 .claude/audits/ 已有报告避免重复; 候选: personal-assistant/wechat-main/sunset-prediction/shizi/skills 等)。",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": ".claude/hooks/protocol-check.py",
+      "line": "70",
+      "severity": "low",
+      "finding": "AE-L-001: check_and_bootstrap L70 subprocess.run argv 传 os.path.join(project_dir, 'dummy') (虚构路径) 给 bootstrap.py, 依赖 bootstrap 内部 os.path.dirname(file_path) 反推项目目录的未声明隐式约定。bootstrap 若改 file_path 解析规则 (或 autonomous-engine 后续安装 project-protocol skill 时 bootstrap 版本不同) → 静默自举到错项目目录/错位置, 三件套生成到非预期路径。x-tool 姊妹 XT-M-002 已修 2e549ce (protocol-check.py 调用侧 + bootstrap.py main() 加 --project-dir 解析)。",
+      "remediation": "argv 改为 [sys.executable, BOOTSTRAP_SCRIPT, '--project-dir', project_dir], 显式传真实 project_dir, 解除 dummy 路径隐式约定。autonomous-engine 无 bootstrap.py, 仅改调用侧 (待后续安装 skill 时调用方已正确)。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-005",
+  "audit_depth": "deep"
+}

@@ -1,0 +1,34 @@
+{
+  "case_id": "case-2026-07-06-021",
+  "agent_id": "ralph-wiggum-autonomous-engine",
+  "timestamp": "2026-07-06T11:30:00+08:00",
+  "project": "personal-assistant",
+  "work_unit": "PA-PRO-01 派生 route-fix：proactive.py topic_pattern dedup 后不复查 >=3 阈值",
+  "situation": "audit-2026-07-06-002 (personal-assistant 未深审模块 deep audit) 派生 P3 route-fix PA-PRO-01。proactive.py check() 中 _topic_pattern(unprocessed) 返回前 8 字前缀重复 >=3 的桶全量入 triggers（72-73），但 step1 _classify 可能先取走桶内部分记忆标为 intention_reminder/emotional_support。dedup 循环（76-80）按 seen id 过滤后，某 topic_pattern 桶可能从 3 条降到 2 条仍触发——以残缺上下文调 LLM 生成'模式'干预，质量降且误导。无崩溃，仅 LLM 调用质量退化，故 LOW。",
+  "action": "在 dedup 循环 mems 过滤后、seen.update 前，加守卫：if t['kind']=='topic_pattern' and len(mems) < 3: continue。即 dedup 后复查阈值，桶被 classify 抽空至阈值下则 skip 该 trigger。1 文件 route-fix，proactive.py 不在 .claude/public-interfaces.txt → opt-worktree 判 route-fix 新 area（无既有 proactive wt）→ 开新 wt opt-proactive-1783277111。触及非敏感路径（无 auth/PII/secret/HTTP 出站/subprocess/deploy），无需 audit-log 埋点。",
+  "files_changed": ["personal_assistant/proactive.py"],
+  "worktree": "opt-proactive-1783277111",
+  "direction": "proactive:topic-pattern-dedup",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "wt commit 59eea98d6c9c9ac989b21fd7670753f5b5fc972b on auto/opt-proactive-1783277111, 单提交 base=580c4aa(=main HEAD), FF-clean (git log origin/main..auto/opt-proactive-1783277111 仅 59eea98 一条)",
+    "pushed origin/auto/opt-proactive-1783277111 (branch tracking 已设, status -sb 干净)",
+    "wt 内 python3 -c ast.parse OK",
+    "行为验证：3 条同前缀('今天天气真不错今')记忆入桶 size=3；m1 含'明天'被 _classify 标 intention_reminder 先入 seen；dedup 循环到 topic_pattern 时 mems 过滤掉 m1 剩 2 条 → 新守卫 if len(mems)<3: continue 触发 skip；fired=['intention_reminder']，topic_pattern 不在 fired；assert skipped==[2] PASS。对照修前同输入会以 2 条残缺上下文触发 topic_pattern",
+    "main checkout 已清白（git status --short personal_assistant/proactive.py 空），改动仅在 wt"
+  ],
+  "next_suggestion": "下轮派生 PA-REC-02 (recommend.py _share_token 3 字子串过松, LOW, P3) 或 PA-DEV-01 (dev-server.js http.get 不支持 https 上游, LOW, P3)。audit-2026-07-06-002 仍有 4 pending: PA-REC-02/PA-DEV-01/PA-AND-02/PA-SPK-01。全 merged|rejected 后 cycle-complete → 触发新全量审计（候选：autonomous-engine score=1.0 但已两度深审；skills 缺 planning/ 但跳过纯配置项目）。⚠ opt-proactive-1783277111 + 前序 opt-asr-1783274064/opt-wiki-1783275111/opt-recommend-1783275547/opt-pa-android-api-1783275991 等 await 人工 merge to main。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "personal_assistant/proactive.py",
+      "line": "72-80",
+      "severity": "low",
+      "finding": "PA-PRO-01: check() 中 _topic_pattern 返回 >=3 桶全量入 triggers，但 step1 _classify 先取走桶内部分记忆标 intention/emotion，dedup 按 seen id 过滤后桶可降至 <3 仍触发 topic_pattern，以残缺上下文调 LLM 生成'模式'干预，质量降且误导。",
+      "remediation": "dedup 后复查：if t['kind']=='topic_pattern' and len(mems)<3: continue。已实施。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-002",
+  "audit_depth": "deep"
+}

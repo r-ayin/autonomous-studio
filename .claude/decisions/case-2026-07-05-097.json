@@ -1,0 +1,36 @@
+{
+  "case_id": "case-2026-07-05-097",
+  "agent_id": "ralph-wiggum-autonomous-engine",
+  "timestamp": "2026-07-05T15:29:30+08:00",
+  "project": "x-tool",
+  "work_unit": "PAH-M-001 Telegram Markdown 注入修复 — _send_telegram 改 HTML 模式 + html.escape 全字段转义 + metadata JSON 序列化 + 异常分支 redact bot token",
+  "situation": "audit-2026-07-05-011 (x-tool/AB system/python-agent-hub 首审) 派生 7 route-fix，PAH-H-001 case-095 + PAH-H-002 case-096 已派发 awaiting_merge。本轮按 priority 续派发 #3 PAH-M-001。notification.py _send_telegram 用 parse_mode=\"Markdown\" + f-string 直接拼 alert['title']/['message']/['metadata']，这些字段源头含 LLM/爬虫可控内容（implementations.py:94 message=f\"关键词 '{keyword}' 抓取失败: {str(e)}\"，keyword 来自 ScrapeJewelryCompetitorsInput.keywords 即 LLM 可控）。Markdown 特殊字符 * _ [ ] ( ) ` 未转义 → (a) Telegram 400 解析失败告警静默丢失（外层 except 仅 print）；(b) [click](http://evil) 链接注入运营者聊天钓鱼。metadata 包单反引号但 metadata 内含反引号即破坏代码块。INFO-2 一并处理：bot token 在 URL path（Telegram API 设计），httpx 异常消息可能含完整 URL → token 进 stdout/日志。",
+  "action": "1) 顶部加 import html, json。2) _send_telegram 把 title/level/category/timestamp/message 五字段经 html.escape 转义后用 HTML 标签 (<b>/<code>) 拼接；metadata 先 json.dumps(ensure_ascii=False, default=str) 序列化再 html.escape 入 <code> 块，避免内嵌反引号破坏代码块。3) parse_mode Markdown→HTML。4) except 分支 str(e) 中 replace bot token 为 ***REDACTED*** 再 print，防 token 进 stdout。改 1 文件 32+/10-。",
+  "files_changed": [
+    "x-tool/AB system/python-agent-hub/src/agent_hub/services/notification.py"
+  ],
+  "worktree": "opt-notification-1783236534",
+  "direction": "notification:telegram-escape (route-fix, 新 area → opt-worktree.sh 自动开新 worktree)",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "opt-worktree.sh 输出: ↔ 方向分歧（engine → notification，route-fix 新 area），开新 worktree: opt-notification-1783236534 / ✓ 提交到 opt-notification-1783236534 方向=notification:telegram-escape",
+    "worktree git log: 9d71482 opt(notification:telegram-escape): fix(pah): PAH-M-001 ... (1 file changed, 32 insertions(+), 10 deletions(-))",
+    "branch auto/opt-notification-1783236534 HEAD=9d71482",
+    "python3 ast.parse 通过 (syntax OK)",
+    "origin push 403 (http://ghp-ro.alibaba-inc.com github.com/r-ayin/x-tool.git 外部 fork 不允许 push) — 与 audit-008/010 x-tool 历史同模式；worktree+commit 完整保留 disk 待人工 merge"
+  ],
+  "next_suggestion": "下轮派发 PAH-M-002 (priority 4, pyproject.toml 加 openai>=1.0.0 依赖，消除 analyze_reviews_insight 死工具)。PAH-H-001 case-095 + PAH-H-002 case-096 仍 awaiting human merge；PAH-M-001 case-097 本轮已派发 awaiting_merge。剩余 pending: PAH-M-002/M-003/L-001/L-002。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "x-tool/AB system/python-agent-hub/src/agent_hub/services/notification.py",
+      "line": "142-164",
+      "severity": "medium",
+      "finding": "PAH-M-001: _send_telegram 用 parse_mode=\"Markdown\" + f-string 直接拼 alert['title']/['message']/['metadata']，字段源头含 LLM/爬虫可控内容（implementations.py:94 keyword 进 message）。Markdown 特殊字符 * _ [ ] ( ) ` 未转义 → Telegram 400 解析失败告警静默丢失 + [click](http://evil) 链接注入。INFO-2 同点：bot token 在 URL path，httpx 异常含 URL → token 进 stdout。",
+      "remediation": "改 parse_mode=HTML + html.escape 全字段转义 + metadata json.dumps 后入 <code>；except 分支 redact bot token。已实施于 opt-notification-1783236534 9d71482。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-011",
+  "audit_depth": "shallow"
+}

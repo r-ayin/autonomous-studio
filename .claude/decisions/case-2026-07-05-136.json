@@ -1,0 +1,58 @@
+{
+  "case_id": "case-2026-07-05-136",
+  "agent_id": "ralph-autonomous-engine",
+  "timestamp": "2026-07-05T23:58:00+08:00",
+  "project": "x-tool/api额度监测",
+  "work_unit": "派生 fix (audit-2026-07-05-015 finding APIMON-KEYDISPLAY-01): dashboard 三处 Text(key) 全文展示 API key 改 mask_key(key) 掩码防肩窥",
+  "situation": "audit-2026-07-05-015 (x-tool/api额度监测 monitor.py 深审) 派生的 8 条 finding 之一。APIMON-KEYDISPLAY-01 (medium, route-fix): make_dashboard() 错误行 line115 Text(key,style='dim red') + loading 行 line120 Text(key,style='dim') + 正常行 line125 Text(key,style='white') 三处均全文渲染完整 key 到终端 dashboard；讽刺的是删除提示行 line271 已做掩码 (...{removed[-4:]}) 但常驻表格列没做。TUI 在共享屏/录屏/远程桌面下构成肩窥暴露。本轮 status=fix-in-progress，前轮 case-135 已派生 APIMON-SECRET-01 (config 明文 key) 到同 area worktree opt-api-monitor-1783256389 (2-commit stack 3ed7fb7+2030a4a FF-clean base=85bd9e1=master)，monitor.py 未被触及 → 同 area route-fix 复用同 worktree 叠加。",
+  "action": "1) 在 load_config() 前新增 mask_key(k) helper：保留前4+后4，中间 … 占位；len<=8 退化为只露尾部 (...xxxx)，空串/极短串安全返回。2) 三处 Text(key,...) 全改 Text(mask_key(key),...) —— line115(错误 dim red) / line120(loading dim) / line125(正常 white)。3) cache 字典 state['data_cache'] 仍以原 key 索引（mask_key 仅用于展示层），不影响 get_billing_info/update_data_thread/process_command 功能。4) opt-worktree.sh commit api-monitor:keydisplay 复用同 area worktree（route-fix，monitor.py 不在 public-interfaces.txt）。5) python3 ast.parse 语法校验通过，grep 确认无残留裸 Text(key。",
+  "files_changed": [
+    "x-tool/api额度监测/monitor.py"
+  ],
+  "worktree": "opt-api-monitor-1783256389 (branch auto/opt-api-monitor-1783256389, base=85bd9e1=master, 3-commit stack 3ed7fb7+2030a4a+0691bb9, FF-clean)",
+  "direction": "route-fix (area=api-monitor, 复用同 area worktree 与 APIMON-SECRET-01 stack)",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "commit 0691bb9 on auto/opt-api-monitor-1783256389: 'opt(api-monitor:keydisplay): APIMON-KEYDISPLAY-01...' 1 file changed, 11 insertions(+), 3 deletions(-)",
+    "git show HEAD:api额度监测/monitor.py 确认 mask_key def 在 line34 + 三处 Text(mask_key(key),...) 在 line123/128/133，无残留裸 Text(key",
+    "python3 -c ast.parse(monitor.py) 语法 OK",
+    "stack FF-clean: 0691bb9→2030a4a→3ed7fb7→85bd9e1=master，3 commits ahead 0 behind master",
+    "push origin auto/opt-api-monitor-1783256389 → 403 'git push is not allowed' (x-tool 外部 fork http://ghp-ro.alibaba-inc.com/github.com/r-ayin/x-tool.git, 同 audit-008/010/011/012/013 + APIMON-SECRET-01 precedent)；worktree+branch+commit 完整保留 disk+local-ref 待人工 merge to master"
+  ],
+  "next_suggestion": [
+    "下轮继续派生 audit-2026-07-05-015 剩余 pending route-fix finding：APIMON-SWALLOW-01 (medium, monitor.py 三处裸 except 静默吞错 line48/60/179 + save_config 返回值未检查) → 同 area worktree opt-api-monitor-1783256389 叠加（按纪律一个文件一次只开一个 worktree，monitor.py 已被 0691bb9 改 → cp-guard 会 skip，需用 case-118/120/124 precedent 的 direct-worktree-commit：直编 worktree 副本 + git add/commit）",
+    "继 APIMON-SWALLOW-01 后：APIMON-SSRF-01 (low, base_url 无 scheme/host 校验 Bearer 可发任意主机) + APIMON-RACE-01 (low, 后台线程迭代 keys 同时主线程 append/pop 同 list RuntimeError) + APIMON-KEYLEN-01 (low, len(cmd)>10 当 key 无格式校验) 三条 route-fix 同样 stack on opt-api-monitor-1783256389",
+    "2 structural (APIMON-NOAUDITLOG-01 / APIMON-WINDOWS-01) 已计划入 structural-debt.md SD-APIMON-01/02，不派 fix",
+    "全 6 route-fix (含已派 SECRET+KEYDISPLAY) 全 dispatched 后进入 wait 轮（3 轮 0 merged 则 deadlock-archive 同 x-tool precedent，cycle-complete → 触发下次全量审计，候选未深审：xia 499 / personal-assistant re-audit / wechat-main re-audit）",
+    "owner 须：yunyi.cfd 轮换 3 把 live key (APIMON-SECRET-01) + 人工 merge opt-api-monitor-1783256389 3-commit stack 到 master"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "x-tool/api额度监测/monitor.py",
+      "line": 115,
+      "severity": "medium",
+      "finding": "APIMON-KEYDISPLAY-01: dashboard 错误行 Text(key, style='dim red') 全文渲染完整 API key 到终端，肩窥暴露（共享屏/录屏/远程桌面）",
+      "remediation": "改 Text(mask_key(key), style='dim red')，保留前4+后4",
+      "kind": "route-fix"
+    },
+    {
+      "file": "x-tool/api额度监测/monitor.py",
+      "line": 120,
+      "severity": "medium",
+      "finding": "APIMON-KEYDISPLAY-01: loading 行 Text(key, style='dim') 全文渲染完整 key",
+      "remediation": "改 Text(mask_key(key), style='dim')",
+      "kind": "route-fix"
+    },
+    {
+      "file": "x-tool/api额度监测/monitor.py",
+      "line": 125,
+      "severity": "medium",
+      "finding": "APIMON-KEYDISPLAY-01: 正常行 Text(key, style='white') 全文渲染完整 key",
+      "remediation": "改 Text(mask_key(key), style='white')",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-015",
+  "audit_depth": "shallow"
+}

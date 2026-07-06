@@ -1,0 +1,36 @@
+{
+  "case_id": "case-2026-07-05-042",
+  "agent_id": "ralph-autonomous-studio",
+  "timestamp": "2026-07-05T07:30:00+08:00",
+  "project": "autonomous-engine",
+  "work_unit": "派生 fix (audit-2026-07-05-005 priority 7+8 同栈堆): decision-observer.py AE-M-003 (handle_stop L260-290 反向读日志 chunk 拼接 off-by-one → 跨 chunk 边界 JSON 行尾段被 lines[-needed:] 丢弃 → 下个 chunk 行首段无尾可拼 → JSON parse 失败 → active_project 间歇 unknown) + AE-NEW-004 (STATE_FILE open('w') 截断+write 非原子 → 崩溃中途 autonomous-state.md 残缺 → resume 恢复断裂)",
+  "situation": "audit-cycle-state.status=fix-in-progress, derived_fixes 仍有 3 个 pending-dispatch (priority 7/8/10: AE-M-003/AE-NEW-004/AE-L-001)。已派 7/10: AE-H-001 (case-038 d801343) + AE-H-002/AE-NEW-001 (case-039 677cdb8) + AE-M-001/AE-NEW-002 (case-040 9b747ff) + AE-M-002/AE-NEW-003 (case-041 5a5e77e) 全部堆在 opt-hooks-1783203936 (HEAD=5a5e77e) 待人工 merge。本轮按 priority 7 派生 AE-M-003, 同文件 priority 8 = AE-NEW-004 同栈堆到同一 hooks worktree (同 .py 文件 .claude/hooks/decision-observer.py)。两 finding 均为真逻辑/数据损坏 bug (边界拼接致 JSON parse 失败 / 非原子写致状态文件损坏), 符合 2026-07-03 反 churn 例外条款。\n\n关键发现: 主 checkout 的 decision-observer.py 存在未提交 WIP (ENG-H02 read-modify-write 版本, 双 STATE_FILE 写点 L343+L363, 审计即读此脏版), 但 worktree HEAD=5a5e77e 的 decision-observer.py 是干净提交版 (单 STATE_FILE 写点 L335, 模板覆写)。两 finding 根因在两版本均存在 (AE-M-003 反向读逻辑两版相同; AE-NEW-004 非原子 open('w')+write 两版共有), 故在 worktree 干净版上修复正确。opt-worktree.sh cmd_commit 的 cp main→worktree 步骤会: (a) 把主 checkout 脏 ENG-H02 版 cp 覆盖 worktree 修复 (破坏修复), (b) restore 主时 git checkout HEAD -- file 丢弃 ENG-H02 WIP (破坏 main WIP)。故绕过 cmd_commit, 直接在 worktree 内 git add+commit (gate 仅拦 main/master, opt 分支放行), 再 push origin。",
+  "action": "改单文件 .claude/hooks/decision-observer.py 两处: (1) 顶部加 import tempfile (原子写模式依赖)。 (2) AE-M-003 handle_stop L260-290: 删除原 4096B chunk 反向读 + buf=f.read+buf 拼接 + lines[-needed:] 截断 + lines_found 循环, 改为一次性 tail-read: f.seek(0,2)+fsize=f.tell()+tail_size=min(8192,fsize)+f.seek(max(0,fsize-tail_size))+raw=f.read(tail_size), split 后若 fsize>tail_size 丢掉可能不完整的首行, reversed(lines[-20:]) 逐行 json.loads 找末位 user_input+project_hint。单次读无边界拼接, 稳定。 (3) AE-NEW-004 L318-338 STATE_FILE 写: 原 open(STATE_FILE,'w')+f.write(state_content) 非原子, 改移植同项目 incremental-save.py L42-58 的 tempfile.mkstemp(dir=dirname, prefix='.autonomous-state-', suffix='.tmp') + os.fdopen(fd,'w')+write+flush+os.fsync + os.replace(tmp_path, STATE_FILE), 失败时 except 内 os.unlink(tmp_path) 后 raise (原文件不动)。dir_name 上加 os.makedirs(exist_ok=True)。",
+  "files_changed": [".claude/hooks/decision-observer.py"],
+  "worktree": "opt-hooks-1783203936",
+  "direction": "hooks:decision-observer-tail-read-atomic",
+  "outcome": "succeeded",
+  "outcome_evidence": "1) python3 -c 'import ast; ast.parse(open(\".claude/hooks/decision-observer.py\").read())' → 'syntax OK' (worktree HEAD 5a5e77e→adfa824 上验证通过)。2) 功能测试 AE-M-003 tail-read: 模拟 30 行 assistant_response + 末位 user_input project_hint=wanxia 的 decision-log.jsonl, 跑修复后的 tail-read 逻辑 → active_project='wanxia' (断言通过, 末 20 行 user_input hint 命中)。3) 'tempfile.mkstemp' in file and 'os.replace' in file → True (原子写模式落地)。4) 直接 git add+commit 于 worktree (绕过 cmd_commit cp, 因主 checkout 有未提交 ENG-H02 WIP 会冲突), commit adfa824 落地于 5a5e77e 之上, 1 file changed 39 insertions 25 deletions。5) git push origin auto/opt-hooks-1783203936 成功 5a5e77e..adfa824 (remote 创建 codereview 链接 https://code.alibaba-inc.com/xtool/autonomous-engine/codereview/new?from=master&to=auto/opt-hooks-1783203936)。6) worktree git log 栈堆确认: 985aa36 (base) → d801343 (AE-H-001) → 677cdb8 (AE-H-002+AE-NEW-001) → 9b747ff (AE-M-001+AE-NEW-002) → 5a5e77e (AE-M-002+AE-NEW-003) → adfa824 (AE-M-003+AE-NEW-004), 6 commit 干净栈堆待人工合并。",
+  "next_suggestion": "下轮继续派生 priority 10 = AE-L-001 (protocol-check.py L70 传 os.path.join(project_dir,'dummy') 虚构路径给 bootstrap.py → 依赖 bootstrap 内部 dirname 隐式约定; 改传真实 project_dir 或 bootstrap 入口加 --project-dir flag; x-tool XT-M-002 已修) 同栈堆到 opt-hooks-1783203936 (protocol-check.py 不在 public-interfaces.txt, route-fix 复用同 area worktree)。这是 audit-2026-07-05-005 最后一个 pending-dispatch finding (10/10 派发完毕后 pending_count=0, _awaiting_merge_count=6)。opt-hooks-1783203936 当前已堆 6 commit (985aa36→...→adfa824) 待人工 merge; 若再 3 轮瞭望后仍 0 merge → 触发 deadlock-archive reject (同 sunset-prediction/personal-assistant/wechat-main 模式, 整栈 6 commit 一并 reject/merge)。全部 merge/reject 后 status→cycle-complete → 下轮触发新全量审计 (挑未深度审过的项目)。",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": ".claude/hooks/decision-observer.py",
+      "line": "260-290",
+      "severity": "medium",
+      "finding": "AE-M-003: handle_stop 反向读日志取末 20 行逻辑 off-by-one。原实现 f.seek 反向按 4096B chunk 读 + buf=f.read(read_size)+buf 拼接 + lines=buf.split(b'\\n') + buf=b'\\n'.join(lines[-needed:]) 截断保留末 needed 行。当一条 JSON 行跨 chunk 边界 (行尾在前 chunk, 行首在后 chunk) 时, lines[-needed:] 丢弃行尾段, 下个 chunk 读回时行首段无尾可拼 → 该行 JSON parse 失败 → 若丢失的恰是末位 user_input 行 → active_project 回退 unknown (间歇性, 取决于日志长度/行长)。x-tool 姊妹 XT-H-002 已修 68cf537。",
+      "remediation": "简化为一次性 tail-read: seek(max(0,fsize-8192))+read+splitlines, 丢掉可能不完整的首行 (仅当 fsize>tail_size), reversed(lines[-20:]) 逐行 parse。无边界拼接, 稳定。",
+      "kind": "route-fix"
+    },
+    {
+      "file": ".claude/hooks/decision-observer.py",
+      "line": "335",
+      "severity": "medium",
+      "finding": "AE-NEW-004: STATE_FILE (autonomous-state.md) 写入用 open(STATE_FILE,'w',encoding='utf-8')+f.write(state_content), open('w') 先截断文件再写, 进程在 write 中途崩溃 (OOM/SIGKILL/磁盘满) → STATE_FILE 残缺 (frontmatter+部分字段) → 下次 resume-checkpoint 读残缺 frontmatter → resume 恢复协议断裂。审计读的是主 checkout 脏 ENG-H02 版 (双写点 L343+L363), worktree 干净提交版是单写点 L335, 根因相同: 非原子 open('w')+write。",
+      "remediation": "移植同项目 incremental-save.py L42-58 原子写模式: tempfile.mkstemp(dir=dirname)+os.fdopen+write+flush+os.fsync+os.replace(tmp,STATE_FILE), 失败 except os.unlink(tmp) 后 raise (原文件不动)。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-005",
+  "audit_depth": "deep"
+}

@@ -1,0 +1,79 @@
+{
+  "case_id": "case-2026-07-04-147",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-04T20:35:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "full-audit:engine-core (loop/distill/triage/parallel/watchdog/index)",
+  "situation": "audit-cycle-state status=cycle-complete after audit-015 hooks-layer fixes all merged. Triggered new full audit cycle. engine-core selected as next unaudited module (last deep audit was implicit via scattered AS-H/EC/L fixes in early July, no consolidated review). 9 files read across main loop, distillation pipeline, triage, parallel build dispatch/merge, health scorer, case index, orphan archiver, and watchdog.",
+  "action": "Deep audit of autonomous-studio engine-core. Read 9 source files, traced cross-file data flows (outcome enums between distill/case-schema/audit-state, process detection between loop/watchdog, task ID parsing between parallel-dispatch/merge), identified 7 actionable findings (2H/3M/2L) + 1 info structural debt + 2 named structural debts. Wrote audit report to .claude/audits/audit-2026-07-04-016.md. Updated audit-cycle-state.json: status→fix-in-progress, 7 derived_fixes all pending with priority ordering.",
+  "files_changed": [
+    ".claude/audits/audit-2026-07-04-016.md",
+    ".claude/audit-cycle-state.json"
+  ],
+  "worktree": null,
+  "direction": "audit-only",
+  "outcome": "succeeded",
+  "outcome_evidence": "audit-2026-07-04-016.md written (8 findings documented with file:line evidence + remediation). audit-cycle-state.json updated: current_audit_id=audit-2026-07-04-016, status=fix-in-progress, pending_count=7, derived_fixes[] populated with H01/H02/M01/M02/M03/L01/L02 all status=pending. No source code modified (audit-only round per protocol).",
+  "next_suggestion": "派生 H01 fix: 简化 autonomous-loop.sh L99-179 dead model-fallback 分支为单次 run_round $PRIMARY_MODEL。route-fix，复用 opt-engine-core worktree。",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "autonomous-studio/scripts/autonomous-loop.sh",
+      "line": 99,
+      "severity": "high",
+      "finding": "Model fallback logic is dead code (PRIMARY=FALLBACK=qwen3.7-max, threshold=9999) but still executes ~30 lines of branch logic per round. Worse: L142 subshell wraps entire loop body so GLM_FAIL_STREAK/STICKY_FALLBACK/PROBE_COUNTDOWN modifications never propagate to parent shell — sticky fallback would silently fail even if dual-model were restored.",
+      "remediation": "Option A (recommended): simplify to single run_round $PRIMARY_MODEL, delete sticky/probe branches, keep git history comment. Option B: externalize state to .claude/.model-state.json if dual-model restoration planned.",
+      "kind": "route-fix"
+    },
+    {
+      "file": "autonomous-studio/watchdog.sh",
+      "line": 57,
+      "severity": "high",
+      "finding": "pgrep -f 'claude.*${PROJECT_DIR}' matches any process whose command line contains the path string (grep itself, vim editing files under that path, other tools passing path as arg). Behavior varies across GNU procps / BusyBox / macOS. False positive → CLAUDE_PROCS > 0 → RESUME_FLAG not set → crashed claude never restarted.",
+      "remediation": "Use cwd anchoring: iterate pgrep -f '^claude ' pids, check readlink /proc/$pid/cwd equals PROJECT_DIR. Or have autonomous-loop.sh write PID to .claude/.loop.pid and watchdog checks that PID's existence + cwd.",
+      "kind": "route-fix"
+    },
+    {
+      "file": "autonomous-studio/scripts/distill-patterns.py",
+      "line": 28,
+      "severity": "medium",
+      "finding": "SUCCESS_OUTCOMES={'success','partial_success'} and FAILURE_OUTCOMES={'failure','user_rejected','aborted'} do not include case schema enum values (succeeded/failed/rolled_back/superseded). New cases writing 'succeeded' fall through to inferred branch → accuracy_basis always indeterminate → pattern accuracy computation broken for all post-schema-change cases.",
+      "remediation": "Add canonicalization map _CANONICAL={'succeeded':'success','failed':'failure','rolled_back':'failure','superseded':'indeterminate'} and apply before OUTCOME_ENUM check. Or expand SUCCESS/FAILURE sets to include both old and new enums.",
+      "kind": "route-fix"
+    },
+    {
+      "file": "autonomous-studio/scripts/index-cases.py",
+      "line": 84,
+      "severity": "medium",
+      "finding": "Bare 'except Exception: continue' swallows MemoryError/KeyboardInterrupt/SystemExit. distill-patterns.py already fixed this pattern (SCRIPTS-L04 at L38-46) but index-cases.py was missed. OOM or Ctrl-C during index build silently produces incomplete results.",
+      "remediation": "Narrow to (OSError, ValueError, TypeError, UnicodeDecodeError) matching distill-patterns.py pattern.",
+      "kind": "route-fix"
+    },
+    {
+      "file": "autonomous-studio/scripts/parallel-dispatch.sh",
+      "line": 54,
+      "severity": "medium",
+      "finding": "TASK_ID parsed via word-split on python output: 'for TASK_ID in $(echo ... | python3 ...)'. Task IDs containing spaces, newlines, or glob chars (*,?,[) cause incorrect splitting, filename expansion, or illegal branch names. parallel-plan.json is LLM-generated with no ID format enforcement.",
+      "remediation": "Python outputs NUL-delimited (print(t,end='\\0')) + bash 'while IFS= read -r -d \"\" TASK_ID'. Or validate ID against [a-zA-Z0-9_-] regex in python, exit 1 on violation.",
+      "kind": "route-fix"
+    },
+    {
+      "file": "autonomous-studio/scripts/route-health-scorer.py",
+      "line": 298,
+      "severity": "low",
+      "finding": "--json flag has action='store_true' + default=True, making the flag permanently True and meaningless. All callers expect JSON so functionally harmless but API is deceptive.",
+      "remediation": "Remove default=True (keep flag functional) or remove --json entirely (JSON as sole output format).",
+      "kind": "route-fix"
+    },
+    {
+      "file": "autonomous-studio/scripts/triage.py",
+      "line": 47,
+      "severity": "low",
+      "finding": "Bare 'except Exception: return None' same pattern as M02. Should narrow to (OSError, ValueError, TypeError, UnicodeDecodeError) for consistency with SCRIPTS-L04 discipline.",
+      "remediation": "Narrow exception types.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-04-016",
+  "audit_depth": "deep"
+}

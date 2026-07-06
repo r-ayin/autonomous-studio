@@ -1,0 +1,35 @@
+{
+  "case_id": "case-2026-07-05-137",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-05T00:15:00+08:00",
+  "project": "x-tool/api额度监测",
+  "work_unit": "派生 fix APIMON-SWALLOW-01：monitor.py 三处裸 except 静默吞错拆分 + save_config 返回值检查回滚",
+  "situation": "audit-2026-07-05-015 (x-tool/api额度监测 deep audit) cycle fix-in-progress，8 derived_fixes pending。本轮派生 APIMON-SWALLOW-01 (medium, route-fix, file=monitor.py)。该 finding 命中 autonomous-constraints「静默吞错」真 bug 例外（非自指 churn）。monitor.py 已被同 area 上一 commit 0691bb9 (KEYDISPLAY) 改过 → opt-worktree.sh cp-guard 会 skip，按 precedent case-118/120/124 走 direct-worktree-commit：直接在已有 worktree opt-api-monitor-1783256389 内编辑+commit，复用同 area route-fix worktree。",
+  "action": "在 worktree /home/admin/workspace/.opt-worktrees/x-tool/opt-api-monitor-1783256389 的 api额度监测/monitor.py 上落 4 处改动：(1) save_config line56 except: → except (OSError,TypeError,ValueError) as e + print stderr；(2) get_billing_info line68 except: 一律'连接错误' → 拆 requests.exceptions.Timeout/ConnectionError/RequestException 三分支 + 200 体内 json.JSONDecodeError 单独报'响应解析失败' + 非200 拆 401/403='无效 Key' / >=500='服务异常 N' / 其余='HTTP N'；(3) parser.parse line187 except: pass → except (ValueError,TypeError,OverflowError) as e + print stderr，保留 fallback '-' 显示；(4) del 分支 line276 + add 分支 line292 检查 save_config 返回值，失败时 keys.insert/keys.pop 回滚内存改动 +'保存失败：磁盘/权限？' 提示。python3 -m py_compile 通过，grep 'except:' 0 命中（NO_BARE_EXCEPTS_LEFT）。git commit e410417 stacked on 0691bb9。git push origin 403（external fork ghp-ro.alibaba-inc.com/github.com/r-ayin/x-tool.git，同全 x-tool audit precedent audit-005/006/007/008/010/011/015），worktree+branch+4-commit stack 完整保留 disk+local-ref 待人工 merge。",
+  "files_changed": ["api额度监测/monitor.py"],
+  "worktree": "opt-api-monitor-1783256389 (branch auto/opt-api-monitor-1783256389, base=85bd9e1=master, 4-commit stack 3ed7fb7+2030a4a+0691bb9+e410417, FF-clean, disk+local-ref 保留待人工 merge)",
+  "direction": "route-fix (复用同 area worktree, direct-worktree-commit precedent case-118/120/124)",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "python3 -m py_compile api额度监测/monitor.py → SYNTAX_OK",
+    "grep -n 'except:' api额度监测/monitor.py → 0 命中 (NO_BARE_EXCEPTS_LEFT)，三处裸 except 全部替换为具名异常",
+    "git log --oneline -1 → e410417 fix(api-monitor): APIMON-SWALLOW-01 ... (stacked on 0691bb9 KEYDISPLAY)",
+    "git log --oneline origin/master..HEAD → 4 commits (3ed7fb7+2030a4a+0691bb9+e410417) 全 FF-clean over master 85bd9e1，无分叉",
+    "git push origin auto/opt-api-monitor-1783256389 → 403 'git push is not allowed' (external fork, 同 x-tool precedent, 非 fix 失败)",
+    "diff stat: 1 file changed, 36 insertions(+), 13 deletions(-)"
+  ],
+  "next_suggestion": "下轮派 APIMON-SSRF-01 (low, route-fix, monitor.py get_billing_info base_url 无 scheme/host 校验 → 加 urlparse https + host allowlist)。同 area 复用 opt-api-monitor-1783256389，monitor.py 已被 e410417 改 → 仍走 direct-worktree-commit。SSRF 派完 → RACE → KEYLEN。全 6 route-fix 派完后剩 2 structural (NOAUDITLOG/WINDOWS) 不派 fix 入 structural-debt。全 pending → cycle-complete → 下次全量审计 (候选未深审: xia 499 / personal-assistant re-audit / wechat-main re-audit)。注意：全 4 commit (含 SECRET/KEYDISPLAY/SWALLOW) push 403 待人工 merge to master，若 3 连续 wait 轮 0 merged → deadlock-archive precedent。",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "api额度监测/monitor.py",
+      "line": "56,68,187,276,292",
+      "severity": "medium",
+      "finding": "APIMON-SWALLOW-01: 三处裸 except (save_config:56 / get_billing_info:68 / parser.parse:187) 静默吞所有异常含 KeyboardInterrupt-tier 之外的系统错；save_config 返回值在 del/add 调用点 (276/292) 未检查 → 磁盘满/权限错时用户无反馈、内存与磁盘漂移、重启后 key 丢失误以为已保存。",
+      "remediation": "已修：三处 except 改具名异常 + stderr 输出；get_billing_info 拆 Timeout/ConnectionError/RequestException + HTTP code 分级；del/add 调用点检查 save_config 返回值失败回滚 keys list + '保存失败' 提示。提交 e410417 stacked on 0691bb9 (opt-api-monitor-1783256389)，push 403 外部 fork 待人工 merge。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-015",
+  "audit_depth": "deep"
+}

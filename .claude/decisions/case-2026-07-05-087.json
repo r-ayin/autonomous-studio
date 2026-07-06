@@ -1,0 +1,47 @@
+{
+  "case_id": "case-2026-07-05-087",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-05T15:10:00+08:00",
+  "project": "x-tool",
+  "work_unit": "pachong:wechat-push-hardening — PA-M-003 + PA-I-001 同文件聚合 route-fix: wechat_push.py chat_id shell 注入面 + Windows 临时脚本 symlink race",
+  "situation": "audit-2026-07-05-010 (x-tool pachong-master deep audit) 两 finding 同文件聚合派发 (audit 派生计划明示同文件应叠一个 worktree 一次改完)。PA-M-003 (priority 5, medium): pipeline/wechat_push.py:71 to=f\"weixin:{chat_id}\" 与 :87 parts=[..., to, _quote(body)] 中 to 未 _quote 即拼进 ' '.join → bash -c 命令串，chat_id 含 ;/$()/反引号即 shell 注入 (当前 chat_id 来自 config/CLI 低暴露，但无校验，未来动态目标即 RCE)。PA-I-001 (priority 9, info): wechat_push.py:45 Windows 分支 tempfile.gettempdir()/hermes_push.sh 固定名 → symlink race (攻击者预置 symlink 指向敏感文件，覆盖写)。两 finding 均真实安全/鲁棒性 bug，非自指 churn (pipeline 业务代码，非引擎机械文件)。",
+  "action": "PA-M-003 双层防御: (1) 入口 _CHAT_ID_RE=re.compile(r'^[A-Za-z0-9_-]+$')，_build_hermes_cmd 内 if chat_id 且 not _CHAT_ID_RE.fullmatch(chat_id) → raise ValueError 拒绝 (堵 ;/$()/反引号/空格/冒号等一切 shell 元字符)；(2) parts=[HERMES_PATH,'send','--to',_quote(to),_quote(body)] 把整个 to token 单引号包住 (defense-in-depth，即便校验被绕过 shell 也拿不到元字符)。PA-I-001: _wrap_shell_command 签名 list→tuple (返回 (args, sh_tmp|None))，Windows 分支改 tempfile.NamedTemporaryFile(mode='w',suffix='.sh',prefix='hermes_push_',delete=False) 随机名写脚本，linux 分支返回 (['bash','-c',command], None) 不落临时文件；_hermes_send retry 循环每轮 sh_tmp=None 入栈，try 内 shell_args,sh_tmp=_wrap_shell_command(cmd)，新增 finally 块 os.unlink(sh_tmp) (OSError 容忍) 清理随机名临时脚本。1 文件 route-fix，不触及 .claude/public-interfaces.txt → opt-worktree 判 route-fix 复用同 area worktree opt-pachong-1783229257 (第 4 commit 叠栈)。",
+  "files_changed": [
+    "x-tool/pachong-master/pipeline/wechat_push.py"
+  ],
+  "worktree": "opt-pachong-1783229257 (auto/opt-pachong-1783229257, base=953b7eb [x-tool master], stack: f112b45 PA-H-002 → cd04b73 PA-M-001 → 106a035 PA-M-002 → ee6446f PA-M-003+PA-I-001, 4-commit stack, disk 保留; origin push 403 x-tool fork 同 PA-H-002/PA-M-001/PA-M-002 先例)",
+  "direction": "route-fix (route-fix 复用 opt-pachong-1783229257，第 4 commit 叠栈)",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "python3 ast.parse wechat_push.py → syntax OK",
+    "PA-M-003 chat_id 校验 6 恶意用例全拒: 'a;rm -rf /'/'a$(id)'/'a`id`'/'weixin:1'/'a b'/'a;b' → 全 ValueError blocked ok；合法 'abc_123-XY' → '/root/.local/bin/hermes send --to \\'weixin:abc_123-XY\\' \\'hi\\'' (to 已 _quote)；空 chat_id → home channel '--to weixin'；空 body → '' (no-op)",
+    "PA-I-001 linux 分支: _wrap_shell_command('echo hi') → (['bash','-c','echo hi'], None)，tmp is None 断言通过 (linux 不落临时文件)；Windows 分支改 NamedTemporaryFile(suffix='.sh',prefix='hermes_push_',delete=False) 随机名",
+    "git -C <wt> log --oneline -5: ee6446f (PA-M-003+PA-I-001) stacked on 106a035 (PA-M-002) on cd04b73 (PA-M-001) on f112b45 (PA-H-002) on 953b7eb (master) — 4-commit 栈同 area 复用成功",
+    "git -C <wt> diff --stat HEAD~1..HEAD: wechat_push.py 1 file +38/-9 (imports +re/_CHAT_ID_RE，_wrap_shell_command tuple 化+NamedTemporaryFile，_build_hermes_cmd chat_id 校验+to _quote，_hermes_send sh_tmp+finally unlink)",
+    "main 工作区 wechat_push.py 已被 opt-worktree restore 回原状 (git status --short 空) — 改动仅存于 worktree 分支 auto/opt-pachong-1783229257，main 干净未污染"
+  ],
+  "next_suggestion": "下轮派 PA-L-001 (priority 6, low, parser/html_parser.py:28 raw_text=text[:30000] 未脱敏落库 → 投标人 PII 明文入库+web_admin notice_detail admin 可见，Fix: raw_text 落库前 PIIMasker.mask)。或 PA-L-002 (robots_checker 缓存无界 TTL)。当前 opt-pachong-1783229257 4-commit 栈 (PA-H-002+PA-M-001+PA-M-002+PA-M-003/PA-I-001) 待人工 merge to x-tool master；pending finding 剩 PA-L-001/PA-L-002/PA-L-003/PA-I-002 (PA-I-001 本轮已派)。全部派完+merge/reject 后 → cycle-complete → 下轮触发新全量审计。",
+  "audit_type": "security-review",
+  "audit_findings": [
+    {
+      "file": "x-tool/pachong-master/pipeline/wechat_push.py",
+      "line": 71,
+      "severity": "medium",
+      "finding": "PA-M-003: to=f\"weixin:{chat_id}\" 未 _quote 即拼进 bash -c 命令串 (parts=[...,to,_quote(body)] 后 ' '.join)，chat_id 含 ;/$()/反引号即 shell 注入 RCE。当前 chat_id 来自 config/CLI 低暴露但无校验，未来动态目标即 RCE。",
+      "remediation": "入口 _CHAT_ID_RE.fullmatch [A-Za-z0-9_-] 拒恶意 chat_id + to token _quote defense-in-depth (已实施 commit ee6446f)。",
+      "kind": "route-fix"
+    },
+    {
+      "file": "x-tool/pachong-master/pipeline/wechat_push.py",
+      "line": 45,
+      "severity": "info",
+      "finding": "PA-I-001: Windows 分支 tempfile.gettempdir()/hermes_push.sh 固定名 → symlink race (攻击者预置 symlink 指向敏感文件，_wrap_shell_command 覆盖写)。",
+      "remediation": "NamedTemporaryFile(suffix='.sh',prefix='hermes_push_',delete=False) 随机名 + _hermes_send finally os.unlink 用完清理 (已实施 commit ee6446f)。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-010",
+  "audit_depth": "deep",
+  "derived_fix_finding_id": "PA-M-003+PA-I-001",
+  "derived_fix_status": "pending (dispatched case-2026-07-05-087, awaiting human merge of opt-pachong-1783229257 HEAD=ee6446f 4-commit stack)"
+}

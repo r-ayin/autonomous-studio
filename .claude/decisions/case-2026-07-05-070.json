@@ -1,0 +1,26 @@
+{
+  "case_id": "case-2026-07-05-070",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-05T23:42:00+08:00",
+  "project": "x-tool",
+  "work_unit": "ota_workflow: OTA-M-005 meituan.py verify 阶段不校验 verify_result.ok — post-save 读脚本 ok=false 仍报 success=True → 失败改价报成功. Fix: verify 后显式校验 verify_result.get('ok'), false 即 raise RuntimeError 落入既有 except:105 标 FAILED.",
+  "situation": "audit-2026-07-05-008 derived fix #7 (priority 8, severity medium, kind=route-fix). platforms/meituan.py change_price 流程: 第 70 行 verify_result = self._run_change_price_script(page, task, mode='read') 拿到 post-save 校验结果, 但 71-104 行只读 verify_result.afterPrice/beforePrice 拼 ExecutionResult(success=True, ...), 从不校验 verify_result.get('ok'). 美团 DOM 脚本 (mode=read) 在价格未生效/DOM 结构变化/脚本异常时会返回 {ok:false, error:...}; 当前实现忽略 ok 字段, 只要 afterPrice 能 coerce 出数字 (甚至 None) 就返回 success=True. 后果: 改价实际失败 (美团后台仍是旧价/未保存) 但 ExecutionResult.success=True → orchestrator.confirm_task 把任务标 SUCCEEDED → 用户/告警误判改价成功, 错失人工补救窗口, 可能造成持续错误定价. 对照 apply 阶段 (第 58-59 行) 已正确校验 apply_result.ok 并 raise, verify 阶段是同一 bug 模式的遗漏. 与 OTA-M-003 (非原子写) 不同文件独立 commit; 与 OTA-L-001/L-004 同 area route-fix 可 stack.",
+  "action": "在 platforms/meituan.py 第 71 行 detail_payload['verify_result'] = verify_result 之后, 第 73 行 after_path = ... 之前, 插入 8 行: (1) 注释引用 OTA-M-005 说明为何必须校验 ok (post-save 读脚本 ok=false 时 afterPrice 可能仍是旧价或 stale 值, 不能作成功信号); (2) `if not verify_result.get('ok'):` raise RuntimeError(verify_result.get('error') or '改价后校验脚本返回 ok=false，价格可能未生效'). 该 raise 落入第 105 行既有的 except Exception as exc 块, 复用其 failed.png 截图 + execution-details.json + ExecutionResult(success=False, message=f'改价失败：{exc}') 路径, 无需新增 except 分支. detail_payload 已含 verify_result 全字段 (含 error), 失败现场可追溯. 单文件 9 行新增, route-fix → 复用 opt-ota_workflow-1783171357 worktree (stacked on 42c4a30 = OTA-M-003, 该 wt 已含 7 commit stack 0ca59a6→9424759→9bfff05→124853a→1ed036b→42c4a30).",
+  "files_changed": [
+    "/home/admin/workspace/x-tool/ota美团运营/ota_workflow/platforms/meituan.py"
+  ],
+  "worktree": "opt-ota_workflow-1783171357",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh (cwd=x-tool, PROJECT=.) reported '→ 复用同 area worktree (route-fix): opt-ota_workflow-1783171357' and '✓ 提交到 opt-ota_workflow-1783171357 方向=ota_workflow:m005-verify-ok'. git -C opt-ota_workflow-1783171357 log --oneline shows new HEAD 2b71b75 'opt(ota_workflow:m005-verify-ok): fix(meituan): OTA-M-005 校验 verify_result.ok...' stacked directly on 42c4a30 (OTA-M-003) on 1ed036b (OTA-M-002+OTA-L-002) on 124853a (OTA-M-001+OTA-L-003) on 9bfff05 (OTA-H-001c+M-004) on 9424759 (OTA-H-001b) on 0ca59a6 (OTA-H-001a). git show HEAD --stat: 'ota美团运营/ota_workflow/platforms/meituan.py | 9 +++++++++' (1 file changed, 9 insertions). python3 ast.parse on edited file: 'syntax OK'. Main checkout restored to pre-edit baseline by opt-worktree cp/restore (expected; fix lives on branch auto/opt-ota_workflow-1783171357 HEAD=2b71b75, pushed to origin automatically by cmd_commit).",
+  "next_suggestion": "下轮派生 OTA-L-001 (priority 9, hermes_runtime.py:13,39 DEFAULT_HERMES_ENV_PATH 硬编码 '\\\\wsl$\\Ubuntu\\root\\.hermes\\.env' 非 Ubuntu/non-root WSL 静默返 None → Hermes API key not found; fix: env HERMES_ENV_PATH 优先 + ~/.hermes/.env cross-platform 兜底). 同 area route-fix 复用 opt-ota_workflow-1783171357 stack (HEAD=2b71b75). 之后 OTA-L-004 (priority 12, storage.py:27 FileTaskStore.save 非原子 write_text → temp+os.replace, 同 OTA-M-003 模式). pending_count 3→2 后此轮. 全部 12 derived merged|rejected 后 audit-cycle-state.status→cycle-complete 触发下一轮全量审计 (全工作区项目均已审过一轮, 下轮将进入 re-audit 选最大未深审模块).",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-05-008",
+  "audit_depth": "shallow",
+  "_derived_fix_ids": ["OTA-M-005"],
+  "_derived_fix_status_transition": "OTA-M-005 pending → merged (dispatched to worktree stack commit 2b71b75)",
+  "_parent_audit_kind": "route-fix",
+  "_stacked_on_commit": "42c4a30",
+  "_new_head_commit": "2b71b75"
+}

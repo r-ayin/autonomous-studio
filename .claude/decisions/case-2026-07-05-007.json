@@ -1,0 +1,27 @@
+{
+  "case_id": "case-2026-07-05-007",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-05T05:10:00Z",
+  "project": "wechat-main",
+  "work_unit": "瞭望轮 (scout snapshot)：audit-2026-07-05-001 fix-in-progress 阶段，9/16 findings 已派生堆叠 5 commit on opt-wechat-main-1783130541 (pushed, awaiting human merge)；剩余 7 pending 全 cp-guard 受阻，本轮不派生、不提交，只做瞭望快照 + 状态回写",
+  "situation": "audit-cycle-state.status=fix-in-progress。step 0 读 derived_fixes：16 条全 status=pending（9 条已 _dispatched_at+pushed-awaiting-human-merge，7 条 fix_case_id=null 未派生）。审计 report audit-2026-07-05-001 将 WM-PIP-03 定位在 scripts/pipeline.py:348-354（非 audit-cycle-state._status_note 所称 cmd_tool.py），与 case-002 (WM-PIP-01, commit 4ba2fc6) 同文件 → cp-guard 受阻；逐条核对剩余 6 条 (WM-PIP-02=pipeline.py, WM-GATE-02=pipeline-gate.sh, WM-FC-02+WM-FC-03=fact_checker.py, WM-VER-03=verifier.py, WM-QQ-02=qq_push.py) 全部命中已 stacked 5 commit 触及的 7 文件集 {pipeline.py, pipeline-gate.sh, fact_checker.py, verifier.py, bocha_search.py, qq_push.py, mail_push.py}（git diff --name-only main..HEAD 实证）。即 _status_note 称 WM-PIP-03 未 stacked 可派是错记，实际 7/7 全受阻。opt-worktree.sh L599-615 state-only-commit guard 又拦 state-only 提交，故本轮无可派 fix 亦无可提 worktree。scout-scan 实测 wechat-main 待合并 worktree=1 (opt-wechat-main-1783130541, 5 ahead)。",
+  "action": "跑 bash scripts/scout-scan.py --workspace /home/admin/workspace 拿健康快照（轻量，未深读源码）。核对 opt 分支实际 stacked 状态：cd opt worktree, git log --oneline main..HEAD → 8 commit 对象，其中底 3 (7308e6b WC-H03 / f919482 WC-H05 / a4eee50 kb-reader-lock) 已 squash-merge 进 main (main HEAD c0534bd=kb-reader-lock squash, 836181d=WC-H05, 5887b5e=WC-H03)，顶 5 (4ba2fc6/1092685/3b77d0a/1924fc5/4c38669) 为 audit-2026-07-05-001 派生 fix 未合并。git diff --name-only main..HEAD 实证 5 commit 触及 7 文件，覆盖全部 7 个未派生 finding 的目标 file:line，cp-guard 7/7 受阻成立。不派 fix、不提 worktree、不触发 opt-worktree.sh（state-only guard 必拦）。回写 audit-cycle-state (_last_scout_*) + autonomous-state.md。",
+  "files_changed": [],
+  "worktree": null,
+  "direction": "none",
+  "outcome": "succeeded",
+  "outcome_evidence": "(1) scout-scan 文本报告已产出，wechat-main 段显示 待处理 worktree: 共1, 待合并=1（即 opt-wechat-main-1783130541，5 commit ahead of main，实证 git rev-list --left-right --count main...auto/opt-wechat-main-1783130541 = '3\\t8'，扣底 3 已 squash 对象得 5 待合并 commit）。(2) git log --oneline main..HEAD 列出 5 audit 派生 commit：4ba2fc6(WM-PIP-01)/1092685(WM-GATE-01+WM-FC-01+WM-VER-02)/3b77d0a(WM-VER-01)/1924fc5(WM-BOCHA-01+02)/4c38669(WM-QQ-01+WM-MAIL-01)，全部 pushed origin/auto/opt-wechat-main-1783130541。(3) git diff --name-only main..HEAD = {script-verifier/fact_checker.py, script-verifier/verifier.py, scripts/bocha_search.py, scripts/mail_push.py, scripts/pipeline-gate.sh, scripts/pipeline.py, scripts/qq_push.py}，7 个未派生 finding 的 target file 全在此集合内 → cp-guard 7/7 受阻实证。(4) 状态文件 audit-cycle-state.json + autonomous-state.md 已回写（本 case 落盘后同步更新）。",
+  "next_suggestion": [
+    "⚠ 优先人工 merge：cd /home/admin/workspace/wechat-main && bash ../autonomous-studio/scripts/opt-worktree.sh wechat-main merge opt-wechat-main-1783130541 — sanctioned squash 5 commit (4ba2fc6+1092685+3b77d0a+1924fc5+4c38669) 进 main，解锁 7 个 cp-guard 受阻 finding 的派生",
+    "人工 merge 后下轮：派生 WM-PIP-02 (pipeline.py _save 原子写 tmp+os.replace+fsync) + WM-PIP-03 (pipeline.py:348-354 dangerous token 过滤补全或删冗余并注释) 合并为单 case（同文件 pipeline.py，route-fix 复用 opt worktree）",
+    "再下轮：WM-GATE-02 (pipeline-gate.sh TOPIC glob 注入, 入口校验 [a-zA-Z0-9_-]) 单独 case",
+    "再下轮：WM-FC-02 (fact_checker:563 max(1,len) 改自然数) + WM-FC-03 (fact_checker:507 无实体返 False) 合并 case（同 fact_checker.py）",
+    "再下轮：WM-VER-03 (verifier:448 merge_retry_report 累积 attempts 传参或重命名) 单独 case",
+    "WM-QQ-02 (direction-shift, qq_push.py:35 _DEFAULT_ENV 跨项目 /opt/wanxia/.env 改本地 .wechat-env) — 人工 merge 后单独开新 worktree case（direction-shift 触发新 worktree）",
+    "若 3 轮瞭望后仍无人工 merge（即 case-007/008/009 连续 3 轮 blocked），按卡死保护触发 drift-repair：将 5 pushed commit 对应的 9 finding 标 status=rejected (_merge_state=drift-archive)，7 未派生 finding 同步 rejected，audit-cycle-state.status=cycle-complete 触发下一轮全量审计（选未深审项目，wechat-main 本次审过不再重审）"
+  ],
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": null,
+  "audit_depth": "shallow"
+}

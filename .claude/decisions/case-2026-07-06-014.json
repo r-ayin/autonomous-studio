@@ -1,0 +1,47 @@
+{
+  "case_id": "case-2026-07-06-014",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-06T09:00:00+08:00",
+  "project": "personal-assistant",
+  "work_unit": "全量深度审计 personal-assistant 未深审模块（proactive/recommend/speaker/wiki/cli/asr + android dev-server/api.js，~1034 LOC）",
+  "situation": "audit-cycle-state.status=cycle-complete（上轮 prod-deploy audit-2026-07-06-001 全 6 派生 fix 已 merged）→ 触发新全量审计。personal-assistant 后端核心已 4 度深审（07-01-006/07-02-008/07-03-009/07-05-002），但 proactive/recommend/speaker/wiki/cli/asr 这 5 个后端模块 + android 前端 dev-server/api.js 此前只在 07-05-002 被顺带读过、未产出针对性 finding。选这批未审模块做本轮 deep audit。",
+  "action": "Ultracode 开启 → 用 Workflow 编排 4 组 sonnet sub-agent 并行深读（每组 2 文件，proactive+recommend / speaker+wiki / cli+asr / android-devserver），每 finding 再经独立 adversarial verify agent 交叉核验（20 agents / 570k tokens / 96 tool uses / 243s）。main agent 同步精读全部 8 文件 + 查旧审 07-01-006/07-02-008/07-05-002 去重。产出 16 raw finding → 14 confirmed（2 rejected：proactive mark_memories 推测性 / speaker audio_path 非用户可控）。main agent 额外发现 cli.py:190 serve 0.0.0.0 但确认与 07-05-002 SD-PA-01 重复，剔除。最终 12 route-fix + 1 structural 入账。",
+  "files_changed": [],
+  "worktree": null,
+  "direction": null,
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "audit report written: .claude/audits/audit-2026-07-06-002.md（8 文件全文 + 13 finding + 去重表 + dispatch plan）",
+    "workflow task w3alud0z9 completed: total_raw=16 confirmed_count=14 rejected_count=2 unverified_count=0（adversarial verify 驳 2 条，质量过滤生效）",
+    "asr.py:186-202 死代码实测：grep -n 'def scan_once' asr.py → line 186 缩进 4 空格（query_habits 函数体内、line 184 return 之后），非 IngestionPipeline 类方法级（应 8 空格）→ PA-ASR-01 证据成立",
+    "case-2026-07-02-131 outcome_evidence 复核：仅 'ast.parse OK + opt-worktree commit succeeded + branch pushed'，无 bug-specific 验证（如 grep 缩进）→ 伪成功判定证据成立",
+    "audit-cycle-state.json 重置：current_audit_id=audit-2026-07-06-002, current_audit_status=fix-in-progress, derived_fixes 12 条全 pending",
+    "structural-debt.md 追加 SD-PA-WIKI-01（PA-WIKI-03 unbounded prompt，low，open）",
+    "去重校验：cli.py serve 0.0.0.0 在 07-05-002 PA-API-01/SD-PA-01 已报（structural），本轮不重复派生；verify.py bigram 弱点 07-01-006/07-05-002 已报，本轮 PA-WIKI-01 是 wiki._body_grounded 同族不同函数非重复"
+  ],
+  "next_suggestion": [
+    "P1 派生 PA-ASR-01（HIGH，asr.py 死代码 dedent + fix-case outcome_evidence 加 grep 缩进验证）——最高优先，含审计闭环诚信修复",
+    "P2 派生 PA-WIKI-01（MED，wiki._body_grounded 改覆盖率阈值）",
+    "P2 派生 PA-REC-01（MED，recommend.grounded 过滤空规范标题）",
+    "P2 派生 PA-ASR-02/PA-ASR-03（MED，asr DuckDB 双泄漏 try/finally，可合并为同 worktree 一案）",
+    "P2 派生 PA-AND-01（MED，android/api.js header 解构合并）"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {"file":"personal_assistant/asr.py","line":"186-202","severity":"high","finding":"scan_once/run_loop 死代码仍嵌在 query_habits 内（return 之后、缩进 4 空格属函数级），IngestionPipeline.scan_once 不存在；prior fix case-2026-07-02-131 声称 succeeded 但 outcome_evidence 仅 ast.parse+commit、未验证 bug 消除 → 伪成功回归","remediation":"dedent 186-202 一级成 IngestionPipeline 方法；fix-case outcome_evidence 必须含 grep 缩进验证","kind":"route-fix"},
+    {"file":"personal_assistant/wiki.py","line":"27-35","severity":"medium","finding":"_body_grounded 首个 bigram 命中即 return True，中文通用 bigram 几乎必然命中 → 反幻觉形同虚设；docstring 声称验'全部'源实则'任一' bigram","remediation":"改覆盖率阈值 ≥50% 或 ≥min(N,len/2) 不重叠命中","kind":"route-fix"},
+    {"file":"personal_assistant/recommend.py","line":"62,94-95","severity":"medium","finding":"grounded 在搜索结果 title 全空时 res_titles=['',...] truthy，t in item（空串 in 任意串）恒 True → 放行任意 LLM 幻觉 item","remediation":"res_titles 过滤空规范标题 [t for t in ... if t]","kind":"route-fix"},
+    {"file":"personal_assistant/asr.py","line":"152-159","severity":"medium","finding":"_analytics DuckDB 连接无 try/finally，analytics_init/INSERT 抛则 con.close 跳过；调用方静默吞 → 文件锁泄漏无声","remediation":"with duckdb.connect(...) as con 或 try/finally","kind":"route-fix"},
+    {"file":"personal_assistant/asr.py","line":"175-183","severity":"medium","finding":"query_habits 第二个读写 DuckDB 连接无 try/finally，同 PA-ASR-02 形","remediation":"try/finally 或 with","kind":"route-fix"},
+    {"file":"android/api.js","line":"7-10","severity":"medium","finding":"fetch headers {Content-Type,...opts.headers} 被 ...opts 后续覆写 → 默认 Content-Type 丢；未来加 Authorization 的 caller 会 415","remediation":"const {headers:custom,...rest}=opts; fetch(url,{headers:{'Content-Type':...,...custom},...rest})","kind":"route-fix"},
+    {"file":"personal_assistant/wiki.py","line":"38-45","severity":"low","finding":"_find_existing t in et or et in t 子串过松，短标题'学习'命中'机器学习'→ line 94 覆写旧页 body 静默毁数据","remediation":"子串匹配要求短串 ≥ 长串 60-70%，或精确匹配+显式 page id","kind":"route-fix"},
+    {"file":"personal_assistant/proactive.py","line":"72-80","severity":"low","finding":"_topic_pattern 桶入 triggers 后 dedup 不复查 ≥3 阈值，被 _classify 先取走 1 条后剩 2 条仍触发，上下文残缺","remediation":"dedup 后 len(mems)<3 skip，或 _topic_pattern 输入排除已 classify 记忆","kind":"route-fix"},
+    {"file":"personal_assistant/recommend.py","line":"103-108","severity":"low","finding":"_share_token 任一 3 字子串命中即 True，CJK 通用三字组跨不相关标题误命中（fallback 路径，质量降）","remediation":"提至 4-5 字或要求共享 token 比例","kind":"route-fix"},
+    {"file":"android/dev-server.js","line":"100","severity":"low","finding":"/api/health 反代无条件 http.get，apiBase 可配 https:// → TLS 协议错被兜为 'upstream unreachable' 误导诊断","remediation":"按 upstreamUrl.protocol 选 http/https 模块，或启动校验 scheme","kind":"route-fix"},
+    {"file":"android/api.js","line":"4","severity":"low","finding":"API_BASE 硬编码 port===3015，dev-server 可配端口，非 3015 启动则 API_BASE='' 走静态 404","remediation":"用注入标记或始终 /api 前缀让 prod 也反代","kind":"route-fix"},
+    {"file":"personal_assistant/speaker.py","line":"62,81-88","severity":"info","finding":"self._embed = ... if False else None 死赋值；_identify 只 regex 我是X、从不读 _embed/查注册表 → docstring 承诺的 embedding 注册表匹配从未实现","remediation":"移除死赋值+诚实修 docstring（route-fix），或实现 embedding 匹配（structural）","kind":"route-fix"},
+    {"file":"personal_assistant/wiki.py","line":"49-72","severity":"low","finding":"build 无界拼 prompt（全部新记忆+全部页+全部源 content），超 context window 静默截断/错/成本","remediation":"分批 chunk+按相似选相关页（structural，入 SD-PA-WIKI-01）","kind":"structural"}
+  ],
+  "audit_id": "audit-2026-07-06-002",
+  "audit_depth": "deep"
+}

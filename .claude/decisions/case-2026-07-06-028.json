@@ -1,0 +1,30 @@
+{
+  "case_id": "case-2026-07-06-028",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-06T16:45:00+08:00",
+  "project": "x-tool/xia",
+  "work_unit": "shanxia-chat-message-sanitize (XIA-CHAT-03)",
+  "situation": "audit-2026-07-06-003 derived fix dispatch #2. XIA-CHAT-03 MED: chat-worker.js:130-131 only validated Array.isArray(body.messages), then used msgs directly at :135 (lastUser D1 write) and :144 (apiMsgs = [system, ...msgs.slice(-10)] sent to DeepSeek). A client fully controls the messages array → can inject role:'system' to override SYSTEM_PROMPT (prompt injection) or send 10×100KB payloads to drain the DeepSeek budget (max_tokens:500 caps output but not input). _status_note explicitly scheduled this as next dispatch: '下轮派 XIA-CHAT-03 (messages role/content 校验, 1 文件 chat-worker.js) 可复用本 wt (同 area xia)'.",
+  "action": "After the Array.isArray + non-empty check, added a cleanMsgs filter: keep only messages where m is object, role ∈ {user,assistant}, typeof content === 'string', content.length <= 2000. Empty-after-filter → 400 (same 'messages required'). Replaced downstream [...msgs].reverse().find(...) → [...cleanMsgs].reverse() and [...msgs.slice(-10)] → [...cleanMsgs.slice(-10)] so both the D1 user-message write and the DeepSeek apiMsgs consume only sanitized turns. Added comment citing XIA-CHAT-03 + the injection/budget-drain rationale.",
+  "files_changed": [
+    "xia/山夏/chat-worker.js"
+  ],
+  "worktree": "opt-xia-1783280481",
+  "direction": "xia:chat-sanitize",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit b060cb4c12abd5df712f8530a0771487b11f2be8 on auto/opt-xia-1783280481, stacked directly on b8e89ed (XIA-CHAT-01+02), base=85bd9e1=master HEAD, git merge-base --is-ancestor master auto/opt-xia-1783280481 → FF-CLEAN (master is ancestor, 2-commit stack ahead). 1 file changed (+15/-2). node --check xia/山夏/chat-worker.js → SYNTAX_OK. origin push 403 (x-tool = external fork r-ayin/x-tool.git, no creds — same as all prior x-tool audits); branch is local-only, NOT on origin. NOTE: this corrects case-027's inaccurate 'pushed origin' claim — origin/auto/opt-xia-1783280481 is unknown revision on origin (verified git log origin/auto/opt-xia-1783280481 → fatal: unknown revision). wt + 2-commit stack preserved on local disk for deferred human merge to master (FF-clean, same as audit-005/006/007/008/010/011 precedent for x-tool external-fork push-403).",
+  "next_suggestion": "派生 XIA-CHAT-04 (MED, D1 assistant write fire-and-forget .catch(()=>{}) at chat-worker.js:163-166 → ctx.waitUntil(Promise.all([...]).catch(e=>console.error(...))), 1 文件, 复用本 wt opt-xia-1783280481 同 area xia). 然后 XIA-CHAT-05 (LOW, 删 url.searchParams.get('token') 分支, 1 行) / XIA-CHAT-06 (LOW, ctEq 常量时间比较, 1 文件) / XIA-CHAT-07 (LOW, admin GET 加 checkRateLimit, 1-2 行) — 05/06/07 同文件可继续 stack 本 wt。全 4 pending 派完后 status→cycle-complete 触发下一轮全量审计。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "xia/山夏/chat-worker.js",
+      "line": 130,
+      "severity": "medium",
+      "finding": "XIA-CHAT-03: body.messages only Array.isArray-checked; client can inject role:'system' to override SYSTEM_PROMPT (prompt injection) or send 10×100KB payloads to drain DeepSeek input budget.",
+      "remediation": "Filter to role∈{user,assistant} + typeof content==='string' + length<=2000, slice(-10); use cleanMsgs for both D1 user-message write and DeepSeek apiMsgs.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-003",
+  "audit_depth": "shallow"
+}

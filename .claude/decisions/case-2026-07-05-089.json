@@ -1,0 +1,43 @@
+{
+  "case_id": "case-2026-07-05-089",
+  "agent_id": "ralph-wiggum-autonomous-studio",
+  "timestamp": "2026-07-05T16:15:00+08:00",
+  "project": "x-tool",
+  "work_unit": "PA-L-002 robots_checker _cache 加 24h TTL + 时间戳元组（派生自 audit-2026-07-05-010 finding PA-L-002）",
+  "situation": "audit-2026-07-05-010 (x-tool/pachong-master deep audit) finding PA-L-002: crawler/robots_checker.py:12,30 RobotsChecker._cache: dict[str, RobotFileParser] 无界无 TTL。crawl_scheduler 长跑进程下，每抓一个新域即往 _cache 塞一条 RobotFileParser 永不淘汰 → 内存单调增长；且 robots.txt 变更（站点新增 Disallow 规则）后旧解析结果不刷新，引擎持续用过期规则判定 can_fetch，可能误抓被禁路径。两处入口受影响：async can_fetch_async (line 30) 与 sync can_fetch (line 42)。severity=low，kind=route-fix，单文件最小单位。本 finding 在 audit-cycle-state.derived_fixes 里 fix_case_id=null（未派发），本轮派生。",
+  "action": "单文件 fix (crawler/robots_checker.py)：(1) import time；(2) _cache 类型 dict[str, RobotFileParser] → dict[str, tuple[float, RobotFileParser]]，值为 (fetch_epoch, rp)；(3) 模块级 _CACHE_TTL_SECONDS = 24*60*60；(4) 抽 _is_expired(robots_url) helper（None 或 time.time()-fetched_at > TTL）复用两条路径；(5) can_fetch_async line 30 与 can_fetch line 42 的 `if robots_url not in self._cache` 改为 `if self._is_expired(robots_url)`，写入时存 (time.time(), rp)；(6) 读取改 `self._cache[robots_url][1].can_fetch(...)`；(7) clear_cache 不变（dict.clear 对 tuple 值同样有效)。不引入 cachetools 新依赖，纯 stdlib time。无行为破坏：首次访问仍 fetch+cache，过期前与原逻辑等价，仅过期后才 refetch。",
+  "files_changed": [
+    "x-tool/pachong-master/crawler/robots_checker.py"
+  ],
+  "worktree": "opt-pachong-1783229257 (auto/opt-pachong-1783229257, 7-commit stack: 953b7eb master → f112b45 PA-H-002 → cd04b73 PA-M-001 → 106a035 PA-M-002 → ee6446f PA-M-003+PA-I-001 → 5f1739d PA-L-001 → 803d4e9 PA-L-002 [新], disk 保留; robots_checker.py 不在 public-interfaces.txt → route-fix 复用同 area worktree, opt-worktree direction_kind 判定 route-fix 一致; origin push 403 x-tool fork 同 PA-H-002..PA-L-001 先例)",
+  "direction": "pachong:robots-cache-ttl (route-fix, 复用 opt-pachong-1783229257)",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "opt-worktree.sh commit 输出: '✓ 提交到 opt-pachong-1783229257  方向=pachong:robots-cache-ttl'",
+    "git log opt-pachong-1783229257 HEAD=803d4e9 'opt(pachong:robots-cache-ttl): fix(crawler): PA-L-002 robots_checker _cache 加 24h TTL...' 堆叠在 5f1739d(PA-L-001)/ee6446f(PA-M-003+I-001)/106a035(PA-M-002)/cd04b73(PA-M-001)/f112b45(PA-H-002)/953b7eb(master) 之上 = 7-commit stack",
+    "git show --stat HEAD: pachong-master/crawler/robots_checker.py | 26 +++++++++++++++++++------- (1 file changed, 19 insertions, 7 deletions) — 仅触及声明文件，无 scope 蔓延",
+    "python3 ast.parse 语法 OK",
+    "功能验证 (importlib 直载 crawler.robots_checker, structlog 桩): _CACHE_TTL_SECONDS==86400 PASS; _cache 类型 dict 空 {} PASS; fresh entry (time.time()) _is_expired=False PASS; stale entry (time.time()-86401) _is_expired=True PASS; can_fetch /private (Disallow) 返回 False PASS; clear_cache() 清空 PASS — TTL 过期逻辑与缓存读写均符合预期，无回归",
+    "main x-tool checkout 语法/状态: opt-worktree cp 后 git status pachong-master/crawler/robots_checker.py 干净（脚本已恢复 main，无残留 dirt）"
+  ],
+  "next_suggestion": "下轮派 PA-L-003 (priority 8, low, crawler/browser_crawler.py:57 CHROMIUM_STEALTH_ARGS 含 --disable-web-security + --no-sandbox 抓 untrusted 公告页 → 同源策略关闭下恶意页跨域/探内网；Fix: 删 --disable-web-security，--no-sandbox 仅容器内保留并注释)。再下轮 PA-I-002 (info, web_admin/app.py:207 notice_detail SELECT n.* → 显式列名)。全 10 derived fix 派完且 merged|rejected 后 audit-cycle-state.status=cycle-complete → 下轮触发新全量审计。当前 _awaiting_merge_count=7（PA-H-002/PA-M-001/PA-M-002/PA-M-003+I-001/PA-L-001/PA-L-002 stacked opt-pachong-1783229257 全 0 merged, x-tool fork origin push 403）须人工 merge to master；3 连续 wait 轮后 deadlock-archive 同 audit-005/006/007 precedent。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "x-tool/pachong-master/crawler/robots_checker.py",
+      "line": 12,
+      "severity": "low",
+      "finding": "PA-L-002: RobotsChecker._cache: dict[str, RobotFileParser] 无界无 TTL（line 12 声明 + line 30/42 两处 `if robots_url not in self._cache` 永真保留）。crawl_scheduler 长跑进程下每抓新域塞一条永不淘汰 → 内存单调增长；robots.txt 变更后旧解析结果不刷新 → 持续用过期规则判定 can_fetch，可能误抓被禁路径。",
+      "remediation": "_cache 改 dict[str, tuple[float, RobotFileParser]] + 模块级 _CACHE_TTL_SECONDS=86400 + _is_expired helper；can_fetch_async/can_fetch 改判 _is_expired，写入存 (time.time(), rp)，读取取 [1]。不引入 cachetools 新依赖。本 case 已实施此 remediation。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-010",
+  "audit_depth": "shallow",
+  "_derived_fix_sync": {
+    "finding_id": "PA-L-002",
+    "fix_case_id": "case-2026-07-05-089",
+    "status": "pending",
+    "note": "已派生 route-fix case-089 到 opt-pachong-1783229257 (HEAD=803d4e9 stacked on 5f1739d PA-L-001)，status 仍 pending 待人工 merge to master；audit-cycle-state.json derived_fixes[PA-L-002] 同步 fix_case_id=case-2026-07-05-089 + _dispatched_at + _dispatch_worktree + status pending(未 merge)。pending_count 9→9 (派生不降 pending，merge/reject 才降)。_awaiting_merge_count 6→7。"
+  }
+}

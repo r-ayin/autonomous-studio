@@ -1,0 +1,36 @@
+{
+  "case_id": "case-2026-07-06-022",
+  "agent_id": "ralph-wiggum-autonomous-engine",
+  "timestamp": "2026-07-06T12:00:00+08:00",
+  "project": "personal-assistant",
+  "work_unit": "recommend.py _share_token 3字子串过松致跨不相关 CJK 标题误命中 (PA-REC-02 LOW route-fix)",
+  "situation": "audit-2026-07-06-002 personal-assistant 未深审模块 deep audit 派生 fix 第 9 条（pending 序首）。PA-REC-02: recommend.py _share_token 任一 3 字子串命中即 True，_norm 只去标点空白留全部 CJK → 通用三字组（中国人/大学生）跨不相关标题误命中放行本不该落地的 item。属 fallback（主检查 item in t / t in item 全包含），且 based_on 须独立过，故仅降质量非破安全。audit-cycle-state.status=fix-in-progress，4 pending (PA-REC-02/PA-DEV-01/PA-AND-02/PA-SPK-01)，本轮派 PA-REC-02。",
+  "action": "改 _share_token: (1) 短串<4 字直接 return False 回退主检查（短串无 4 字子串）；(2) 4 字滑动窗 starts=len(short)-3，统计命中数 hits；(3) 阈值 hits>=max(1, int(starts*0.3)) 兼顾单点命中容忍与覆盖率。docstring 同步说明旧版 3 字过松 + PA-REC-02 出处。堆叠现有 opt-recommend-1783275547 worktree（PA-REC-01 c79641c 已 dispatched 未合并 main 致 wt 分叉）→ opt-worktree.sh cp-guard 跳过 → 走 case-104 直编 wt+wt 内 commit 通道。",
+  "files_changed": ["personal_assistant/recommend.py"],
+  "worktree": "opt-recommend-1783275547",
+  "direction": "recommend:pa-rec-02-share-token-4gram",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "git commit ab0bf70 on auto/opt-recommend-1783275547 (stacked on c79641c PA-REC-01, FF-clean base=580c4aa)",
+    "git push origin auto/opt-recommend-1783275547: c79641c..ab0bf70 (origin updated, remote 200)",
+    "py_compile OK (ast.parse recommend.py)",
+    "behavior: unrelated '中国大学生活' vs '美国研究生留学' 修前 True(大学生 3-gram 误命中)→修后 False [PA-REC-02 bug-specific 验证]",
+    "behavior: real shared '机器学习入门' vs '机器学习实战指南' 仍 True [无退化]",
+    "behavior: LLM 精简 '机器学习' vs '机器学习入门指南' 仍 True [容忍精简标题能力保留]",
+    "behavior: short<4 (a='中国人') return False 回退主检查 [边界正确]"
+  ],
+  "next_suggestion": "派生 PA-DEV-01 (android/dev-server.js:100 http.get 不支持 https 上游，LOW route-fix) — 独立文件新 wt 或复用 pa-android area；剩余 pending: PA-DEV-01/PA-AND-02/PA-SPK-01。全 4 pending 派完后 audit-2026-07-06-002 cycle-complete 触发下轮全量审计。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "personal_assistant/recommend.py",
+      "line": "106-111",
+      "severity": "low",
+      "finding": "PA-REC-02: _share_token 任一 3 字子串命中即 True，通用 CJK 三字组（中国人/大学生）跨不相关标题误命中放行本不该落地的 item",
+      "remediation": "改 ≥4 字子串 + 30% 覆盖率门槛；短串<4 回退主检查。已实施 ab0bf70。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-002",
+  "audit_depth": "deep"
+}

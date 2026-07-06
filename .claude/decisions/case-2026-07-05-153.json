@@ -1,0 +1,54 @@
+{
+  "case_id": "case-2026-07-05-153",
+  "agent_id": "ralph-autonomous-engine",
+  "timestamp": "2026-07-06T04:35:00+08:00",
+  "project": "autonomous-studio (runner-exec)",
+  "work_unit": "RE-CMDI-01 派生 fix：runner-exec PowerShell 单引号 -Path 命令注入封堵（escapePSPath）",
+  "situation": "audit-cycle-state.status=fix-in-progress，audit-2026-07-05-017（runner-exec/scripts/ 深度审计）产出 7 个 pending route-fix finding。本轮派生最高 severity 的 RE-CMDI-01（high）：write-file.js / batch-write.js / push.js 将 windowsPath / f.path / f.winPath 直接插值进 PowerShell 单引号字符串 -Path '...'，而 escapePS() 只转义双引号 -Value 上下文元字符（` $ \" 换行），不转义单引号。PowerShell 单引号上下文唯一特殊字符是 ' 本身（转义=doubling），故任何含 ' 的路径破出单引号 → 在凭证-bearing Windows Runner 上任意 PowerShell 命令执行。输入源：write-file.js process.argv[2]（CLI 用户控制）、batch-write.js manifest JSON 的 f.path（无校验）、push.js winDir=argv[3] + 本地文件名（恶意本地文件名含 ' 即可注入远程 Runner）。runner-exec 不在 .claude/public-interfaces.txt → route-fix，复用同 security area worktree。",
+  "action": "新增 escapePSPath(p)=String(p).replace(/'/g, \"''\")（PS 标准单引号 doubling），应用到三个文件所有 -Path '...' / New-Item -Path '...' 插值点。write-file.js 新增 escapePSPath 并 export（module.exports 追加），batch-write.js 从 write-file import escapePSPath（与既有 escapePS 同 require 行），push.js 新增本地 escapePSPath 副本（与该文件既有本地 escapePS 副本风格一致，避免引入跨文件依赖）。PoC 验证：攻击路径 C:\\x';Remove-Item C:\\Users -Recurse -Force;Set-Content -Path ' 经 escapePSPath → C:\\x'';Remove-Item ...;Set-Content -Path ''，PS 读 '' 为字面量 ' 不破出单引号上下文。三文件 node --check 通过。用 opt-worktree.sh commit（绝对路径参数，遵 case-091 教训）提交到 opt-security-1783266296 worktree，已 push origin/auto/opt-security-1783266296。",
+  "files_changed": [
+    "runner-exec/scripts/write-file.js",
+    "runner-exec/scripts/batch-write.js",
+    "runner-exec/scripts/push.js"
+  ],
+  "worktree": "opt-security-1783266296 (branch auto/opt-security-1783266296, base=7102e75=main, HEAD=ff5cd06)",
+  "direction": "security:runner-exec-cmdi-path-escape (route-fix, direction_kind=route-fix — runner-exec 非 public-interfaces.txt 公共接口)",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "git -C opt-security-1783266296 rev-parse HEAD = ff5cd0626261074fa8cedcf8cd5475b56c917b8a",
+    "git show --stat ff5cd06: runner-exec/scripts/{write-file.js +15/-3, batch-write.js +6/-3, push.js +12/-2} — 3 files changed, 25 insertions, 8 deletions",
+    "node --check 三文件全部 ✓（语法通过）",
+    "escapePSPath PoC 闭合验证：攻击串 ' 经 doubling → ''，cmd 段数=9（奇数=单引号上下文平衡，无破出）",
+    "opt-worktree.sh 输出：✓ 提交到 opt-security-1783266296 + ✓ 已 push auto/opt-security-1783266296 → origin/auto/opt-security-1783266296（远端新建分支 + Code Review 链接返回）"
+  ],
+  "next_suggestion": "下轮继续派生 audit-017 pending findings。注意：write-file.js / batch-write.js / push.js 现已在 opt-security-1783266296 worktree 内含 RE-CMDI-01 改动（ahead of main），若下轮对同文件派生 RE-EXEC-01（output cap）/ RE-MANIFEST-01（manifest schema）/ RE-PATH-01（push.js symlink），opt-worktree cp-guard 会因 worktree 版本与 main HEAD 不同而跳过（case-104 场景）→ 走直编 opt-wt 版本 + wt 内 commit 通道（见 [[stack-on-diverged-wt-escape-hatch]]）。优先级建议：RE-EXEC-02+RE-EXEC-01 堆 exec.js+session.js（新文件，不撞 cp-guard，可正常 opt-worktree commit）；RE-SECRET-01+RE-CRED-01 堆 creds.js（同样新文件）。所有 7 finding 派生完毕后 audit-cycle-state.status→cycle-complete 触发下次全量审计。SD-RE-01（token in URL，structural）已入 structural-debt.md 不派 fix。",
+  "audit_type": "security-review",
+  "audit_findings": [
+    {
+      "file": "runner-exec/scripts/write-file.js",
+      "line": "27-28 (post-fix: escapePSPath applied)",
+      "severity": "high",
+      "finding": "RE-CMDI-01: windowsPath 插值进 PowerShell 单引号 -Path '...' 上下文，escapePS 不转义单引号 → 含 ' 的路径破出单引号致任意 PS 命令执行（凭证-bearing Windows Runner 上 RCE）",
+      "remediation": "新增 escapePSPath(p)=p.replace(/'/g,\"''\")，应用到 -Path '${parent}' 与 -Path '${windowsPath}'；export 供 batch-write 复用",
+      "kind": "route-fix"
+    },
+    {
+      "file": "runner-exec/scripts/batch-write.js",
+      "line": "27-29 (post-fix: escapePSPath applied)",
+      "severity": "high",
+      "finding": "RE-CMDI-01: f.path（来自 manifest JSON，无校验）插值进 -Path '...' 单引号上下文，同注入面",
+      "remediation": "从 write-file import escapePSPath，应用到 -Path '${parent}' 与 -Path '${f.path}'",
+      "kind": "route-fix"
+    },
+    {
+      "file": "runner-exec/scripts/push.js",
+      "line": "57-60 (post-fix: escapePSPath applied)",
+      "severity": "high",
+      "finding": "RE-CMDI-01: f.winPath（winDir=argv[3] + 本地文件名 rel）插值进 -Path '...' 单引号上下文；恶意本地文件名含 ' 即可注入远程 Runner",
+      "remediation": "新增本地 escapePSPath 副本（与 push.js 既有本地 escapePS 风格一致），应用到 -Path '${parent}' 与 -Path '${f.winPath}'",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-017",
+  "audit_depth": "shallow"
+}

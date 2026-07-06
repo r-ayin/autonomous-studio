@@ -1,0 +1,26 @@
+{
+  "case_id": "case-2026-07-05-067",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-05T23:10:00+08:00",
+  "project": "x-tool",
+  "work_unit": "ota_workflow: OTA-M-001 hermes_discord_bot token env-only + OTA-L-003 TaskActionView button broad-except guard (stacked, same file)",
+  "situation": "audit-2026-07-05-008 derived fix #4 (priority 4, severity medium, kind=route-fix) + #11 (priority 11, severity low, kind=route-fix), same file interfaces/hermes_discord_bot.py → stacked in one commit. OTA-M-001: run_bot (hermes_discord_bot.py:664) still `token = os.getenv(token_env_var) or discord_config.get('token')` — the M11 fix only patched discord_bot.py (line 146 env-only) but left the hermes cron-bridge with a config/app.json fallback, so a checked-in config file could supply the Discord bot token (secret in VCS). OTA-L-003 (audit note '与 OTA-M-001 同文件可 stack'): TaskActionView buttons confirm/cancel/status (lines 388/404/418) only caught `requests.RequestException`; a `response.json()` ValueError or a RuntimeError from `_send_followup_with_retry` (raised after 3 failed followup attempts) bare-escaped the async handler → Discord 'interaction failed' with no clean user-facing message.",
+  "action": "1) OTA-M-001: replaced `token = os.getenv(token_env_var) or discord_config.get('token')` with env-only `token = os.getenv(token_env_var)` and rewrote the RuntimeError message to state config/app.json fallback is no longer supported (对齐 discord_bot.py:146). The `try/raise RuntimeError/finally lock.release()` skeleton preserved (lock still released on missing token). 2) OTA-L-003: in each of confirm/cancel/status, added a broad `except Exception as exc:` after the `requests.RequestException` branch that prints a labeled log line (`TaskActionView.<action> unexpected error task=<id>: <exc!r>`) and attempts a friendly followup ('...发生意外错误，请稍后重试或查看日志。'); the followup itself is wrapped in try/except to absorb a secondary RuntimeError from _send_followup_with_retry rather than bare-escape. Single-file change, route-fix → reused opt-ota_workflow-1783171357 worktree (stacked on 9bfff05 = OTA-H-001c+M-004).",
+  "files_changed": [
+    "/home/admin/workspace/x-tool/ota美团运营/ota_workflow/interfaces/hermes_discord_bot.py"
+  ],
+  "worktree": "opt-ota_workflow-1783171357",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh reported '→ 复用同 area worktree (route-fix): opt-ota_workflow-1783171357' and '✓ 提交到 opt-ota_workflow-1783171357 方向=ota_workflow:m001-hermes-token-env-only'. git -C opt-ota_workflow-1783171357 log --oneline shows new HEAD 124853a stacked directly on 9bfff05 (OTA-H-001c+M-004) on 9424759 (OTA-H-001b) on 0ca59a6 (OTA-H-001a). python3 -m py_compile hermes_discord_bot.py → 'SYNTAX_OK' (linter-clean). grep in worktree hermes_discord_bot.py confirms: line 664 area now `token = os.getenv(token_env_var)` (no `or discord_config.get('token')`), comment 'OTA-M-001: env-only token'; TaskActionView.confirm/cancel/status each carry `except Exception as exc:` block with 'OTA-L-003' comment anchor. discord_bot.py:146 unchanged (already env-only, the alignment target). Main checkout restored to pre-edit baseline by opt-worktree cp/restore (expected; fix lives on branch opt-ota_workflow-1783171357 HEAD=124853a, pushed to origin auto/opt-ota_workflow-1783171357).",
+  "next_suggestion": "下轮派生 OTA-M-002 (priority 5, monitor.py:510-513 恢复告警一次性 — recovered event 首次 mark 后永不清理, _should_send_event(repeat=False) 第二次 down→up 返 False 静默; fix: down 转换时 pop recovered event). 同 area route-fix, 复用 opt-ota_workflow-1783171357 stack (HEAD=124853a). OTA-L-002 同文件 (DiscordNotifier 部分发送重发) 可 stack. 之后 OTA-M-003 (monitor_state.py 非原子写, 同类 AE-NEW-001/004) / OTA-M-005 (meituan.py verify_result.ok 未校验) / OTA-L-001 (hermes_runtime.py 硬编码 .env 路径) / OTA-L-004 (storage.py 非原子写, 同类 OTA-M-003). pending_count 8→6 后此轮. 全部 12 derived merged|rejected 后 audit-cycle-state.status→cycle-complete 触发下一轮全量审计.",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-05-008",
+  "audit_depth": "shallow",
+  "_derived_fix_ids": ["OTA-M-001", "OTA-L-003"],
+  "_derived_fix_status_transition": "OTA-M-001 pending → merged; OTA-L-003 pending → merged (both dispatched to worktree stack commit 124853a)",
+  "_parent_audit_kind": "route-fix",
+  "_stacked_on_commit": "9bfff05",
+  "_new_head_commit": "124853a"
+}

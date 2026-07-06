@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-07-04-112",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-04T08:17:53Z",
+  "project": "autonomous-studio",
+  "work_unit": "devix-dingtalk-skill:mcp-request-id (M01 fix from audit-2026-07-04-013)",
+  "situation": "_mcp_call default request_id=1 caused every JSON-RPC call (initialize, tools/list, tools/call) to share the same id. Retries and multi-phase handshakes could mismatch responses on the server side; JSON-RPC spec requires unique ids per in-flight request.",
+  "action": "Add module-level itertools.count(1) generator (_REQUEST_ID_COUNTER). Change _mcp_call signature from request_id=1 to request_id=None with auto-increment via next(_REQUEST_ID_COUNTER); explicit id still allowed for test/replay. Single-file change, no public-interface touch → route-fix.",
+  "files_changed": [
+    "skills/devix-dingtalk-skill/scripts/_mcp_client.py"
+  ],
+  "worktree": "opt-devix-dingtalk-skill-1783153053",
+  "direction": "devix-dingtalk-skill:mcp-request-id",
+  "outcome": "succeeded",
+  "outcome_evidence": "python3 -c 'import ast; ast.parse(...)' returned syntax-ok; opt-worktree.sh committed and pushed to origin/auto/opt-devix-dingtalk-skill-1783153053 (new branch, track set). Diff isolated to single file, no main mutation.",
+  "next_suggestion": "Derive M02 fix next (devix-dingtalk-skill _save_config non-atomic write → tempfile+os.replace). After M02, continue with L01/L02/I01 in priority order.",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-04-013",
+  "audit_depth": "shallow"
+}

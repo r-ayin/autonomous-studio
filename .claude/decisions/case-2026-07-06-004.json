@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-06-004",
+  "agent_id": "ralph-autonomous-studio",
+  "timestamp": "2026-07-06T04:30:00+08:00",
+  "project": "autonomous-studio (runner-exec)",
+  "work_unit": "派生 fix: audit-2026-07-05-017 finding RE-CRED-01 — runner-exec/scripts/creds.js SERVER/WS_HOST 硬编码 127.0.0.1:58596 改 CLOUDCLI_API_BASE_URL env 覆盖",
+  "situation": "audit-cycle-state.status=fix-in-progress, audit-017 (autonomous-studio/runner-exec deep audit) 还有 2 个 pending route-fix: RE-CRED-01 (creds.js low) + RE-PATH-01 (push.js low)。本轮派生 RE-CRED-01。creds.js:7-8 原硬编码 `const SERVER='http://127.0.0.1:58596'; const WS_HOST='ws://127.0.0.1:58596';`，部署到非默认端口/主机的 cloud-cli server 时无法配置，与 devix-automation-skill SKILL.md 已建立的 $CLOUDCLI_API_BASE_URL 约定 (commit 2560c9b) 不一致。runner-exec 非 .claude/public-interfaces.txt 公共接口 → route-fix 复用同 security area worktree opt-security-1783266296 (HEAD=f2a6d83, 已 stack 5 个 RE-* fix)。",
+  "action": "直编 opt-security-1783266296 worktree 的 runner-exec/scripts/creds.js（creds.js 已因 RE-SECRET-01 在 wt 分歧，按 [[opt-worktree-stack-diverged-escape-hatch]] memory 走 case-104 直编 wt+wt 内 git commit 通道，不走 opt-worktree.sh cp-guard）。改 const SERVER/WS_HOST 两行 → 引入 DEFAULT_API_BASE/API_BASE 常量：API_BASE=process.env.CLOUDCLI_API_BASE_URL||'http://127.0.0.1:58596'；SERVER=API_BASE.replace(/\\/+$/,'') 去尾斜杠避免拼路径双斜杠；WS_HOST=SERVER.replace(/^http/,'ws') 自动派生 ws://(http) 与 wss://(https)。模块导出 SERVER/WS_HOST 不变（向后兼容）。wt 内 git add+commit+push origin auto/opt-security-1783266296。node -e 验证 4 场景：默认无 env (SERVER=http://127.0.0.1:58596 / WS_HOST=ws://127.0.0.1:58596 ✓ 保持原行为)、CLOUDCLI_API_BASE_URL=https://10.0.0.5:9999/ (SERVER=https://10.0.0.5:9999 尾斜杠剥离 / WS_HOST=wss://10.0.0.5:9999 ✓)、getInternalSecret/getSessionToken/getRunnerID 仍为 function ✓。",
+  "files_changed": ["runner-exec/scripts/creds.js"],
+  "worktree": "opt-security-1783266296",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "wt 内 commit 570185879720124f35b586b13bfdee5af17aea12 (1 file changed, 6 insertions, 2 deletions) base=f2a6d83。git push origin f2a6d83..5701858 → auto/opt-security-1783266296 成功，远端返回 Code Review 链接 https://code.alibaba-inc.com/qunbu/autonomous-studio/codereview/new?from=main&to=auto/opt-security-1783266296。node -e 加载 creds.js 输出: 默认场景 SERVER=http://127.0.0.1:58596 WS_HOST=ws://127.0.0.1:58596; override 场景 CLOUDCLI_API_BASE_URL=https://10.0.0.5:9999/ → SERVER=https://10.0.0.5:9999 (尾斜杠剥离) WS_HOST=wss://10.0.0.5:9999 (http→ws 派生); typeof getInternalSecret/getSessionToken/getRunnerID=function function function。audit-cycle-state.json RE-CRED-01 status pending→merged, pending_count 2→1。",
+  "next_suggestion": "下轮派生 audit-017 最后一个 pending route-fix: RE-PATH-01 (push.js walkDir readFileSync 跟随 symlink 外泄 localDir 外文件, low)。复用 opt-security-1783266296 stack 在 5701858 之上。push.js 已因 RE-CMDI-01 在 wt 分歧 → 同样走 case-104 直编 wt+wt 内 commit 通道。RE-PATH-01 merge/reject 后 audit-017 cycle-complete → 下轮触发新全量审计 (挑未深度审过的项目)。另: opt-security-1783266296 已 stack 6 commit (ff5cd06→8be0bb6→5cff148→5bc02ab→f2a6d83→5701858) 全 pushed origin FF-clean 待人工 merge to main。",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-05-017",
+  "audit_depth": "shallow"
+}

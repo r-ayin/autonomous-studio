@@ -1,0 +1,44 @@
+{
+  "case_id": "case-2026-07-05-039",
+  "agent_id": "ralph-autonomous-studio",
+  "timestamp": "2026-07-05T22:45:00+08:00",
+  "project": "autonomous-engine",
+  "work_unit": "派生 fix (audit-2026-07-05-005 priority 2+3 同栈堆): save-checkpoint.py AE-H-002 (Path import 错位 + collect_recent_activity 读错路径/字段不匹配) + AE-NEW-001 (write_checkpoint 非原子写致 latest.json 残缺)",
+  "situation": "audit-cycle-state.status=fix-in-progress, derived_fixes 有 9 个 pending-dispatch。AE-H-001 上一轮已派生 (case-038, opt-hooks-1783203936 commit d801343 待 merge)。本轮按 priority 2 派生 AE-H-002，同文件 AE-NEW-001 (priority 3) 同栈堆到同一 hooks worktree。两 finding 均为真逻辑/数据损坏 bug，符合 2026-07-03 反 churn 例外条款。save-checkpoint.py 是 PreCompact/Stop/SessionEnd hook，崩溃恢复链路的核心：丢上下文或 latest.json 残缺都会让 resume 断裂。",
+  "action": "改单文件 .claude/hooks/save-checkpoint.py 三处: (1) 顶部 import 区加 tempfile + from pathlib import Path，删 main 块 L215 的 from pathlib import Path（AE-H-002a，修 NameError-on-import）；(2) collect_recent_activity 改读 PROJECT_DIR/.claude/decision-log.jsonl（原读 ~/.claude/audit/audit.jsonl 全局路径且字段 _event/_timestamp/prompt/context 不匹配 decision-observer 写入的 schema），按真实 schema session_id/type/prompt_preview/timestamp 抽 user/system 活动（AE-H-002b，修 recent_activity 恒 []）；(3) 新增 atomic_write_json(path, checkpoint) helper（tempfile.mkstemp in same dir + tmp_f.flush + os.fsync + os.replace，except 清理 tmp），write_checkpoint 的 checkpoint 文件写与 latest.json 写均改走 atomic_write_json，删原 open('w')+json.dump+shutil.copy2 非原子序列（AE-NEW-001，修崩溃中途 latest.json 残缺 JSON）。模式移植自同项目 incremental-save.py update_memory_timestamp。",
+  "files_changed": [".claude/hooks/save-checkpoint.py"],
+  "worktree": "opt-hooks-1783203936",
+  "direction": "hooks:save-checkpoint-activity-atomic",
+  "outcome": "succeeded",
+  "outcome_evidence": "1) python3 -m py_compile .claude/hooks/save-checkpoint.py → COMPILE_OK (无 NameError，Path import 生效)。2) CLAUDE_PROJECT_DIR=$(pwd) CLAUDE_SESSION_ID=961037da-ab25-461a-a873-e8eacdeae88c CLAUDE_HOOK_EVENT=Stop python3 .claude/hooks/save-checkpoint.py 运行后 python3 -c 'json.load(open(.claude/checkpoints/latest.json))' → latest.json 可解析（atomic_write_json 工作正常），recent_activity count=4 [主动引擎主动过几次？/详细讲讲/你做了这么多研究为什么不直接优化？/先修基础设施...]（原实现恒 []，AE-H-002b 修复确认）。3) ls .claude/checkpoints/.checkpoint-*.tmp → tmp_count=0（os.replace 成功，无 .tmp 残留）。4) opt-worktree.sh commit 复用同 area worktree opt-hooks-1783203936 (route-fix)，push 成功 d801343..677cdb8 HEAD -> auto/opt-hooks-1783203936，origin 已同步。",
+  "next_suggestion": "下轮继续派生 priority 4 = AE-M-001 (watchdog.sh L15 PROJECT_DIR=/mnt/e/x-tool 硬编码 WSL 挂载路径 → Linux 原生下看门狗 no-op；改 $(cd $(dirname $0)/../.. && pwd) 相对推断) + 同文件 priority 9 = AE-NEW-002 (watchdog.sh L86 stat 失败时 || echo 0 → MARKER_AGE 恒大 → rm -f 静默删有效 stale marker；改 stat_ts 变量+空判断) 同栈堆到新 opt-hooks-* worktree（同 .sh 文件）。注意 AE-M-001/AE-NEW-002 是 bash 文件，opt-worktree area 仍为 hooks 但文件不同 → 可能复用 opt-hooks-1783203936 或新 wt，由 opt-worktree 自动判定。AE-H-001 (case-038) + 本轮 AE-H-002/AE-NEW-001 (case-039) 均堆在 opt-hooks-1783203936 待人工 merge；若 3 轮瞭望后仍 0 merge → 触发 deadlock-archive reject (同 sunset-prediction/personal-assistant/wechat-main 模式)。",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": ".claude/hooks/save-checkpoint.py",
+      "line": "215 (原) → 顶部 import 区",
+      "severity": "medium",
+      "finding": "AE-H-002a: 'from pathlib import Path' 位于 if __name__=='__main__' 块 L215 内，但 find_task_files() L137 在模块顶层引用 Path → 模块被 import（非直接执行）时调用 find_task_files 抛 NameError；即便直接执行，main 块的 import 在 build_checkpoint() 之后才发生，若 find_task_files 被加入 build_checkpoint 也会炸。",
+      "remediation": "移到顶部 import 区，删 main 块内的重复 import。",
+      "kind": "route-fix"
+    },
+    {
+      "file": ".claude/hooks/save-checkpoint.py",
+      "line": "78-131",
+      "severity": "medium",
+      "finding": "AE-H-002b: collect_recent_activity() 读 ~/.claude/audit/audit.jsonl（全局 Claude 路径，autonomous-engine 不写此处），且按 _event/_timestamp/prompt/context 字段过滤——decision-observer.py 实际写 PROJECT_DIR/.claude/decision-log.jsonl，字段为 session_id/type/prompt_preview/timestamp。双重不匹配 → 永不命中 → recent_activity 恒 [] → checkpoint 丢失最近对话上下文 → SSH 断开 resume 后无法还原用户最近的指令与讨论。",
+      "remediation": "改读 PROJECT_DIR/.claude/decision-log.jsonl，按真实 schema (type=='user' → prompt_preview; type=='system' → prompt_preview) 抽取，过滤 session_id==SESSION_ID。",
+      "kind": "route-fix"
+    },
+    {
+      "file": ".claude/hooks/save-checkpoint.py",
+      "line": "182-194 (原)",
+      "severity": "medium",
+      "finding": "AE-NEW-001: write_checkpoint() 非原子写——open(filepath,'w') 截断 + json.dump + shutil.copy2(filepath, LATEST_LINK)。若进程在 json.dump 中途或 copy2 中途崩溃（SSH 断开/OOM/超时 kill），latest.json 留下截断的残缺 JSON。resume-checkpoint.py 下次 SessionStart 读 latest.json → json.JSONDecodeError → 冷启动协议断裂，无法恢复。Stop/SessionEnd hook 触发时机恰是高崩溃概率窗口。",
+      "remediation": "新增 atomic_write_json() helper：tempfile.mkstemp in same dir → json.dump → flush → os.fsync → os.replace（原子替换）。checkpoint 文件与 latest.json 均走该 helper。失败时清理 tmp，原文件保持完整。模式移植自同项目 incremental-save.py update_memory_timestamp L42-58。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-005",
+  "audit_depth": "deep"
+}

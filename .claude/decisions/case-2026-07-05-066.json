@@ -1,0 +1,26 @@
+{
+  "case_id": "case-2026-07-05-066",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-05T22:58:00+08:00",
+  "project": "x-tool",
+  "work_unit": "ota_workflow: OTA-H-001c orchestrator auto_confirm HIGH-risk guard + OTA-M-004 cancel_task execution_lock race fix (stacked, same file)",
+  "situation": "audit-2026-07-05-008 derived fix #3 (priority 3, severity high, kind=route-fix) + #7 (priority 7, severity medium, kind=route-fix), same file orchestrator.py → stacked in one commit. OTA-H-001c: execute_text/execute_structured (orchestrator.py:124/136) used `if auto_confirm or not record.risk.requires_confirmation: confirm_task()` — so auto_confirm=True bypassed requires_confirmation even when risk.level==HIGH (out-of-band price / blocked room type), enabling unauthorized real price changes via the now-token-protected API (OTA-H-001a) from a wildcard bind (OTA-H-001b). Closes the auto_confirm leg of the OTA-H-001 chain. OTA-M-004 (same file, audit note '与 OTA-H-001c 同文件可 stack'): cancel_task did NOT acquire execution_lock; during RUNNING, cancel set CANCELED but confirm_task:169's final save overwrote it back to SUCCEEDED → user saw 'canceled' yet price change completed. Merged OTA-M-006 (auto_confirm HIGH bypass) into this same fix per audit plan.",
+  "action": "1) Added RiskLevel to the .models import line. 2) In execute_text and execute_structured, after preview_*() builds the record+risk, added guard: `if auto_confirm and record.risk.level == RiskLevel.HIGH: raise ValueError(...)` — HIGH risk (越界价格/禁改房型) cannot be auto-confirmed, must go through manual confirm_task. Non-HIGH auto_confirm path unchanged. 3) Rewrote cancel_task to hold `with self.execution_lock:` (mutex with confirm_task) and to return the record unchanged when status==RUNNING (改价 may have already landed; caller polls for terminal state) instead of setting CANCELED — eliminates the race where confirm:169's final save overwrote CANCELED→SUCCEEDED. Single-file change, 1 file, route-fix → reused opt-ota_workflow-1783171357 worktree (stacked on 9424759 OTA-H-001b / 0ca59a6 OTA-H-001a).",
+  "files_changed": [
+    "/home/admin/workspace/x-tool/ota美团运营/ota_workflow/orchestrator.py"
+  ],
+  "worktree": "opt-ota_workflow-1783171357",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh reported '→ 复用同 area worktree (route-fix): opt-ota_workflow-1783171357' and '✓ 提交到 opt-ota_workflow-1783171357 方向=ota_workflow:h001c-autoconfirm-guard'. git -C opt-ota_workflow-1783171357 log --oneline shows new HEAD 9bfff05 stacked directly on 9424759 (OTA-H-001b) on 0ca59a6 (OTA-H-001a). git show 9bfff05 --stat: 'orchestrator.py | 30 +++++++++++++++++++++++-------  1 file changed, 23 insertions(+), 7 deletions(-)'. grep in worktree orchestrator.py confirms fix present: line 125 `if auto_confirm and record.risk.level == RiskLevel.HIGH:` (execute_text), line 142 same (execute_structured), line 156 `with self.execution_lock:` (cancel_task). python3 ast.parse orchestrator.py → 'syntax OK'; package import `from ota_workflow.orchestrator import AutomationService` succeeds, RiskLevel.HIGH + TaskStatus enums resolve (RECEIVED/WAITING_CONFIRMATION/RUNNING/SUCCEEDED/FAILED/CANCELED). opt-worktree cp-guard raised a benign '连带-revert 疑似' warning on `record.updated_at = now_utc()` — false positive from diff context-line match (the line is preserved inside the locked cancel_task body); verified intact at worktree line 169. Main checkout restored to pre-edit baseline by opt-worktree cp/restore (expected; fix lives on branch).",
+  "next_suggestion": "下轮派生 OTA-M-001 (priority 4, hermes_discord_bot.py:664 run_bot 仍 `os.getenv(token_env_var) or discord_config.get('token')` config fallback — M11 只补了 discord_bot.py 没补 hermes bridge; fix: 删 config fallback, 对齐 discord_bot.py env-only + RuntimeError+lock.release). 同 area route-fix, 复用 opt-ota_workflow-1783171357 stack (HEAD=9bfff05). OTA-L-003 同文件可 stack. 之后 OTA-M-002 (monitor.py 恢复告警一次性) / OTA-M-003 (monitor_state.py 非原子写, 同类 AE-NEW-001/004) / OTA-M-005 (meituan.py verify_result.ok 未校验) / OTA-L-001 (hermes_runtime.py 硬编码 .env 路径) / OTA-L-002 (monitor.py DiscordNotifier 部分发送重发, 同 monitor.py 可与 M-002 stack) / OTA-L-004 (storage.py 非原子写). pending_count 10→8 后此轮. 全部 12 derived merged|rejected 后 audit-cycle-state.status→cycle-complete 触发下一轮全量审计.",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-05-008",
+  "audit_depth": "shallow",
+  "_derived_fix_ids": ["OTA-H-001c", "OTA-M-004"],
+  "_derived_fix_status_transition": "OTA-H-001c pending → merged; OTA-M-004 pending → merged (both dispatched to worktree stack commit 9bfff05)",
+  "_parent_audit_kind": "route-fix",
+  "_stacked_on_commit": "9424759",
+  "_new_head_commit": "9bfff05"
+}

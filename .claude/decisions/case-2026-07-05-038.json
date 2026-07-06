@@ -1,0 +1,44 @@
+{
+  "case_id": "case-2026-07-05-038",
+  "agent_id": "ralph-wiggum-loop",
+  "timestamp": "2026-07-05T06:25:36+08:00",
+  "project": "autonomous-engine",
+  "work_unit": "派生 fix (audit-2026-07-05-005 priority 1) — AE-H-001: resume-checkpoint.py build_engine_firmware() 跨平台化 (去 E:/x-tool 硬编码 + wsl 命令条件分支)",
+  "situation": "audit-cycle-state.status=fix-in-progress, derived_fixes 10 pending (audit-2026-07-05-005 autonomous-engine 再审计挖出). 本轮 step 0 读 fix-in-progress + derived_fixes 有 pending → 派生 priority 1 = AE-H-001 (resume-checkpoint.py). 该 finding 4 天未修 (audit-2026-07-01-009 结转, 从未派发). build_engine_firmware() 返回普通字符串 (非 f-string), 内含硬编码 E:/x-tool/.claude/... 路径 (L121/124) + wsl -d Ubuntu 命令 (L135/146) + {PROJECT_DIR} 字面占位符未替换 (L151). 本 DevBox 是 Linux 原生 (sys.platform=linux), SessionStart 注入的固件路径不存在 + wsl 命令无效 → 冷启动协议断裂: 引擎每次会话启动注入的 '读 decision-log.jsonl' / '读 autonomous-state.md' / 'L6 watchdog 恢复' 指令全部指向死路径/无效命令. x-tool 姊妹项目 XT-H-001 已修 ba9d4f3 (2026-07-01), autonomous-engine 一直未同步. 单文件 route-fix, 不触 public-interfaces.txt → opt-worktree route-fix 复用 (新 area hooks, 开 opt-hooks-1783203936).",
+  "action": "1) 读 autonomous-constraints.md + audit-cycle-state.json 确认 fix-in-progress + priority 1 = AE-H-001. 2) 跑 scout-scan 拿快照 (autonomous-engine 排 #1 score=1.0 无 planning/). 3) 直读 resume-checkpoint.py 全文 (175 行) 核实 finding: L114 build_engine_firmware 返回普通字符串, L121/124 硬编码 E:/x-tool, L135/146 wsl -d Ubuntu, L151 {PROJECT_DIR} 字面量. 4) 查 x-tool 姊妹修复 ba9d4f3 — 完全同构 (同文件同函数同 bug), 直接镜像该 patch: 加 _platform_recovery_cmd() (win32→wsl, linux/mac→systemctl||service), build_engine_firmware 改 f-string, project_dir_fwd=PROJECT_DIR.replace(chr(92),'/'), E:/x-tool→{project_dir_fwd}, wsl→{recovery_cmd}, {session_id} 转义为 {{session_id}}, 'WSL watchdog'→'watchdog', {PROJECT_DIR}→{project_dir_fwd}. 5) python3 importlib 加载验证: firmware 渲染无 stray brace, E:/x-tool 字面量消失 (仅 win32 分支保留 wsl, 符合预期), {PROJECT_DIR} 字面量消失, {session_id} 字面量保留 (已转义), recovery_cmd=systemctl||service (linux). 6) opt-worktree.sh commit (cwd=autonomous-engine, 因 M-002 拒绝含 .. 的相对路径, 须在 project cwd 内调用): direction-shift 因 area engine→hooks 分歧自动开新 worktree opt-hooks-1783203936, cp 文件入 wt, commit d801343, push origin/auto/opt-hooks-1783203936. 7) main 还原 (opt-worktree 内置, my file 恢复 HEAD 干净).",
+  "files_changed": [
+    "/home/admin/workspace/autonomous-engine/.claude/hooks/resume-checkpoint.py (build_engine_firmware f-string 化 + 新增 _platform_recovery_cmd + 6 处路径/命令插值)"
+  ],
+  "worktree": "opt-hooks-1783203936 (branch auto/opt-hooks-1783203936, HEAD d801343, pushed origin)",
+  "direction": "hooks:resume-checkpoint-crossplat (route-fix, 新 area hooks 与 engine 分歧 → opt-worktree 自动开新 wt)",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "git -C autonomous-engine log --oneline -1 auto/opt-hooks-1783203936 → d801343 opt(hooks:resume-checkpoint-crossplat): fix(hooks): ... (AE-H-001) ...",
+    "git show d801343:.claude/hooks/resume-checkpoint.py | grep _platform_recovery_cmd → L112 def _platform_recovery_cmd() 命中",
+    "git show d801343:.claude/hooks/resume-checkpoint.py | grep 'systemctl start cron' → L117 return \"systemctl start cron 2>/dev/null || service cron start 2>/dev/null || true\" 命中 (linux 分支)",
+    "git show d801343:.claude/hooks/resume-checkpoint.py | grep project_dir_fwd → L125/134/137/164 命中 (f-string 插值, E:/x-tool 字面量已消除)",
+    "git show d801343:.claude/hooks/resume-checkpoint.py | grep 'E:/x-tool' → 仅 L115 win32 分支 'return \"wsl -d Ubuntu -- sudo service cron start\"' 上下文 (wsl 仅 win32 用, 符合跨平台设计; 固件正文 E:/x-tool 已全部消除)",
+    "python3 importlib 加载验证: build_engine_firmware() 渲染 → decision-log 路径=/home/admin/workspace/autonomous-engine/.claude/decision-log.jsonl (PROJECT_DIR 已插值); recovery_cmd=systemctl||service; {session_id} 字面量保留 (已转义); 无 Stray brace / NameError",
+    "opt-worktree push 输出: [new branch] HEAD -> auto/opt-hooks-1783203936 (origin 同步成功, codereview 链接已生成 https://code.alibaba-inc.com/xtool/autonomous-engine/codereview/new?from=master&to=auto/opt-hooks-1783203936)",
+    "main 工作区 resume-checkpoint.py 已还原 HEAD (opt-worktree 内置 main 还原步骤, my file 干净; 其余 decision-observer.py/incremental-save.py dirty 为前轮遗留非本轮)"
+  ],
+  "next_suggestion": [
+    "下轮 (仍 fix-in-progress): 派生 priority 2 = AE-H-002 (save-checkpoint.py: Path import 移顶 + collect_recent_activity 改读 PROJECT_DIR/.claude/decision-log.jsonl). 同文件还有 AE-NEW-001 (非原子写) → 同 worktree 栈堆 (save-checkpoint 两 finding 一个 worktree, 避免历史 16-worktree churn 积压). 走 opt-worktree route-fix (cwd=autonomous-engine 调用).",
+    "本 wt opt-hooks-1783203936 (AE-H-001) 待人工 merge — fast-forward 干净 (单文件单 commit, base=985aa36=main HEAD). 若 3 轮瞭望后仍无人 merge → deadlock-archive (reject) 归档, 与 sunset-prediction/personal-assistant/wechat-main 同模式.",
+    "剩余 9 pending: AE-H-002+AE-NEW-001 (save-checkpoint) / AE-M-001+AE-NEW-002 (watchdog) / AE-M-002+AE-NEW-003 (notify-phone) / AE-M-003+AE-NEW-004 (decision-observer) / AE-L-001 (protocol-check) — 按 priority 2..10 顺序派生, 同文件栈堆.",
+    "运维 todo (非引擎): autonomous-engine 缺 planning/ 目录 (scout #1 score=1.0 理由) — 非本轮范围, 仅记录."
+  ],
+  "audit_type": "none",
+  "audit_findings": [
+    {
+      "file": "/home/admin/workspace/autonomous-engine/.claude/hooks/resume-checkpoint.py",
+      "line": "112-126,134,137,146,151,164",
+      "severity": "high",
+      "finding": "AE-H-001 (派生自 audit-2026-07-05-005): build_engine_firmware() L114 返回普通字符串 (非 f-string), L121/124 硬编码 E:/x-tool/.claude/decision-log.jsonl + autonomous-state.md, L135/146 硬编码 wsl -d Ubuntu -- sudo service cron start, L151 {PROJECT_DIR}/.claude/watchdog.sh 字面占位符未替换. Linux 原生部署 (本 DevBox sys.platform=linux) 下: 注入路径不存在 + wsl 命令无效 → SessionStart 冷启动协议断裂 (引擎固件每次会话注入却指向死路径). 4 天未修 (audit-2026-07-01-009 结转). bug 证据: 直读 L121 `读 \\`E:/x-tool/.claude/decision-log.jsonl\\`` 字面量 + L151 `{PROJECT_DIR}/.claude/watchdog.sh` 在普通字符串内 {PROJECT_DIR} 不被替换.",
+      "remediation": "新增 _platform_recovery_cmd() (sys.platform=='win32'→wsl -d Ubuntu -- sudo service cron start; else→systemctl start cron 2>/dev/null || service cron start 2>/dev/null || true); build_engine_firmware 改 f-string; project_dir_fwd=PROJECT_DIR.replace(chr(92),'/'); E:/x-tool→{project_dir_fwd}; wsl→{recovery_cmd}; {session_id}→{{session_id}} 转义; {PROJECT_DIR}→{project_dir_fwd}. 镜像 x-tool ba9d4f3.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-005",
+  "audit_depth": "deep"
+}

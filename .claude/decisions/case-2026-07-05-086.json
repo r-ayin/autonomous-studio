@@ -1,0 +1,48 @@
+{
+  "case_id": "case-2026-07-05-086",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-05T14:50:00+08:00",
+  "project": "x-tool",
+  "work_unit": "pachong:pa-m-002-ssrf-safe-url — PA-M-002 route-fix: crawler HTTP 层 SSRF via redirect (fetch.py + anti_detect.py) 抽 _is_safe_url + httpx event_hooks 逐跳校验 Location",
+  "situation": "audit-2026-07-05-010 (x-tool pachong-master deep audit) finding PA-M-002 (priority 4, medium). crawler/fetch.py:57 _build_fingerprinted_client 与 crawler/anti_detect.py:121 _init_httpx_tls 均构造 httpx.AsyncClient(follow_redirects=True) 无 host/scheme/IP 校验；被爬站点或被投毒 API 响应可驱动 30x Location 指向 169.254.169.254 云元数据 / 127.0.0.1 / 10.x 内网，httpx 自动跟随，响应体进 raw_text 落库 + web_admin notice_detail 展示 → 盲 SSRF 云凭证泄漏。crawler/ggzy_national.py:227 urljoin(base,detail) 对 '//evil' 与 'https://internal' 亦不拦 (本 fix 不动 ggzy_national，留 _planned_files 范围内的 fetch+anti_detect 两文件)。这是真实安全 bug，非自指 churn (crawler 业务代码，非引擎机械文件)。",
+  "action": "在 fetch.py 抽 _is_safe_url(url) 校验器 (scheme∈{http,https} + host 非空非 localhost + IP 字面量拒 private/loopback/link-local/multicast/reserved/unspecified；hostname 放行不做同步 DNS 以免阻塞事件循环) + _ssrf_request_hook(request) httpx event hook。关键洞察：httpx 在 follow_redirects=True 下每个 redirect 跳均触发 request event hook → hook 内校验 str(request.url) 命中内网/元数据即抛 SSRFBlockedError 阻断，逐跳堵死 redirect-SSRF。SSRFBlockedError 继承 httpx.RequestError 使既有 except httpx.RequestError → ConnectionError 兜底，错误面与超时/连接失败一致。fetch._build_fingerprinted_client 接 event_hooks={'request':[_ssrf_request_hook]}。anti_detect._init_httpx_tls 同接 hook (from .fetch import)；anti_detect.get/post 另加 _is_safe_url(url) 初始 URL 预校验 (curl_cffi 路径无 httpx event hook，初始 URL 预校验为 curl_cffi 分支兜底)。2 文件 route-fix，不触及 .claude/public-interfaces.txt → opt-worktree 判 route-fix 复用同 area worktree opt-pachong-1783229257。",
+  "files_changed": [
+    "x-tool/pachong-master/crawler/fetch.py",
+    "x-tool/pachong-master/crawler/anti_detect.py"
+  ],
+  "worktree": "opt-pachong-1783229257 (auto/opt-pachong-1783229257, base=953b7eb [x-tool master], stack: f112b45 PA-H-002 → cd04b73 PA-M-001 → 106a035 PA-M-002, 3-commit stack, disk 保留; origin push 403 x-tool fork 同 PA-H-002/PA-M-001 先例)",
+  "direction": "route-fix (route-fix 复用 opt-pachong-1783229257，第 3 commit 叠栈)",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "_is_safe_url 逻辑 11 用例全过: https://www.ggzy.gov.cn/api/list=True, http://169.254.169.254/latest/meta-data/=False (云元数据主向量堵), https://127.0.0.1:8080=False, https://localhost=False, http://10.0.0.1=False, http://[::1]/=False (IPv6 loopback), ftp://example.com=False (scheme), https://example.gov.cn/notice/123=True, //evil.com/x=False (协议相对), https://192.168.1.1=False, http://8.8.8.8/=True (公网 DNS 放行) — ALL PASS",
+    "python3 -m py_compile crawler/fetch.py crawler/anti_detect.py → PY_COMPILE_OK 两文件语法通过",
+    "包级 import 验证 (deps stubbed): from crawler.fetch import _ssrf_request_hook,_is_safe_url,SSRFBlockedError + from crawler.anti_detect import AntiDetectSession → IMPORT_OK；from .fetch import 在 anti_detect 包上下文正确解析；issubclass(SSRFBlockedError, httpx.RequestError)=True (既有 except httpx.RequestError 兜底成立)",
+    "git -C <wt> log --oneline -4: 106a035 (PA-M-002) stacked on cd04b73 (PA-M-001) on f112b45 (PA-H-002) on 953b7eb (master) — 3-commit 栈同 area 复用成功",
+    "git -C <wt> diff --stat HEAD~1..HEAD: anti_detect.py 9 +++ / fetch.py 50 +++ (2 files, +59 insertions, 0 deletions — 纯新增校验逻辑，无行为回退)",
+    "main 工作区 fetch.py/anti_detect.py 已被 opt-worktree restore 回原状 — 改动仅存于 worktree 分支 auto/opt-pachong-1783229257，main 干净未污染"
+  ],
+  "next_suggestion": "下轮派 PA-M-003 (priority 5, medium, wechat_push.py:71,87 chat_id 未 _quote shell 注入面) — 与 PA-I-001 (wechat_push.py:45 tempfile symlink race) 同文件，应叠一个 worktree 一次改完 (audit 派生计划明示同文件聚合)。或继续派 PA-L-001 (raw_text 落库未脱敏 PII)。当前 opt-pachong-1783229257 3-commit 栈 (PA-H-002+PA-M-001+PA-M-002) 待人工 merge to x-tool master；其余 7 finding pending (PA-M-003/PA-L-001/PA-L-002/PA-L-003/PA-I-001/PA-I-002 + PA-H-002/PA-M-001/PA-M-002 已派未 merge 仍计 pending)。",
+  "audit_type": "security-review",
+  "audit_findings": [
+    {
+      "file": "x-tool/pachong-master/crawler/fetch.py",
+      "line": 57,
+      "severity": "medium",
+      "finding": "PA-M-002: _build_fingerprinted_client httpx.AsyncClient(follow_redirects=True) 无 host/IP 校验；被爬站点 30x Location 指向 169.254.169.254/127.0.0.1/10.x 时 httpx 自动跟随 → 盲 SSRF 云元数据/内网，响应体进 raw_text 落库 + admin 可见。",
+      "remediation": "抽 _is_safe_url + _ssrf_request_hook，event_hooks={'request':[hook]} 逐跳校验 redirect Location，命中内网/元数据抛 SSRFBlockedError (已实施 commit 106a035)。",
+      "kind": "route-fix"
+    },
+    {
+      "file": "x-tool/pachong-master/crawler/anti_detect.py",
+      "line": 121,
+      "severity": "medium",
+      "finding": "PA-M-002: _init_httpx_tls httpx.AsyncClient(follow_redirects=True) 同 fetch.py 无校验；AntiDetectSession.get/post curl_cffi 路径亦无初始 URL 校验 (curl_cffi 无 httpx event hook 可挂)。",
+      "remediation": "httpx 客户端接同 _ssrf_request_hook (from .fetch import)；get/post 入口加 _is_safe_url(url) 预校验，curl_cffi 与 httpx 两路径均兜底 (已实施 commit 106a035)。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-010",
+  "audit_depth": "deep",
+  "derived_fix_finding_id": "PA-M-002",
+  "derived_fix_status": "pending (dispatched case-2026-07-05-086, awaiting human merge of opt-pachong-1783229257 HEAD=106a035 3-commit stack)"
+}

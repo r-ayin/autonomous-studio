@@ -1,0 +1,35 @@
+{
+  "case_id": "case-2026-07-05-021",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-06T00:25:00Z",
+  "project": "personal-assistant",
+  "work_unit": "派生 fix PA-UPL-01：personal_assistant/api.py — /inbox/upload 请求体字节上限 10MB（Content-Length 预检 + 流式累计 cap 兜底，超阈值返 413），防恶意多 GB .txt/.srt 上传导致 ingest 转 read_text 时 OOM",
+  "situation": "audit-cycle-state.status=fix-in-progress（audit-2026-07-05-002 personal-assistant 全量审计 10 findings，6 route-fix pending，pending_count=6）。已派生 #1 PA-API-02（case-018, 6a91312）+ #2 PA-API-03（case-019, 23c8651）+ #3 PA-LLM-01（case-020, 92269fd）均 opt-api-1783193708 待人工 merge。本轮取 priority#4 PA-UPL-01：api.py:291 /inbox/upload 用 `content = await request.body()` 无上限读全部请求体，transcript.parse `p.read_text(encoding='utf-8')`（transcript.py:34）+ splitlines + 多层 regex 全量处理。该端点已做路径遍历三重防御（W-006, api.py:276-290）但漏 size 维度。经 PA-API-01（零认证）+ PA-API-02（CORS *）任何人（含用户访问的任意网页跨域 fetch）可 POST 多 GB .txt/.srt → ingest 转 read_text 时进程 OOM/DoS。60s 超时/路径白名单不堵字节量。",
+  "action": "1 文件 route-fix（api.py；api.py 不在 .claude/public-interfaces.txt → route-fix 复用同 area worktree opt-api-1783193708；测试 tests/test_api_upload.py 为第 2 文件，1-3 文件预算内）。\n\napi.py 改动：(1) 新增模块常量 _MAX_UPLOAD_BYTES = 10*1024*1024（10MB，足以覆盖数百小时 SRT 转录；远大于真实转录体量，零误杀）；(2) inbox_upload 内 Content-Length 预检——request.headers.get('content-length')，若存在且为数字且 > cap 直接 raise HTTPException(413, '... (PA-UPL-01 guard)')，不读 body（快路径，防大上传耗内存）；(3) 流式兜底——`async for chunk in request.stream():` 累计 total，超 cap 即 413，防 spoofed/缺失 Content-Length（单看 header 不可信，攻击者可发不带 CL 的 chunked body）；(4) b''.join(chunks) 后 write_bytes 落盘。原路径遍历三重防御（W-006）+ 后缀白名单不变。\n\ntests/test_api_upload.py 新增（+5 测，FastAPI TestClient）：(a) test_upload_small_txt_accepted——小 .txt 200 + 落盘 bytes 与原文一致；(b) test_upload_rejects_oversize_content_length——CL 声明超 cap 直接 413（body 为空，验预检在流式前命中）；(c) test_upload_rejects_oversize_streamed_body——真实 body 超 cap 413（httpx 按真实长度设 CL，预检/流式任一命中均 413，对外行为一致）；(d) test_upload_just_under_cap_accepted——边界 cap 字节 200（cap 不触发 cap+1 触发）；(e) test_upload_rejects_bad_extension_unchanged——W-006 后缀白名单回归（.exe 400 不被 cap 逻辑破坏）。cap 临时调小到 1024（_set_cap 辅助 finally 还原）避免每测发 10MB body 慢/费内存。PA_ROOT 指 tempfile.mkdtemp 隔离 data/ 不污染真实数据。\n\n提交方式：case-104 escape hatch（直编 opt-wt 版本后 wt 内提交）。原因同 case-018/019/020：opt-api-1783193708 已含未合并 PA-API-02（6a91312 改 api.py）+ PA-API-03（23c8651 改 api.py/llm.py）+ PA-LLM-01（92269fd 改 llm.py），cmd_commit 的 cp-guard 检测 target api.py vs main HEAD 不同会跳过（防抹掉前轮未合并改动），无法 cp-stack。故直编 worktree 内 api.py/tests/test_api_upload.py + worktree 内 git commit（auto/opt-api-1783193708 分支，非 main/master——commit-gate 不拦）+ git push origin（reference-transaction hook 仅拦 main/master，auto/opt-* 放行）。\n\n埋点：本 finding 触及'用户数据读写（转录 PII）'+'外部调用（HTTP 入站 body）'敏感路径类别，但修复是入站字节 cap（防御性 413 拒绝），不新增写操作、不写 audit logger——cap 触发即 413 由调用方（前端 fetch）自行处理，无新增副作用可埋。api.py 无既有 audit logger 复用点。故不强埋 audit-log JSONL。",
+  "files_changed": [
+    "personal_assistant/api.py (+_MAX_UPLOAD_BYTES=10*1024*1024 模块常量 +inbox_upload 内 Content-Length 预检 413 +async for request.stream() 流式累计 cap 413 兜底，~20 行净增；原 W-006 路径遍历三重防御 + 后缀白名单不变)",
+    "tests/test_api_upload.py (+新建：+5 测 FastAPI TestClient 覆盖小文件 200/CL 预检 413/流式超 cap 413/边界 cap 字节 200/后缀白名单回归 400，_set_cap 临时调小 cap 避免发 10MB body，PA_ROOT tempfile 隔离，~140 行)"
+  ],
+  "worktree": "opt-api-1783193708 (branch auto/opt-api-1783193708；route-fix 复用——上轮 PA-API-02/PA-API-03/PA-LLM-01 已建此 wt，本轮 case-104 直编+wt 内提交 stack 于其上；HEAD 92269fd→159caa6；已 push origin/auto/opt-api-1783193708 92269fd..159caa6)",
+  "direction": "api:inbox-upload-cap (route-fix; judge_direction_kind 判定：api.py 不在 public-interfaces.txt → route-fix，非 direction-shift；同 area 'api' 复用 opt-api-1783193708)",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "pytest tests/ 全量 → 108 passed in 5.04s（103→108，+5 新 PA-UPL-01 上传测，零回归）",
+    "pytest tests/test_api_upload.py -v → 5 passed：test_upload_small_txt_accepted / test_upload_rejects_oversize_content_length（CL 预检 413）/ test_upload_rejects_oversize_streamed_body（流式超 cap 413）/ test_upload_just_under_cap_accepted（边界 cap 200）/ test_upload_rejects_bad_extension_unchanged（W-006 后缀白名单回归 400）",
+    "worktree git commit → [auto/opt-api-1783193708 159caa6] 'opt(api:inbox-upload-cap): fix(api): PA-UPL-01 /inbox/upload 请求体字节上限 10MB...' 2 files changed 139 insertions 1 deletion",
+    "git push origin auto/opt-api-1783193708 → '92269fd..159caa6 auto/opt-api-1783193708 -> auto/opt-api-1783193708'（remote Code Review 链接已生成 https://code.alibaba-inc.com/qunbu/personal-assistant/codereview/new?from=main&to=auto/opt-api-1783193708）",
+    "防御深度验证：Content-Length 预检（快路径，不读 body）+ async 流式累计 cap（兜底，防 spoofed/缺失 CL）双层；cap=10MB 对真实转录（数百小时 SRT < 1MB）零误杀；W-006 路径遍历三重防御 + 后缀白名单回归测确认不破坏",
+    "stack 完整性：159caa6 stack 于 92269fd（PA-LLM-01）→ 23c8651（PA-API-03）→ 6a91312（PA-API-02）→ 580c4aa（main HEAD），4 个 audit-2026-07-05-002 派生 fix 同 wt 线性栈，无冲突"
+  ],
+  "next_suggestion": [
+    "下轮 status 仍 fix-in-progress（pending_count=6 不变——PA-API-02/PA-API-03/PA-LLM-01/PA-UPL-01 已 dispatched 待人工 merge，未 terminal）→ 派生 priority#5 PA-STOR-01（storage.py:143-153 save_persona_version 非原子 DB+file：先 c.execute INSERT+commit 后 write_text，write 失败则 DB 已记版本 N 但 profile.json 旧/缺 → 漂移；改 file temp+os.replace 先于 commit DB，1 文件 route-fix storage.py）",
+    "随后 PA-WEB-01（web.py:28-39,148-167 _fetch/_generic r.read() 无 cap + base_url 无 scheme → OOM/SSRF，config-gated 低危，1 文件 route-fix web.py）——最后 1 个 route-fix",
+    "提醒：opt-api-1783193708 现含 4 个未合并 commit（6a91312 PA-API-02 + 23c8651 PA-API-03 + 92269fd PA-LLM-01 + 159caa6 PA-UPL-01），opt-storage-1782988687 / opt-web-1782977902 亦待合并；personal-assistant 待合并 worktree 积压 3 个 wt（opt-api 含 4 commit 栈 + opt-storage + opt-web），需人工 merge 落 main 后 derived_fixes 对应 status pending→merged",
+    "PA-STOR-01 改 storage.py——opt-storage-1782988687 是历史 wt（HEAD 3806668，含未合并改动），需先确认是否冲突；若 storage.py 在 opt-storage-1782988687 已有未合并改动，cp-guard 会跳过，续走 case-104 直编；否则可走 cmd_commit 常规路径开新 wt 或复用 opt-storage",
+    "2 structural debt（SD-PA-01 零认证框架 / SD-PA-02 prompt 注入防御）需用户授权更大单位后再动；全部 6 route-fix 落定（已派 4/6，剩 PA-STOR-01+PA-WEB-01）后 audit-cycle-state.status=cycle-complete → 下一次全量审计候选 sunset-prediction（42 文件未审）/ autonomous-engine（7 文件未审）"
+  ],
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-05-002",
+  "audit_depth": "shallow"
+}

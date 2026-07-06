@@ -1,0 +1,33 @@
+{
+  "case_id": "case-2026-07-06-029",
+  "agent_id": "ralph-wiggum-autonomous-engine",
+  "timestamp": "2026-07-06T17:10:00+08:00",
+  "project": "x-tool/xia",
+  "work_unit": "山夏 chat-worker.js:163-166 — assistant 回复写 D1 fire-and-forget → ctx.waitUntil 包裹",
+  "situation": "audit-2026-07-06-003 (x-tool/xia 山夏 chat 子系统 deep audit) 派生 fix 第 4 条 XIA-CHAT-04 (MEDIUM, kind=route-fix)。ReadableStream.start() 内 ctrl.close() 后两个 D1 写 (INSERT assistant message + UPDATE sessions message_count) 用 db.prepare(...).run().catch(()=>{}) fire-and-forget：不 await、不 ctx.waitUntil、错被空 catch 吞。Cloudflare Worker 在 fetch 返回 Response 后可随时收割执行（客户端中途断流时 stream 被取消 → start() 内剩余代码不保证跑完）→ assistant 回复静默丢、对话记录单向残缺、运维对 D1 写失败零可见性。ctx 已是 fetch handler 第三参数 (line 55 async fetch(request, env, ctx)) 无需新增签名。",
+  "action": "在既有 worktree opt-xia-1783280481 (XIA-CHAT-01+02+03 已堆叠 3 commit, FF-clean on master HEAD 85bd9e1) 内直编 chat-worker.js：把 line 185-188 的两个 fire-and-forget .catch(()=>{}) D1 写包裹为 ctx.waitUntil(Promise.all([...]).catch(e => console.error('D1 assistant write:', e)))。opt-worktree.sh cmd_commit 因 cp-guard (目标文件已在 wt 分叉) 跳过迁移 → 走直编 wt + wt 内 git commit 通道 (case-104 precedent, [[opt-worktree-stack-diverged-escape-hatch]])。1 文件，+4/-2 行。",
+  "files_changed": ["xia/山夏/chat-worker.js"],
+  "worktree": "opt-xia-1783280481 (path /home/admin/workspace/.opt-worktrees/x-tool/opt-xia-1783280481, branch auto/opt-xia-1783280481)",
+  "direction": "xia:chat-d1-waituntil (route-fix, 复用同 area worktree)",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "git commit b371148 1 file changed, 4 insertions(+), 2 deletions(-) — 4-commit stack b8e89ed(XIA-CHAT-01+02)→b060cb4(XIA-CHAT-03)→b371148(XIA-CHAT-04) on master HEAD 85bd9e1",
+    "git merge-base --is-ancestor master HEAD → FF-clean: master is ancestor of wt HEAD (人工 merge 可 fast-forward)",
+    "diff 验证: line 186-189 ctx.waitUntil(Promise.all([db.prepare('INSERT ...assistant...').run(), db.prepare('UPDATE sessions SET message_count...').run()]).catch(e=>console.error('D1 assistant write:',e)))，原 .catch(()=>{}) 黑洞吞错已消除",
+    "origin push 403 (git push is not allowed / http://ghp-ro.alibaba-inc.com/github.com/r-ayin/x-tool.git 403) — x-tool=外部 fork r-ayin/x-tool 无 creds，branch local-only NOT on origin (同 case-027/028 precedent, [[x-tool-external-fork-push-403]])。wt+4-commit stack 完整保留 disk 待人工 merge to master"
+  ],
+  "next_suggestion": "下轮派 XIA-CHAT-05 (LOW, 删 admin token query 传参分支 url.searchParams.get('token'), 1 行 chat-worker.js:73) — 可复用 opt-xia-1783280481 同 wt 堆叠 (同文件已分叉, 走直编 wt 通道)。剩 XIA-CHAT-05/06/07 三 LOW 派完后 audit-cycle-2026-07-06-003 全 derived_fixes 落定 → status=cycle-complete 触发下一轮全量审计。或考虑 05+06+07 三 LOW 一轮同 wt 堆叠单 case 派完加速 cycle 收口 (三 finding 同文件 chat-worker.js:71-89 邻近 hunk)。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "xia/山夏/chat-worker.js",
+      "line": "163-166 (worktree copy 185-188)",
+      "severity": "medium",
+      "finding": "XIA-CHAT-04: assistant 回复写 D1 用 fire-and-forget db.prepare(...).run().catch(()=>{}) 无 ctx.waitUntil → stream 被取消时静默丢消息 + 吞错，违反『不要静默吞错』原则",
+      "remediation": "ctx.waitUntil(Promise.all([...]).catch(e=>console.error('D1 assistant write:',e))) 包裹两 D1 写，确保 Worker 不在写完成前被收割且错进 console",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-003",
+  "audit_depth": "deep"
+}

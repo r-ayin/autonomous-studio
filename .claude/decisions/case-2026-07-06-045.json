@@ -1,0 +1,70 @@
+{
+  "case_id": "case-2026-07-06-045",
+  "agent_id": "ralph-autonomous-engine",
+  "timestamp": "2026-07-06T23:30:00+08:00",
+  "project": "dataworks-dev-assistant",
+  "work_unit": "全量深度审计轮（事件驱动：上轮 cycle-complete 触发）——对 dataworks-dev-assistant skill 做 deep audit，产出独立 report + 登记 derived_fixes",
+  "situation": "audit-cycle-state.status=cycle-complete（上轮 x-tool/remote_control 审计因 owner 删库 abandoned，已 reconcile）。state_note 指引候选未深审项目：dataworks-dev-assistant / fbi-dev-assistant / xia（xia 实际已审 audit-2026-07-06-003，note 略 stale）。dataworks-dev-assistant 是代码量颇重的 Python skill（core/ ~6.9K 行 + 60+ 模块脚本），封装阿里 DataWorks 平台 API，触及凭证/SQL/DI/部署/删除——非纯文档配置 skill，符合深审条件。开发副本（autonomous-studio/skills/，git-tracked）较 live 副本（~/.claude/skills/）新：含 audit_log.py（live 缺）+ bff_client.py 多 49 行，审开发副本。",
+  "action": [
+    "step0: 读 autonomous-constraints.md 全文 + audit-cycle-state.json，确认 status=cycle-complete → 本轮走全量审计路径",
+    "选项目：对比 .claude/audits/ 已有报告（x-tool/personal-assistant/sunset-prediction/autonomous-engine/oneday-design/shizi/wechat-main/wanxia-edit/prod-deploy/autonomous-studio 均已审），选 dataworks-dev-assistant（未深审 + 代码重 + 触敏感路径）",
+    "跳过 scout-scan（审计轮允许）",
+    "启动 Workflow：6 个 sonnet 并行 deep-reader 覆盖 6 子系统（http-auth-core / audit-telemetry-persist / runtime-orchestration / data-analysis-duckdb / sql-exec-di-builder / write-ops-sec），每子系统读全文件 + 追跨模块数据流",
+    "每条 finding 经独立 sonnet 对抗性 verifier 复核（默认 is_real=false 除非证据确凿，读实际代码验证）",
+    "lead auditor 综合：43 raw → 24 confirmed（2 HIGH / 4 MED / 18 LOW），19 rejected",
+    "spot-verify：本人读 bff_client.py / audit_log.py / write_api.py / execute_sql.py:38-46 / deploy_udf.py:49-91 / duckdb_query.py:45-105 / telemetry.py:60-80 / duckdb_loader.py:43,279-296 / manage_node_deps.py:85-140 亲自确认 2 HIGH + 4 MED 全部 evidence 准确",
+    "落 report .claude/audits/audit-2026-07-06-005.md",
+    "登记 derived_fixes：21 route-fix pending（WRITEO-01 structural 单独入 structural-debt SD-DW-01；HTTPAU-04+AUDITT-04 近重复合并；SQLEXE-06 被 AUDITT-01 涵盖）",
+    "回写 audit-cycle-state: status auditing→fix-in-progress, pending_count 0→21"
+  ],
+  "files_changed": [
+    ".claude/audits/audit-2026-07-06-005.md (新建 report)",
+    ".claude/structural-debt.md (追加 SD-DW-01)",
+    ".claude/audit-cycle-state.json (status/derived_fixes/last_audit_*)",
+    ".claude/memory/autonomous-state.md (回写)"
+  ],
+  "worktree": "无（审计轮不派生 fix，不进 opt-worktree）",
+  "direction": "deep-audit-only",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "report 落盘: ls .claude/audits/audit-2026-07-06-005.md → 存在",
+    "audit-cycle-state.status=fix-in-progress, pending_count=21, derived_fixes[0].finding_id=SQLEXE-01 status=pending (python json load 验证)",
+    "structural-debt.md 末尾追加 SD-DW-01 (tail 确认)",
+    "Workflow 50 agent / 2.17M tokens / 470 tool-uses / 976s 完成，返回 synthesis.confirmed_findings=24",
+    "2 HIGH 已本人逐行验证: execute_sql.py:38-41 _READONLY_PREFIXES 含 WITH；deploy_udf.py:49-91 _confirmed_post/_json_post/_form_post 全 requests.post 直发"
+  ],
+  "next_suggestion": [
+    "派生 SQLEXE-01 fix（HIGH 优先）：modules/sql-execution/scripts/execute_sql.py _is_readonly_sql 收紧——WITH 前缀匹配后再扫 SQL body 引号外是否含 INSERT/UPDATE/DELETE/DROP/CREATE/ALTER/TRUNCATE/MERGE。1 文件 route-fix，opt-worktree 复用或新开 opt-sql-execution",
+    "派生 DATAAN-01+DATAAN-06 合并 fix（MEDIUM，可并一 worktree）：duckdb_query.py:51 与 duckdb_loader.py:43 两连接后加 db.execute('SET enable_external_access = false')。2 文件 route-fix",
+    "派生 AUDITT-01 fix（MEDIUM）：core/telemetry.py telemetry_start 对 sql/password/token 等敏感 kwarg 截断/哈希",
+    "派生 WRITEO-02 fix（MEDIUM）：manage_node_deps.py add_dep/remove_dep 改走 client._do_request 触发审计",
+    "提醒用户（非代码 fix）：live 副本 ~/.claude/skills/dataworks-dev-assistant/ 缺 core/audit_log.py 且 bff_client.py 旧 49 行，dist 需重新发布，否则本审计所审的 audit_log 机制在 live 环境未生效"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {"file":"modules/sql-execution/scripts/execute_sql.py","line":"38-46","severity":"high","finding":"_READONLY_PREFIXES 正则含 WITH，WITH x AS (SELECT 1) INSERT INTO t SELECT * FROM x 匹配只读前缀→走 execute_readonly 路径，绕过写操作两阶段确认门禁。脚本 docstring 自述 INSERT/UPDATE/DELETE/DROP 须两阶段确认。","remediation":"匹配 WITH 后再扫描 SQL body（引号外）是否含 INSERT/UPDATE/DELETE/DROP/CREATE/ALTER/TRUNCATE/MERGE，含则归写。","kind":"route-fix"},
+    {"file":"modules/deployment/scripts/deploy_udf.py","line":"49-91","severity":"high","finding":"_confirmed_post/_json_post/_form_post 全 requests.post 直发+手工拼 Authorization 头，BFFClient 仅当凭证容器，从不调 _do_request/write/confirm_write→audit_log.record 永不触发，无两阶段确认，一次调用即 createResource+上传 OSS+createDeployment 部署生产。","remediation":"重构写操作走 client._do_request（或 write/confirm 两阶段）使审计生效+加 Phase1 预览/Phase2 --confirm 门禁+api-index.json 标 is_write_operation。入 structural-debt SD-DW-01。","kind":"structural"},
+    {"file":"core/telemetry.py","line":"67-75","severity":"medium","finding":"telemetry_start 把非 well-known kwarg（含 sql）塞 _context[args]，本地 JSONL 落盘+telemetry_upload 上传远端，全程零脱敏。execute_sql.py:451 传 sql=args.sql。SQL 可含表名/列名/WHERE 值（PII/业务数据）。","remediation":"telemetry_start 对 sql/password/token 等敏感 kwarg 截断/哈希/丢弃，至少只留 SQL 类型+前 50 字符。","kind":"route-fix"},
+    {"file":"core/duckdb_query.py","line":"101-103","severity":"medium","finding":"duckdb.connect(DB_FILE, read_only=True) 后 db.sql(query) 执行用户 SQL。read_only=True 不阻止 read_csv('/etc/passwd')/read_parquet 文件读取表函数，可读进程用户可访问任意文件。未设 enable_external_access=false。","remediation":"连接后 db.execute('SET enable_external_access = false') 再执行用户查询。","kind":"route-fix"},
+    {"file":"core/duckdb_loader.py","line":"43,279-296","severity":"medium","finding":"self.db = duckdb.connect(db_path) 读写连接，sql(query)/fetch(query) 执行任意 SQL：可 read_csv 读文件、ATTACH 外部库、COPY TO 外泄、写/删表。未设 enable_external_access=false。","remediation":"同上设 enable_external_access=false；或 sql/fetch 只允许 SELECT。","kind":"route-fix"},
+    {"file":"modules/node-management/scripts/manage_node_deps.py","line":"91-138","severity":"medium","finding":"add_dep/remove_dep 用 requests.put/requests.delete 直发 /ide/addNodeDependencies、/ide/removeNodeDependencies，绕过 _do_request→无审计记录、无两阶段确认。依赖增删属节点拓扑变更。","remediation":"改走 client._do_request（或 write/confirm）使审计埋点生效；add/remove 为敏感拓扑变更应加确认。","kind":"route-fix"},
+    {"file":"core/bff_client.py","line":"226,438","severity":"low","finding":"endpoints.json 全 http://，fallback guidance line 226 示 BFF_ENDPOINT=http://bff.dw.alibaba-inc.com，Bearer token 经 Authorization 头明文传。verifier 降 LOW（内网 *.alibaba-inc.com，on-path 威胁面小）。","remediation":"endpoints.json 改 https://，_resolve_endpoint 对 http:// 警告，guidance 改 https://。","kind":"route-fix"},
+    {"file":"core/bff_client.py","line":"241-258","severity":"low","finding":"BFF_ENDPOINT 从 env/.env 直读无校验（scheme/host/IP-literal），env/.env 投毒可重定向含 Bearer token 的请求到任意 server。verifier 降 LOW（本地 CLI，env 投毒需进程级访问）。","remediation":"_resolve_endpoint 校验 scheme=https、拒 IP-literal、hostname 后缀 allowlist。","kind":"route-fix"},
+    {"file":"core/bff_client.py","line":"89-98","severity":"low","finding":"~/.dataworks/.env 含 BFF_TOKEN，_load_env_file 读时无 os.stat 权限检查。setup guidance 用 cat> 继承 umask（典型 0644）。verifier 降 LOW（共享多用户机才可利用）。","remediation":"load 后检查 st_mode，group/world-readable 则 warn；guidance 加 chmod 600。","kind":"route-fix"},
+    {"file":"core/bff_client.py","line":"394-416","severity":"low","finding":"_log 把完整 request params/data/json_body + response.data 写 dw_bff_calls.log 无脱敏。HTTPAU-04+AUDITT-04 近重复（同一 _log 方法）。","remediation":"脱敏/截断 response.data 与 write 操作 request body；log 文件建 0600 权限。","kind":"route-fix"},
+    {"file":"core/telemetry_upload.py","line":"192-201","severity":"low","finding":"rotate_local read→truncate-write 非原子，并发 telemetry_end append 在 read 后 write 前的数据被覆盖丢失。","remediation":"tmp 文件+os.replace 原子换。","kind":"route-fix"},
+    {"file":"core/workspace_memory.py","line":"69-79","severity":"low","finding":"_save_yaml open('w') 截断写，崩溃致文件截断/空，丢累积 baseline/known issues。同模式 line 73-76（JSON fallback）、300-301（_save_next_checks）。","remediation":"写同目录 tmp+os.replace。","kind":"route-fix"},
+    {"file":"core/check_backlogs.py","line":"100","severity":"low","finding":"_check_fail_fast 把 API 源 project_id/failed_task_id 插值进打印的 shell 命令字符串未 shlex.quote，API 响应含 shell 元字符则打印命令成注入载荷（被 agent 复制执行时生效）。verifier 降 LOW（仅打印+内部 API 数字 ID）。","remediation":"校验数字模式或 shlex.quote。","kind":"route-fix"},
+    {"file":"core/runtime.py","line":"339-343","severity":"low","finding":"save_tool_result open('w')+json.dump 非原子写 session_state.json，同文件 bootstrap_context 已用 tmp+os.replace，不一致。同非原子模式 _write_session_state:460-462、OutputMixin._save_session_state:output.py:353、save_backlogs:387-388。","remediation":"统一用 tmp+os.replace 原子写。","kind":"route-fix"},
+    {"file":"core/runtime.py","line":"339-343","severity":"low","finding":"save_tool_result 裸 except Exception: pass 静默吞错（两处），同文件 _write_session_state:463-464 有 stderr 输出，不一致。","remediation":"except Exception as e: print(..., file=sys.stderr)。","kind":"route-fix"},
+    {"file":"core/duckdb_loader.py","line":"140","severity":"low","finding":"_extract_schema 用 f-string 把 table_name 拼进 information_schema WHERE table_name='{table_name}'。同模式 data_analyzer.py:214-217。verifier 评 LOW（输入经 API index 校验+本地 embedded DB）。","remediation":"参数化查询 WHERE table_name = ?。","kind":"route-fix"},
+    {"file":"core/duckdb_loader.py","line":"215-230","severity":"low","finding":"tmp 路径 /tmp/_duckdb_loader_{table}_{pid}.json 可预测+open('w') 跟随 symlink，攻击者预建 symlink 指向敏感文件致覆盖。verifier 降 LOW（容器环境+数据非凭证）。","remediation":"tempfile.mkstemp/NamedTemporaryFile(dir=runtime_dir)。","kind":"route-fix"},
+    {"file":"modules/sql-execution/scripts/profile_column.py","line":"70-96","severity":"low","finding":"列名直接插值进 COUNT({col})/SELECT {col}/GROUP BY {col}，listColumns 失败时 columns_info 空→校验绕过（line 244 if invalid and columns_info），未引用列名流入 SQL。","remediation":"无论 listColumns 是否成功，列名先校验 ^[a-zA-Z_][a-zA-Z0-9_]*$。","kind":"route-fix"},
+    {"file":"modules/data-integration/scripts/ensure_target_table.py","line":"274-279","severity":"low","finding":"_rewrite_ddl_table_name 用朴素 str.replace(generated_name, target_table)，generated_name 若为列名/注释同子串亦被替，产无效 DDL。","remediation":"用 regex 只替 CREATE TABLE 子句的表名。","kind":"route-fix"},
+    {"file":"modules/deployment/scripts/deploy_node.py","line":"105-114","severity":"low","finding":"非 force 时自动跳过部署检查器无用户确认。","remediation":"跳过检查器前提示用户确认。","kind":"route-fix"},
+    {"file":"modules/deployment/scripts/deploy_udf.py","line":"303-312","severity":"low","finding":"--file 读任意本地文件无路径/扩展名/大小校验即 raw 上传 OSS。verifier 降 LOW（操作者已有 FS 访问，主风险是 agent 被诱导上传敏感文件）。","remediation":"扩展名校验（.py）+大小 cap（10MB）+内容 sanity。","kind":"route-fix"},
+    {"file":"modules/node-management/scripts/create_node.py","line":"106-107","severity":"low","finding":"write(_caller_confirmed=True)+立即 confirm_write 跳 10s 时间锁。verifier 降 LOW（设计内 3 脚本共用 flag，确认在 agent 层）。","remediation":"考虑拆 Phase1/Phase2 独立调用或确保 SKILL.md agent 层确认稳健。","kind":"route-fix"}
+  ],
+  "audit_id": "audit-2026-07-06-005",
+  "audit_depth": "deep"
+}

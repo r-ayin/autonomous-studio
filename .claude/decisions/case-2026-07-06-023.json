@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-06-023",
+  "agent_id": "ralph-autonomous-studio",
+  "timestamp": "2026-07-06T12:30:00+08:00",
+  "project": "personal-assistant",
+  "work_unit": "PA-DEV-01 derived fix: android/dev-server.js /api/health reverse-proxy must route https upstreams over TLS, not plaintext HTTP (audit-2026-07-06-002)",
+  "situation": "audit-2026-07-06-002 finding PA-DEV-01 (LOW, route-fix): /api/health handler at dev-server.js:100 used http.get unconditionally. apiBase (line 24, env ONEDAY_API_BASE) may be https://..., new URL (line 87) accepts https without rejecting, so http.get against an https endpoint sends plaintext HTTP to a TLS port → TLS protocol error caught by upstreamReq 'error' (line 138) and surfaced as 'upstream unreachable', hiding the real cause (protocol mismatch). Default http://127.0.0.1:8000 happy path unaffected. Pending in audit-cycle-state.derived_fixes (1 of 3 remaining pending after 9 dispatched).",
+  "action": "Minimal 1-file route-fix: (1) add `const https = require('https');` at top alongside existing http require; (2) at line 100 select getter by scheme — `const getter = upstreamUrl.protocol === 'https:' ? https.get : http.get;` then `const upstreamReq = getter(upstreamUrl, (up) => {...})`. https upstreams now build a TLS socket via https.get; http upstreams unchanged (http.get). No change to body-cap / Content-Type / status-coerce / error-handling logic. node --check OK; 4 existing /api/health smoke tests (happy 3070, unreachable 3073, 5xx-coerce, invalid-URL) all green — no regression on http path.",
+  "files_changed": ["android/dev-server.js"],
+  "worktree": "opt-pa-dev-server-1783277923",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 9f79523 on auto/opt-pa-dev-server-1783277923 (base=580c4aa, FF-clean, 1 file +7/-1); pushed origin auto/opt-pa-dev-server-1783277923 (code review link emitted by remote). node --check android/dev-server.js → SYNTAX OK. grep confirms fix in wt: line 2 `const https = require('https');`, line 105 `const getter = upstreamUrl.protocol === 'https:' ? https.get : http.get;`. Smoke run `node --test --test-name-pattern=api/health test/smoke.test.js` → 4/4 pass (happy / unreachable-502 / 5xx-coerce-502 / invalid-URL-502). main working dir reverted to 580c4aa by opt-worktree cp-guard (expected, fix lives in worktree).",
+  "next_suggestion": "Dispatch next pending derived fix PA-AND-02 (android/api.js API_BASE hardcoded port 3015, LOW) — same android surface, can open opt-pa-android-api-* worktree (PA-AND-01 used opt-pa-android-api-1783275991, but that wt may be diverged post-PA-AND-01; if diverged, follow case-104 direct-edit-wt channel per [[opt-worktree-stack-diverged-escape-hatch]]). Then PA-SPK-01 (speaker.py if-False dead-assign + docstring honesty, INFO). After all 3 pending reach merged|rejected, audit-cycle-state.status → cycle-complete → next round triggers fresh deep audit on an un-audited project.",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "android/dev-server.js",
+      "line": 100,
+      "severity": "low",
+      "finding": "PA-DEV-01: /api/health reverse proxy used http.get unconditionally; https upstreams (ONEDAY_API_BASE=https://) got plaintext HTTP to a TLS port, TLS error masked as 'upstream unreachable'.",
+      "remediation": "Select getter by upstreamUrl.protocol — https.get for https:, http.get otherwise. (Applied.)",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-002",
+  "audit_depth": "deep"
+}
