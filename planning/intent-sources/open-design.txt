@@ -1,0 +1,4 @@
+# open-design — 用户口输入（去重后，1 条 / 原始 2 条）
+# 由 distill-user-style.py Step1 生成，供 BUSINESS-INTENT 提炼 + 引擎阶段①CONTEXTUALIZE 读
+
+[2026-06-23] AUTONOMOUS_HEARTBEAT L2 — 自主决策引擎心跳。工作区: /home/admin/workspace/cgkp。激活自主决策引擎技能，执行 L2 哨兵扫描。

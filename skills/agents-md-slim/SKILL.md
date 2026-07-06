@@ -2,6 +2,7 @@
 name: agents-md-slim
 description: 精简 AGENTS.md 内容，移除文件路径引用、冗余信息和过度细节，确保指令预算高效。适用于 AGENTS.md 过大、包含易过时的文件路径、或含有 Agent 可自行发现的冗余信息时。
 repository: https://code.alibaba-inc.com/qunbu/agents-md-slim
+version: 1.0.0
 ---
 
 # 精简 AGENTS.md 内容

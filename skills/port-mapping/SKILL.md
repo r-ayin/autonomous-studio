@@ -3,6 +3,7 @@ name: port-mapping
 description: Get the public URL for a local container port. Use when the user wants to access a service running on a specific port from outside the container, or needs to share a public URL for a local port.
 allowed-tools: Bash
 repository: https://code.alibaba-inc.com/qunbu/port-mapping
+version: 1.0.0
 ---
 
 # Port Mapping - Get Public URL for Container Port

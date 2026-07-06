@@ -40,3 +40,23 @@ Status enum: `open | scheduled | resolved`
 - **severity**: low
 - **status**: open
 - **source_finding**: I-001
+
+## SD-004 — FinanceTracker SQLCipher 端到端接线 + 既有明文库迁移（安全宣传空心支柱 #1）
+- **debt_id**: SD-004
+- **audit_id**: audit-2026-07-06-019
+- **project**: FinanceTracker
+- **description**: `DatabaseEncryption.getPassphrase()` 是死代码——全仓 grep 仅自身类 + DI 容器引用；`DatabaseModule.provideDatabase` 建 Room 时无 `openHelper`/`SupportFactory`，实际数据库为明文 SQLite。README/UI 宣称"SQLCipher 数据库加密"完全不成立，所有财务 PII 裸存磁盘。修复非"接上线"那么简单：(1) core/data/DatabaseModule 注入 DatabaseEncryption + `openHelperFactory(SupportFactory(passphrase))`；(2) 当前用户已有明文库在磁盘，直接切加密会让旧库读不出——需迁移：明文 key 打开旧库 → `ATTACH ... KEY '...'` → 逐表导出到加密库 → 替换；(3) 口令源同步改 Keystore（与 H-002/fix-010 联动）；(4) 迁移路径需测试网（与 M-004/I-002 联动）。跨 core/data + core/security + 迁移脚本 + 测试，超最小单位，需用户授权。
+- **affected_files**: core/data/.../di/DatabaseModule.kt, core/security/.../crypto/DatabaseEncryption.kt, core/data/.../db/FinanceDatabase.kt, app/build.gradle.kts
+- **severity**: high
+- **status**: open
+- **source_finding**: H-001
+
+## SD-005 — FinanceTracker 启动鉴权门端到端落地（安全宣传空心支柱 #2）
+- **debt_id**: SD-005
+- **audit_id**: audit-2026-07-06-019
+- **project**: FinanceTracker
+- **description**: 生物识别层三层全断：(1) `SettingsViewModel.toggleBiometric` 只查 `canAuthenticate()`（能力查询）就写布尔，开启动作本身不验证身份；(2) `BiometricAuthenticator.authenticate()` 全仓除自身定义处外**零调用**；(3) `MainActivity.onCreate` 直接进 `AppNavigation`，无启动鉴权屏，`biometricEnabled` 偏好无任何消费方拦截入口。README/UI"使用指纹或面部识别保护应用"为虚假宣传。修复需：(a) 新建 `feature/auth` 模块——Compose `AuthScreen` + `AuthViewModel`，启动调 `BiometricAuthenticator.authenticate`（M-001/fix-012 落地后的 DEVICE_CREDENTIAL 兜底版）；(b) `AppNavigation` 根路由加 `biometricEnabled` 守卫，开关开则启动必过鉴权才进主界面；(c) `toggleBiometric(true)` 改为先强制过一次 `authenticate()` 验证再落布尔。跨 feature/auth(新) + app/navigation + feature/settings，超最小单位，需用户授权。
+- **affected_files**: app/.../MainActivity.kt, app/.../navigation/AppNavigation.kt, feature/settings/.../SettingsViewModel.kt, feature/auth/(新建), feature/settings/src/main/AndroidManifest.xml
+- **severity**: high
+- **status**: open
+- **source_finding**: H-005

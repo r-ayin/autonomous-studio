@@ -1,0 +1,678 @@
+# 调度系统项目包 — 用户口输入（去重后，2 条 / 原始 2 条）
+# 由 distill-user-style.py Step1 生成，供 BUSINESS-INTENT 提炼 + 引擎阶段①CONTEXTUALIZE 读
+
+[2026-07-05] Base directory for this skill: /home/admin/.claude/skills/a1
+
+# a1 CLI 使用助手
+
+a1 是集团内部统一研发命令行客户端，将代码平台（Code/GitLab）、发布平台、CI 平台（AoneCI）、项目空间、二方库发布等多个研发平台的操作聚合到一个 CLI 中。
+
+## ⚠️ 核心规则：构造命令前必须查阅完整参数
+
+下文示例只展示最常用的 flag。当用户需求涉及任何具体选项（指定描述、指派人、筛选条件、格式化等），先读对应的 reference 文件再构造命令——不要凭记忆猜测 flag 名。
+
+reference 文件索引：
+- `references/repo-commands.md` — MR、分支、文件、评论、搜索、tag 的**全部 flag**
+- `references/ci-commands.md` — 流水线、构建、Job、制品、变量、密钥、模板的**全部 flag**（含「创建 CI 任务指导」）
+- `references/build-commands.md` — 构建 Job、Step 日志、增量拉取、follow、下载的**全部 flag**
+- `references/app-commands.md` — 应用、变更单（CR）、发布流水线、部署单、镜像的**全部 flag**
+- `references/cli-commands.md` — 开放平台 CLI 工具集（`a1 cli`）创建、查询、发布、安装下载、设置、收藏、changelog 的**全部 flag**
+- `references/pkg-commands.md` — Aone 包、包对象（list/view/link/unlink）、包变更单（`pkg cr`）、CR 详情页二方包发布（`pkg deploy-cr`）、包 CR 提交流水线、发布页集成区二方包部署（`pkg deploy-intg`）的**全部 flag**
+- `references/artifact-commands.md` — `artifact mvn deploy` 本地 Artlab 发布的**全部 flag**
+- `references/project-commands.md` — 项目空间、工作项、Sprint、版本、自定义字段、关联与附件的**全部 flag**
+- `references/kbase-commands.md` — 知识库页面上传/更新/版本、CodeWiki 生成/搜索/ask/页面 CRUD/下载的**全部 flag**
+- `references/pages-commands.md` — Aone Pages 站点管理（`a1 pages view/create/update/delete`）的**全部 flag**（注意：管理**站点配置**，不是部署内容）
+- `references/env-commands.md` — 应用环境（`a1 env`）、环境特性（`a1 env trait`）、自定义环境级别名称（`a1 env level-custom-name`）、SPE 验证（`a1 env spe`）、项目环境（`a1 env project`）及应用运行环境（`a1 env project apre`）的**全部 flag**
+- `references/skill-commands.md` — Contextlab Skill、`a1 skill` 搜索/安装/发布/参数与环境
+- `references/devix-commands.md` — 交付任务（`a1 devix task`）创建、推进、列表与工作空间（`a1 devix workspace`）查询的**全部 flag**
+- `references/o2-commands.md` — O2 前端应用（`a1 o2 app`）、迭代（`a1 o2 iteration`）、变更（`a1 o2 change`，含 `create-cr`）、任务（`a1 o2 task`）、发布（`a1 o2 publish`）、灰度（`a1 o2 grey`）、应用创建工作流（`a1 o2 create-app`）的**全部 flag**
+
+如果某条命令上面表格没列出，先 `a1 <command> --help` 查 flag——不要假设它和 SKILL.md 里某条相似命令同名。
+
+## ⚠️ 使用约定
+
+1. **修复 CR 评论后默认不 resolve**：处理完 MR/CR 上的评审评论后，**不要**自动执行 `a1 repo mr comment resolve`，除非用户明确要求。评论由评审人确认后自行关闭。
+2. **创建 MR 时自动关联工作项**：如果工作流是「获取工作项 → 修复代码 → 创建 MR」，创建 MR 时**必须**带 `--work-items <工作项ID>`，无需用户额外指定。
+3. **工作项 `--body` 支持贴图**：`workitem create --body` / `update --body` 支持 Markdown 图片语法 `![desc](/path/to/image.png)`，CLI 会自动上传到图床。当用户提供截图或本地图片文件、且意图是创建/更新工作项时，把图片以 Markdown 写入 `--body`，**不要**先去分析图片内容。
+4. **禁止传空字符串给枚举类型参数**：如 `--trigger-mr-type`、`--status` 等枚举类型参数，**禁止传空字符串 `""`**。这类参数要么传有效枚举值，要么完全不传（使用默认值）。空字符串会导致服务端 JSON 解析失败。
+
+## 前置条件
+
+### 安装
+
+```bash
+curl -fsSL https://git.cn-hangzhou.oss-cdn.aliyun-inc.com/aone-cli/install.sh | sh
+```
+
+官方文档：<https://a1.io.alibaba-inc.com/>
+
+### 禁用后台升级检查（CI / 脚本）
+
+a1 每次执行会在后台检查新版本。在 CI、离线/弱网或批量脚本中可一次性关闭：设置环境变量 `A1_NO_UPDATE_CHECK=1`，或给命令加全局 flag `--no-update-check`。两者等价、任一为真即禁用；环境变量适合写入 CI / dotfiles / 基础镜像统一生效，无需每次显式传参。
+
+### 认证
+
+**a1-server 命令**（工作项、CR、流水线等）与 **kit/MCP/Skill 命令**（`a1 mcp call-tool`、`a1 skill find/install/publish`）使用不同的认证机制。
+
+#### a1-server（默认）
+
+```bash
+a1 auth login --buc    # BUC SSO（推荐）
+a1 auth whoami         # 查看当前登录用户
+```
+
+命令返回认证错误时，提示用户执行 `a1 auth login --buc`。
+
+#### kit / MCP / Skill（A1_AUTH_PROVIDER）
+
+kit/MCP/Skill 命令支持 **CIAP 与 Bearer 双向 fallback**（`AONE_MCP_TOKEN` 或 `a1 auth login` Code PAT）：
+
+| 场景 | 顺序 |
+|------|------|
+| 默认 | CIAP AuthX → Bearer |
+| `export A1_AUTH_PROVIDER=private_token` | Bearer → CIAP |
+| `export A1_AUTH_PROVIDER=buc` | CIAP BUC → Bearer |
+
+MCP 单次调用可用 `--auth-provider`（优先于环境变量）。`--provider zetta` 仅支持 CIAP。
+
+涉及 Skill 搜索/安装/发布、MCP call-tool 时，先 Read `references/skill-commands.md` 中的「认证」一节。
+
+### 资源绑定（Link Context）
+
+很多命令依赖"当前绑定的资源"。绑定后，后续命令自动使用绑定的资源 ID：
+
+```bash
+a1 link              # 交互式绑定（自动检测 git remote）
+a1 link status       # 查看当前绑定状态
+a1 repo link         # 绑定代码仓库
+a1 app link <name>   # 绑定应用
+a1 project link      # 绑定项目空间
+```
+
+执行命令前先 `a1 link status -f json` 确认绑定。未绑定且命令需要资源 ID 时，提示用户先绑定或用 `--repo`/`--app`/`--project-id` 等标志手动指定。
+
+## 意图识别 → 命令映射
+
+| 用户意图 | a1 命令 |
+|---------|---------|
+| 查工作项动态/活动日志 | `a1 project workitem activity <id>` |
+| 查我的需求/缺陷/任务 | `a1 project workitem list --category req,bug,task`（逗号分隔多值为 OR；可选 `risk`/`nodeflownode`/`plugintask`，中文别名 `需求/缺陷/任务/风险/节点` 亦可） |
+| 查项目里某状态的工作项 | `a1 project workitem list --project <id> --status New,Reopen --page-size 200`（状态值是项目自定义大写枚举如 `New,Fixed,Closed`；分页用 `--page-size`，**没有** `--all` 标志） |
+| 复杂过滤工作项 | `a1 project workitem list --filter 'status=Open AND priority=urgent'`（支持中文别名 `priority=紧急`；模糊匹配 `subject~"登录"`；自定义字段 `计划开始日期>=2026-01-01`） |
+| 查某个工作项 / 创建 / 更新 / 删除 | `workitem get <id>` / `create --category req --title "..." --project <id>` / `update <id> --status "..."` / `delete <id> --yes` |
+| 工作项关联（关联MR、子任务、文档等） | `workitem relation add <id> <type>:<target>` / `relation list <id>`（type: parent/sub/relate/blocks/blocked-by/cr/tc/doc 等） |
+| 工作项评论 / 附件 | `workitem comment create\|list <id>` / `workitem attachment upload\|list\|download\|delete <id>` |
+| 查/列工作项字段定义 | `workitem field list --project <id> [--type <t>]` / `field options <field> --project <id>` |
+| 用视图查工作项 | `a1 project workitem list --view <view-id>`（应用视图的过滤/列/排序） |
+| 管理视图（列出/创建/更新/删除） | `a1 project view list\|get\|create\|update\|delete`（详见 `references/project-commands.md`） |
+| 查项目详情 | `a1 project get [project-id]`（省略时使用 `a1 project link` 绑定的项目） |
+| 查项目成员 / 管理员 | `a1 project member list [--project-id <id>]`（可加 `--status active\|inactive`） |
+| 添加项目成员 / 管理员 | `a1 project member add <staff-id> [staff-id...] [--project-id <id>] [--role member\|admin]` |
+| 移除项目成员角色 | `a1 project member remove <staff-id> [staff-id...] [--project-id <id>] [--role member\|admin]` |
+| 查我的变更单/CR | `a1 app cr list` |
+| 通过应用分支反查 CR | `a1 app cr get-by-branch --app <app> --branch <branch-name> --quiet` |
+| 创建变更单（新建分支） | `a1 app cr create "3-5行核心变更摘要，详情见PRD链接" --branch <name>` |
+| 创建变更单（用已有分支） | `a1 app cr create "3-5行核心变更摘要，详情见PRD链接" --existing-branch <name>` |
+| 创建 trunk_based 主干变更 | `a1 app cr create "3-5行核心变更摘要，详情见PRD链接" --trunk <trunk-branch> --format json` |
+| 多代码配置应用创建 CR | `a1 app cr create "3-5行核心变更摘要，详情见PRD链接" --app <app> --code-module-id <codeConfigId-or-moduleConfigId> --branch <name>` |
+| 提交变更单到待发布 | `a1 app cr submit <cr-id>` |
+| 提交并触发应用发布流水线 | `a1 app cr submit <cr-id> --pipeline-id <id>`；之后用 `a1 app pipeline status --pipeline-id <id> --wait-until-settled` 等待结果 |
+| 提交应用 CR 到集成阶段/项目环境 | `a1 app cr submit-integration <cr-id> --project-env-id <id> [--project-env-mode existing|new]` |
+| 查 CR 下的变更项 | `a1 app cr item list <cr-id>` |
+| 查 CR 配置项分组 | `a1 app cr config-item schema list <cr-id> --item <cr-item-id>` |
+| 查 CR 配置项内容 | `a1 app cr config-item get <cr-id> --schema <schema>` |
+| 修改 CR 配置项 | `a1 app cr config-item set <cr-id> --schema <schema> --key <key> --value <value>` |
+| 删除 CR 配置项 | `a1 app cr config-item unset <cr-id> --schema <schema> --key <key>` |
+| 查包变更单/CR | `a1 pkg cr list` |
+| 创建包变更单（新建分支） | `a1 pkg cr create "描述" --branch <name>` |
+| 创建包变更单（用已有分支） | `a1 pkg cr create "描述" --existing-branch <name>` |
+| 提交包 CR 代码评审/MR | `a1 pkg cr mr <cr-id>` |
+| 提交包 CR 到发布页流水线集成区 | `a1 pkg cr submit <cr-id> --pipeline-id <id>` |
+| 关闭包 CR / 退出发布流水线 | `a1 pkg cr close <cr-id>` / `a1 pkg cr quit <cr-id> --pipeline-instance-id <id>` |
+| CR 详情页/单变更发布二方包 | `a1 pkg deploy-cr`（start-flow → preview-modules → submit）走 Aone 官方流水线，**不是** `mvn deploy` |
+| 发布页流水线集成区部署二方包 / 提交二方库发布单组件 | 先 `a1 pkg deploy-intg preview --flow-inst-id <id>`，再 `a1 pkg deploy-intg submit --flow-inst-id <id> --modules ...` |
+| 查应用信息/列表 | `a1 app view <name-or-id>` / `a1 app list -k "关键词"` |
+| 查发布流水线状态/阶段 | `a1 app pipeline status\|stage list --pipeline-id <id>` |
+| 查实例 release 分支和分支合并变更 | `a1 app pipeline branch --instance-id <pipeline-instance-id>` |
+| 应用发布页提交二方库发布单 | `a1 app pipeline lib-deploy`（start → preview → submit）；release flow 用 `--flow-inst-id` 预览，包发布流用 `--package-flow-inst-id` 提交 |
+| 再次触发最新发布实例（REENTER） | `a1 app pipeline reenter --pipeline-id <id>`（`run`/`retry` 已废弃） |
+| 查流水线 job/task 列表 | `a1 app pipeline stage job list` / `job task list`（详见 `references/app-commands.md`） |
+| 查/操作流水线任务（发布单恢复/关闭/诊断等） | `a1 app pipeline stage job task status --task-id <id> [ACTION]`（ACTION: deploy-order-list / view-diagnosis / resume / finish / skip / log；也可用组件名快捷 `task CR_PUBLISH_RELEASE <ACTION>`；详见 `references/app-commands.md`） |
+| 查部署单列表/详情/关联CR/批次 | `a1 app deploy-order list\|get\|cr\|batch list\|batch hosts`（详见 `references/app-commands.md`） |
+| 查我的MR/评审 | `a1 repo mr list --mine created\|review` |
+| 查/创建/合并/关闭MR | `mr view\|create\|merge\|close\|reopen <id>` |
+| 查MR合并就绪状态 / 催评审 / 推荐评审人 | `mr status <id>` / `mr remind <id>` / `mr reviewers` |
+| 查MR diff | `a1 repo mr diff <mr-id> [path] [-U N]` |
+| 加 MR 评论 / 行评论 / 回复 | `a1 repo mr comment create --mr <id> [--file <p> --line N \| --reply-to <cid>] -m "…"` |
+| 查 MR 关联工作项/CR | `a1 repo mr view <id> --work-items --cr` |
+| 给 MR 关联/取消工作项 | `a1 repo mr workitem add --mr <id> --ids "ID1,ID2"` / `remove --mr <id> --id <id>` |
+| 查 MR 关联变更单 | `a1 repo mr cr list --mr <id>` |
+| 查 MR 评论（筛选未解决） | `a1 repo mr comment list --mr <id> [--unresolved \| --resolved]` |
+| 解决 MR 评论 | `a1 repo mr comment resolve <comment-id> --mr <id>` |
+| 点赞/取消点赞 MR | `a1 repo mr upvote <id> [--undo]` |
+| 给评论加/删表情反应 | `a1 repo mr comment emoji --mr <id> -c <cid> --add <emoji>` / `--remove <eid>`（可选表情见 reference） |
+| 给评论关联/移除标签 | `a1 repo mr comment label --mr <id> -c <cid> --set "1,2"` / `--remove-record <rid>` |
+| 管理仓库评论标签定义 | `a1 repo label list` / `create -n "bug" --color "#ff0000"` / `delete <id>` |
+| 查分支列表/我的/停滞 | `a1 repo branch list [--mine \| --type stale]` |
+| 查分支 diff / 提交历史 | `a1 repo branch diff <branch> [file] [--from <base>]` / `commits [branch]` |
+| 查/创建/删除标签 | `a1 repo tag list [-k "v1."]` / `create <name> --ref <ref>` / `delete <name>` |
+| 查标签详情 | `a1 repo tag view <name>` |
+| 创建仓库 | `a1 repo create -g <group> -n <name> [--create-group]` |
+| 浏览器打开仓库/MR | `a1 repo open [--mr <id>] [--repo <path>]` |
+| 查仓库安全等级 | `a1 repo security` |
+| 远程文件操作 | `a1 repo file list\|view\|create\|edit\|delete\|blame` |
+| 查CI构建状态 | `a1 ci run get`（默认当前分支最新） |
+| 触发CI流水线 | `a1 ci pipeline run <pipeline-id> -b <branch>` |
+| 查CI日志（注意 `--run` 现已必填） | `a1 ci run log` 或 `a1 ci job log <job-id> --run <run-id>` |
+| 查构建任务 | `a1 build job list --pipeline-instance-id <pipeline-instance-id>` |
+| 查构建 Job 详情 / Step 列表 | `a1 build job get <job-id>` / `a1 build job steps <job-id>` |
+| 查构建 Step 日志 / 实时跟踪 / 下载 | `a1 build job log <job-id> --step <step>` / `--follow` / `--download <file>` |
+| 创建CI任务 | 先读 `references/ci-commands.md` 中的「创建 CI 任务指导」；遇到相近流水线先反问"新建/保留/恢复" |
+| 重跑失败的 job（不全跑） | `a1 ci run rerun-failed-jobs <run-id>` |
+| 重跑整个 run | `a1 ci run rerun <run-id>` |
+| 搜代码（当前/全局） | `a1 repo search <keyword> [--global] [-t class\|method] [--lang java]` |
+| 查仓库/用户活动事件 | `a1 events repo` / `a1 events user` |
+| 查测试用例/覆盖率/扫描问题 | `a1 quality testcase` / `coverage` / `issue` |
+| 查应用环境列表 | `a1 env list --app-id <id> [--type online\|testing]` |
+| 查应用环境详情 | `a1 env get <env-id>` |
+| 创建应用环境 | `a1 env create --app-name <name> --name "..." --type online --sign beta` |
+| 查应用/环境的特性列表 | `a1 env trait list --app-id <id>` 或 `a1 env trait list --env-id <id>` |
+| 查可用的特性定义（含 jsonSchema） | `a1 env trait list-definitions --app-id <id>` |
+| 查单个特性详情 | `a1 env trait get --app-id <id> --trait-key <key>` |
+| 创建特性 | `a1 env trait create --app-id <id> --trait-key <key> --form-data '{"k":"v"}'` |
+| 删除特性 | `a1 env trait delete --app-id <id> --trait-key <key>` |
+| 查应用自定义环境级别名称 | `a1 env level-custom-name list --app-id <id>` |
+| 设置自定义环境级别名称 | `a1 env level-custom-name set --app-id <id> --env-level-name daily --custom-name "日常联调"` |
+| 删除自定义环境级别名称 | `a1 env level-custom-name delete --app-id <id> --env-level-name daily` |
+| 完成 SPE 发布验证 | `a1 env spe complete-verify <flow-inst-id>` |
+| 查项目环境（PRE/DEV） | `a1 env project list` |
+| 查项目环境详情 | `a1 env project get <env-id>` |
+| 创建项目环境 | `a1 env project create --file env.yaml` |
+| 删除项目环境 | `a1 env project delete <env-id> [-y]` |
+| 触发 apre 部署 | `a1 env project apre deploy <apre-id>` |
+| 查 apre 机器列表 | `a1 env project apre machines <apre-id>` |
+| 更新 apre 关联的变更单 | `a1 env project apre update-cr <apre-id> --cr-id <id>` |
+| 查用户组/管理用户组 | `a1 project usergroup list\|get\|create\|update\|delete\|search` |
+| 查员工 | `a1 staff list --query "姓名或工号"` |
+| 发布 Java 二方库（单变更/CR 详情页正式版） | `a1 pkg deploy-cr`（start-flow → preview-modules → submit）走 Aone 官方流水线，**不是** `mvn deploy` |
+| 发布页流水线集成区部署二方包（支持多变更集成） | `a1 pkg cr submit` 提交包 CR 进集成区，然后 `a1 pkg deploy-intg preview/submit` 填写并提交二方库发布单 |
+| 本地 Artlab 发布（SNAPSHOT/调试） | `a1 artifact mvn deploy <project-dir>` |
+| 搜公司知识库文档 / 上传或更新知识库页面 | `a1 kbase search` / `a1 kbase page ...`（先读 `references/kbase-commands.md`） |
+| 管理 CodeWiki（生成、搜索、ask、页面 CRUD/upload、下载） | `a1 kbase codewiki ...`（先读 `references/kbase-commands.md`） |
+| 查 a1 自身的 FAQ | `a1 faq` / `a1 faq grep "关键词"` / `a1 faq search "..."` |
+| 查 O2 前端应用 / 迭代 / 变更 | `a1 o2 app\|iteration\|change\|task` |
+| 查 O2 应用成员 | `a1 o2 app member [app-id-or-name]` |
+| 添加 O2 应用成员 | `a1 o2 app add-member [app-id-or-name] --emp-id <id> --role developer` |
+| 移除 O2 应用成员 | `a1 o2 app remove-member [app-id-or-name] --emp-id <id> --role developer` |
+| 同步 GitLab 权限到 O2 应用 | `a1 o2 app sync-member [app-id-or-name]` |
+| 三步工作流创建 O2 应用 | `a1 o2 create-app pubtypes` → `options <id>` → `generators --pub-type <id>` / `generator --pub-type <id> --id <gid>` → `submit --pub-type <id> --group <g> --project <p>` |
+| 给 a1 提 bug / 提需求 | `a1 feedback "<title>" [--req] --product ... --model ... --command ...`（默认 bug，加 `--req` 提需求） |
+| 给其他产品空间提反馈 | `a1 feedback "<title>" --project <space-id> [--assignee <emp-or-WORKER>] ...` |
+| 查我提过的反馈 | `a1 feedback list --me [--project <space-id>]` |
+| 搜索/安装 Contextlab Skill | 阅读 `references/skill-commands.md`；`a1 skill find` → `a1 skill install <包名>` 或 `<包名>@版本/dist-tag`（`--env` 一致）；`SKILL.md` frontmatter 可声明 `cli`，正文可写 tool 标签（`server::tool` 格式） |
+| 按 Skill 调用 MCP 工具 | `a1 mcp call-tool server::tool '<json>'`；大参数用 `cat args.json \| a1 mcp call-tool server::tool -` |
+| 编写/校验/发布 Contextlab Skill | 阅读 `references/skill-commands.md`；个人 `a1 skill publish`，平台 `a1 skill publish --platform <code>` |
+| 查/管理 Aone Pages 站点配置 | `a1 pages view\|create\|update\|delete`（site-name 全局唯一，需 MASTER 角色；详见 `references/pages-commands.md`，**不是**部署 pages 内容） |
+| **创建交付任务 / 发起交付任务 / 新建交付任务 / 基于需求创建任务** | **`a1 devix task create`**（⚠️ 不是 `a1 project workitem create`，见下方消歧说明） |
+| 查交付任务工作空间 | `a1 devix workspace list` |
+| 关联 Aone 需求创建交付任务 | `a1 devix task create --title "..." --workspace <orgId> --link-workitem <aoneIssueId>` |
+| 推进交付任务交付 | `a1 devix task advance --task-id <UUID> [--operator-token <token>] [--input "..."]` |
+| 查看交付任务列表 | `a1 devix task list --workspace <orgId> [--creator <staffId>] [--format json]` |
+| 查用户进行中的任务（路由选择） | `a1 devix task list --workspace <orgId> --creator <staffId> --format json`（过滤 `status=in_progress`） |
+| 查开放平台 CLI 工具列表/详情 | `a1 cli list` / `a1 cli get <cli-name>` |
+| 创建开放平台 CLI 工具 | `a1 cli create <cli-name> --platform-code <code>`（失败时可 `a1 cli create-step` 定点重试） |
+| 发布开放平台 CLI 工具 | `a1 cli publish <cli-name> [--version ... --stable=false --wait]` |
+| 查 CLI 发布状态/记录/下一版本 | `a1 cli status <cli-name>` / `a1 cli publish-records <cli-name>` / `a1 cli next-version <cli-name>` |
+| 安装或下载 CLI 二进制 | `a1 cli install <cli-name> [--print-only]` / `a1 cli download <cli-name> --open-browser=false --print-url` |
+| 管理 CLI 设置/管理员/tags | `a1 cli settings set|managers|tags ...` |
+| 管理 CLI 变更日志 | `a1 cli changelog list|get|set ...` |
+| 管理 CLI 收藏 | `a1 cli favorite add|rm <cli-name>` |
+| CLI 稳定版本流转 | `a1 cli promote <cli-name> --beta-version ...` / `a1 cli rollback <cli-name> --target-version ...` |
+| 查包列表 / 搜包 | `a1 pkg list [-k 关键词] [--subtype library] [--status ONLINE]`（默认 FOCUS 收藏范围，带查询条件自动切 ALL） |
+| 查包详情 | `a1 pkg view <包名或ID>` |
+| 绑定包 / 解绑包 | `a1 pkg link [名称或ID]` / `a1 pkg unlink [ID] [--all]` |
+
+### ⚠️ 消歧："交付任务"≠"项目工作项"
+
+用户说"创建交付任务"、"发起交付任务"、"新建交付任务"时，**一律使用 `a1 devix task create`**，**禁止**使用 `a1 project workitem create --category task`。两者区别详见 `references/devix-commands.md`。
+
+## 各领域要点
+
+### 代码仓库与合并请求（repo）
+
+```bash
+# 仓库绑定（缓存元数据，不创建 workspace binding）
+a1 repo link aone/a1                    # 按路径
+a1 repo link 3847950                    # 按 ID
+a1 repo link                            # 自动检测 git remote
+
+# 创建仓库
+a1 repo create -g aone -n my-project --create-group --link
+
+# MR 创建常用 flag（省略 --assignees 时自动填充仓库默认评审人）
+a1 repo mr create --source feat --target master --title "feat: 新功能" \
+  --description "..." --assignees "花名" --work-items "ID" --enable-ai-review
+a1 repo mr create --source feat --title "..." --no-default-reviewers  # 脚本场景禁用自动评审人
+
+# MR 合并 / 关闭 / 重新打开
+a1 repo mr merge <id> --merge-type squash --delete-branch --message "feat: xxx"
+a1 repo mr close <id>
+a1 repo mr reopen <id>
+
+# MR 合并就绪检查（基于平台 approve_check_result 权威结论）
+a1 repo mr status <id>                          # 按 MR ID
+a1 repo mr status --source feature/fix --target master   # 按分支查找
+a1 repo mr status <id> --format json             # JSON 输出（适合 AI Agent）
+
+# diff（带文件 + 上下文行数）
+a1 repo mr diff <mr-id> path/to/file -U 20
+
+# 评论：行评论 / 回复 / 列出未解决 / 解决
+a1 repo mr comment create --mr <id> -m "..." --file path --line 42
+a1 repo mr comment create --mr <id> -m "..." --reply-to <comment-id>
+a1 repo mr comment list --mr <id> --unresolved   # 仅未解决的根级行内评论
+a1 repo mr comment resolve <comment-id> --mr <id>
+
+# 工作项关联（注意 add 用 --ids，remove 用 --id）
+a1 repo mr workitem list --mr <id>
+a1 repo mr workitem add --mr <id> --ids "ID1,ID2"
+a1 repo mr workitem remove --mr <id> --id <id>
+
+# 变更单关联
+a1 repo mr cr list --mr <id>
+
+# 评论表情反应（--add 和 --remove 互斥，可选表情见 references/repo-commands.md）
+a1 repo mr comment emoji --mr <id> -c <comment-id> --add <emoji>
+a1 repo mr comment emoji --mr <id> -c <comment-id> --remove <emoji-action-id>
+
+# 评论标签关联 / 仓库标签管理
+a1 repo mr comment label --mr <id> -c <comment-id> --set "1,2,3"
+a1 repo label list
+a1 repo label create -n "bug" --color "#ff0000"
+
+# 标签管理
+a1 repo tag list [-k "v1."]
+a1 repo tag view v1.0.0
+a1 repo tag create v1.0.0 --ref master -m "release v1.0.0"
+a1 repo tag delete v1.0.0 --yes
+
+# 分支 diff / 提交历史
+a1 repo branch diff feature/x                     # 列出变更文件
+a1 repo branch diff feature/x src/main.go         # 单文件 diff
+a1 repo branch diff feature/x --from develop      # 对比 develop 而非默认分支
+a1 repo branch commits feature/x --path src/main.go --since 2025-01-01T00:00:00.000+08:00
+```
+
+完整 flag（含 repo file create/edit/delete、tag、reviewers、search、verbose 完整选项）参见 `references/repo-commands.md`。
+
+### CI/CD 流水线（ci）
+
+需要绑定仓库（`a1 repo link`）。
+
+```bash
+a1 ci run get                                          # 当前分支最新构建
+a1 ci run rerun-failed-jobs <run-id>                   # 只重跑失败 job（vs 全部 rerun）
+a1 ci pipeline run <id> -b <branch> --param KEY=VAL --watch
+a1 ci job log <job-id> --run <run-id> --follow         # ⚠️ --run <run-id> 现为必填
+```
+
+**创建 CI 任务**：先读 `references/ci-commands.md` 的「创建 CI 任务指导」；模板创建原则、相近流水线的确认方式、触发器写法、Aone Pages 部署模板（`10014197`）等以 reference 为准——不要凭记忆写命令，标准 CI 任务一律走模板。
+
+完整 flag（含 pipeline create/update、artifact、template、yaml validate）参见 `references/ci-commands.md`。
+
+### 构建任务与日志（build）
+
+`a1 build job` 面向 Aone Build 的构建 Job，不是 AoneCI 的 `ci job`。当前支持按 pipeline instance id 查询构建 Job，再下钻到 Step 日志。
+
+```bash
+a1 build job list --pipeline-instance-id <pipeline-instance-id>  # 按 pipeline instance id 查构建 Job
+a1 build job get <job-id>                                        # 查构建 Job 详情
+a1 build job steps <job-id>                                      # 查可用日志 Step
+a1 build job log <job-id> --step build-package                   # 一次性拉取 Step 日志
+a1 build job log <job-id> --step build-package --offset 0 --limit 500 -f json
+a1 build job log <job-id> --step build-package --follow          # 仅用于开始查询时仍在运行的 Step
+a1 build job log <job-id> --step build-package --download build.log
+```
+
+常用判断：
+- `--pipeline-instance-id` 是当前支持的构建 Job 查询维度之一；CLI 通过 a1-server 转给构建服务查询，不要让用户自己提供底层 `mixFlowInstId`。
+- `--limit` 表示本次最多拉取的日志行数，默认 `500`；`--offset` 使用上一次 JSON 响应里的 `nextOffset` 做增量查询。
+- 需要脚本化轮询时用 `-f json`，重点看 `nextOffset`、`finished`、`stepRunning`、`stepStatus`；不要用是否返回空日志来判断结束。
+- `--follow` 第一次请求要求目标 Step 正在运行；开始 follow 后会持续轮询，直到服务端返回 `finished=true` 且 `stepRunning=false`。
+- 已结束的任务优先用普通 `log` 或 `--download`，不要强行走 `--follow`。
+
+完整 flag 参见 `references/build-commands.md`。
+
+### 应用与发布（app）
+
+需要绑定应用（`a1 app link`）。
+
+```bash
+# CR 创建：branch 模式显式指定 --branch（新建）或 --existing-branch（复用）；trunk_based 应用可用 --branch 新建功能分支，或用 --trunk/默认主干创建直接主干变更
+# 多 codeConfigs 应用用 --code-module-id 精确选择代码配置；该参数接受 codeConfig.id 或 moduleConfig.id，并决定 repo/defaultTrunk/devMode
+# CR 描述会被 a1 按 2000 display-width 自动截断；Agent 生成时仍应先摘要成 3-5 行，完整说明放 PRD/tech-design 链接。
+a1 app cr create "变更描述" --branch new-feat                 # 新建分支 feature/new-feat
+a1 app cr create "变更描述" --existing-branch hotfix/fix      # 用已有远程分支
+a1 app cr create "变更描述" --trunk feature/main --format json # trunk_based 主干研发变更
+a1 app cr create "变更描述" --app my-service --code-module-id 2820201 --existing-branch hotfix/fix
+a1 app cr create "变更描述" --app my-service --item-name my-code-module --branch new-feat
+a1 app cr create "变更描述" --branch new-feat --plan-release-date "2026-06-10 14:00"
+a1 app cr create "变更描述" --branch new-feat --plan-release-date +2d
+# branch 模式不传分支参数会报错；trunk_based 应用不传时会使用应用默认主干
+
+a1 app cr submit <cr-id>                              # 提交到待发布
+a1 app cr submit <cr-id> --pipeline-id <id>           # 提交到发布流水线并触发执行
+a1 app pipeline status --pipeline-id <id> --wait-until-settled  # 等待流水线结束
+a1 app cr submit-integration <cr-id> --project-env-id <id>      # 提交到集成阶段/项目环境
+```
+
+用户说“提交流水线发布”“提交到发布流水线”“发到流水线”时，使用 `a1 app cr submit <cr-id> --pipeline-id <id>`；不要改用 `a1 app cr submit-integration`。`submit-integration` 是项目环境/集成阶段命令，只在用户明确说“集成阶段”“项目环境”“联调环境”并给出 projectEnvId 时使用。
+
+**包 CR（pkg cr）：**
+```bash
+# 需要先绑定包，或用 --pkg 指定包名称/ID
+a1 pkg link <pkg-name-or-id>
+
+# 包 CR 创建同样必须显式指定 --branch 或 --existing-branch
+a1 pkg cr create "变更描述" --branch new-feat
+a1 pkg cr create "变更描述" --existing-branch hotfix/fix --pkg <pkg-name-or-id>
+
+# 包类只有一个 code config，不要传 --code-module-id；CLI 会自动取包的唯一 code config
+a1 pkg cr list [--status DEV] [--all]
+a1 pkg cr mr <cr-id> [--assignees <emp-ids>]
+a1 pkg cr close <cr-id> --yes
+a1 pkg cr quit <cr-id> --pipeline-instance-id <id>
+```
+
+**CR 配置项：**
+```bash
+a1 app cr item list <cr-id>                                      # 列出 CR 下的变更项
+a1 app cr config-item schema list <cr-id> --item <cr-item-id>    # 查询可操作配置分组
+a1 app cr config-item get <cr-id> --schema <schema>              # 查询指定分组的变更配置
+a1 app cr config-item get <cr-id> --all-schema --include-unchanged  # 查询所有分组的存量配置
+a1 app cr config-item set <cr-id> --schema <schema> --key <key> --value <value>
+a1 app cr config-item set <cr-id> --schema <schema> --from-json items.json
+a1 app cr config-item unset <cr-id> --schema <schema> --key <key>
+```
+
+如果 CR 下有多个可操作变更项，先用 `a1 app cr item list <cr-id>` 找到目标 `crItemId`，再给配置项命令加 `--item <cr-item-id>`。配置项内容中的 secret 默认脱敏，需要明文时使用 `--show-secrets`。配置项修改不要连续高频提交：多次 `set`/`unset` 之间间隔 1-2 秒；同一 schema 下需要修改多个 key 时，优先整理成 JSON 文件后用 `--from-json` 一次性提交。
+
+**⚠️ 发布状态解读（非显式行为，必须主动检查）：**
+
+`a1 app pipeline status` 返回的 `status` 字段不能完全反映"卡住"的真实原因——
+
+1. `status=running` 但实际被某节点 `extendedStatus` 阻塞——整体未结束所以仍显示 running。
+2. `status=waiting` 既可能是正常等待条件，也可能需要人工介入。
+
+遇到「发布卡住不动」时，按这个顺序排查：
+```bash
+a1 app pipeline status --pipeline-id <id>          # 1. 看整体状态（但 status 字段可能误导）
+a1 app pipeline stage list --pipeline-id <id>      # 2. 找出 extendedStatus 失败/异常的阶段（阻塞的真实位置）
+a1 app pipeline stage status --stage-id <id>       # 3. 看该阶段的具体原因
+a1 app pipeline branch --instance-id <id>          # 4. 看 release 分支和分支合并 CR
+```
+
+**发布单操作：** 流水线任务支持动态动作（deploy-order-list / view-diagnosis / resume / finish / skip / log），也支持组件名快捷访问（如 `CR_PUBLISH_RELEASE`、`BUILD`）。完整工作流和参数说明参见 `references/app-commands.md`。
+
+### 制品与二方包（artifact / pkg）
+
+- **`a1 artifact mvn deploy <dir>`**：本地工程扫描模块并上传到 **Artlab**，适合 SNAPSHOT/本机验证。
+- **`a1 pkg deploy-cr`**：**Aone 官方 Maven 二方库发布流水线**（Mix OpenAPI）。用于 CR 详情页/单变更发布类流程（start-flow → preview-modules → submit），与本地 `deploy` 直传不是同一路径。
+- **`a1 pkg cr submit` + `a1 pkg deploy-intg preview/submit`**：**发布页流水线集成区二方包部署**。用于包 CR 已提交到发布页流水线集成区、需要填写「提交二方库发布」组件的场景，支持多变更集成。不要把该场景放到 `artifact` 命令域，也不要传发布页 URL；`deploy-intg` 只需要包上下文和 `--flow-inst-id`。
+- **`a1 app pipeline lib-deploy`**：**应用发布页二方包发布**。用于 Aone 应用发布页点击“提交二方库发布”后打开的 `/unite/micro/publish/app/{appId}/lib?...` 场景；先 `start` 创建/复用包发布流，再用 release flow `preview` 模块，最后用 package flow `submit` 页面组件。
+
+官方二方包发布的完整流程与 flag 参见 `references/pkg-commands.md` 和 `references/app-commands.md`；本地 Artlab 上传参见 `references/artifact-commands.md`。构造 `pkg deploy-cr submit`、`pkg deploy-intg submit` 或 `app pipeline lib-deploy submit` 前先执行 preview：模块取 `modules[].name`；默认 JDK 取 `defaultJdkVersion`，切换 JDK 取 `jdkOptions[].resource`；默认 Maven 取 `mvnVersion`，切换 Maven 取 `mvnOptions[].resource`；SNAPSHOT 包发布时，`pkg deploy-intg` 传 `--is-fl`。
+
+### 项目空间与工作项（project）
+
+```bash
+# 列表 / 详情 / CRUD
+a1 project workitem list --project <id> --category bug --status New,Reopen --page-size 200
+a1 project workitem list --project <id> --filter 'status=Open AND priority=urgent'   # 布尔过滤
+a1 project workitem list --project <id> --columns 标题,状态,指派给 --sort gmtCreate:desc  # 自定义列+排序
+a1 project workitem get <id>
+a1 project workitem create --title "..." --category req --project <id> [--cfs ...]
+a1 project workitem update <id> --status "开发中" --assignee 八鹤
+a1 project workitem delete <id> --yes              # 不可恢复
+
+# 工作项动态（活动日志）
+a1 project workitem activity <id>
+a1 project workitem activity <id> --sort asc
+a1 project workitem activity <id> --limit 10
+a1 project workitem activity <id> --format json
+
+# 关联（type: parent/sub/relate/blocks/blocked-by/duplicate/change/cr/tc/doc）
+a1 project workitem relation add <id> relate:<target-id>
+a1 project workitem relation list <id> [--category dev]
+
+# 评论 / 附件 / 字段定义
+a1 project workitem comment create <id> -m "..."
+a1 project workitem attachment upload <id> <path>
+a1 project workitem field list --project <id> [--scope project]   # 列出全部字段及 CLI 别名
+a1 project workitem field options <field> --project <id> --type <type>
+```
+
+> ⚠️ 状态值用每个项目自定义的大写枚举（`a1 --help` 示例 `New,Fixed,Closed`），**不要**写 `open/new/reopen` 这种小写。
+> ⚠️ 没有 `--all` 标志（旧版 SKILL.md 拼写错误）；要全量获取用 `--page-size <large>` 或循环 `--page`。
+
+完整 flag（含 sprint、version、自定义字段 `--cfs` 用法、--filter 完整语法、关联类型映射）参见 `references/project-commands.md`。
+
+### 知识库与 CodeWiki（kbase）
+
+涉及知识库页面上传/更新、CodeWiki 生成、CodeWiki 搜索/ask、CodeWiki 页面 CRUD/upload/下载时，先 Read `references/kbase-commands.md` 再拼命令。只在 `SKILL.md` 保留消歧：`a1 kbase codewiki page ...` 管理 CodeWiki 文档页面，`a1 pages ...` 管理 Aone Pages 静态站点配置；不要混用。
+
+### 反馈通道（feedback）
+
+`a1 feedback` 是各内部 AI/CLI 产品向自己专属反馈空间提 bug/req 的统一通道——遇到产品异常或想反馈需求时使用。默认产品空间是 a1 自身的 Aone Cli 反馈空间（`2155669`）；其他产品（如 Devix）通过 `--project <space-id>` 切换。
+
+```bash
+# 提 bug（默认）：--product/--model/--command/--actual/--expected 均必填
+a1 feedback "project link 搜索失败" \
+  --product "Claude Code" --model "claude-opus-4-7" \
+  --command 'a1 project link "Aone AI"' \
+  --actual "No results" --expected "应返回项目并完成绑定"
+
+# 提需求（加 --req）
+a1 feedback "希望支持按负责人过滤" --req --product "..." --model "..." \
+  --command "..." --actual "..." --expected "..."
+
+# 切到其他产品反馈空间（自动指派到该空间内置 receiver；可用 --assignee 覆盖）
+a1 feedback "..." --project 2161397 --assignee 368136 --product "..." ...
+
+# 查询
+a1 feedback list --me [--status New] [--query "..."] [--project <space-id>]
+```
+
+`--project` / `--assignee` 也可通过 `A1_FEEDBACK_PROJECT_ID` / `A1_FEEDBACK_ASSIGNEE` 环境变量全局生效（优先级：flag > env > 内置默认）。`--assignee` 必须是目标空间已注册的成员，否则服务端会回落到 creator。
+
+> 💡 **用户交流群**：当用户的 a1 问题无法用命令解决、或想直接联系团队交流/反馈时，除了 `a1 feedback`，可推荐加入 **a1 CLI 用户交流群**（钉钉群号 `185280011056`，入群链接 <https://qr.dingtalk.com/action/joingroup?code=v1,k1,/dfSxzucMR95kuGy5szmOqJTtBID9A9/bmuCABMbS+k=&_dt_no_comment=1&origin=11>）。
+
+### 开放平台 CLI 工具（cli）
+
+```bash
+# 查询
+a1 cli list --keyword my-cli --page 1 --page-size 10
+a1 cli get my-cli --readme
+
+# 创建（最少需要 platform-code）
+a1 cli create my-cli --platform-code test --display-name "My CLI" --description "demo"
+
+# 发布与状态
+a1 cli publish my-cli --version 1.0.0-beta.1 --stable=false --wait --poll-interval 15s --timeout 30m
+a1 cli status my-cli
+a1 cli publish-records my-cli --page 1 --page-size 10
+
+# 安装/下载
+a1 cli install my-cli --print-only
+a1 cli download my-cli --open-browser=false --print-url
+
+# 设置/标签/日志
+a1 cli settings set my-cli --description "updated"
+a1 cli settings tags my-cli --tags devops,tooling
+a1 cli changelog set my-cli --version 1.0.0-beta.1 --channel beta --note "release note"
+```
+
+涉及 `a1 cli` 子命令构造时，先 Read `references/cli-commands.md` 获取完整参数，避免凭记忆猜测 flag。
+
+### 包对象（pkg）
+
+```bash
+# 列出收藏包（默认 FOCUS）
+a1 pkg list
+
+# 带查询条件自动切全量 ALL
+a1 pkg list -k aone
+a1 pkg list --subtype library --status ONLINE
+
+# 显式搜全部 / 强制收藏范围（互斥）
+a1 pkg list --all
+a1 pkg list --favorites
+
+# 查包详情
+a1 pkg view aone-demo-lib
+a1 pkg view 229256 --format json
+
+# 绑定 / 解绑（工作目录需要关联到包时使用）
+a1 pkg link 229256
+a1 pkg unlink --all
+```
+
+完整 flag（含 `--subtype`、`--owner`、`--creator-id`、`--product-line`、`--asql` 等）参见 `references/pkg-commands.md`。
+
+### 其他常用领域
+
+```bash
+# 知识库
+a1 kbase search "关键词"                  # AI 语义搜索
+a1 kbase page ... / a1 kbase codewiki ... # 详见 references/kbase-commands.md
+
+# a1 自身的 FAQ（CLI 内置文档）
+a1 faq                                    # 列目录
+a1 faq grep "关键词"                      # 关键字搜索
+a1 faq search "..."                       # AI 语义搜索
+
+# 员工
+a1 staff list --query "姓名或工号"
+a1 staff get <employee-id>
+
+# 质量报告（持久化 flag：--repo --branch --commit --tag）
+a1 quality testcase [--summary]
+a1 quality coverage [--compare-to <ref>]
+a1 quality issue [--severity critical,blocker --status open]
+
+# 应用环境
+a1 env list --app-id 229256 [--type online|testing]
+a1 env get <env-id>
+a1 env create --app-name my-app --name "beta发布3" --type online --sign beta
+
+# 环境特性（trait）— 支持 --app-id/--app-name（应用维度）或 --env-id（环境维度）
+a1 env trait list --app-id 101880                          # 查已导入的特性实例
+a1 env trait list --env-id 708227
+a1 env trait list-definitions --app-id 101880              # 查可用特性定义（含 jsonSchema）
+a1 env trait get --app-id 101880 --trait-key java-options  # 查单个特性
+a1 env trait create --app-id 101880 --trait-key java-options --form-data '{"javaOptions":"-Xms512m"}'
+a1 env trait create --env-id 708227 --trait-key time-zone --form-data '{"timezone":"Asia/Shanghai"}'
+a1 env trait delete --app-id 101880 --trait-key java-options
+a1 env trait create --app-id 101880 --trait-key time-zone --form-data '{}'
+
+# 自定义环境级别名称
+a1 env level-custom-name list --app-id 229256
+a1 env level-custom-name get --app-id 229256 --env-level-name daily
+a1 env level-custom-name set --app-id 229256 --env-level-name daily --custom-name "日常联调"
+a1 env level-custom-name delete --app-id 229256 --env-level-name daily
+
+# SPE 发布验证
+a1 env spe complete-verify <flow-inst-id> [--env-level spe]
+
+# 项目环境
+a1 env project list [-s PRE|DEV] [--cr-id <id>]
+a1 env project get <env-id>
+a1 env project create --file env.yaml
+a1 env project delete <env-id> [-y]
+
+# 应用运行环境（apre）
+a1 env project apre list <env-id>
+a1 env project apre create <env-id> --file apres.yaml
+a1 env project apre deploy <apre-id>
+a1 env project apre machines <apre-id>
+a1 env project apre delete <apre-id> [-y]
+a1 env project apre update-cr <apre-id> --cr-id <id>
+
+# 活动事件（--since/--until 支持日期，--type 多类型逗号分隔）
+a1 events repo [<repo>] [--type push,merge-request] [--since 2026-03-01]
+a1 events user [<user-id>] [--type ...] [--since ...]
+
+# O2 前端应用
+a1 o2 app|iteration|change|task ...
+
+# O2 应用成员管理
+a1 o2 app member [app-id-or-name]            # 列出成员及其角色
+a1 o2 app add-member [app] --emp-id <id> --role developer
+a1 o2 app remove-member [app] --emp-id <id> --role developer
+a1 o2 app sync-member [app]                   # 同步 GitLab 权限到应用成员列表
+
+# O2 应用创建工作流（三步：pubtypes → options → submit）
+a1 o2 create-app pubtypes
+a1 o2 create-app options <pub-type-id>
+a1 o2 create-app generators --pub-type <id>
+a1 o2 create-app generator --pub-type <id> --id <generator-id>
+a1 o2 create-app submit --pub-type <id> --group <g> --project <p>
+a1 o2 create-app submit --pub-type <id> --group <g> --project <p> --generator-id <generator-id> --generator-data '{"key":"value"}'
+
+# Aone Agent 会话（实验）
+a1 claw chat "..." --session-id <uuid>
+
+# Contextlab Skill：搜索/安装/列出/读取/卸载/发布
+a1 skill find <keyword> [--env pre]              # 搜索可见技能
+a1 skill install <name> [--env pre]              # 安装 latest（包名来自 find）
+a1 skill install <name>@<version> [--env pre]      # 安装指定版本
+a1 skill install <name>@beta [--env pre]         # 安装 dist-tag（如 beta）
+a1 skill publish                                 # 发布个人技能（包名自动加前缀）
+a1 skill publish --platform <code>               # 发布到归属平台（非个人）
+
+# MCP（Skill 中 tool 标签声明的工具；大 JSON 用 stdin）
+a1 mcp call-tool <server::tool> '{"key":"value"}'
+cat args.json | a1 mcp call-tool <server::tool> -
+```
+
+涉及 Skill 查找、安装（含 `name@tag`、frontmatter `cli` / 正文 tool 标签生成 `CLI.md`/`MCP_TOOL.md`）、编写、publish/install、MCP call-tool 与 stdin 传参时，**先 Read `references/skill-commands.md`** 再拼命令。
+
+### Devix 交付任务（devix）
+
+通过 `a1 devix task` 命令组创建交付任务并推进交付，`a1 devix workspace list` 查询工作空间。用户可通过 CLI 直接操作，也可由钉钉机器人等自动化场景调用。
+
+涉及 Devix 交付任务创建、推进、列表、工作空间查询、钉钉场景 token 传递、任务路由逻辑时，**先 Read `references/devix-commands.md`** 再拼命令。
+
+### 常见工作流提示
+
+- **排查 CI 失败**：`run get` → `job list --run <run-id>` → `job log <job-id> --run <run-id>`；日志里出现 `TEST_CASE` 或 `issue summary` 关键字时，从日志找 report uid（uuid 格式），再 `quality testcase <uid>` 或 `quality issue --severity critical,blocker` 拉详情。
+- **排查构建失败**：用户给的是 pipeline instance id 时，走 `build job list --pipeline-instance-id <id>` → `build job steps <job-id>` → `build job log <job-id> --step <step>`；运行中 Step 才用 `--follow`，结束任务优先普通 `log` 或 `--download`。
+- **排查部署/发布单问题**：`pipeline status` → `stage list` → `stage job list` → `job task list` → `task status` 看 `supportedActions`，再按需执行动作（view-diagnosis / resume / finish 等）。完整流程参见 `references/app-commands.md`。
+- **管理 Aone Pages 站点配置 vs 部署内容**：两件事不要混：
+  - **管理站点配置**（建/查/改/删 siteName 和 domains）→ `a1 pages view\|create\|update\|delete`，详见 `references/pages-commands.md`。触发词：`查 pages 站点` / `创建 pages 站点` / `改 pages 域名` / `删 pages` 等。
+  - **部署内容到 Pages**（构建 + 推 OSS）→ `a1 ci` 创建流水线，模板 `10014197`，四步：查重 → 本地代码检查 → 推导 `build-website-command` / `deploy-dir` → 创建。完整骨架与参数推导规则去 Read `references/ci-commands.md` 示例 5，不要凭记忆写命令也不要回退到自定义 YAML。触发词：`部署 pages` / `deploy pages` / `刷新 pages` 等。
+  - 仅出现「pages」名词无明确动词（如 `/a1 pages`）时先反问"是想管理站点配置还是部署内容？"再决定走哪条路径。
+
+### 查找并安装 Skill
+
+```bash
+a1 skill find <keyword> [--env pre]      # 1. 搜索
+a1 skill install <包名> [--env pre]       # 2. 安装（可选 <包名>@<version> 或 @beta 等 dist-tag）
+a1 skill list                            # 3. 确认
+```
+
+`SKILL.md` frontmatter 的 `cli` 与正文中的 tool 标签（`server::tool` 格式）会在 install 时分别生成 `CLI.md`、`MCP_TOOL.md`，并在 `SKILL.md` 末尾插入引用（详见 `references/skill-commands.md`）。执行 Skill 里的 MCP 工具时，参数可用 `cat args.json | a1 mcp call-tool server::tool -` 从 stdin 传入。
+
+发布 Contextlab Skill 的逐步流程见 `references/skill-commands.md` 文末。
+
+## 输出格式
+
+`-f json` 解析 ID/字段；`-q` 只输出 ID；默认 plain 表格/文本面向人。需要在脚本里链式取 ID 时用 `-f json | jq …`。
+
+## 参考文档
+
+需要某命令的完整参数列表时阅读对应 reference 文件（见上方 reference 文件索引）。
+
+
+ARGUMENTS: 创建一个新的代码仓库 annotation-quality-system 在内部 GitLab (gitlab.alibaba-inc.com)，然后把我本地 /home/admin/workspace/调度系统项目包/ 的 git 仓库推送到这个新仓库。本地已经 git init + commit 完成，需要：1) 创建远程仓库 2) 配置 remote 3) push。如果需要认证请用现有 SSH key 或提示。
+[2026-07-05] [Request interrupted by user for tool use]

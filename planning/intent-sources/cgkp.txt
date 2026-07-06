@@ -1,0 +1,165 @@
+# cgkp — 用户口输入（去重后，20 条 / 原始 51 条）
+# 由 distill-user-style.py Step1 生成，供 BUSINESS-INTENT 提炼 + 引擎阶段①CONTEXTUALIZE 读
+
+[2026-06-22] AUTONOMOUS_HEARTBEAT L2 — 自主决策引擎心跳。工作区: /home/admin/workspace/cgkp。激活自主决策引擎技能，执行 L2 哨兵扫描。
+[2026-06-22] AUTONOMOUS_HEARTBEAT L3 — 自主决策引擎深度检查。工作区: /home/admin/workspace/cgkp。激活自主决策引擎技能，执行 L3 深度研判 + 网络研究。
+[2026-06-22] 怎么样了
+[2026-06-22] 冒烟测试是什么意思
+[2026-06-22] 在测试前端页面和ui的时候，不能只通过前面设置好的测试用例进行测试，还要通过模型视觉截图或ocr等其他服务，从视觉上识别页面中的所有ui，然后根据页面整体、ui内容、形状等信息，推测ui的使用方式，模仿人第一次打开这个页面的理解。判断页面是否有重复的图标、ui，给每个ui产出一个点击后的期望逻辑，并且要逐个点击所有ui的同时，再对新出现的页面进行重新完整的分析，直到所有操作都交互完才结束。对比视觉操作和项目的逻辑符合程度，报错问题等。
+[2026-06-23] 进行到哪里了？
+[2026-06-23] 修复，把下载的所有文档，按照钉钉知识库里的原本的文件夹结构，放到知识库中，一个独立的AI试衣规则知识库目录下
+[2026-06-23] 更新到数据库中的文档，在智能教培页面中显示出来了吗？
+[2026-06-23] aone-km 知识库是ai答疑使用的rag数据库，而要显示的是知识库页面，admin和learner页面都有
+[2026-06-23] 你说的cgkp就是https://code.alibaba-inc.com/OneDayAI-RPUKYRO/1BfrYn9G/tree/onedaybot-dev吗？
+[2026-06-23] 删除一切cgkp相关，只以https://code.alibaba-inc.com/OneDayAI-RPUKYRO/1BfrYn9G/tree/onedaybot-dev为准
+[2026-06-18] 你说的workflow的代理转发是哪个环节的？存量数据暂时不需要迁移。opds和钉钉不接入，但需要接入1d cloud。
+[2026-06-18] 使用1d的工作流api：
+[2026-06-18] https://1d-workflow.alibaba-inc.com/v1  key：app-w7hGneVfh9PtFN77zGkBVwgv测试一下正确的调用格式
+[2026-06-18] 用这一个，你直接在应用里做好编排就行，当作llm用
+[2026-06-18] 确认是适配1d平台的吗？
+[2026-06-18] 继续完成
+[2026-06-18] 继续推进
+[2026-06-18] Review target: `--effort medium`
+
+`max effort → 5+4 angles × 8 candidates → 1-vote verify → sweep → ≤15 findings`
+
+You are reviewing for **recall** at maximum effort: catch every real bug. At
+this level, catching real bugs matters more than avoiding false positives — a
+missed bug ships. Err on the side of surfacing.
+
+## Phase 0 — Gather the diff
+
+Run `git diff @{upstream}...HEAD` (or `git diff main...HEAD` / `git diff HEAD~1`
+if there's no upstream) to get the unified diff under review. If there are
+uncommitted changes, or the range diff is empty, also run `git diff HEAD` and
+include the working-tree changes in scope — the review often runs before the
+commit. If a PR number, branch name, or file path was passed as an argument,
+review that target instead. Treat this diff as the review scope.
+
+## Phase 1 — Find candidates (5 correctness angles + 3 cleanup angles + 1 altitude angle, up to 8 each)
+
+Run **9 independent finder angles** via the Agent tool. Each
+surfaces **up to 8 candidate findings**. Do NOT let one angle's conclusions
+suppress another's — if two angles flag the same line for different reasons,
+record both.
+
+### Angle A — line-by-line diff scan
+
+Read every hunk in the diff, line by line. Then Read the enclosing function for
+each hunk — bugs in unchanged lines of a touched function are in scope (the PR
+re-exposes or fails to fix them). For every line ask: what input, state, timing,
+or platform makes this line wrong? Look for inverted/wrong conditions,
+off-by-one, null/undefined deref, missing `await`, falsy-zero checks,
+wrong-variable copy-paste, error swallowed in catch, unescaped regex metachars.
+
+### Angle B — removed-behavior auditor
+
+For every line the diff DELETES or replaces, name the invariant or behavior it
+enforced, then search the new code for where that invariant is re-established.
+If you can't find it, that's a candidate: a removed guard, a dropped error
+path, a narrowed validation, a deleted test that was covering a real case.
+
+### Angle C — cross-file tracer
+
+For each function the diff changes, find its callers (Grep for the symbol) and
+check whether the change breaks any call site: a new precondition, a changed
+return shape, a new exception, a timing/ordering dependency. Also check callees:
+does a parallel change in the same PR make a call unsafe?
+
+### Angle D — language-pitfall specialist
+
+Scan for the classic pitfalls of the diff's language/framework — for example:
+JS falsy-zero, `==` coercion, closure-captured loop var; Python mutable default
+args, late-binding closures; Go nil-map write, range-var capture; SQL injection;
+timezone/DST drift; float equality. Flag any instance the diff introduces.
+
+### Angle E — wrapper/proxy correctness
+
+When the PR adds or modifies a type that wraps another (cache, proxy, decorator,
+adapter): check that every method routes to the wrapped instance and not back
+through a registry/session/global — e.g. a caching provider holding a
+`delegate` field that resolves IDs via `session.get(...)` instead of
+`delegate.get(...)` will re-enter the cache or recurse. Also check that the
+wrapper forwards all the methods the callers actually use.
+
+### Reuse
+
+The angles above hunt for bugs; this one and the next two hunt for cleanup in
+the changed code. Flag new code that re-implements something the codebase
+already has — Grep shared/utility modules and files adjacent to the change,
+and name the existing helper to call instead.
+
+### Simplification
+
+Flag unnecessary complexity the diff adds: redundant or derivable state,
+copy-paste with slight variation, deep nesting, dead code left behind. Name
+the simpler form that does the same job.
+
+### Efficiency
+
+Flag wasted work the diff introduces: redundant computation or repeated I/O,
+independent operations run sequentially, blocking work added to startup or
+hot paths. Name the cheaper alternative.
+
+### Altitude
+
+Check that each change is implemented at the right depth, not as a fragile
+bandaid. Special cases layered on shared infrastructure are a sign the fix
+isn't deep enough — prefer generalizing the underlying mechanism over adding
+special cases.
+
+Cleanup and altitude candidates use the same `file`/`line`/`summary` shape; in
+`failure_scenario`, state the concrete cost (what is duplicated, wasted, or
+harder to maintain) instead of a crash. Correctness bugs always outrank
+cleanup and altitude findings when the output cap forces a cut.
+
+## Phase 2 — Verify (1-vote, 3-state)
+
+Dedup candidates that point at the same line/mechanism, keeping the one with
+the most concrete failure scenario. For each remaining candidate, run **one
+verifier** via the Agent tool: give it the diff, the relevant
+file(s), and the candidate, and have it return exactly one of:
+
+- **CONFIRMED** — can name the inputs/state that trigger it and the wrong
+  output or crash. Quote the line.
+- **PLAUSIBLE** — mechanism is real, trigger is uncertain (timing, env,
+  config). State what would confirm it.
+- **REFUTED** — factually wrong (code doesn't say that) or guarded elsewhere.
+  Quote the line that proves it.
+
+Keep candidates where the vote is CONFIRMED or PLAUSIBLE.
+
+This is recall mode — a single non-REFUTED vote carries the finding. Do NOT
+drop on uncertainty.
+
+## Phase 3 — Sweep for gaps
+
+Run **one more finder** as a fresh reviewer who has the verified list. Re-read
+the diff and enclosing functions looking ONLY for defects not already listed.
+Do not re-derive or re-confirm anything already there — the job is gaps. Focus
+on what the first pass tends to miss: moved/extracted code that dropped a guard
+or anchor; second-tier footguns (dataclass default evaluated once, `hash()`
+non-determinism, lock-scope shrink, predicate methods with side effects);
+setup/teardown asymmetry in tests; config defaults flipped.
+
+Surface **up to 8 additional candidates**, each naming a defect not already on
+the list. If nothing new, return an empty sweep — do not pad.
+
+## Output
+
+Return findings as a JSON array of at most 15 objects:
+
+```json
+[
+  {
+    "file": "path/to/file.ext",
+    "line": 123,
+    "summary": "one-sentence statement of the bug",
+    "failure_scenario": "concrete inputs/state → wrong output/crash"
+  }
+]
+```
+
+Ranked most-severe first. If more than 15 survive, keep the 15 most
+severe. If nothing survives verification, return `[]`.
+[2026-06-18] https://code.alibaba-inc.com/OneDayAI-RPUKYRO/1BfrY766/tree/onedaybot-dev 覆盖这个仓库，我可以部署

@@ -1,6 +1,6 @@
-repository: https://code.alibaba-inc.com/qunbu/runner-exec
 ---
 name: runner-exec
+repository: https://code.alibaba-inc.com/qunbu/runner-exec
 description: Runner Exec — 在 Windows Runner 上执行命令和读写文件。当用户需要在连接的 Windows runner 上执行命令、读写文件时使用。
 version: 1.0.3
 files:

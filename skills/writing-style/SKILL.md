@@ -1,6 +1,7 @@
 ---
 name: writing-style
 description: 数据分析报告、HTML 交互看板、多角色文档结构与可视化规范。触发词：帮我写报告、写分析文档、做数据看板、写数据诊断、整理分析结果。OKR/述职/SOP 等改用 business-writing-coach。
+version: 1.0.0
 ---
 
 # 写作规范技能（writing-style）

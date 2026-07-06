@@ -9,6 +9,24 @@ description: >-
   或任何涉及研发流程阶段管理的操作。
 model: sonnet
 repository: https://code.alibaba-inc.com/qunbu/autonomous-studio
+version: 1.0.2
+files:
+  - SKILL.md
+  - studio-inject.md
+  - studio-pipeline.md
+  - decision-agent-prompt.md
+  - OPTIMIZATION-WORKFLOW.md
+  - PIPELINE-GATE.md
+  - GATES.md
+  - SETUP.md
+  - ALIASES.md
+  - phases/
+  - scripts/
+  - hooks/
+  - autonomous-engine/
+  - skills/
+  - runner-exec/
+  - evals/
 ---
 
 # Autonomous Studio v6.1
@@ -16,6 +34,7 @@ repository: https://code.alibaba-inc.com/qunbu/autonomous-studio
 > **六阶段流水线**：需求→PRD→开发→验证→评审→部署，按需加载 phase 文件，不全读。
 > **确定性 > LLM 自评**：hook 强制 + 确定性脚本兜底，提示词不是护栏。
 > **worktree 隔离**：自主模式的改动进独立分支，main 永远安全，人审 diff 才合并。
+> **自主模式 E2E 串行**：每批任务完成后必须功能 E2E 通过才进下一批（不攒到最后）。功能 E2E 跑不了（无浏览器/无平台登录态）→ 停自主循环，告诉用户"需你实跑 E2E"，不假装通过继续推阶段。E2E 方法见 `phases/phase-ship.md` ④。
 >
 > SKILL.md 负责激活 + 行为规则注入 + 阶段路由。
 > 自主模式（持续自治循环）由 `autonomous-engine` skill 独立管理。

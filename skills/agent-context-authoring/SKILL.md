@@ -2,6 +2,7 @@
 name: agent-context-authoring
 description: 用于创建、改写或审查 AGENTS.md、CLAUDE.md、.claude/agents/*.md、Codex/Claude/Cursor 等 Agent 常驻上下文和角色说明文件。用户提到写 Agents、Claude MD、AGENTS.md、CLAUDE.md、agent 角色文件、常驻规则、项目规则、子代理说明、提示词规则瘦身时使用。本 Skill 融合 Karpathy 行为护栏和 AGENTS.md 精简三原则：先写可执行行为约束，再删除路径清单、项目百科和代码可自行发现的信息。
 repository: https://code.alibaba-inc.com/qunbu/agent-context-authoring
+version: 1.0.0
 ---
 
 # Agent Context Authoring

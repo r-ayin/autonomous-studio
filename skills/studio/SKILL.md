@@ -16,6 +16,7 @@ sync:
   # cd /tmp/autonomous-studio && git pull origin main && vim skills/studio/SKILL.md && git add skills/studio/SKILL.md && git commit -m "feat(studio): 更新 SKILL.md" && git push origin main
   target_repo: "https://xhq02486164:B06ESflq0Gg_cI_eYrrj@code.alibaba-inc.com/qunbu/autonomous-studio.git"
   target_path: "skills/studio/SKILL.md"
+version: 1.0.0
 ---
 
 # 研发 Studio — 流程路由器

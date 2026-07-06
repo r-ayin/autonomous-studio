@@ -5,6 +5,7 @@ description: |
   全自动执行，无需人工交互。通过脚本实时记录每个阶段进度事件。
 allowed-tools: Read, Write, Edit, Bash, Glob, Grep
 repository: https://code.alibaba-inc.com/qunbu/prod-deploy
+version: 1.0.0
 ---
 
 # prod-deploy

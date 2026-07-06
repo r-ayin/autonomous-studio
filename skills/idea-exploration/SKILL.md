@@ -2,6 +2,7 @@
 name: idea-exploration
 description: 模糊想法、内部提效工具、AI 产品化、AI coding 可行性、技术/依赖选型和公司需求探索。把一句口语化想法扩展成专业需求、产品化能力地图、AI 可行性判断、合适库/框架选择、MVP/P0/P1/P2 和逐步决策追问。
 argument-hint: "<一句想法或需求>"
+version: 1.0.0
 ---
 
 # Idea Exploration
