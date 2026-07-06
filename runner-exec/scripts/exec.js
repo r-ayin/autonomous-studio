@@ -2,6 +2,11 @@
 const WebSocket = require('./vendor/ws');
 const { getInternalSecret, getSessionToken, getRunnerID, WS_HOST } = require('./creds');
 
+// 16MB cap — Runner 命令可能 emit GB 级输出（Get-Content huge.log / tree /f / 误执行递归列目录），
+// output += msg.data 无界累积会 OOM 崩溃本地 node 进程 (audit-017 RE-EXEC-01)。超 cap 时 reject 并把
+// 部分输出挂 error.output，与 write-file/batch-write 的 {ok:false,error:...} 契约对齐。
+const MAX_OUTPUT = 16 * 1024 * 1024;
+
 async function execOnRunner(command, timeoutMs = 30000) {
   const secret = getInternalSecret();
   const runnerId = await getRunnerID(secret);
@@ -21,10 +26,20 @@ async function execOnRunner(command, timeoutMs = 30000) {
       const msg = JSON.parse(raw.toString());
       if (msg.type === 'started') {
         ws.send(JSON.stringify({ type: 'input', data: `${command}\r\necho "${MARKER}"\r\n` }));
-        timer = setTimeout(() => { ws.close(); resolve(output); }, timeoutMs);
+        // 超时不再静默 resolve 部分输出（会令调用方误判命令成功完成）；
+        // 改为 reject 并把已收到的部分输出挂在 error.output 上，与 write-file/batch-write 的 {ok:false,error:'timeout'} 契约对齐。
+        timer = setTimeout(() => { ws.close(); const e = new Error('timeout'); e.output = output; reject(e); }, timeoutMs);
       }
       if (msg.type === 'output') {
         output += msg.data;
+        if (output.length > MAX_OUTPUT) {
+          clearTimeout(timer);
+          ws.close();
+          const e = new Error('output_overflow');
+          e.output = output.slice(0, MAX_OUTPUT);
+          reject(e);
+          return;
+        }
         if (output.includes(MARKER)) {
           clearTimeout(timer);
           ws.close();
