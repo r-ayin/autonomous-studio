@@ -23,6 +23,22 @@
 
 测试脚本：`e2e/<功能名>.spec.ts`，失败截图存 `e2e/screenshots/`。
 
+### E2E 方法论（V9.3 沉淀，必读）
+
+**本地 Playwright 看 UI + curl 查 DB 写入 = 完整 E2E**，不用配 SB_KEY：
+- Playwright 跑本地 dev server（`webpack serve` 自动起），点按钮看 UI 交互/状态变化
+- curl `<<PLACEHOLDER>>` 查数据库（oneday-sbproxy 系统注入真实 key，能读能写），验数据真写入
+- 两者结合 = 功能 + 数据双验证。前端 SDK 本地非嵌入拿不到 SB_KEY 时，用这套组合，不要用"构建通过"冒充
+
+**三层查工具**（查过才能声称"没工具"，禁止跳过）：
+1. 项目自身：`package.json` 的 `@playwright/test`、`playwright.config.ts`、`e2e/` 目录、`*.spec.ts`
+2. 全局 skill：`browser-flow-recorder`（录流程重放）、`1d-platform-dev` Browser Use
+3. 跨项目：其他项目（如 chuizhihua）的 Playwright 脚本、`workspace/server/playwright-manager`
+
+**小白环境一键配**：`bash ~/.claude/skills/autonomous-studio/scripts/setup-e2e.sh .`（检测装 @playwright/test + chromium + 跑冒烟，零配置）
+
+**心跳/定时任务验证**：devix 定时脚本（如 itag2-devix-fetch.js）用 `pm2 start` 常驻，心跳 = curl 查目标表 `last_update` 是否在更新（隐式心跳），不更新=脚本没活着。
+
 ## ⑤ 代码评审
 
 - Skill: `code-review` + `simplify`
