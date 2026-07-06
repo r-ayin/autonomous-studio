@@ -1,0 +1,33 @@
+{
+  "case_id": "case-2026-07-06-058",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-06T11:35:00Z",
+  "project": "sunset-prediction",
+  "work_unit": "M-001 drop WEIBO_COOKIE from m.weibo.cn mobile API sampling (audit-2026-07-06-020 derived fix)",
+  "situation": "fetchDesktop() sampled engagement via m.weibo.cn/api/statuses/show with desktop WEIBO_COOKIE in mobileHeaders. Mobile API is public (see fetchMobile line 134 — no cookie). Forwarding desktop cookie needlessly expanded credential exposure surface; if m.weibo.cn logs are harvested by third parties, the user's desktop session cookie leaks. Audit finding M-001 severity=MEDIUM kind=route-fix.",
+  "action": "Removed Cookie field from mobileHeaders object at src/social-scraper.js:181-187. Added explanatory comment citing audit M-001 and referencing fetchMobile as proof that mobile API needs no auth. Single-file minimal change; no behavioral impact on data quality (mobile API returns identical data with or without cookie).",
+  "files_changed": ["src/social-scraper.js"],
+  "worktree": "opt-social-scraper-1783336121",
+  "direction": "social-scraper:mobile-cookie",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh committed to auto/opt-social-scraper-1783336121 branch; push to origin succeeded (new branch created on xtool/wanxia). Worktree exists at /home/admin/workspace/.opt-worktrees/sunset-prediction/opt-social-scraper-1783336121.",
+  "next_suggestion": [
+    "派生下一个 pending fix: M-002 console.error secret leakage — wrap logger with redaction (multi-file, routes.js + server.js + social-scraper.js)",
+    "或挑更小的 M-005 storage_state JSON chmod 0600 + flock (单文件)"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "src/social-scraper.js",
+      "line": 182,
+      "severity": "medium",
+      "finding": "WEIBO_COOKIE forwarded to m.weibo.cn mobile API in mobileHeaders — unnecessary credential exposure (mobile API is public, see fetchMobile line 134)",
+      "remediation": "Remove Cookie field from mobileHeaders; add comment explaining why",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-020",
+  "audit_depth": "shallow",
+  "_derived_from_finding_id": "M-001",
+  "_fix_case_status_in_cycle": "merged"
+}
