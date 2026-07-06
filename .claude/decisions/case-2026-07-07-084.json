@@ -1,0 +1,32 @@
+{
+  "case_id": "case-2026-07-07-084",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-07T20:30:00+08:00",
+  "project": "moni-master",
+  "work_unit": "local_simulator:ssrf-llm-chat-proxy (MONI-PY-001 derived fix)",
+  "situation": "audit-2026-07-07-029 finding MONI-PY-001 (H): /llm/chat accepts user-controlled provider_override.base_url without validation, enabling SSRF — attacker can point base_url at internal hosts (e.g. http://169.254.169.254/, http://localhost:PORT/) and the proxy will send the configured api_key in Authorization header to that target, leaking credentials and enabling internal service probing.",
+  "action": "Added _ALLOWED_LLM_HOSTS frozenset whitelist (api.deepseek.com, api.openai.com, api.anthropic.com, dashscope.aliyuncs.com, generativelanguage.googleapis.com, openrouter.ai) and _validate_llm_base_url() helper enforcing https-only + host-in-whitelist. Wired validation into /llm/chat when provider_override.base_url present, and into POST /llm/config to prevent persisting malicious base_url. Used case-104 escape hatch: cp modified api.py into existing opt-local_simulator-1783352870 worktree (already holds case-083 MONI-PY-005 fix), committed directly in wt, pushed.",
+  "files_changed": ["local_simulator/api.py"],
+  "worktree": "opt-local_simulator-1783352870",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 8fd3bbd on auto/opt-local_simulator-1783352870 pushed to origin (git push output: '1f030f4..8fd3bbd'); python3 ast.parse syntax check passed; diff shows 56 insertions / 35 deletions in local_simulator/api.py adding allowlist + two validation call sites",
+  "next_suggestion": [
+    "派生 MONI-PY-002 (M, unbounded backtest frames memory exhaustion DoS via /backtest/run api.py:127)",
+    "派生 MONI-PY-003 (M, synchronous blocking WFO on async event loop /validation/grid-search api.py:1737)",
+    "派生 MONI-PY-004 (M, agent action whitelist bypass — 8 actions pass arbitrary kwargs api.py:1375)"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "local_simulator/api.py",
+      "line": 1914,
+      "severity": "high",
+      "finding": "SSRF via /llm/chat provider_override.base_url — user input forwarded to urllib.request.urlopen with api_key in Authorization header without URL/host validation",
+      "remediation": "Add _ALLOWED_LLM_HOSTS whitelist + _validate_llm_base_url() enforcing https scheme + hostname membership; validate both provider_override path and POST /llm/config persistence path",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-029",
+  "audit_depth": "shallow"
+}
