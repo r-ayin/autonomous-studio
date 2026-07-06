@@ -1,0 +1,36 @@
+{
+  "case_id": "case-2026-07-07-006",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-07T04:45:18+0800",
+  "project": "autonomous-studio",
+  "work_unit": "H-POST-001: prod-deploy LIVE copy (.claude/skills/) sync with dev copy (skills/)",
+  "situation": "audit-2026-07-07-032 H-POST-001 finding: LIVE prod-deploy skill missing ~50 lines of security hardening present in dev copy. Missing files: audit-log-helper.js (DO B audit-log instrumentation), http-base.js (L-001 refactor extracting shared HTTP helpers). Divergent files: event-client.js/task-client.js (PD-TOKEN-01-LIVE host allowlist + safeJsonParseCli crash-resilience, both already on LIVE but dev has additional refactors); complete-task.js (missing writeAuditLog call); report-event.js (missing writeAuditLog call); poll-pre-check.js (missing M-002 task_id cache persist after drill-down); resume-next-batch.js (missing M-004 skipped-observation WARNING); sunfire-client.js (comment wording only, functionally equivalent); SKILL.md (dev adds repository/version fields + terminal-state payload-only update clarification). Only intentional remaining divergence: skills/prod-deploy/phases/ directory exists only in dev (refactor dir not live).",
+  "action": "Copied 9 files from skills/prod-deploy/ to .claude/skills/prod-deploy/ via cp (dev → LIVE sync). Verified diff -rq shows no remaining differences except phases/ dir (intentional). Committed via opt-worktree.sh commit prod-deploy:sync-live-copy. Worktree opt-prod-deploy-1783370693 created (route-fix, new area since no prior prod-deploy worktree existed). Branch auto/opt-prod-deploy-1783370693 pushed to origin.",
+  "files_changed": [
+    ".claude/skills/prod-deploy/scripts/lib/audit-log-helper.js",
+    ".claude/skills/prod-deploy/scripts/lib/http-base.js",
+    ".claude/skills/prod-deploy/scripts/lib/event-client.js",
+    ".claude/skills/prod-deploy/scripts/lib/task-client.js",
+    ".claude/skills/prod-deploy/scripts/lib/sunfire-client.js",
+    ".claude/skills/prod-deploy/scripts/complete-task.js",
+    ".claude/skills/prod-deploy/scripts/report-event.js",
+    ".claude/skills/prod-deploy/scripts/poll-pre-check.js",
+    ".claude/skills/prod-deploy/scripts/resume-next-batch.js",
+    ".claude/skills/prod-deploy/SKILL.md"
+  ],
+  "worktree": "opt-prod-deploy-1783370693",
+  "direction": "prod-deploy:sync-live-copy",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 01cb782 on branch auto/opt-prod-deploy-1783370693 verified via git log. diff -rq post-copy shows only 'Only in skills/prod-deploy/: phases' remaining (intentional dev-only refactor dir). Branch pushed to origin/auto/opt-prod-deploy-1783370693 confirmed by push output. Worktree registered in git worktree list at /home/admin/workspace/.opt-worktrees/autonomous-studio/opt-prod-deploy-1783370693.",
+  "next_suggestion": [
+    "Merge opt-prod-deploy-1783370693 to main (user approval needed — route-fix, no public interface change)",
+    "After merge, mark H-POST-001 status=merged in audit-cycle-state.json derived_fixes",
+    "Then dispatch M-POST-002 (creds.js PID validation) as next pending route-fix",
+    "M-POST-001 (SD-016/SD-017 structural-debt append) remains deferred-to-debt-queue per structural-debt protocol",
+    "L-POST-001 (WS token in URL query) remains deferred-low-priority (requires server-side coordination)"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-07-032",
+  "audit_depth": "shallow"
+}
