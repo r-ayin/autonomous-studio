@@ -1,0 +1,32 @@
+{
+  "case_id": "case-2026-07-07-106",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-07T22:30:00+08:00",
+  "project": "moni-master",
+  "work_unit": "audit-2026-07-08-035 H-COVERAGE-001 phantom-fix resolution (crate1-factor-registry + crate2-replay)",
+  "situation": "audit-cycle-state.json listed 2 pending derived_fixes (H-COVERAGE-001-crate1-factor-registry, H-COVERAGE-001-crate2-replay) referencing fix_case_id=case-2026-07-07-105. Both claimed worktree commits cdc2ab6/7581bc1 in opt-moni-master-1783105913 had NOT been merged to master and that ~17 .lock().unwrap() calls remained across 5 crates.",
+  "action": "Verified ground truth: (1) case-2026-07-07-105.json does not exist on disk — phantom reference. (2) grep -rn '.lock().unwrap()' --include='*.rs' crates/ on master returns 0 matches (non-test AND test). (3) Same grep on worktree opt-moni-master-1783105913 also returns 0. (4) Master HEAD=b877104 already includes 'fix(sessions): recover from Mutex poisoning instead of cascade panic (MM-M003)' and 2e28a5f 'fix(strategy): MM-M001 recover poisoned Mutex in StrategyRegistry.list_definitions'. Audit-035's H-COVERAGE-001 was a false positive — it re-scanned the same vulnerability class already fixed by b877104+2e28a5f and misread the residual count. Both derived_fixes rejected as phantom; no code change needed.",
+  "files_changed": [],
+  "worktree": null,
+  "direction": null,
+  "outcome": "succeeded",
+  "outcome_evidence": "grep '.lock().unwrap()' on moni-master/crates/ returns 0 matches (both master HEAD=b877104 and worktree HEAD=7581bc1). case-2026-07-07-105.json absent from .claude/decisions/. Master git log shows b877104 + 2e28a5f already address the Mutex poisoning class. audit-cycle-state.json derived_fixes[0,1].status updated pending→rejected.",
+  "next_suggestion": [
+    "All workspace git projects audited ≥1×; moni-master now audited 4× (most covered). Next full audit should target least-covered projects or wait for new post-audit commits.",
+    "shizi PROGRESS.md stale 7.8 days (scout #1) — refresh if user cares about shizi visibility.",
+    "personal-assistant has 17 pending worktrees — consider archival sweep next scout round."
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": ".claude/audit-cycle-state.json",
+      "line": 15,
+      "severity": "medium",
+      "finding": "derived_fixes[0].fix_case_id='case-2026-07-07-105' is a phantom reference — file does not exist. Same for derived_fixes[1] at line 24. Root cause: prior scout round wrote case ID to audit-cycle-state before actually creating the case JSON file, and the case creation step failed/was skipped without rolling back the state entry.",
+      "remediation": "Both entries marked status=rejected this round. Process fix: future dispatch must atomically create case file BEFORE writing fix_case_id to audit-cycle-state, or use a two-phase write (create case → verify exists → update state).",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-08-035",
+  "audit_depth": "deep"
+}
