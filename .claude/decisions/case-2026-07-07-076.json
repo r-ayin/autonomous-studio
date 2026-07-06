@@ -1,0 +1,30 @@
+{
+  "case_id": "case-2026-07-07-076",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-07T17:55:00+08:00",
+  "project": "moni-master",
+  "work_unit": "risk:daily-loss-boundary (M-005-risk derived fix)",
+  "situation": "Audit-2026-07-07-028 finding M-005-risk: validate_order (risk.rs:62) and revalidate_at_fill (risk.rs:178) both used `<=` against -daily_loss_limit, blocking buys when daily_pnl equals the threshold exactly. Industry convention for 'max loss = X' is allow up to X inclusive, block only strictly beyond. Existing test used -3500 vs -3000 limit so boundary was never exercised.",
+  "action": "Changed both checks from `<=` to `<`. Added boundary test `daily_loss_limit_boundary_exact_threshold_passes` asserting pass at exact threshold (-3000) and fail one cent beyond (-3000.01). Single-file route-fix in risk.rs.",
+  "files_changed": [
+    "moni-rs/crates/moni-engine/src/risk.rs"
+  ],
+  "worktree": "opt-risk-1783360526",
+  "direction": "risk:daily-loss-boundary",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 42f568d on auto/opt-risk-1783360526 pushed to origin. Diff: 2 operator changes (<= → <) + 22-line boundary test added. Branch URL: https://code.alibaba-inc.com/xtool/moni/codereview/new?from=master&to=auto/opt-risk-1783360526",
+  "next_suggestion": "Next pending derived_fix: M-001-position (direction-shift, medium) — avg_cost includes buy-side fees causing misleading unrealized PnL. Touches position.rs public display semantics; opt-worktree judge_direction_kind will auto-open new worktree if position.rs is in public-interfaces.txt.",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "moni-rs/crates/moni-engine/src/risk.rs",
+      "line": 62,
+      "severity": "low",
+      "finding": "Daily loss limit uses <= boundary — blocks buy at exact threshold, contradicting 'max loss' semantics",
+      "remediation": "Change <= to < in both validate_order and revalidate_at_fill; add boundary test",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-028",
+  "audit_depth": "shallow"
+}
