@@ -1,0 +1,166 @@
+From a6d787a71250ab34cd1401773a76db6a6842c70a Mon Sep 17 00:00:00 2001
+From: autonomous-studio <syp02536326@taobao.com>
+Date: Wed, 1 Jul 2026 21:07:21 +0800
+Subject: [PATCH] =?UTF-8?q?opt(engine:lint-guard-json-safety):=20AS-M-001?=
+ =?UTF-8?q?=20fix:=20studio-lint-guard.sh=20=E6=94=B9=E7=94=A8=20env=20var?=
+ =?UTF-8?q?=20=E4=BC=A0=20hook=20input=EF=BC=8C=E9=81=BF=E5=85=8D=20shell?=
+ =?UTF-8?q?=20=E8=BD=AC=E4=B9=89=E6=96=AD=E8=A3=82=E8=87=B4=20lint=20?=
+ =?UTF-8?q?=E9=9D=99=E9=BB=98=E5=A4=B1=E6=95=88=20(audit-2026-07-01-007)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+[auto-optimization on worktree optimization — 待人工审合并]
+---
+ hooks/studio-lint-guard.sh | 124 ++++++++++++++++++++-----------------
+ 1 file changed, 66 insertions(+), 58 deletions(-)
+
+diff --git a/hooks/studio-lint-guard.sh b/hooks/studio-lint-guard.sh
+index 9ec1290..e90ad83 100755
+--- a/hooks/studio-lint-guard.sh
++++ b/hooks/studio-lint-guard.sh
+@@ -8,6 +8,11 @@
+ # 触发时机：PreToolUse（Write/Edit 操作时）
+ # 行为：对写入的文件做轻量语法检查，失败时阻断并返回错误信息
+ # 约束：<200ms，仅检查语法不检查逻辑，静默处理不支持的文件类型
++#
++# AS-M-001 fix (audit-2026-07-01-007): 旧实现用 `echo "$INPUT" | python3 -c "...get('content')..."`
++# 链式抽字段，content 含换行/引号/shell 元字符时 shell 转义断裂→lint 误判或静默放行。
++# 改为单次 python3 完成所有字段抽取+语法校验+JSON 输出，shell 层只做 HOOK_EVENT 早筛。
++# hook input 经环境变量 _AS_HOOK_INPUT 传入 python（避免 heredoc/pipe 抢 stdin 的 bash 陷阱）。
+ 
+ HOOK_EVENT="${CLAUDE_HOOK_EVENT:-unknown}"
+ if [ "$HOOK_EVENT" != "PreToolUse" ]; then
+@@ -15,68 +20,71 @@ if [ "$HOOK_EVENT" != "PreToolUse" ]; then
+   exit 0
+ fi
+ 
+-INPUT=$(cat)
+-TOOL_NAME=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('tool_name',''))" 2>/dev/null)
++# 缓存 stdin 到环境变量（hook input JSON），python 从 env 读，不经 shell 转义
++_AS_HOOK_INPUT="$(cat)"
++export _AS_HOOK_INPUT
+ 
+-if [ "$TOOL_NAME" != "Write" ]; then
+-  echo '{}'
+-  exit 0
+-fi
++python3 -c '
++import sys, json, tempfile, os
+ 
+-FILE_PATH=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('tool_input',{}).get('file_path',''))" 2>/dev/null)
++def emit_block(reason):
++    print(json.dumps({"decision": "block", "reason": reason}, ensure_ascii=False))
++    sys.exit(0)
+ 
+-if [ -z "$FILE_PATH" ]; then
+-  echo '{}'
+-  exit 0
+-fi
++def emit_pass():
++    print("{}")
++    sys.exit(0)
+ 
+-EXT="${FILE_PATH##*.}"
+-ERROR=""
++raw = os.environ.get("_AS_HOOK_INPUT", "")
++if not raw:
++    emit_pass()
+ 
+-case "$EXT" in
+-  py)
+-    CONTENT=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('tool_input',{}).get('content',''))" 2>/dev/null)
+-    if [ -n "$CONTENT" ]; then
+-      ERROR=$(echo "$CONTENT" | python3 -c "
+-import sys, py_compile, tempfile, os
+-code = sys.stdin.read()
+-tmp = tempfile.NamedTemporaryFile(suffix='.py', delete=False, mode='w')
+-tmp.write(code)
+-tmp.close()
+ try:
+-    py_compile.compile(tmp.name, doraise=True)
+-except py_compile.PyCompileError as e:
+-    print(str(e).split('\\n')[0])
+-finally:
+-    os.unlink(tmp.name)
+-" 2>/dev/null)
+-    fi
+-    ;;
+-  json)
+-    CONTENT=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('tool_input',{}).get('content',''))" 2>/dev/null)
+-    if [ -n "$CONTENT" ]; then
+-      ERROR=$(echo "$CONTENT" | python3 -c "
+-import sys, json
+-try:
+-    json.loads(sys.stdin.read())
+-except json.JSONDecodeError as e:
+-    print(f'JSON syntax error: {e}')
+-" 2>/dev/null)
+-    fi
+-    ;;
+-  *)
+-    # 不支持的文件类型，放行
+-    ;;
+-esac
++    data = json.loads(raw)
++except Exception:
++    emit_pass()
+ 
+-if [ -n "$ERROR" ]; then
+-  python3 -c "
+-import json
+-print(json.dumps({
+-    'decision': 'block',
+-    'reason': 'Lint guard: syntax error detected. Fix the error before writing.\n$ERROR'
+-}, ensure_ascii=False))
+-"
+-else
+-  echo '{}'
+-fi
++tool_name = data.get("tool_name", "")
++if tool_name != "Write":
++    emit_pass()
++
++tool_input = data.get("tool_input") or {}
++file_path = tool_input.get("file_path", "")
++content = tool_input.get("content", "")
++if not file_path or content is None:
++    emit_pass()
++
++ext = file_path.rsplit(".", 1)[-1] if "." in file_path else ""
++
++if ext == "py":
++    tmp = None
++    try:
++        tmp = tempfile.NamedTemporaryFile(suffix=".py", delete=False, mode="w", encoding="utf-8")
++        tmp.write(content)
++        tmp.close()
++        import py_compile
++        py_compile.compile(tmp.name, doraise=True)
++    except SyntaxError as e:
++        msg = str(e).split("\n")[0]
++        emit_block(f"Lint guard: Python syntax error.\n{msg}")
++    except py_compile.PyCompileError as e:
++        msg = str(e).split("\n")[0]
++        emit_block(f"Lint guard: Python compile error.\n{msg}")
++    except Exception:
++        pass
++    finally:
++        if tmp:
++            try:
++                os.unlink(tmp.name)
++            except Exception:
++                pass
++elif ext == "json":
++    try:
++        json.loads(content)
++    except json.JSONDecodeError as e:
++        emit_block(f"Lint guard: JSON syntax error: {e}")
++    except Exception:
++        pass
++
++emit_pass()
++'
+-- 
+2.43.0
+

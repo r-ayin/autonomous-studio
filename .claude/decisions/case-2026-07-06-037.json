@@ -14,7 +14,7 @@
     "git commit d9bf64d: 'opt(remote-control:sec): RC-CFG-01 (audit-2026-07-06-004)...' 1 file changed, 61 insertions(+), 2 deletions(-)",
     "git log --oneline -3: d9bf64d (RC-CFG-01) → 3299f27 (RC-XSS-01+RC-ATOMIC-02, case-036) → 163f202 (RC-SEC-03+..., case-035); 单 wt 5-commit stack",
     "git merge-base --is-ancestor 85bd9e1(master) HEAD(d9bf64d) → 0 exit → FF-clean, 可 fast-forward 合入 master",
-    "python3 -m py_compile server.py → OK (SyntaxWarning [?line 743 'E:\\openclaw' \\o 转义为 pre-existing 既存行非本 commit 改动, 不属本 finding 范围, 留待 SD-RC-01 跨文件路径重构)",
+    "python3 -m py_compile server.py → OK (SyntaxWarning [?line 743 'E:\\openclaw' \\o 转义为 pre-existing 既存行非本 commit 改动, 不属本 finding 范围, 留待 SD-RC-01 跨文件路径重构)",
     "validator 行为测试 13 case ALL_PASS: https://yunyi.cfd/claude→ok; http://localhost:11434→ok; http://127.0.0.1:11434→ok; http://192.168.1.5→拒(http 仅 localhost); https://192.168.1.5→拒(私网); https://169.254.169.254→拒(云元数据); http://100.82.91.58→拒(CGNAT); ftp://evil.com→拒(scheme); https://evil.com→ok; ''→拒(空); 'not a url'→拒(scheme); http://[::1]:11434→ok; https://[fe80::1]→拒(link-local)",
     "git push origin auto/opt-remote-control-1783283520 → 403 'git push is not allowed' (x-tool origin=外部 fork r-ayin/x-tool, [[x-tool-external-fork-push-403]] precedent, 预期); local-ref + disk 完整保留待人工 merge"
   ],

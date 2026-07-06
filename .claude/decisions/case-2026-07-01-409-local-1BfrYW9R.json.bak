@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-01-409",
+  "agent_id": "ralph-autonomous-loop",
+  "timestamp": "2026-07-01T22:05:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "新增 ㊳ 回归锁：/api/health 上游挂起（连接成功但不响应）超时降级 502——咬 dev-server.js:114 upstreamReq.setTimeout（/api/health 反代唯一零覆盖路径）",
+  "situation": "scout-scan 全 8 项目健康度 0.0，#1 1BfrYW9R 推荐润色/跳过、#2 AS 有 1 个 case-lag 待合并 worktree(opt-case-1782856678，3 case 文件 405/407/408)。按 memory scout-all-zero-pick-dirty-signal 纪律：不机械堆润色，先 grep #1 源+测找断言级缺口。读 dev-server.js(158 行)+smoke.test.js(40 测) 发现 /api/health 反代 line 114 upstreamReq.setTimeout(2000, ...) 是该反代唯一零覆盖代码路径——㉟ 锁上游 200 透传、㊱ 锁不可达 ECONNREFUSED、㊲ 锁可达但 5xx coerce、㊳-base 锁 base 非法 new URL 抛，四路径皆锁，唯「上游 TCP 连接成功却永不发响应」(后端半死：accept 连接但 handler 卡死/await 不返回) 这条挂起路径无人咬：删 setTimeout 整行后 dev-server /api/health 永久挂起无 502 而全套 40 测仍绿，PaaS 后端半死时健康面误判绿、负载均衡不摘流的回归缺口静默存活。AS case-lag 按 scout-scan-case-record-lag-break 教训不独占纯 merge 轮，本轮做 1BfrYW9R 真实结构性工作。",
+  "action": "1) 原型验证(node proto-hang.js：mock 后端 http.createServer handler 不 res.end + dev-server ONEDAY_API_BASE 指向它)：当前代码 GET /api/health 2s 后返 502 + Content-Type application/json; charset=utf-8 + nosniff + body {status:bad gateway, reason:upstream unreachable}，证实 setTimeout→destroy(new Error)→upstreamReq 'error'→fail('upstream unreachable') 链路。2) smoke.test.js 追加 test ㊳(偏端口 upPort=3068 mock 后端/port=3069 dev-server，命名 upPort 不入 ㉙ const port= 唯一性锁扫描集；deadline 7000ms 宽于上游 2s timeout；client req 自身 6s 超时防永久卡轮询)。3) 突变复测：注释 dev-server.js:114 setTimeout 整行→node --test --test-name-pattern 上游挂起 跑 ㊳ 转 not ok 报 7s 内无响应...永久挂起→还原后 npm test 41 pass 0 fail，证锁真咬。4) GATES.md canonical 实测 npm test 箭头形 40→41 + 追加 ㊳ 历史 note；PROGRESS.md 门禁基线 canonical 40→41(㉑ 三方对账 GATES↔PROGRESS↔testCount)。5) opt-worktree.sh 1BfrYW9R commit test:api-health-timeout → 新 worktree opt-test-1782857549(方向分歧 engine→test)。",
+  "files_changed": [
+    "1BfrYW9R/test/smoke.test.js",
+    "1BfrYW9R/GATES.md",
+    "1BfrYW9R/PROGRESS.md"
+  ],
+  "worktree": "opt-test-1782857549 (auto/opt-test-1782857549, tip af63ea0, pending merge into onedaybot-dev)",
+  "direction": "test:api-health-timeout",
+  "outcome": "succeeded",
+  "outcome_evidence": "worktree auto/opt-test-1782857549 tip af63ea0(git log --oneline -1 确认)。worktree 内 npm test 末行 '# pass 41 / # fail 0'。main onedaybot-dev 干净(git status --short 空)且 npm test '# pass 40'(cmd_commit cp-out 还原 main 至 HEAD)。git diff --stat onedaybot-dev..auto/opt-test-1782857549 = 3 files: GATES.md +1/-1, PROGRESS.md +1/-1, test/smoke.test.js +72/-0。dev-server.js:114 setTimeout 源码确认存在(grep upstreamReq.setTimeout 命中 line 114，未被改动，main 干净无 dev-server.js diff)。突变复测输出 'not ok 1 - ...上游挂起...' + '7s 内无响应...永久挂起' + '# pass 0 / # fail 1'。原型 proto-hang.js 输出 'STATUS 502 | CT application/json; charset=utf-8 | nosniff nosniff | BODY {status:bad gateway,reason:upstream unreachable}'。",
+  "next_suggestion": "下轮首选审 opt-test-1782857549 merge：三点 name-only + merge-base 核实非误报(case-327 教训，勿用 git cherry)→worktree 内 npm test 验 41 pass 0 fail→opt-worktree.sh 1BfrYW9R merge opt-test-1782857549。次选：AS case-lag opt-case-1782856678(405/407/408) 仍 pending，按 scout-scan-case-record-lag-break ride 一轮 AS 真实工作合并(勿纯 merge 轮)。1BfrYW9R /api/health 反代五路径现已全锁(200 透传/ECONNREFUSED/5xx coerce/base 非法/挂起超时)，下一切口转 dev-server.js 静态分发或 build.js 引用解析维度的零覆盖分支。"
+}

@@ -17,7 +17,7 @@ function getInternalSecret() {
     if (fs.existsSync(p)) return fs.readFileSync(p, 'utf-8').trim();
   } catch (e) { /* keep fallback to pgrep path; file read failure non-fatal */ }
   try {
-    const pid = execSync("pgrep -f 'node.*cloud-cli.*server'", { encoding: 'utf-8' }).trim().split('\n')[0];
+    const pid = execFileSync('pgrep', ['-f', 'node.*cloud-cli.*server'], { encoding: 'utf-8' }).trim().split('\n')[0];
     if (pid) {
       const env = fs.readFileSync(`/proc/${pid}/environ`, 'utf-8');
       const m = env.match(/INTERNAL_RPC_SECRET=([^\0]+)/);
@@ -32,7 +32,6 @@ function getSessionToken() {
   try {
     return execFileSync('sqlite3', [dbPath, 'SELECT token FROM active_tokens ORDER BY created_at DESC LIMIT 1;'], { encoding: 'utf-8' }).trim();
   } catch (e) { throw new Error('无法获取 session token: ' + e.message); }
-  throw new Error('无法获取 session token');
 }
 
 function getRunnerID(secret) {
