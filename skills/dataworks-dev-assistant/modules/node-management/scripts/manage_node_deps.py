@@ -30,16 +30,22 @@
 注意：
     - UUID 方式仅适用于同工作空间节点；跨工作空间请用 output 字符串（project.node_name）
     - 不影响代码和调度参数，仅操作依赖关系
+    - 依赖增删是节点拓扑变更（DAG 边），属敏感写操作，走两阶段确认：
+      不带 --confirm 时仅预览计划改动后退出（Phase 1）；
+      带 --confirm 才执行写操作并落审计记录（Phase 2）。
 """
 
 import argparse
+import os
 import sys
+import uuid
 
 import requests
 import urllib3
 
 urllib3.disable_warnings(urllib3.exceptions.NotOpenSSLWarning)
 
+from audit_log import record as _audit_record
 from bff_client import BFFClient, save_tool_result
 from telemetry import telemetry_start, telemetry_end, telemetry_fail
 
@@ -53,6 +59,19 @@ def _headers(c: BFFClient) -> dict:
         "content-type": "application/json",
         "Referer": f"http://{c.session_code}.qwen.cli",
     }
+
+
+def _audit_write(c: BFFClient, api_name: str, params_summary: str, result_code, correlation_id: str) -> None:
+    """落审计记录（与 bff_client._do_request 同源的 audit_log.record，使写操作不再 silent）。
+
+    addNodeDependencies/removeNodeDependencies 的请求形是 query-params+json-body / query-params+DELETE，
+    bff_client._do_request 的单 params_type 模型无法表达该混合形，故保留原 requests 直发，
+    但在此补审计埋点（DO B：外部调用/写操作须可追溯）。--confirm 两阶段门禁保证 sanctioned，
+    故 bypass=False。审计写失败永不阻断业务（audit_log.record 内部 except 吞掉）。
+    """
+    uid = getattr(c, "_cached_base_id", None) or os.getenv("DW_USER_BASE_ID") or "unknown"
+    _audit_record(c._work_dir, api_name, params_summary, result_code,
+                  user_id=uid, bypass=False, correlation_id=correlation_id, attempt=0)
 
 
 def list_deps(c: BFFClient, project_id: int, uuid: str) -> list[dict]:
@@ -103,6 +122,7 @@ def add_dep(c: BFFClient, project_id: int, source_uuid: str, target: str, dep_ty
     else:
         output_name = target
     print(f"  上游 output={output_name}")
+    corr = str(uuid.uuid4())
     resp = requests.put(
         f"{c.endpoint}/ide/addNodeDependencies",
         params={"uuid": source_uuid, "projectId": project_id},
@@ -110,6 +130,9 @@ def add_dep(c: BFFClient, project_id: int, source_uuid: str, target: str, dep_ty
         json={"dependencies": [{"output": output_name, "type": dep_type}]},
     )
     body = resp.json()
+    _audit_write(c, "addNodeDependencies",
+                 f"uuid={source_uuid},projectId={project_id},output={output_name},type={dep_type}",
+                 body.get("code") if isinstance(body, dict) else None, corr)
     if body.get("code") != 200 or not body.get("data"):
         raise RuntimeError(f"addNodeDependencies 失败: {body}")
 
@@ -128,12 +151,16 @@ def remove_dep(c: BFFClient, project_id: int, source_uuid: str, target: str, dep
         target_uuid = matched["uuid"]
         print(f"  output={target} → uuid={target_uuid}")
     params = {"sourceUuid": source_uuid, "projectId": project_id, "targetUuid": target_uuid, "type": dep_type}
+    corr = str(uuid.uuid4())
     resp = requests.delete(
         f"{c.endpoint}/ide/removeNodeDependencies",
         params=params,
         headers=_headers(c),
     )
     body = resp.json()
+    _audit_write(c, "removeNodeDependencies",
+                 f"sourceUuid={source_uuid},projectId={project_id},targetUuid={target_uuid},type={dep_type}",
+                 body.get("code") if isinstance(body, dict) else None, corr)
     if body.get("code") != 200 or not body.get("data"):
         raise RuntimeError(f"removeNodeDependencies 失败: {body}")
 
@@ -158,6 +185,8 @@ def main():
                         help="上游节点 UUID 或 output 字符串，可多次；格式同 --add")
     parser.add_argument("--type", default="Normal", dest="dep_type",
                         help="依赖类型，默认 Normal")
+    parser.add_argument("--confirm", action="store_true",
+                        help="两阶段确认 Phase 2：执行写操作。不带 --confirm 时仅预览计划改动后退出（Phase 1）。")
     args = parser.parse_args()
 
     telemetry_start("manage_node_deps.py", module="node-management",
@@ -172,6 +201,21 @@ def main():
 
     if not args.add and not args.remove:
         telemetry_end(result={"status": "list_only"})
+        return
+
+    # 两阶段确认 Phase 1：不带 --confirm 时仅预览计划改动后退出，不执行任何写操作。
+    # 依赖增删是节点拓扑变更（DAG 边），属敏感写操作，须经用户显式确认。
+    if not args.confirm:
+        print(f"\n⚠️ 待确认写操作（节点拓扑变更）:")
+        if args.remove:
+            print(f"  移除: {', '.join(args.remove)}")
+        if args.add:
+            print(f"  添加: {', '.join(args.add)}")
+        print(f"  当前节点 uuid={args.uuid}, project_id={args.project_id}, dep_type={args.dep_type}")
+        print(f"  这是 Phase 1 预览，未执行任何写操作。")
+        print(f"  确认无误后请重跑并加 --confirm 执行（Phase 2）。")
+        telemetry_end(result={"status": "awaiting_confirm",
+                              "add": args.add, "remove": args.remove})
         return
 
     # 执行移除
@@ -194,6 +238,7 @@ def main():
 
     result = {
         "status": "success",
+        "confirmed": True,
         "project_id": args.project_id,
         "uuid": args.uuid,
         "added": args.add,

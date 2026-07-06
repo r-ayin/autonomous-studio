@@ -29,6 +29,8 @@ def do_merge(db, pattern, view_name):
     # 用 read_only 打开的连接不能建视图，重新以读写模式打开
     db.close()
     db = duckdb.connect(DB_FILE)
+    # 防御纵深：禁止 read_csv/read_parquet 等表函数读进程可达的任意文件 (audit-2026-07-06-005 DATAAN-01/06)
+    db.execute("SET enable_external_access = false")
 
     union_sql = " UNION ALL BY NAME ".join(
         f'SELECT * FROM "{t}"' for t in matched
@@ -49,6 +51,9 @@ def do_merge(db, pattern, view_name):
 
 def main():
     db = duckdb.connect(DB_FILE, read_only=True)
+    # 防御纵深：禁止 read_csv/read_parquet 等表函数读进程可达的任意文件 (audit-2026-07-06-005 DATAAN-01)
+    # read_only=True 不阻止 read_csv('/etc/passwd')，须显式 SET enable_external_access=false
+    db.execute("SET enable_external_access = false")
 
     if "--merge" in sys.argv:
         idx = sys.argv.index("--merge")
