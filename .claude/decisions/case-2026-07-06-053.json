@@ -1,0 +1,36 @@
+{
+  "case_id": "case-2026-07-06-053",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-06T10:40:00Z",
+  "project": "sunset-prediction",
+  "work_unit": "deep-audit: server + routes + social-scraper + XHS posting pipeline + cookie keepalive + mail push + cache + storage (12 files)",
+  "situation": "audit-cycle-state.json status=cycle-complete after FinanceTracker drift-repair. No prior deep audit of sunset-prediction in .claude/audits/. Selected as next unaudited code-bearing project.",
+  "action": "Full deep audit of sunset-prediction. Read 12 source files across server entry, API routes, SQLite storage, Weibo/XHS social scraper, Browser Use auto-posting agent, cookie keepalive, mail push, cache layer. Produced audit-2026-07-06-020.md with 14 findings (H:4 M:5 L:3 I:2). Identified 10 route-fixes, 1 direction-shift (H-003 prompt injection), 2 structural debts (SD-006 env parser divergence, SD-007 no secret management).",
+  "files_changed": [".claude/audits/audit-2026-07-06-020.md"],
+  "worktree": null,
+  "direction": "audit-only (no code changes this round)",
+  "outcome": "succeeded",
+  "outcome_evidence": "audit-2026-07-06-020.md written (14 findings, 10 route-fix + 1 direction-shift + 2 structural debt enumerated). audit-cycle-state.json updated to fix-in-progress with 11 derived_fixes registered. No code modifications made (per protocol: audit round produces report only, fixes dispatched in subsequent rounds).",
+  "next_suggestion": [
+    "Dispatch H-001 shell injection fix (server.js exec→execFile) as route-fix case",
+    "Dispatch H-004 API auth middleware as route-fix case (highest impact finding)",
+    "Dispatch H-002 .env atomic write fix (xhs_keepalive.py) as route-fix case"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {"file": "server.js", "line": 85, "severity": "high", "finding": "Shell injection surface: execAsync interpolates BROWSER_USE_POST_LIMIT into shell command without sanitization", "remediation": "Replace exec with execFile/spawn array args", "kind": "route-fix"},
+    {"file": "scripts/xhs_keepalive.py", "line": 56, "severity": "high", "finding": "Non-atomic write to .env containing all credentials — crash during write corrupts file", "remediation": "Write temp + os.replace() atomic rename + flock", "kind": "route-fix"},
+    {"file": "scripts/post_xhs_browseruse.py", "line": 246, "severity": "high", "finding": "Indirect prompt injection: untrusted post content passed as Browser Use Agent task description to LLM", "remediation": "Input sanitization + URL allowlist + relative paths", "kind": "direction-shift"},
+    {"file": "server.js", "line": 46, "severity": "high", "finding": "No authentication on any API endpoint; POST endpoints trigger expensive scraping/screenshot operations", "remediation": "Add bearer token auth + rate limiting + bind 127.0.0.1", "kind": "route-fix"},
+    {"file": "src/social-scraper.js", "line": 182, "severity": "medium", "finding": "Desktop WEIBO_COOKIE unnecessarily sent to m.weibo.cn mobile API", "remediation": "Remove Cookie header from mobileHeaders", "kind": "route-fix"},
+    {"file": "server.js", "line": 62, "severity": "medium", "finding": "console.error may leak secrets via error messages from Playwright/fetch", "remediation": "Wrap logger with secret redaction", "kind": "route-fix"},
+    {"file": "src/routes.js", "line": 408, "severity": "medium", "finding": "SSE social/fetch doesn't abort fetchAndStoreSocialData on client disconnect", "remediation": "Pass AbortSignal, abort on res.close", "kind": "route-fix"},
+    {"file": "src/cache.js", "line": 16, "severity": "medium", "finding": "TTLCache never evicts stale entries — memory grows monotonically", "remediation": "Add LRU eviction or periodic sweep + maxEntries", "kind": "route-fix"},
+    {"file": "scripts/post_xhs_browseruse.py", "line": 163, "severity": "medium", "finding": "storage_state JSON with cookies written at default 0644 permissions", "remediation": "chmod 0600 after write + file lock", "kind": "route-fix"},
+    {"file": "src/social-scraper.js", "line": 51, "severity": "low", "finding": "Playwright --no-sandbox unconditional (weakens isolation outside containers)", "remediation": "Conditional on container detection", "kind": "route-fix"},
+    {"file": "server.js", "line": 6, "severity": "low", "finding": "Custom .env parser diverges from Python parsers (quoting, encoding)", "remediation": "Unify on dotenv/python-dotenv libraries", "kind": "route-fix"},
+    {"file": "scripts/mail_push.py", "line": 89, "severity": "low", "finding": "SMTP_PASS read from os.environ visible in /proc/pid/environ", "remediation": "Merge fix with H-002 .env hardening", "kind": "route-fix"}
+  ],
+  "audit_id": "audit-2026-07-06-020",
+  "audit_depth": "deep"
+}
