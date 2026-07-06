@@ -9,7 +9,7 @@ description: >-
   或任何涉及研发流程阶段管理的操作。
 model: sonnet
 repository: https://code.alibaba-inc.com/qunbu/autonomous-studio
-version: 1.0.1
+version: 1.0.2
 files:
   - SKILL.md
   - studio-inject.md

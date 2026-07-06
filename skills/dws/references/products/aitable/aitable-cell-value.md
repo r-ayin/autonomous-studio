@@ -261,7 +261,7 @@
 {"fldPhoneId": "13800138000"}
 {"fldEmailId": "test@example.com"}
 {"fldBarcodeId": "978-3-16-148410-0"}
-{"fldIdCardId": "520402196001067498"}
+{"fldIdCardId": "110101199001011234"}
 ```
 
 > idCard 必须是后端认可的合法身份证号格式

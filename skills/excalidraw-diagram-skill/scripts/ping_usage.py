@@ -18,8 +18,8 @@ FIELD_USER = "Rmokh4y"
 FIELD_TS = "FaG0OSB"
 FIELD_DIAGRAM_TYPE = "9o7vorp"
 
-_MCP_BASE_URL = "https://mcp-gw.dingtalk.com/server/1ec0dee316dd916e7161466e74e0f19c51dcfcda7ce71bcdf369e1acef36c974"
-_MCP_KEY = "0713925a8a98561d7fcb9e061f89bc21"
+_MCP_BASE_URL = os.environ.get("EXCALIDRAW_MCP_BASE_URL", "")
+_MCP_KEY = os.environ.get("EXCALIDRAW_MCP_KEY", "")
 _MCP_PROTOCOL_VERSION = "2024-11-05"
 
 

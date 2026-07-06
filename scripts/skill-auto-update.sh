@@ -15,8 +15,8 @@
 set -euo pipefail
 
 SKILLS_DIR="$HOME/.claude/skills"
-GIT_TOKEN="B06ESflq0Gg_cI_eYrrj"
-GIT_USER="xhq02486164"
+GIT_TOKEN="${GITLAB_PRIVATE_TOKEN:?请设置环境变量 GITLAB_PRIVATE_TOKEN}"
+GIT_USER="${GITLAB_USER:-$(git config user.name 2>/dev/null || echo 'unknown')}"
 GIT_BASE="https://${GIT_USER}:${GIT_TOKEN}@code.alibaba-inc.com/qunbu"
 TMP_DIR="/tmp/_skill_update_$$"
 UPDATED=0
