@@ -1,0 +1,39 @@
+{
+  "case_id": "case-2026-07-06-085",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-06T23:00:00+08:00",
+  "project": "wanxia-edit",
+  "work_unit": "full-project deep audit (server, social-scraper, generate-content, mail_push, calibration, vision_calibrate, dl_images, analyze)",
+  "situation": "audit-cycle-state was cycle-complete after wechat-main audit-2026-07-06-022 all 22 fixes merged. Triggered new full audit round. Selected wanxia-edit as next unaudited project with real business code (17 code files, sunset prediction content generation + social scraping + mail push). Skipped autonomous-engine (overlaps with already-audited autonomous-studio hooks), moni-master (DO NOT exclude), wanxia-posts (pure data), engine-skills-extracted (config/archive).",
+  "action": "Deep-read 15 source files across server entry, social scraper (Weibo+XHS via Playwright), content generation pipeline, mail push, calibration, vision analysis, image download scripts. Identified 15 findings (5H/7M/2L/1I). Wrote audit report audit-2026-07-06-023.md. Registered 14 derived_fixes in audit-cycle-state.json as pending. 1 structural debt (SD-007 copy-generator hardcoded copy) noted but not dispatched.",
+  "files_changed": [".claude/audits/audit-2026-07-06-023.md", ".claude/audit-cycle-state.json"],
+  "worktree": null,
+  "direction": "audit-only-no-commit",
+  "outcome": "succeeded",
+  "outcome_evidence": "audit-2026-07-06-023.md written (15 findings documented with file:line references); audit-cycle-state.json updated to status=fix-in-progress with 14 derived_fixes pending; history entry appended for audit-2026-07-06-023.",
+  "next_suggestion": [
+    "Dispatch H-001+H-002 combined fix: decouple generate-content.js:95 and poetic_intro.py:20 from /opt/personal-assistant/.env — switch to local .env or process.env.DEEPSEEK_API_KEY with stat mode check",
+    "Dispatch H-003+L-003 combined fix: replace hardcoded /opt/wanxia/ paths in dl_images.mjs, analyze.mjs, validate_new.js with relative/env-based resolution",
+    "Dispatch H-004: add SOCIAL_PROXY_URL scheme/IP validation in social-scraper.js before Playwright context creation"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {"file": "generate-content.js", "line": 95, "severity": "high", "finding": "Hardcoded readFileSync('/opt/personal-assistant/.env') for DEEPSEEK_API_KEY — cross-project credential coupling, no permission check", "remediation": "Use local .env or process.env; add fs.statSync mode & 0o077 === 0 check if cross-project read required", "kind": "route-fix"},
+    {"file": "poetic_intro.py", "line": 20, "severity": "high", "finding": "Hardcoded /opt/personal-assistant/.env path in _load_key() + bare except:pass swallows all errors", "remediation": "Same as H-001; prefer os.environ.get fallback; add specific exception handling", "kind": "route-fix"},
+    {"file": "dl_images.mjs", "line": 5, "severity": "high", "finding": "Hardcoded /opt/wanxia/.env, /opt/wanxia/src/cities.js, /opt/wanxia/node_modules/better-sqlite3, /opt/wanxia/data/sunset.db — non-portable, leaks deployment topology", "remediation": "Use WANXIA_ROOT env var or relative path resolution via import.meta.url", "kind": "route-fix"},
+    {"file": "social-scraper.js", "line": 30, "severity": "high", "finding": "Playwright --no-sandbox weakens isolation; SOCIAL_PROXY_URL injected without scheme/IP validation — proxy injection vector", "remediation": "Validate proxy URL format (http/https/socks5 only, reject link-local/metadata IPs); conditionally enable --no-sandbox", "kind": "route-fix"},
+    {"file": "server.js", "line": 78, "severity": "medium", "finding": "execAsync cwd from new URL().pathname instead of fileURLToPath() — defensive issue, low actual risk", "remediation": "Use fileURLToPath() already imported at line 18", "kind": "route-fix"},
+    {"file": "mail_push.py", "line": 140, "severity": "medium", "finding": "PNG attachment unbounded when PIL missing (2.3MB/file × 8 = 18MB raw, ~24MB base64) — SMTP timeout/OOM risk", "remediation": "Add MAX_ATTACHMENT_BYTES = 5MB cap; skip oversized files with warning", "kind": "route-fix"},
+    {"file": "social-scraper.js", "line": 192, "severity": "medium", "finding": "res.text() on weibo desktop HTML unbounded — large page OOM risk", "remediation": "Cap response body at 2MB via ReadableStream + AbortController", "kind": "route-fix"},
+    {"file": "server.js", "line": 6, "severity": "medium", "finding": "Duplicate .env loading (server.js:6-14 + env.js:22-45) with silent override — acknowledged WANXIA-DEAD-01 structural debt", "remediation": "Remove server.js:6-14 redundant loader; keep env.js single entry point", "kind": "route-fix"},
+    {"file": "vision_calibrate.py", "line": 40, "severity": "medium", "finding": "classify() failure returns is_sunset=False silently — API errors counted as negative samples, corrupting correlation stats", "remediation": "Add error:true field to failed results; exclude from aggregation; log specific exception type to stderr", "kind": "route-fix"},
+    {"file": "analyze.mjs", "line": 114, "severity": "medium", "finding": "writeFileSync to /tmp/social_analysis.json non-atomic + world-readable — crash leaves corrupt JSON, data leak", "remediation": "tempfile + rename atomic write; output to project data/ dir; chmod 0600", "kind": "route-fix"},
+    {"file": "dl_images.mjs", "line": 46, "severity": "medium", "finding": "Silent discard of small images (<5KB) without logging; writeFileSync non-atomic", "remediation": "console.warn on discard; tempfile + rename for atomic write", "kind": "route-fix"},
+    {"file": "generate-content.js", "line": 176, "severity": "medium", "finding": "posts.json writeFileSync non-atomic — cron crash leaves corrupt JSON breaking downstream consumers", "remediation": "fs.writeFileSync(tmp) + fs.renameSync(tmp, target)", "kind": "route-fix"},
+    {"file": "social-scraper.js", "line": 226, "severity": "low", "finding": "Empty catch {} blocks swallow errors silently across multiple files (also env.js:43, generate-content.js:37)", "remediation": "Add console.debug at minimum; critical paths upgrade to warn/error", "kind": "route-fix"},
+    {"file": "validate_new.js", "line": 4, "severity": "low", "finding": "Stale /opt/wanxia absolute paths same pattern as H-003", "remediation": "Merge with H-003 fix", "kind": "route-fix"},
+    {"file": "copy-generator.js", "line": 19, "severity": "info", "finding": "SPOTS/COLOR_VARIANTS hardcoded city landmarks + copy variants — new city requires source change", "remediation": "Extract to spots.json + color-variants.json config files (structural debt SD-007)", "kind": "structural"}
+  ],
+  "audit_id": "audit-2026-07-06-023",
+  "audit_depth": "deep"
+}
