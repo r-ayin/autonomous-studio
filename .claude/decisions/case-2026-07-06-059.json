@@ -1,0 +1,29 @@
+{
+  "case_id": "case-2026-07-06-059",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-06T11:19:07Z",
+  "project": "sunset-prediction",
+  "work_unit": "M-002 logger redaction (console.* wrap)",
+  "situation": "audit-2026-07-06-020 M-002 finding: console.error/log in server.js + src/routes.js + src/social-scraper.js may leak cookies, bearer tokens, env-key values and stack traces into stdout/stderr → downstream log collectors. Route-fix per audit report.",
+  "action": "Added new src/logger.js exporting redact() + log/logError/logWarn. Regex patterns cover Cookie header, Bearer/Basic auth, token=, password/secret/api_key fields, explicit sensitive env keys (WEIBO_COOKIE/XIAOHONGSHU_COOKIE/ANTHROPIC_API_KEY/SMTP_PASSWORD/AUTH_TOKEN/SESSION_SECRET), and generic long opaque assignments. Replaced all bare console.log/error/warn calls across the three target files with logger imports. Used case-104 direct-wt-commit escape hatch because cp-guard detected pre-existing unmerged divergence on these files in opt-server-1783335841 worktree.",
+  "files_changed": [
+    "server.js",
+    "src/logger.js",
+    "src/routes.js",
+    "src/social-scraper.js"
+  ],
+  "worktree": "opt-server-1783335841",
+  "direction": "server:logger-redaction",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit bc2505d on auto/opt-server-1783335841 (pushed origin); node --check passed for all 4 files; grep 'console\\.' returns zero hits in modified files; commit-gate hook allowed commit (no main-line violation).",
+  "next_suggestion": [
+    "派生 M-003 SSE client-disconnect abort (routes.js:243-332, 396-424)",
+    "派生 M-004 cache.js eviction policy",
+    "派生 M-005 storage_state chmod 0600 + flock",
+    "派生 L-002 Playwright --no-sandbox container-detect gate"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-06-020",
+  "audit_depth": "shallow"
+}
