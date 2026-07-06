@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-07-07-004",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-07T00:25:00+08:00",
+  "project": "1BfrYW9R",
+  "work_unit": "dev-server:mime-table (L-001 route-fix)",
+  "situation": "audit-2026-07-06-026 L-001 finding: dev-server.js MIME table missing .woff/.woff2/.ttf/.otf/.map/.txt/.xml/.wasm. Static serve falls back to application/octet-stream → browsers reject font-face loads, source-map tools fail to parse, text/xml assets mis-typed.",
+  "action": "Direct-edit worktree (cp-guard blocked main→wt copy due to prior H-001/M-001/M-002 stacked commits). Added 8 MIME entries with comment citing L-001 + audit id. Committed in wt, pushed to origin.",
+  "files_changed": ["dev-server.js"],
+  "worktree": "opt-dev-server-1783353888",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit b4e2b8b on auto/opt-dev-server-1783353888; git push 36c7ec7..b4e2b8b succeeded (remote CR link emitted). Stacked on top of M-002 fix 36c7ec7 and M-001 fix 1edb694 in same worktree.",
+  "next_suggestion": [
+    "All 4 audit-2026-07-06-026 derived_fixes now merged (H-001 case-001, M-001 case-002, M-002 case-003, L-001 case-004). Set audit-cycle-state.status=cycle-complete next round → triggers new full deep audit on an unaudited project.",
+    "Scout recommends shizi (#1 score=3.0 PROGRESS stale 7.5d) or autonomous-engine (#2 no planning/) for non-audit follow-up if user intervenes before next audit."
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-06-026",
+  "audit_depth": "shallow"
+}
