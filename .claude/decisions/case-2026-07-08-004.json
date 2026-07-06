@@ -1,0 +1,61 @@
+{
+  "case_id": "case-2026-07-08-004",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-08T01:45:00+08:00",
+  "project": "skills/dataworks-dev-assistant",
+  "work_unit": "Full deep audit of core layer (bff_client, runtime, duckdb_query, write_api, intent_planner) + sql-execution/execute_sql.py",
+  "situation": "audit-cycle-state was cycle-complete after audit-037 (shizi). All git workspace projects audited ≥1×. Selected skills/dataworks-dev-assistant as next target — live copy at ~/.claude/skills/ with 115 executable Python files, sensitive paths (DuckDB/BFF/SQL exec/session/auth), never deep-audited before.",
+  "action": "Deep audit reading 6 core files. Identified 5 findings: DW-CORE-H-001 (BFF log PII leak), DW-CORE-M-001 (non-atomic session_state writes in 2 functions), DW-SQL-M-001 (WITH-prefix CTE bypasses write confirm — same class as autonomous-studio e37253f fix), DW-CORE-L-001 (session_state lock contention structural debt), DW-CORE-I-001 (intent_planner clean). Wrote audit report audit-2026-07-08-038.md. Queued SD-018 to structural-debt.md. Updated audit-cycle-state to fix-in-progress with 3 pending route-fixes.",
+  "files_changed": [
+    ".claude/audits/audit-2026-07-08-038.md",
+    ".claude/audit-cycle-state.json",
+    ".claude/structural-debt.md",
+    ".claude/memory/autonomous-state.md"
+  ],
+  "worktree": null,
+  "direction": "deep-audit-only",
+  "outcome": "succeeded",
+  "outcome_evidence": "audit-2026-07-08-038.md written with 5 findings (1H/2M/1L/1I); audit-cycle-state.json updated status=fix-in-progress with 3 derived_fixes status=pending; SD-018 appended to structural-debt.md; no opt-worktree commit (audit-only round per constraints).",
+  "next_suggestion": [
+    "Dispatch DW-CORE-H-001 route-fix: add response.data redaction to bff_client._log() (mask email/account/displayName/baseId/token keys)",
+    "After H-001 merged, dispatch DW-CORE-M-001: convert save_tool_result + _write_session_state to tmp+os.replace atomic pattern",
+    "After M-001 merged, dispatch DW-SQL-M-001: strip string literals then scan for write keywords in execute_sql._is_readonly_sql"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "~/.claude/skills/dataworks-dev-assistant/core/bff_client.py",
+      "line": 386,
+      "severity": "high",
+      "finding": "_log() writes full response.data to dw_bff_calls.log without redaction — may contain user PII (email/account/displayName/baseId) or query result data",
+      "remediation": "Add recursive redaction of known sensitive keys in response.data before logging; or log only type+length for data field",
+      "kind": "route-fix"
+    },
+    {
+      "file": "~/.claude/skills/dataworks-dev-assistant/core/runtime.py",
+      "line": 361,
+      "severity": "medium",
+      "finding": "save_tool_result and _write_session_state use non-atomic open('w')+json.dump for session_state.json; concurrent agents can lose updates; crash truncates JSON. bootstrap_context (line 180-183) already uses correct tmp+os.replace pattern",
+      "remediation": "Convert both functions to tmp+os.replace atomic write pattern matching bootstrap_context",
+      "kind": "route-fix"
+    },
+    {
+      "file": "~/.claude/skills/dataworks-dev-assistant/modules/sql-execution/scripts/execute_sql.py",
+      "line": 38,
+      "severity": "medium",
+      "finding": "_is_readonly_sql matches WITH prefix as readonly, but WITH...INSERT/UPDATE/DELETE is valid write SQL that bypasses two-phase confirm. Same bug class as autonomous-studio commit e37253f",
+      "remediation": "Strip string literals/comments then scan for INSERT/UPDATE/DELETE/MERGE/DROP/CREATE/ALTER/TRUNCATE keywords after WITH prefix match",
+      "kind": "route-fix"
+    },
+    {
+      "file": "~/.claude/skills/dataworks-dev-assistant/core/runtime.py",
+      "line": 322,
+      "severity": "low",
+      "finding": "5 writers share session_state.json (save_tool_result, _write_session_state, bootstrap_context, remember, forget) with no file locking — last-writer-wins under parallel agent dispatch",
+      "remediation": "Introduce fcntl.flock or split into per-key state files (structural debt SD-018)",
+      "kind": "structural"
+    }
+  ],
+  "audit_id": "audit-2026-07-08-038",
+  "audit_depth": "deep"
+}
