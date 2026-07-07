@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-07-07-141",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-07T17:35:00+08:00",
+  "project": "shizi",
+  "work_unit": "background:cjk-regex",
+  "situation": "SZ-BG-L-004 (low, route-fix): classifyChar CJK regex /[一-鿿㐀-䶿]/ only covers U+4E00-9FFF + U+3400-4DBF (basic block + Extension A). Misses Extension B-F (U+20000-3134F), Compatibility Ideographs (U+F900-FAFF), and Supplement (U+2F800-2FA1F). E-commerce product images with rare/traditional characters would be misclassified as 'symbol' and excluded from word count.",
+  "action": "Replaced regex test with codePointAt-based range checks covering all 9 CJK Unicode blocks. Added comment documenting each range. Existing for-of iteration in countChars already handles surrogate pairs correctly (ES6+ iterates by code point), so no change needed there despite initial concern.",
+  "files_changed": ["src/background/counter.ts"],
+  "worktree": "opt-background-1783213292",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 3d96b9c on auto/opt-background-1783213292 pushed to origin. npx vitest run tests/counter.test.ts: 16/16 passed. Diff: +23/-2 lines, single file.",
+  "next_suggestion": [
+    "SZ-BG-L-005: uploadImage retry chain does not indicate retry count in error (low, route-fix)",
+    "SZ-BG-L-006: filterByRegion expandRatio threshold calibration bias (low, route-fix)"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-07-047",
+  "audit_depth": "shallow"
+}
