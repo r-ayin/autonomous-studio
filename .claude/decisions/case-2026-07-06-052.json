@@ -1,31 +1,36 @@
 {
   "case_id": "case-2026-07-06-052",
   "agent_id": "autonomous-engine-ralph",
-  "timestamp": "2026-07-06T10:33:48Z",
-  "project": "FinanceTracker",
-  "work_unit": "drift-repair: archive 8 phantom derived_fixes from audit-2026-07-06-019 (project missing from workspace, case IDs point to unrelated prod-deploy/personal-assistant cases)",
-  "situation": "audit-cycle-state.status=fix-in-progress with 8 pending derived_fixes referencing FinanceTracker files. Scout-scan confirms FinanceTracker does not exist in /home/admin/workspace/. Case ID cross-check shows case-2026-07-06-010..017 on disk belong to prod-deploy and personal-assistant audits, not FinanceTracker. Derived fixes were never dispatched to real case files; state file contains phantom references. Pattern matches prior drift-repair archives (audit-013 kaoqin, audit-018 oneday-auto-fix).",
-  "action": "Archive all 8 derived_fixes as rejected-archive due to project-not-found + case-id-mismatch. Update audit-cycle-state.json status to cycle-complete. No opt-worktree commit (no source code to modify). Write this drift-repair case for audit trail.",
+  "timestamp": "2026-07-06T21:30:00+08:00",
+  "project": "personal-assistant",
+  "work_unit": "deep-audit: core Python backend + relay scripts",
+  "situation": "audit-cycle-state was cycle-complete after sunset-prediction audit-2026-07-06-020 all 10 fixes merged. Triggered new full audit cycle. Selected personal-assistant (Python+Android+web assistant platform) as next unaudited project.",
+  "action": "Deep security+correctness audit via sonnet sub-agent. Read 9 source files across auth/api/ws_manager/storage/memory/config/llm modules plus audio_relay and ecs_relay scripts. Traced data flows across auth→API→WS→storage layers.",
   "files_changed": [],
   "worktree": null,
-  "direction": "route-fix",
+  "direction": "audit-only, no code changes",
   "outcome": "succeeded",
-  "outcome_evidence": "find /home/admin/workspace -iname '*financetracker*' returns empty; ls case-2026-07-06-{010..017}.json shows projects 'prod-deploy skill' and 'personal-assistant', none reference FinanceTracker or audit-2026-07-06-019. All 8 derived_fixes have no dispatchable target.",
+  "outcome_evidence": "Produced audit-2026-07-06-021.md with 12 findings (4H/6M/2L). Key: H-001 ws_xiaozhi unauthenticated, H-002 CORS wildcard+dev bypass, H-003 relay token log leak, H-004 audio relay 0.0.0.0 no auth. 10 route-fixes registered in audit-cycle-state.derived_fixes as pending.",
   "next_suggestion": [
-    "Trigger new full audit (cycle-complete). Next unaudited candidate: pick project from workspace not yet in .claude/audits/ history — e.g., wechat-main, sunset-prediction, or moni-master (all present in workspace, none deep-audited recently).",
-    "Investigate why audit-2026-07-06-019 was written against a non-existent project — possible auditor hallucination or project was deleted between audit and dispatch. Add guard to future audit cycles: verify project path exists before writing derived_fixes."
+    "Derive fix for H-001+M-001 (WS auth gap in api.py:199 + auth.py:49 exemption) — highest priority, same fix pattern",
+    "Derive fix for H-003 (token log leak in tunnel_client.py:51) — isolated, quick win",
+    "Derive fix for H-004 (audio_relay 0.0.0.0 binding) — standalone file"
   ],
-  "audit_type": "none",
+  "audit_type": "deep-audit",
   "audit_findings": [
-    {
-      "file": ".claude/audit-cycle-state.json",
-      "line": 9,
-      "severity": "medium",
-      "finding": "derived_fixes[].fix_case_id references (case-010..017) do not correspond to FinanceTracker cases on disk; they point to prod-deploy/personal-assistant cases from earlier audits. State file drifted from reality.",
-      "remediation": "Add pre-dispatch validation: before writing derived_fix entry, verify (a) target project exists in workspace, (b) fix_case_id is freshly allocated and unique. Reject dispatch if either check fails.",
-      "kind": "route-fix"
-    }
+    {"file": "personal_assistant/api.py", "line": 199, "severity": "high", "finding": "/ws/xiaozhi endpoint skips WebSocket token authentication entirely", "remediation": "Add verify_ws_token check before xiaozhi_endpoint call", "kind": "route-fix"},
+    {"file": "personal_assistant/api.py", "line": 106, "severity": "high", "finding": "CORS allows all origins with wildcard while auth can be disabled", "remediation": "Replace allow_origins=['*'] with explicit trusted origin list", "kind": "route-fix"},
+    {"file": "scripts/ecs_relay/tunnel_client.py", "line": 51, "severity": "high", "finding": "WebSocket relay token leaked in plaintext to stdout log", "remediation": "Redact token in log output", "kind": "route-fix"},
+    {"file": "scripts/audio_relay.py", "line": 222, "severity": "high", "finding": "Audio relay binds 0.0.0.0 with no authentication", "remediation": "Bind 127.0.0.1 or add token verification", "kind": "route-fix"},
+    {"file": "personal_assistant/auth.py", "line": 49, "severity": "medium", "finding": "/ws/ prefix exempted from HTTP auth but ws_xiaozhi has no self-auth", "remediation": "Remove /ws/ from exemptions; ensure each WS handler self-authenticates", "kind": "route-fix"},
+    {"file": "personal_assistant/api.py", "line": 325, "severity": "medium", "finding": "POST /chat blocks async event loop with sync LLM call", "remediation": "Wrap with asyncio.to_thread", "kind": "route-fix"},
+    {"file": "personal_assistant/storage.py", "line": 88, "severity": "medium", "finding": "hash()-based IDs predictable and collision-prone", "remediation": "Use secrets.token_hex or uuid4", "kind": "route-fix"},
+    {"file": "personal_assistant/config.py", "line": 17, "severity": "medium", "finding": ".env parser mishandles values with = and mixed quoting", "remediation": "Use shlex.split or python-dotenv", "kind": "route-fix"},
+    {"file": "scripts/ecs_relay/relay_bridge.py", "line": 107, "severity": "medium", "finding": "Origin validation bypassed when Origin header absent", "remediation": "Require Origin for browser clients", "kind": "route-fix"},
+    {"file": "personal_assistant/api.py", "line": 483, "severity": "medium", "finding": "inbox/upload no body size limit, disk exhaustion DoS", "remediation": "Add streaming size check before write", "kind": "route-fix"},
+    {"file": "personal_assistant/ws_manager.py", "line": 91, "severity": "low", "finding": "Heartbeat sends zero-byte binary frame instead of WS ping", "remediation": "Use protocol-level ping", "kind": "route-fix"},
+    {"file": "personal_assistant/api.py", "line": 339, "severity": "low", "finding": "POST /verify returns assertion failures in 200 body", "remediation": "Return HTTP 500 on assertion failure", "kind": "route-fix"}
   ],
-  "audit_id": "audit-2026-07-06-019",
-  "audit_depth": "shallow"
+  "audit_id": "audit-2026-07-06-021",
+  "audit_depth": "deep"
 }

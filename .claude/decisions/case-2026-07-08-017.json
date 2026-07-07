@@ -1,31 +1,32 @@
 {
   "case_id": "case-2026-07-08-017",
-  "agent_id": "ralph-wiggum",
-  "timestamp": "2026-07-07T12:10:00+08:00",
-  "project": "sunset-prediction",
-  "work_unit": "routes:error-leak (SP-SRV-M-005)",
-  "situation": "audit-2026-07-08-046 finding SP-SRV-M-005: routes.js GET /predictions 502 response included 'detail: err.message' leaking internal error details (stack traces, upstream URLs, DB paths) to clients. Information disclosure risk.",
-  "action": "Removed 'detail: err.message' from 502 JSON response in GET /predictions catch block. Console.error retains full error for ops; client receives generic message with retry hint only. Committed to existing opt-routes-1783141439 worktree (route-fix reuse).",
-  "files_changed": ["src/routes.js"],
-  "worktree": "opt-routes-1783141439",
-  "direction": "routes:error-leak",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-07T21:30:00+08:00",
+  "project": "shizi",
+  "work_unit": "popup:upload-size-limit",
+  "situation": "SZ-PP-H-001 (high): ImageUploader.processFile has no file size limit. Large files (>100MB) are fully read into memory via FileReader.readAsDataURL and base64-encoded (~33% expansion), causing extension OOM crash.",
+  "action": "Add 10MB MAX_FILE_SIZE constant and early-return guard in processFile before FileReader instantiation. User-facing alert shows actual file size in MB.",
+  "files_changed": ["src/popup/ImageUploader.tsx"],
+  "worktree": "opt-popup-1783215325",
+  "direction": "route-fix",
   "outcome": "succeeded",
-  "outcome_evidence": "Commit ec2ea6f on auto/opt-routes-1783141439 pushed to origin. diff confirms detail field removed; console.error preserved.",
+  "outcome_evidence": "Commit f9d5f1c pushed to origin/auto/opt-popup-1783215325. File size check added at line 17 before FileReader. No other logic changed.",
   "next_suggestion": [
-    "派生下一个 pending medium fix: SP-ENG-M-001 calibration-math.js NaN when all dimension errors Infinity",
-    "或 SP-ENG-M-005 prediction-engine.js gaussian sigma=0 division by zero"
+    "SZ-SP-H-001 (high): containerRef dual assignment in sidepanel — next high-priority pending fix",
+    "SZ-SH-H-001 (high): excess host_permissions in manifest.json",
+    "After all H-severity fixes dispatched, proceed to M-severity batch"
   ],
   "audit_type": "code-review",
   "audit_findings": [
     {
-      "file": "src/routes.js",
-      "line": 117,
-      "severity": "medium",
-      "finding": "502 response leaks err.message to client via 'detail' field — information disclosure (stack traces, upstream URLs, DB paths)",
-      "remediation": "Remove detail field; keep console.error for ops visibility",
+      "file": "src/popup/ImageUploader.tsx",
+      "line": 11,
+      "severity": "high",
+      "finding": "No file size limit on image upload — memory bomb via large file base64 encoding",
+      "remediation": "Added MAX_FILE_SIZE=10MB guard before FileReader.readAsDataURL",
       "kind": "route-fix"
     }
   ],
-  "audit_id": "audit-2026-07-08-046",
+  "audit_id": "audit-2026-07-07-047",
   "audit_depth": "shallow"
 }

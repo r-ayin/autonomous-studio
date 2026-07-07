@@ -1,40 +1,28 @@
 {
   "case_id": "case-2026-07-08-021",
   "agent_id": "autonomous-engine",
-  "timestamp": "2026-07-08T04:45:00+08:00",
-  "project": "sunset-prediction",
-  "work_unit": "scripts:publish-xhs-timeout",
-  "situation": "audit-2026-07-08-046 finding SP-SCR-M-006: publish-xhs.js L37/L46 fetch() calls have no timeout; localhost service hang causes script permanent block. Contrast: social-scraper.js has timedFetch with AbortController+9s.",
-  "action": "Add timedFetch(url, opts, timeoutMs=30000) wrapper using AbortController+setTimeout, replace both bare fetch() calls at L37 and L46. Mirrors social-scraper.js pattern. Route-fix (no public interface change).",
-  "files_changed": ["scripts/publish-xhs.js"],
-  "worktree": "opt-scripts-1783396445",
-  "direction": "scripts:publish-xhs-timeout",
-  "outcome": "merged",
-  "outcome_evidence": "Commit sha 116c6a5 on auto/opt-scripts-1783396445 pushed to origin. node --check passes syntax validation. Reuses existing scripts area worktree (route-fix判定).",
-  "next_suggestion": [
-    "派生下一个 pending fix: SP-SCR-M-009 (post_xhs_browseruse.py post record file non-atomic write)",
-    "或 SP-SCR-L-002 (wanxia-mail-push.sh MAIL_TO unbound variable under set -u)",
-    "剩余 pending: SP-SCR-M-009, SP-SCR-L-002, SP-SCR-L-004, SP-ENG-L-002"
-  ],
+  "timestamp": "2026-07-07T15:04:00+08:00",
+  "project": "shizi",
+  "work_unit": "SZ-BG-M-008: Non-PNG images skip all scaling/tiling/enhancement",
+  "situation": "ocr-internal.ts uses parsePngSize() which only handles PNG header format. JPEG/WebP images get null → recognizeWithInternalApi falls through to basic upload-only OCR (no upscale, no tiling, no contrast enhancement). ocrRegion also returns empty for non-PNG. This means JPEG screenshots and WebP product photos get significantly worse recognition quality.",
+  "action": "Replaced local parsePngSize with imported parseImageSize from vision-adapter.ts which handles both PNG (IHDR header) and JPEG (SOF0/SOF2 marker scan). Removed dead parsePngSize function. Added clarifying comment at fallback path for truly unrecognized formats (WebP etc.).",
+  "files_changed": ["src/background/ocr-internal.ts"],
+  "worktree": "auto/opt-background-1783213292",
+  "direction": "background:non-png-ocr-support",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 322f5e0 on auto/opt-background-1783213292. parseImageSize imported and used at both call sites (recognizeWithInternalApi line 539, ocrRegion line 590). parsePngSize removed. Pushed to origin.",
+  "next_suggestion": "Next pending fix: SZ-SP-M-001 (Draw mode replaces all regions instead of appending) in sidepanel",
   "audit_type": "code-review",
   "audit_findings": [
     {
-      "file": "scripts/publish-xhs.js",
-      "line": 37,
+      "file": "src/background/ocr-internal.ts",
+      "line": 539,
       "severity": "medium",
-      "finding": "fetch API call to /api/predictions has no timeout; localhost service hang → script permanent block",
-      "remediation": "AbortController + setTimeout(30s) via timedFetch wrapper",
-      "kind": "route-fix"
-    },
-    {
-      "file": "scripts/publish-xhs.js",
-      "line": 46,
-      "severity": "medium",
-      "finding": "fetch API call to /api/predictions?date= has no timeout; same risk as L37",
-      "remediation": "Same timedFetch wrapper applied",
+      "finding": "parsePngSize only parses PNG IHDR; JPEG/WebP images return null causing all upscale/tile/enhance paths to be skipped",
+      "remediation": "Replace with parseImageSize from vision-adapter.ts which handles PNG + JPEG SOF markers",
       "kind": "route-fix"
     }
   ],
-  "audit_id": "audit-2026-07-08-046",
+  "audit_id": "audit-2026-07-07-047",
   "audit_depth": "shallow"
 }

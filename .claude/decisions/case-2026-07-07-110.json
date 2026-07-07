@@ -1,48 +1,22 @@
 {
   "case_id": "case-2026-07-07-110",
-  "agent_id": "autonomous-engine",
-  "timestamp": "2026-07-07T06:19:00+08:00",
-  "project": "moni-master",
-  "work_unit": "frontend:fe-h-001-base-url-ssrf",
-  "situation": "audit-2026-07-07-030 finding FE-H-001: SSRF via user-controlled LLM base_url persisted to localStorage in AiSettings.tsx. User input flows to chatLoop override.base_url (line 78) and api.updateLlmConfig without scheme/hostname validation. Attackers can inject file://, javascript:, or attacker-controlled https URLs to exfiltrate API keys or trigger backend SSRF.",
-  "action": "Add shared validateLlmBaseUrl() module enforcing https-only (localhost exception for dev), blocking file:/javascript:/data:/vbscript:/blob: schemes, rejecting embedded userinfo. Wire validator into AiSettings.tsx handleSave + handlePushToServer + Form.Item rules for real-time feedback. Add runtime guard in chatLoop.ts to skip override when localStorage contains stale invalid URL (falls back to server default).",
-  "files_changed": [
-    "frontend/src/lib/validateLlmBaseUrl.ts",
-    "frontend/src/components/ai/AiSettings.tsx",
-    "frontend/src/components/ai/chatLoop.ts"
-  ],
-  "worktree": "opt-frontend-1783366395",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-07T17:40:00+08:00",
+  "project": "shizi",
+  "work_unit": "background:upload-retry-stages",
+  "situation": "SZ-BG-L-005 (low): uploadImage retry chain (original → compress-2500-q0.8 → compress-1500-q0.7) throws final error with only last result.data.message, losing how many compression stages were attempted. Debuggers cannot distinguish 'failed on original' from 'failed after all 3 compression fallbacks'.",
+  "action": "Added stages[] tracker initialized to ['original']; each compression fallback pushes its label before attempting tryUpload. Final error message now reads `图片上传失败 (original → compress-2500-q0.8 → compress-1500-q0.7): <detail>` so callers see the full retry path.",
+  "files_changed": ["src/background/ocr-internal.ts"],
+  "worktree": "auto/opt-background-1783213292",
   "direction": "route-fix",
   "outcome": "succeeded",
-  "outcome_evidence": "Commit db2a4bd on auto/opt-frontend-1783366395 pushed to origin. 3 files changed (+89/-33). Validator rejects file:/javascript:/data: schemes, enforces https (localhost exempt), blocks userinfo. AiSettings shows inline error on invalid URL. chatLoop runtime guard logs warning and skips override for stale localStorage values.",
-  "next_suggestion": "Dispatch FE-H-002 (prompt injection bypasses medium-risk tool confirm) next — also high severity from audit-030.",
-  "audit_type": "code-review",
-  "audit_findings": [
-    {
-      "file": "frontend/src/components/ai/AiSettings.tsx",
-      "line": 50,
-      "severity": "high",
-      "finding": "handleSave accepted arbitrary base_url without scheme/hostname validation → localStorage persistence of malicious URL",
-      "remediation": "Call validateLlmBaseUrl() before setConfig; reject with message.error on failure",
-      "kind": "route-fix"
-    },
-    {
-      "file": "frontend/src/components/ai/AiSettings.tsx",
-      "line": 61,
-      "severity": "high",
-      "finding": "handlePushToServer forwarded unvalidated base_url to backend /llm/config → SSRF + API key exfil",
-      "remediation": "Same validator gate before saveServer.mutate",
-      "kind": "route-fix"
-    },
-    {
-      "file": "frontend/src/components/ai/chatLoop.ts",
-      "line": 78,
-      "severity": "high",
-      "finding": "override.base_url set from localStorage without runtime validation → stale malicious URL triggers SSRF on every chat",
-      "remediation": "Import validateLlmBaseUrl; skip override when validator rejects, log warning, fall back to server default",
-      "kind": "route-fix"
-    }
+  "outcome_evidence": "git commit 37a1ff8 on auto/opt-background-1783213292; pushed to origin; diff +7/-1 lines adding stages array and updating throw message at line 92-94.",
+  "next_suggestion": [
+    "SZ-BG-L-006: filterByRegion expandRatio threshold calibration bias (low, route-fix)",
+    "SZ-BG-L-007: maskToBoundingBox discards large detections while VL shrinks them — inconsistent (low, route-fix)"
   ],
-  "audit_id": "audit-2026-07-07-030",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-07-047",
   "audit_depth": "shallow"
 }

@@ -1,32 +1,30 @@
 {
   "case_id": "case-2026-07-07-005",
   "agent_id": "ralph-wiggum-autonomous-loop",
-  "timestamp": "2026-07-07T04:11:23+08:00",
+  "timestamp": "2026-07-07T20:18:00+08:00",
   "project": "moni-master",
-  "work_unit": "frontend router 404 feedback (FE-L-001)",
-  "situation": "audit-2026-07-07-030 finding FE-L-001: router.tsx:31 splat wildcard silently redirects typos to / via Navigate replace, no 404 feedback. Users typing wrong URL get no signal; debugging/training friction.",
-  "action": "Add NotFoundPage using shared EmptyState component + Link back to home. Replace Navigate-to-/ splat catch-all with explicit 404 page. Remove unused Navigate import. Committed directly in opt-frontend-1783366395 worktree via case-104 escape hatch (cp-guard triggered because worktree had prior unmerged FE-H/M fixes diverged from main HEAD).",
+  "work_unit": "frontend/ws.ts — FE-L-002 WebSocket reconnect max retry cap",
+  "situation": "audit-2026-07-07-030 derived_fixes FE-L-002 pending dispatch. ws.ts scheduleReconnect() had exponential backoff capped at 30s but no MAX_RETRIES limit — permanent backend outage causes infinite 30s retry loop (low severity robustness issue). cp-guard blocked opt-worktree.sh commit because worktree ws.ts already diverged from main HEAD (prior unmerged FE-H/M fixes in same wt); used case-104 escape hatch to commit directly in worktree.",
+  "action": "Added MAX_RETRIES=10 constant to WsClient class. scheduleReconnect() now checks retries >= MAX_RETRIES before scheduling; on cap hit emits '_ws_status_permanent_failure' event and stops. Added public retry() method for UI manual-reconnect button. Extended emitStatus type union to include 'permanent_failure'; payload now includes retries count for observability.",
   "files_changed": [
-    "frontend/src/pages/NotFound.tsx",
-    "frontend/src/router.tsx"
+    "frontend/src/lib/ws.ts"
   ],
   "worktree": "opt-frontend-1783366395",
-  "direction": "route-fix",
+  "direction": "frontend:ws-max-retry-cap",
   "outcome": "succeeded",
-  "outcome_evidence": "commit 816f37d on auto/opt-frontend-1783366395 pushed to origin (fc29ac1..816f37d); 2 files changed, 21 insertions(+), 2 deletions(-); CodeReview URL https://code.alibaba-inc.com/xtool/moni/codereview/new?from=master&to=auto/opt-frontend-1783366395",
+  "outcome_evidence": "commit c6d78cf on auto/opt-frontend-1783366395 pushed to origin (816f37d..c6d78cf). Diff: +22/-2 lines, single file frontend/src/lib/ws.ts. TypeScript compiles (no type errors in emitStatus union extension). Case-104 escape hatch invoked due to cp-guard on diverged wt.",
   "next_suggestion": [
-    "派生 FE-L-002 (ws.ts reconnect max retry cap) — 单文件 route-fix，复用同 worktree",
-    "派生 FE-L-003 (chatLoop.ts UTF-16 safe truncation) — 单文件 route-fix，复用同 worktree",
-    "3 pending 清空后 audit-cycle-state → cycle-complete → 触发下一轮全量审计"
+    "派生 FE-L-003 (chatLoop.ts tool result truncation UTF-16 corruption) — audit-2026-07-07-030 最后一条 pending route-fix",
+    "FE-L-002 merged 后若 FE-L-003 也 merged，audit-cycle-state.status → cycle-complete，下轮触发新全量审计"
   ],
   "audit_type": "code-review",
   "audit_findings": [
     {
-      "file": "frontend/src/router.tsx",
-      "line": 31,
+      "file": "frontend/src/lib/ws.ts",
+      "line": 90,
       "severity": "low",
-      "finding": "Splat wildcard path='*' silently redirects all unmatched URLs to / via Navigate replace — no 404 feedback for typos or stale bookmarks",
-      "remediation": "Replace Navigate with explicit NotFoundPage component showing user-friendly message + home link",
+      "finding": "scheduleReconnect() has no max retry cap — infinite 30s loop on permanent backend outage wastes client resources and masks real failures from user",
+      "remediation": "Add MAX_RETRIES constant (10), check before scheduling, emit permanent_failure event on cap hit, expose retry() method for manual recovery",
       "kind": "route-fix"
     }
   ],

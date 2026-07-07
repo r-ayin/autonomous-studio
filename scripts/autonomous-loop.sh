@@ -102,8 +102,8 @@ echo ""
 # 模型策略（用户 2026-07-04 改）：自动决策引擎默认跑 GLM-5.2，qwen3.7-max 作 402 兜底。
 # 原因：用户指示默认改回 GLM-5.2；保留 qwen3.7-max 兜底是因为 GLM-5.2 在连续自治下配额易 402 耗尽（2026-06-29 实测 6264 轮末段数百轮 402 空转），限流时切独立额度的 qwen 续跑。
 # 代理层：env ANTHROPIC_MODEL 经重映射，settings.json 的 model 字段对 claude -p 无效，必须 --model。
-PRIMARY_MODEL="GLM-5.2"            # 自动模式默认模型（用户 2026-07-04 改回；CLI 大小写敏感，必须大写）
-FALLBACK_MODEL="qwen3.7-max"      # GLM 402 限流时兜底，代理层独立额度
+PRIMARY_MODEL="qwen3.7-max"        # 2026-07-08 GLM-5.2 暂无额度，临时用 qwen3.7-max
+FALLBACK_MODEL="qwen3.7-max"      # 兜底同主模型（GLM恢复后改回 GLM-5.2 兜底）
 STICKY_FAIL_THRESHOLD=3           # GLM 连续 3 轮 402 → 粘到 qwen 兜底，每 PROBE_EVERY 轮探测恢复
 PROBE_EVERY=5                   # 粘到 qwen 后每 5 轮探测 GLM 是否恢复
 STICKY_FALLBACK=0

@@ -1,22 +1,30 @@
 {
   "case_id": "case-2026-07-07-002",
-  "agent_id": "autonomous-engine",
-  "timestamp": "2026-07-07T00:10:55+08:00",
-  "project": "1BfrYW9R",
-  "work_unit": "dev-server.js ONEDAY_DIR env validation (audit-2026-07-06-026 M-001 derived fix)",
-  "situation": "Deep audit audit-2026-07-06-026 found M-001: dev-server.js line 20 trusts process.env.ONEDAY_DIR verbatim. Path traversal defense prevents escaping dir, but if ONEDAY_DIR itself points to /etc or ~/.ssh (e.g., PaaS inherits stale/malicious env from prior job), every file under that root becomes readable via GET. H-001 fix already merged into opt-dev-server-1783353888 (commit 7001a07); cp-guard triggered when attempting fresh opt-worktree commit on same file → followed escape hatch (case-104 pattern) and edited worktree directly.",
-  "action": "Added startup-time ONEDAY_DIR validation in dev-server.js: when env is set, resolve to absolute + verify isDirectory(); fail fast with clear error message if non-absolute, inaccessible, or not a directory. Default path (__dirname) unchanged — only constrains explicit env injection. Committed as stacked commit on existing opt-dev-server-1783353888 branch (post-H-001-fix).",
-  "files_changed": ["dev-server.js"],
-  "worktree": "opt-dev-server-1783353888",
-  "direction": "route-fix",
-  "outcome": "succeeded",
-  "outcome_evidence": "Commit 1edb694 on auto/opt-dev-server-1783353888 pushed to origin (7001a07..1edb694). Diff: +24/-1 lines adding _rawOnedayDir capture + path.isAbsolute() + fs.statSync().isDirectory() checks with descriptive console.error + process.exit(1) on each failure mode. Code review URL: https://code.alibaba-inc.com/OneDayAI-RPUKYRO/1BfrYW9R/codereview/new?from=master&to=auto/opt-dev-server-1783353888",
-  "next_suggestion": [
-    "派生下一个 pending fix: M-002 (/api/* namespace collision — add explicit catch-all returning 404 for unregistered /api/xxx routes)",
-    "派生 L-001 (MIME table gaps — add .woff/.woff2/.map/.txt/.xml/.wasm entries)"
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-07T18:30:00+08:00",
+  "project": "moni-master",
+  "work_unit": "fix update_quotes stale-clone double-fill (M-003 from audit-2026-07-07-028)",
+  "situation": "audit-2026-07-07-028 finding M-003-engine: update_quotes clones all open orders upfront at engine.rs:463, then iterates calling attempt_match which mutates self.orders via save_order. When two SUBMITTED orders share a symbol, the second iteration uses the pre-mutation clone (still showing SUBMITTED + full quantity) even though the first fill already reduced available_volume and transitioned the first order to FILLED/PARTIALLY_FILLED. Result: same-symbol double-fill against the same quote volume.",
+  "action": "Refactored update_quotes to snapshot only order_ids, then re-fetch each order from self.orders at the top of each loop iteration. Added a status re-check after re-fetch so an order filled/cancelled by a prior iteration is skipped. Single-file change in moni-rs/crates/moni-engine/src/engine.rs. cargo check -p moni-engine passed clean.",
+  "files_changed": [
+    "moni-rs/crates/moni-engine/src/engine.rs"
   ],
+  "worktree": "opt-moni-engine-1783358963",
+  "direction": "moni-engine:update-quotes-double-fill",
+  "outcome": "succeeded",
+  "outcome_evidence": "cargo check -p moni-engine finished with no errors; opt-worktree.sh committed + pushed auto/opt-moni-engine-1783358963 to origin (new branch). Fix eliminates stale-clone path: each iteration now reads latest self.orders state post-save_order.",
+  "next_suggestion": "Next pending derived_fix: MONI-API-002 (unbounded replay/backtest frames ingestion → memory exhaustion DoS, routes.rs:239, route-fix, medium). After that MC-001 (symlink TOCTOU paths.rs:65).",
   "audit_type": "code-review",
-  "audit_findings": [],
-  "audit_id": "audit-2026-07-06-026",
+  "audit_findings": [
+    {
+      "file": "moni-rs/crates/moni-engine/src/engine.rs",
+      "line": 463,
+      "severity": "medium",
+      "finding": "update_quotes clones open orders into Vec<OrderRecord> before iterating; attempt_match mutates self.orders via save_order mid-loop, but subsequent iterations use stale clones. Two SUBMITTED orders on the same symbol → second fill sees original quantity/status despite first fill having consumed volume.",
+      "remediation": "Snapshot order_ids only; re-get from self.orders at each iteration start; skip if status no longer SUBMITTED|PARTIALLY_FILLED.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-028",
   "audit_depth": "shallow"
 }

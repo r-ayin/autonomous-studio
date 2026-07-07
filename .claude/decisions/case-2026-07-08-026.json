@@ -1,32 +1,33 @@
 {
   "case_id": "case-2026-07-08-026",
-  "agent_id": "ralph-wiggum",
-  "timestamp": "2026-07-07T17:48:00+08:00",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-08T09:45:00+08:00",
   "project": "shizi",
-  "work_unit": "SZ-BG-L-006 filterByRegion expandRatio calibration bias",
-  "situation": "audit-2026-07-07-047 finding SZ-BG-L-006 (low): filterByRegion uses fixed 2% expandRatio regardless of region size. Small regions (<5% area) have higher relative detection error → 2% buffer insufficient, boundary text falsely filtered. Large regions (>30% area) already cover most of image → 2% expansion overextends, letting in-product text leak through.",
-  "action": "Made expandRatio dynamic by region area: small regions (<5%) get max(expandRatio, 0.06) for wider buffer; large regions (>30%) get min(expandRatio, 0.01) to tighten. Updated test copy in filter-region.test.ts to match source + added 2 new test cases covering both branches. All 16 tests pass.",
-  "files_changed": [
-    "src/background/orchestrator.ts",
-    "tests/filter-region.test.ts"
-  ],
-  "worktree": "auto/opt-background-1783213292",
-  "direction": "background:expand-ratio-calibration",
+  "work_unit": "sidepanel:handleDeleteText-stale-closure",
+  "situation": "audit-2026-07-07-047 derived fix SZ-SP-L-002 (low): handleDeleteText stale closure — rapid deletes undo each other because useCallback captures `result` at definition time. Same root cause as SZ-SP-L-001 (deletedStack mirror already in place). Also affects handleUndoDelete which closes over both `result` and `deletedStack`.",
+  "action": "Added resultRef mirror (useRef + useEffect sync) alongside existing deletedStackRef. Rewrote handleDeleteText and handleUndoDelete to read resultRef.current/deletedStackRef.current instead of closing over state. Dropped result/deletedStack from useCallback deps so callbacks stay stable across renders while always operating on latest state. Stacked on opt-sidepanel-1782907225 via case-104 direct-edit channel (cp-guard triggered because SZ-SP-L-001 had already diverged SidePanelApp.tsx from main).",
+  "files_changed": ["src/sidepanel/SidePanelApp.tsx"],
+  "worktree": "auto/opt-sidepanel-1782907225",
+  "direction": "route-fix (stacked on existing sidepanel worktree)",
   "outcome": "succeeded",
-  "outcome_evidence": "Commit 546f652 on auto/opt-background-1783213292 (amended into existing SZ-BG-L-006 commit). vitest run tests/filter-region.test.ts: 16/16 passed including 2 new SZ-BG-L-006 cases. Pushed to origin.",
-  "next_suggestion": [
-    "SZ-BG-L-007: maskToBoundingBox discards large detections while VL shrinks them — inconsistent bbox normalization",
-    "SZ-BG-L-008: pipelineProgress sendMessage fire-and-forget swallows all errors",
-    "SZ-SP-L-001: deletedStack stale closure in handleRegionsChange"
-  ],
+  "outcome_evidence": "commit a49791f on auto/opt-sidepanel-1782907225, pushed to origin. Diff: +24/-10 lines in SidePanelApp.tsx. resultRef + handleDeleteText/handleUndoDelete rewrite verified via git diff.",
+  "next_suggestion": "Next pending route-fix from audit-2026-07-07-047: SZ-SP-L-003 (DetectionInfoPanel uses array index as key — causes wrong item highlight after reorder/delete) or SZ-PP-L-002 (testVisionConnection no timeout — button disabled forever on hang). Both are small 1-file fixes.",
   "audit_type": "code-review",
   "audit_findings": [
     {
-      "file": "src/background/orchestrator.ts",
-      "line": 58,
+      "file": "src/sidepanel/SidePanelApp.tsx",
+      "line": 198,
       "severity": "low",
-      "finding": "filterByRegion used fixed expandRatio=0.02 for all region sizes. Small regions (<5% area) had insufficient buffer causing boundary text false-filter; large regions (>30%) over-expanded letting in-product text leak.",
-      "remediation": "Dynamic expandRatio: max(ratio, 0.06) for area<0.05, min(ratio, 0.01) for area>0.30. Applied and tested.",
+      "finding": "handleDeleteText closes over `result` directly — two rapid deletes within same render cycle race: second delete reads pre-first-delete result.details, first deletion is overwritten, deleted text reappears",
+      "remediation": "Add resultRef mirror (useRef + useEffect sync), read resultRef.current in callback, drop result from deps",
+      "kind": "route-fix"
+    },
+    {
+      "file": "src/sidepanel/SidePanelApp.tsx",
+      "line": 214,
+      "severity": "low",
+      "finding": "handleUndoDelete same stale closure pattern for both `result` and `deletedStack` — undo-after-delete can resurrect stale snapshot",
+      "remediation": "Same resultRef mirror + existing deletedStackRef mirror; drop both from deps",
       "kind": "route-fix"
     }
   ],

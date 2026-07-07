@@ -1,31 +1,22 @@
 {
   "case_id": "case-2026-07-08-025",
   "agent_id": "ralph-wiggum",
-  "timestamp": "2026-07-08T15:53:00+08:00",
+  "timestamp": "2026-07-07T16:59:00+08:00",
   "project": "shizi",
-  "work_unit": "SZ-PP-M-002: MIME type check relies solely on file.type — trivially bypassable",
-  "situation": "ImageUploader.tsx line 14 only checks file.type.startsWith('image/') to validate uploads. This MIME type is set by the browser based on file extension and can be trivially spoofed by renaming a non-image file to .png. No content-based validation exists.",
-  "action": "Added async validateImageMagicBytes() function that reads first 12 bytes and checks against known image format signatures (PNG/JPEG/GIF89a/GIF87a/WebP/BMP/ICO). Integrated into processFile() after size check, before FileReader.readAsDataURL. WebP requires secondary check at offset 8 for 'WEBP' marker since RIFF header is shared with other formats.",
-  "files_changed": ["src/popup/ImageUploader.tsx"],
-  "worktree": "opt-popup-1783215325",
-  "direction": "popup:mime-validation",
+  "work_unit": "tests:preprocess-compression-coverage",
+  "situation": "audit-2026-07-07-047 finding SZ-SH-M-005 (medium): preprocessForVL 测试只覆盖 passthrough 路径（≤1.5MB 原图保留），压缩分支（>1.5MB + 长边>2500px → canvas 缩放 + JPEG q0.9）完全未测。vitest node 环境无 createImageBitmap/OffscreenCanvas，需 vi.stubGlobal mock。GATES IMPORTANT 门禁要求保守压缩策略回归锁，但压缩分支缺失意味着若有人误改 maxDim/quality/threshold 不会被捕获。",
+  "action": "在 tests/preprocess.test.ts 增加 '压缩分支' describe 块（4 个用例）：(1) >1.5MiB+长边3000→缩放到2500、JPEG q0.9、输出为 mock base64；(2) >1.5MiB+长边≤2500→不缩放返回原 pure；(3) 正方形5000x5000→等比2500x2500；(4) 带 data-url 前缀大图→剥离后走压缩。用 vi.stubGlobal 注入 MockImageBitmap/MockOffscreenCanvas，验证 drawImage 尺寸、convertToBlob 参数、bitmap.close() 资源释放。",
+  "files_changed": ["tests/preprocess.test.ts"],
+  "worktree": "auto/opt-tests-1783414700",
+  "direction": "tests:preprocess-compression-coverage",
   "outcome": "succeeded",
-  "outcome_evidence": "Commit 7e01bd8 on auto/opt-popup-1783215325 pushed to origin. +64/-11 lines. cp-guard triggered (SZ-PP-H-001 unmerged in wt), used case-104 direct wt commit escape hatch.",
+  "outcome_evidence": "npx vitest run tests/preprocess-compression.test.ts → 10 passed (原 6 passthrough + 新 4 compression)，耗时 1.96s。opt-worktree.sh commit 成功推送 origin/auto/opt-tests-1783414700。",
   "next_suggestion": [
-    "SZ-PP-M-003: getSettings sendMessage has no .catch — permanent loading",
-    "SZ-PP-M-004: Debounced saveSettings has no error handling and stale closure risk"
+    "SZ-SH-M-006 (medium, @crxjs/vite-plugin beta dependency unused in actual build pipeline) — 移除无用依赖或确认 dev-only 用途",
+    "SZ-BG-L-001 (low, IndexedDB connection opened per-operation but never closed) — 加 close() 或连接池"
   ],
   "audit_type": "code-review",
-  "audit_findings": [
-    {
-      "file": "src/popup/ImageUploader.tsx",
-      "line": 14,
-      "severity": "medium",
-      "finding": "MIME type check relies solely on file.type.startsWith('image/') which is trivially bypassable via renamed extensions or spoofed Content-Type",
-      "remediation": "Added magic-byte validation reading first 12 bytes and matching against PNG/JPEG/GIF/WebP/BMP/ICO signatures before processing",
-      "kind": "route-fix"
-    }
-  ],
+  "audit_findings": [],
   "audit_id": "audit-2026-07-07-047",
   "audit_depth": "shallow"
 }

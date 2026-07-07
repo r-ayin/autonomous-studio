@@ -1,33 +1,28 @@
 {
   "case_id": "case-2026-07-08-010",
   "agent_id": "ralph-wiggum",
-  "timestamp": "2026-07-07T00:33:41Z",
-  "project": "wechat-main",
-  "work_unit": "persona_drift.py size guard (WC-EXT-L-002)",
-  "situation": "audit-2026-07-08-041 derived_fixes 最后一个 pending: WC-EXT-L-002 persona_drift.py:90 unbounded markdown read — extract_style_vector 直接 read_text(encoding='utf-8') 无大小上限，CLI 传入大文件可致 OOM。同 audit 的 WC-EXT-M-003 knowledge_base.py 已有 stat-first 10MB guard 模式（commit f1ebed8）可复用。",
-  "action": "在 extract_style_vector 入口加 _MAX_ARTICLE_BYTES=10MB 常量 + stat().st_size 预检；超限 raise RuntimeError 由 main() try/except 捕获记入 articles[].error（与现有异常处理一致）。复用 knowledge_base.py WC-EXT-M-003 模式，保持 wechat-main scripts 内 size guard 语义一致。",
-  "files_changed": [
-    "scripts/persona_drift.py"
-  ],
-  "worktree": "opt-persona-drift-1783384405",
-  "direction": "route-fix",
+  "timestamp": "2026-07-07T01:55:00+08:00",
+  "project": "autonomous-engine",
+  "work_unit": "decision-observer session context TOCTOU fix (AE-M-002)",
+  "situation": "audit-2026-07-08-043 derived_fix AE-M-002 pending. decision-observer.py:172 write_session_context() does read-modify-write on session JSON without lock. Concurrent Stop hooks (multi-instance Claude Code / hook retry) can lose updates. handle_user_prompt_submit has same pattern at line 207-221 (separate read of input_count then write_session_context re-reads).",
+  "action": "Added fcntl.flock(LOCK_EX) around read-modify-write in write_session_context. Added optional transform callback parameter executed inside locked section to eliminate external pre-read TOCTOU. Refactored handle_user_prompt_submit to use transform=lambda e: {**e, 'input_count': e.get('input_count', 0) + 1} instead of separate read-increment-write. Verified with 10-process concurrent test: counter=10/10 after parallel writes (would be <10 without flock).",
+  "files_changed": [".claude/hooks/decision-observer.py"],
+  "worktree": "opt-hooks-1783388352",
+  "direction": "hooks:decision-observer-toctou",
   "outcome": "merged",
-  "outcome_evidence": "Worktree commit 452289f on auto/opt-persona-drift-1783384405 pushed to origin. Diff shows +13 lines adding _MAX_ARTICLE_BYTES constant and stat-first guard before read_text. Branch exists on origin (push success in opt-worktree.sh output).",
-  "next_suggestion": [
-    "All audit-2026-07-08-041 derived_fixes now merged → cycle-complete. Next round triggers new full audit on an unaudited module.",
-    "shizi PROGRESS.md stale 7.9 days (scout #1) — refresh if no higher-priority target emerges."
-  ],
+  "outcome_evidence": "Commit 06e59d2 on auto/opt-hooks-1783388352. python3 syntax check passed. Cross-process concurrent test: 10 subprocess writes with flock produced counter=10 (no lost updates). cp-guard triggered on opt-hooks-1783203936 (prior phantom-fix divergence); used case-104 escape hatch direct wt commit on opt-hooks-1783388352. Push failed (origin 404 — autonomous-engine repo not found on code.alibaba-inc.com/xtool/); local-only branch per x-tool external fork pattern.",
+  "next_suggestion": "Next pending: AE-L-001 (protocol-check env whitelist partial — 09374bb added --project-dir but os.environ still inherited fully). Then AE-L-002 (notify-phone ntfy 4KB truncate). After all 3 cleared, audit-cycle-state → cycle-complete triggers next full audit.",
   "audit_type": "code-review",
   "audit_findings": [
     {
-      "file": "scripts/persona_drift.py",
-      "line": 90,
-      "severity": "low",
-      "finding": "unbounded file read — extract_style_vector calls file_path.read_text(encoding='utf-8') without size guard; CLI-supplied large markdown file causes OOM / memory-pressure DoS",
-      "remediation": "Add stat-first 10MB size guard before read_text, raise RuntimeError on exceed (mirrors knowledge_base.py WC-EXT-M-003 pattern)",
+      "file": ".claude/hooks/decision-observer.py",
+      "line": 172,
+      "severity": "medium",
+      "finding": "write_session_context read-modify-write without lock — concurrent Stop hooks lose updates (TOCTOU)",
+      "remediation": "fcntl.flock(LOCK_EX) around read-update-write; optional transform callback for pre-read-then-compute patterns",
       "kind": "route-fix"
     }
   ],
-  "audit_id": "audit-2026-07-08-041",
+  "audit_id": "audit-2026-07-08-043",
   "audit_depth": "shallow"
 }

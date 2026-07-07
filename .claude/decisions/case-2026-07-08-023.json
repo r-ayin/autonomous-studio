@@ -1,27 +1,28 @@
 {
   "case_id": "case-2026-07-08-023",
   "agent_id": "ralph-wiggum",
-  "timestamp": "2026-07-08T16:15:00+08:00",
+  "timestamp": "2026-07-08T16:45:00+08:00",
   "project": "shizi",
-  "work_unit": "SZ-SP-M-003: HistoryTab refresh() stale closure — no mounted check, double-fetch in StrictMode",
-  "situation": "Derived fix from audit-2026-07-07-047. HistoryTab.tsx defines refresh() inside component body and calls it in useEffect with empty deps. In React StrictMode (dev), useEffect fires mount→unmount→remount, causing two concurrent getHistory IPC calls. If component unmounts before response arrives, setHistory/setLoading fire on unmounted component (React warning + potential memory leak). Prior SZ-SP-M-002 fix added .catch/.finally but did not add mounted guard.",
-  "action": "Added useRef(true) mountedRef to HistoryTab. useEffect sets mountedRef.current=true on mount, returns cleanup setting it false. All three async callbacks (.then/.catch/.finally) early-return if !mountedRef.current before calling setState. Reused existing opt-sidepanel-1782907225 worktree (route-fix same area). cp-guard triggered (diverged wt), used case-104 escape hatch: direct edit + commit inside worktree.",
+  "work_unit": "SZ-SP-M-004: Progress listener race condition — interleaved events from concurrent analyses",
+  "situation": "SidePanelApp.tsx onMessage listener receives all pipelineProgress broadcasts globally with no correlation filtering. If two analyses trigger rapidly, both listeners receive each other's progress events, causing missed/interleaved updates and stale debug info.",
+  "action": "Add unique requestId per analysis run. Sidepanel generates req-{timestamp}-{random} and sends with runPipeline message. Background echoes requestId in every pipelineProgress broadcast. Sidepanel filters progress events by matching requestId. Used case-104 direct wt commit escape hatch (cp-guard triggered because opt-sidepanel-1782907225 had prior unmerged id-delete-fix divergence).",
   "files_changed": [
-    "src/sidepanel/HistoryTab.tsx"
+    "src/sidepanel/SidePanelApp.tsx",
+    "src/background/index.ts"
   ],
   "worktree": "auto/opt-sidepanel-1782907225",
-  "direction": "sidepanel:refresh-mounted-guard",
+  "direction": "route-fix",
   "outcome": "succeeded",
-  "outcome_evidence": "Commit d3010ed on auto/opt-sidepanel-1782907225 pushed to origin. Diff: +10/-2 lines adding useRef import, mountedRef declaration, 3x mounted guard checks in refresh() callbacks, useEffect cleanup return. Build not run (pure React lifecycle fix, no API change).",
-  "next_suggestion": "Next pending fix: SZ-SP-M-004 (Progress listener race condition — interleaved events from concurrent analyses). Same sidepanel area, can reuse this worktree.",
+  "outcome_evidence": "commit 1bcf11f on auto/opt-sidepanel-1782907225, pushed to origin. 2 files changed, +8/-1 lines. requestId generated in handleAnalyze, echoed in background onProgress, filtered in progressListener.",
+  "next_suggestion": "Next pending finding: SZ-PP-M-001 (FileReader has no onerror handler — silent failure on read errors). Then SZ-PP-M-002 through SZ-PP-M-006 (popup medium fixes batch).",
   "audit_type": "code-review",
   "audit_findings": [
     {
-      "file": "src/sidepanel/HistoryTab.tsx",
-      "line": 19,
+      "file": "src/sidepanel/SidePanelApp.tsx",
+      "line": 71,
       "severity": "medium",
-      "finding": "useEffect calls refresh() without mounted guard. StrictMode double-invokes effect causing duplicate IPC. Async callbacks call setState after unmount.",
-      "remediation": "Add useRef mounted flag, check in all async callbacks, cleanup on unmount.",
+      "finding": "onMessage is a global broadcast channel with no correlation ID filtering. Concurrent analyses interleave progress events.",
+      "remediation": "Add unique requestId per analysis; filter pipelineProgress by matching requestId.",
       "kind": "route-fix"
     }
   ],

@@ -1,25 +1,29 @@
 {
   "case_id": "case-2026-07-08-024",
-  "agent_id": "autonomous-engine",
-  "timestamp": "2026-07-08T17:10:00+08:00",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-08T16:15:00+08:00",
   "project": "shizi",
-  "work_unit": "popup:filereader-onerror",
-  "situation": "SZ-PP-M-001 from audit-2026-07-07-047: FileReader in ImageUploader.tsx has no onerror handler. If file reading fails (corrupt file, permission issue, disk error), the promise never resolves and the user gets no feedback — silent failure.",
-  "action": "Added reader.onerror handler that alerts user with the error message. Used case-104 direct worktree commit escape hatch because cp-guard detected existing unmerged SZ-PP-H-001 changes in opt-popup-1783215325.",
-  "files_changed": ["src/popup/ImageUploader.tsx"],
-  "worktree": "auto/opt-popup-1783215325",
-  "direction": "popup:filereader-onerror",
+  "work_unit": "popup:getSettings-error-handling",
+  "situation": "SZ-PP-M-003 from audit-2026-07-07-047: SettingsPage.tsx line 23 chrome.runtime.sendMessage({action:'getSettings'}).then(...) has no .catch handler. When background service worker is sleeping/unavailable (extension updating, idle timeout), promise rejects and setLoading(false) never fires → permanent loading spinner on settings page.",
+  "action": "Added .catch(err => console.error(...)) and .finally(() => setLoading(false)) to guarantee loading state clears regardless of success/failure. Also added optional chaining res?.success to handle undefined responses. Single-file fix in popup worktree (route-fix). cp-guard triggered (prior SZ-PP-M-001/M-002 unmerged), used case-104 direct wt commit escape hatch.",
+  "files_changed": ["src/popup/SettingsPage.tsx"],
+  "worktree": "opt-popup-1783215325",
+  "direction": "popup:getSettings-error-handling",
   "outcome": "succeeded",
-  "outcome_evidence": "Commit 35f7864 on auto/opt-popup-1783215325 pushed to origin. Adds 3 lines: reader.onerror callback with alert showing reader.error.message.",
-  "next_suggestion": "Continue shizi popup fixes: SZ-PP-M-002 (MIME type check relies solely on file.type — trivially bypassable)",
+  "outcome_evidence": "commit 88d4c7b on auto/opt-popup-1783215325 pushed to origin; diff shows +4/-1 lines adding .catch/.finally chain to getSettings sendMessage call",
+  "next_suggestion": [
+    "SZ-PP-M-004: Debounced saveSettings has no error handling and stale closure risk",
+    "SZ-PP-M-005: Auto-save debounce timer not flushed on unmount — last edit lost",
+    "SZ-PP-M-006: All chrome.runtime.sendMessage calls lack timeout"
+  ],
   "audit_type": "code-review",
   "audit_findings": [
     {
-      "file": "src/popup/ImageUploader.tsx",
-      "line": 24,
+      "file": "src/popup/SettingsPage.tsx",
+      "line": 23,
       "severity": "medium",
-      "finding": "FileReader has no onerror handler — silent failure on read errors",
-      "remediation": "Add reader.onerror callback that alerts user with error details",
+      "finding": "chrome.runtime.sendMessage getSettings has no .catch — permanent loading state on rejection",
+      "remediation": "Add .catch/.finally to guarantee setLoading(false) runs regardless of outcome",
       "kind": "route-fix"
     }
   ],

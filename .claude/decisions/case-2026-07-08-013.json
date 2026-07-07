@@ -1,25 +1,28 @@
 {
   "case_id": "case-2026-07-08-013",
-  "agent_id": "ralph-wiggum",
-  "timestamp": "2026-07-07T02:54:24Z",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-07T11:05:00+08:00",
   "project": "personal-assistant",
-  "work_unit": "calendar:iso-validation",
-  "situation": "PA-B2-M-006 from audit-2026-07-08-045: calendar.py search() LLM fallback returns start/end used directly in events_range SQL string comparison without ISO format validation. Malformed LLM output causes silently wrong query results.",
-  "action": "Added _validate_iso_dt() helper using datetime.fromisoformat() to validate and normalize ISO datetime strings. Modified search() LLM fallback path to validate both start and end before passing to events_range; invalid formats cause fallthrough to keyword search instead of corrupt SQL comparison.",
-  "files_changed": ["personal_assistant/calendar.py"],
-  "worktree": "opt-calendar-1783392797",
-  "direction": "route-fix",
+  "work_unit": "reminders:_Notify-log-lock (PA-B2-L-002 derived fix)",
+  "situation": "audit-2026-07-08-045 batch 2 deep audit found L-002: _Notify.notify() appends to reminders.log without lock; concurrent scheduler threads or multiple instances can interleave writes causing corrupted log lines. Last pending route-fix from audit-045 cycle.",
+  "action": "Added class-level threading.Lock (_log_lock) to _Notify; wrapped file open+write in `with self._log_lock` block. Reused existing opt-reminders-1783391714 worktree (already had H-003/M-001 fixes). Single-file change, no public interface touched → route-fix per opt-worktree judge_direction_kind.",
+  "files_changed": ["personal_assistant/reminders.py"],
+  "worktree": "opt-reminders-1783391714",
+  "direction": "reminders:log-lock",
   "outcome": "succeeded",
-  "outcome_evidence": "Commit 20770cb on auto/opt-calendar-1783392797 pushed to origin. 1 file changed, 19 insertions(+), 1 deletion(-). _validate_iso_dt handles YYYY-MM-DDTHH:MM, YYYY-MM-DDTHH:MM:SS, and YYYY-MM-DD (complemented to T00:00). Invalid strings return None → s/e become None → fallthrough to events_search.",
-  "next_suggestion": "Next pending fix: PA-B2-L-002 (reminders.py notify log append non-atomic without locking). After all 3 pending route-fixes merged/rejected, audit-cycle-state transitions to cycle-complete → triggers next full audit.",
+  "outcome_evidence": "Commit a5130aa on auto/opt-reminders-1783391714 pushed to origin. Diff: +5/-2 lines, only adds _log_lock class attr + wraps existing write in lock context manager. No behavioral change to single-thread callers.",
+  "next_suggestion": [
+    "All audit-045 derived_fixes now terminal (8 merged + 12 rejected). Cycle-complete. Next round triggers new full deep audit on least-recently-audited project (shizi or autonomous-engine per scout health ranking).",
+    "Consider merging opt-reminders-1783391714 to main via sanctioned squash (contains H-003, M-001, L-003, L-002 fixes)."
+  ],
   "audit_type": "code-review",
   "audit_findings": [
     {
-      "file": "personal_assistant/calendar.py",
-      "line": 69,
-      "severity": "medium",
-      "finding": "LLM-fallback time range used without ISO validation → silently wrong SQL comparison results",
-      "remediation": "Added _validate_iso_dt() validator; invalid LLM output falls through to keyword search",
+      "file": "personal_assistant/reminders.py",
+      "line": 123,
+      "severity": "low",
+      "finding": "_Notify.notify() log append non-atomic without locking (PA-B2-L-002)",
+      "remediation": "Add class-level threading.Lock; wrap file write in lock context manager",
       "kind": "route-fix"
     }
   ],

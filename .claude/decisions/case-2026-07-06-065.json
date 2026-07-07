@@ -1,23 +1,60 @@
 {
   "case_id": "case-2026-07-06-065",
-  "agent_id": "ralph-wiggum-autonomous",
-  "timestamp": "2026-07-06T20:00:34+08:00",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-06T22:15:00+08:00",
   "project": "personal-assistant",
-  "work_unit": "audit-2026-07-06-021 H-002 + M-006 derived fix reconciliation (already-committed check)",
-  "situation": "audit-cycle-state.status=fix-in-progress with 9 pending derived_fixes from audit-2026-07-06-021. First pending finding H-002 (api.py:106 CORS wildcard) targeted for dispatch. On inspection, opt-api-1783193708 worktree already contains commit 6a91312 'opt(api:cors-hardening)' (dated 2026-07-05, from prior audit-2026-07-05-002 PA-API-02) that replaces allow_origins=['*'] with config-driven allowlist — semantically equivalent to H-002 remediation. Also M-006 (/inbox/upload cap) already fixed by 159caa6 in same worktree. Per memory [[Fix already committed check]], must not re-dispatch equivalent fix.",
-  "action": "Verified equivalence of existing wt commits vs H-002/M-006 findings. Marked both as merged in audit-cycle-state.derived_fixes pointing to existing worktree commits. No new worktree created. Surveyed all 13 personal-assistant worktrees to confirm remaining 7 pending findings (H-003/H-004/M-001/M-002/M-003/M-004/M-005) have no pre-existing fixes elsewhere.",
-  "files_changed": [],
-  "worktree": "none (reconciliation-only; existing opt-api-1783193708 holds the fixes)",
-  "direction": "api:cors-origin-whitelist",
+  "work_unit": "storage:deterministic-ids",
+  "situation": "audit-2026-07-06-021 M-003 finding: storage.py:88 hash()-based IDs are predictable and collision-prone. Investigation revealed 5 identical call sites (line 94/190/225/260/392) all using abs(hash(...))%10**12 for ID generation. Python hash() is randomized per-process via PYTHONHASHSEED (default since 3.3), causing same input to produce different IDs across restarts → INSERT OR REPLACE fails to deduplicate, creating duplicate rows + irreproducible IDs across processes.",
+  "action": "Replace all 5 hash()-based ID generators with deterministic _det_id() helper wrapping hashlib.sha256 truncated to 12 hex chars (48-bit collision space). Added import hashlib + _det_id(prefix, *parts) function. Replaced: add_memory (m-), add_intervention (iv-), add_event (ev-), add_reminder (rm-), add_wiki_page (wiki-). Verified determinism: same input always yields same ID; different inputs yield different IDs. Syntax check passed.",
+  "files_changed": ["personal_assistant/storage.py"],
+  "worktree": "opt-storage-1782988687",
+  "direction": "route-fix (storage area, reuses existing worktree)",
   "outcome": "succeeded",
-  "outcome_evidence": "git -C opt-api-1783193708 log --oneline main..HEAD shows 6a91312 (cors-hardening) and 159caa6 (inbox-upload-cap). Patch content verified: 6a91312 replaces CORSMiddleware allow_origins=['*'] with config.get('web.allowed_origins', []) allowlist + restrictive methods/headers. 159caa6 adds Content-Length pre-check + streaming cap returning 413. Both match H-002/M-006 remediation specs. Remaining 7 findings confirmed absent from all 13 worktrees.",
-  "next_suggestion": [
-    "Next round: dispatch H-003 (tunnel_client.py:51 relay token stdout leak) — route-fix, 1 file, open new opt-relay worktree",
-    "After H-003: dispatch H-004 (audio_relay.py:222 0.0.0.0 no-auth bind) — route-fix, 1 file",
-    "Then M-001 (auth.py:49 /ws/ prefix exempt) — may stack on opt-ws-auth-1783338961 where H-001 already landed"
+  "outcome_evidence": "commit f68d9ba on auto/opt-storage-1782988687, pushed origin (forced update after rebase onto origin/main). cp-guard triggered (worktree had prior unmerged M-004/L-005 changes) → case-104 escape hatch: edited directly in worktree + committed within worktree. python3 -c verification confirmed _det_id deterministic + syntax OK.",
+  "next_suggestion": "Next pending fix: M-004 config.py:17 .env parser mishandles values with '=' and mixed quoting. After that: M-005 relay_bridge.py:107 Origin validation bypassed when Origin header absent.",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "personal_assistant/storage.py",
+      "line": 94,
+      "severity": "medium",
+      "finding": "hash()-based ID generation is non-deterministic across process restarts due to PYTHONHASHSEED randomization. Same memory/event/reminder/intervention/wiki content produces different IDs on each run, defeating INSERT OR REPLACE deduplication and causing duplicate rows.",
+      "remediation": "Replace with hashlib.sha256-based deterministic ID generator (_det_id helper). Truncate to 12 hex chars (48-bit) for MVP-scale collision safety.",
+      "kind": "route-fix"
+    },
+    {
+      "file": "personal_assistant/storage.py",
+      "line": 190,
+      "severity": "medium",
+      "finding": "Same hash()-based ID issue in add_intervention()",
+      "remediation": "Replaced with _det_id('iv', message)",
+      "kind": "route-fix"
+    },
+    {
+      "file": "personal_assistant/storage.py",
+      "line": 225,
+      "severity": "medium",
+      "finding": "Same hash()-based ID issue in add_event()",
+      "remediation": "Replaced with _det_id('ev', title, when_raw)",
+      "kind": "route-fix"
+    },
+    {
+      "file": "personal_assistant/storage.py",
+      "line": 260,
+      "severity": "medium",
+      "finding": "Same hash()-based ID issue in add_reminder()",
+      "remediation": "Replaced with _det_id('rm', what, when_raw)",
+      "kind": "route-fix"
+    },
+    {
+      "file": "personal_assistant/storage.py",
+      "line": 392,
+      "severity": "medium",
+      "finding": "Same hash()-based ID issue in add_wiki_page()",
+      "remediation": "Replaced with _det_id('wiki', title)",
+      "kind": "route-fix"
+    }
   ],
-  "audit_type": "none",
-  "audit_findings": [],
   "audit_id": "audit-2026-07-06-021",
   "audit_depth": "shallow"
 }

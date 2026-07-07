@@ -1,31 +1,24 @@
 {
   "case_id": "case-2026-07-06-066",
   "agent_id": "ralph-wiggum-autonomous-loop",
-  "timestamp": "2026-07-06T20:05:00+08:00",
-  "project": "personal-assistant",
-  "work_unit": "H-003 tunnel_client relay token log redaction",
-  "situation": "audit-2026-07-06-021 finding H-003 (high): scripts/ecs_relay/tunnel_client.py:51 prints full wss://ECS:443/ws/tunnel?token=<secret> URL to stdout. Anyone tailing logs (systemd journal, container log aggregator, debug session) sees the bearer token in plaintext → credential leak → unauthorized ECS relay access.",
-  "action": "派生 route-fix：引入 ecs_log_url 变量，把 query string 替换为 ?token=<redacted>；保留原 ecs_url 用于 websockets.connect（连接本身仍需真 token）。仅改一个文件，非公共接口，复用同 area worktree。",
-  "files_changed": ["scripts/ecs_relay/tunnel_client.py"],
-  "worktree": "opt-scripts-1783339532",
-  "direction": "scripts:tunnel-token-mask",
+  "timestamp": "2026-07-06T13:45:00Z",
+  "project": "wechat-main",
+  "work_unit": "qq_push upload 20MB cap (M-002)",
+  "situation": "audit-2026-07-06-022 finding M-002: qq_push.py _upload_file read entire file into memory via read_bytes() then concatenated multipart body — unbounded. Large attachments would OOM the process before QQ Bot API could reject oversized uploads.",
+  "action": "Add stat-based 20MB pre-check at top of _upload_file with clear error message. Escape-hatch path: cp-guard blocked opt-worktree.sh commit because wt already diverged (M-001 fix case-075 stacked earlier); edited wt directly and committed in-place per case-104 protocol.",
+  "files_changed": [
+    "scripts/qq_push.py"
+  ],
+  "worktree": "opt-wechat-main-1783130541",
+  "direction": "wechat-main:qq-push-upload-cap",
   "outcome": "succeeded",
-  "outcome_evidence": "git push origin auto/opt-scripts-1783339532 成功（new branch）；worktree HEAD commit msg='fix(tunnel_client): mask relay token in stdout log to prevent credential leak (H-003 from audit-2026-07-06-021)'；Code Review URL https://code.alibaba-inc.com/qunbu/personal-assistant/codereview/new?from=main&to=auto/opt-scripts-1783339532",
-  "next_suggestion": [
-    "继续派生 H-004 (audio_relay.py:222 binds 0.0.0.0 no auth)",
-    "再下一轮 M-001 (auth.py:49 /ws/ prefix exempted but ws_xiaozhi has no self-auth)"
-  ],
+  "outcome_evidence": "commit afc2fce on auto/opt-wechat-main-1783130541 pushed to origin (1119d3c..afc2fce). +13 lines in scripts/qq_push.py adding MAX_UPLOAD_BYTES constant + stat check + RuntimeError on oversize.",
+  "next_suggestion": "派生 M-003 (qq_push.py:69 token response dict leaked in exception — sanitize) 或 M-004 (qq_push.py:119 upload response dict leaked)。两者都在同文件，可与 M-002 stack 在同一 wt。",
   "audit_type": "code-review",
-  "audit_findings": [
-    {
-      "file": "scripts/ecs_relay/tunnel_client.py",
-      "line": 51,
-      "severity": "high",
-      "finding": "RELAY_TOKEN leaked in plaintext via print(f'...{ecs_url}') — ecs_url includes ?token= query string",
-      "remediation": "Introduce ecs_log_url with token replaced by <redacted>; use original ecs_url only for websockets.connect",
-      "kind": "route-fix"
-    }
-  ],
-  "audit_id": "audit-2026-07-06-021",
-  "audit_depth": "shallow"
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-06-022",
+  "audit_depth": "shallow",
+  "_derived_from_finding": "M-002",
+  "_fix_kind": "route-fix",
+  "_stacked_on": "case-2026-07-06-075 (M-001, same wt)"
 }

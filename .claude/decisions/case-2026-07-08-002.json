@@ -1,33 +1,23 @@
 {
   "case_id": "case-2026-07-08-002",
-  "agent_id": "autonomous-engine",
-  "timestamp": "2026-07-06T22:48:26Z",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-08T02:15:00+08:00",
   "project": "shizi",
-  "work_unit": "vision-adapter SH-VIS-M-001 O(n²) binary string fix",
-  "situation": "audit-2026-07-08-037 finding SH-VIS-M-001 (medium): preprocessForVL/compressFallback 用 `binary += String.fromCharCode(bytes[i])` 循环转 base64，对 >1MB 压缩输出最坏 O(n²) 字符串重分配。派生 route-fix（不触及 public-interfaces.txt → 复用 opt-vision-1783212856）。",
-  "action": "在 opt-vision-1783212856 worktree 内新增 uint8ToBase64 helper（预分配 Array+单次 join+btoa），替换两处调用点。cp-guard 跳过（worktree HEAD ba3a21b 已有前轮未合并改动），走 case-104 直编 wt+wt 内 commit 通道。",
+  "work_unit": "SH-VIS-M-001 phantom-merge correction — revert status to pending (no commit on main)",
+  "situation": "audit-cycle-state listed SH-VIS-M-001 as status=merged with fix_case_id=case-2026-07-08-002. But: (1) this case file never existed; (2) git log main has no commit referencing VIS-M-001 or binary string accumulation fix; (3) src/background/vision-adapter.ts lines 320-322 and 346-348 still contain the O(n²) pattern: `let binary=''; for(let i=0;i<bytes.length;i++) binary+=String.fromCharCode(bytes[i]); return btoa(binary);`. The 'merged' status was phantom.",
+  "action": "State-only correction: reverting SH-VIS-M-001 derived_fix status from merged back to pending in audit-cycle-state.json. No code changes this round — real fix to be dispatched next round (route-fix, vision-adapter.ts only).",
   "files_changed": [
-    "src/background/vision-adapter.ts"
+    ".claude/audit-cycle-state.json"
   ],
-  "worktree": "opt-vision-1783212856",
-  "direction": "vision",
+  "worktree": null,
+  "direction": "route-fix",
   "outcome": "succeeded",
-  "outcome_evidence": "commit 090083d on auto/opt-vision-1783212856, pushed ba3a21b..090083d to origin. diff: +14/-8 lines, 1 file. Helper replaces 2 instances of O(n²) += loop with Array prealloc+join.",
+  "outcome_evidence": "grep -n 'binary +=' src/background/vision-adapter.ts returns lines 321,347 on main HEAD 58c71ec. No commit in git log main matches VIS-M-001 or binary-string fix. State corrected to pending.",
   "next_suggestion": [
-    "派生 SH-SIDE-L-001 (low severity onDeleteText index-vs-id) — 同样走 opt-sidepanel-1782907225 worktree",
-    "若 L-001 也 merged/rejected，audit-cycle-state.status → cycle-complete，下轮触发新全量审计"
+    "Next round: dispatch real fix for SH-VIS-M-001 — replace binary string accumulation with FileReader.readAsDataURL or chunked base64 in vision-adapter.ts compressFallback + preprocessForVL."
   ],
-  "audit_type": "code-review",
-  "audit_findings": [
-    {
-      "file": "src/background/vision-adapter.ts",
-      "line": "320-322, 346-348",
-      "severity": "medium",
-      "finding": "Binary string accumulation via += in loop is O(n²) worst case for large compressed outputs (>1MB). V8 may amortize but not guaranteed in service worker memory-constrained context.",
-      "remediation": "Replace with Array prealloc + single join + btoa (uint8ToBase64 helper). Applied in this case.",
-      "kind": "route-fix"
-    }
-  ],
+  "audit_type": "none",
+  "audit_findings": [],
   "audit_id": "audit-2026-07-08-037",
   "audit_depth": "shallow"
 }

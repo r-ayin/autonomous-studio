@@ -1,33 +1,29 @@
 {
   "case_id": "case-2026-07-08-015",
-  "agent_id": "ralph-wiggum",
-  "timestamp": "2026-07-08T20:30:00+08:00",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-07T11:45:00+08:00",
   "project": "sunset-prediction",
-  "work_unit": "calibration UTC date fix (SP-ENG-H-001 + SP-ENG-H-002)",
-  "situation": "calibration.js uses new Date().toISOString().slice(0,10) for 'today' (line 104) and new Date(Date.now()-86400000).toISOString().slice(0,10) for 'yesterday' (line 114). toISOString() is always UTC, so during CST 00:00-07:59 the date shifts -1 day. This causes calibrateWeights() to save weight records under wrong date keys, and runDailyCalibration() to fetch weather for the wrong day. The project already has localDateCST() in date-utils.js that correctly uses Intl.DateTimeFormat with Asia/Shanghai timezone — routes.js uses it everywhere, but calibration.js did not import it.",
-  "action": "Import localDateCST from date-utils.js; replace line 104 `new Date().toISOString().slice(0,10)` with `localDateCST(0)`; replace line 114 `new Date(Date.now()-86400000).toISOString().slice(0,10)` with `localDateCST(-1)`. Single file change, fixes both H-001 and H-002.",
-  "files_changed": ["src/calibration.js"],
-  "worktree": "opt-calibration-1783395468",
-  "direction": "calibration:utc-date-fix",
+  "work_unit": "SP-ENG-H-003: setWeights NaN/Infinity guard",
+  "situation": "audit-2026-07-08-046 finding SP-ENG-H-003 (high): prediction-engine.js setWeights uses `typeof v !== 'number'` check which passes NaN (since typeof NaN === 'number'). The sum check `Math.abs(sum - 1.0) > 0.01` also fails to catch NaN because Math.abs(NaN) is NaN and NaN > 0.01 is false. Result: calibration can silently inject NaN weights, poisoning all downstream sunset scores with NaN composites.",
+  "action": "Replace typeof-only check with `typeof v !== 'number' || !Number.isFinite(v)` in setWeights loop. Error message now includes the offending value for debuggability. Single-file route-fix, no public interface change.",
+  "files_changed": ["src/prediction-engine.js"],
+  "worktree": "opt-prediction-engine-1783395732",
+  "direction": "prediction-engine:nan-guard",
   "outcome": "succeeded",
-  "outcome_evidence": "opt-worktree.sh committed to opt-calibration-1783395468, pushed to origin/auto/opt-calibration-1783395468. Diff: +1 import line, 2 lines changed (toISOString→localDateCST). No other files touched.",
-  "next_suggestion": "Continue dispatching pending route-fixes from audit-2026-07-08-046. Next priority: SP-ENG-H-003 (prediction-engine.js setWeights NaN guard) or SP-SCR-H-001 (post_xhs_browseruse.py cookie plaintext umask).",
+  "outcome_evidence": "Commit 7fecc57 on auto/opt-prediction-engine-1783395732; pushed to origin. Diff: +2/-1 lines in setWeights validation loop. Branch URL: https://code.alibaba-inc.com/xtool/wanxia/codereview/new?from=main&to=auto/opt-prediction-engine-1783395732",
+  "next_suggestion": [
+    "派生下一个 pending route-fix: SP-SCR-H-001 (post_xhs_browseruse.py cookie storage_state plaintext umask)",
+    "SP-SCR-H-002 (xhs_keepalive.py non-atomic .env rewrite)",
+    "继续消化 audit-2026-07-08-046 剩余 15 个 pending route-fix"
+  ],
   "audit_type": "code-review",
   "audit_findings": [
     {
-      "file": "src/calibration.js",
-      "line": 104,
+      "file": "src/prediction-engine.js",
+      "line": 113,
       "severity": "high",
-      "finding": "calibrateWeights uses new Date().toISOString().slice(0,10) which is UTC — shifts -1 day during CST 00:00-07:59, saving weight records under wrong date key",
-      "remediation": "Replace with localDateCST(0) from date-utils.js",
-      "kind": "route-fix"
-    },
-    {
-      "file": "src/calibration.js",
-      "line": 114,
-      "severity": "high",
-      "finding": "runDailyCalibration yesterday calculation uses new Date(Date.now()-86400000).toISOString().slice(0,10) — same UTC shift bug, fetches weather for wrong day",
-      "remediation": "Replace with localDateCST(-1) from date-utils.js",
+      "finding": "setWeights accepts NaN/Infinity: typeof NaN === 'number' bypasses guard; Math.abs(NaN-1)>0.01 evaluates false so sum check also passes silently",
+      "remediation": "Add Number.isFinite() check alongside typeof; throw descriptive error with offending value",
       "kind": "route-fix"
     }
   ],

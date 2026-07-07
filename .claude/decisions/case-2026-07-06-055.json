@@ -1,24 +1,33 @@
 {
   "case_id": "case-2026-07-06-055",
   "agent_id": "ralph-wiggum-autonomous-loop",
-  "timestamp": "2026-07-06T10:52:00Z",
-  "project": "sunset-prediction",
-  "work_unit": "H-002+L-003: atomic .env write + credential hardening (xhs_keepalive.py)",
-  "situation": "audit-2026-07-06-020 derived_fixes[1] status=pending. xhs_keepalive.py:45-56 update_env_cookie() uses write_text() to overwrite .env containing SMTP_PASS/ANTHROPIC_API_KEY/WEIBO_COOKIE/XIAOHONGSHU_COOKIE. Non-atomic write can truncate file on crash/concurrent read → all credentials lost. L-003 (mail_push.py SMTP creds in environ) is same-root-cause; fixing H-002 covers L-003 remediation.",
-  "action": "Replaced direct write_text() with: (1) best-effort .env.bak backup, (2) tempfile.mkstemp in same dir, (3) fcntl.flock(LOCK_EX) + write + fsync, (4) os.replace() atomic rename. Added import os/tempfile/fcntl inside function. Exception handler cleans up temp file. No change to mail_push.py (L-003 remediation covered by H-002 fix protecting .env integrity).",
-  "files_changed": [
-    "scripts/xhs_keepalive.py"
-  ],
-  "worktree": "opt-sunset-prediction-1783334794",
-  "direction": "route-fix",
+  "timestamp": "2026-07-06T20:25:00+08:00",
+  "project": "personal-assistant",
+  "work_unit": "audit-2026-07-06-021 M-002 derived fix: POST /chat sync LLM → asyncio.to_thread",
+  "situation": "audit-cycle-state.json status=fix-in-progress, 4 pending (M-002/M-003/M-004/M-005). M-002: api.py:325 POST /chat 是同步 def，直接调 chat.Assistant().respond() (LLM) + 两次 storage.add_chat_log() (SQLite)，阻塞 FastAPI 事件循环。同文件 _handle_live_message (line 161) 与 lifespan patrol (line 34/40) 已用 asyncio.to_thread 包装相同调用——修复模式现成，仅 converse endpoint 漏改。cp-guard 触发（opt-api-1783193708 已有 H-002/M-006 fix 未合并 main），走 case-104 escape hatch 直编 worktree。",
+  "action": "在 opt-api-1783193708 worktree 内把 converse 改 async def + 三处同步调用包 asyncio.to_thread（storage.add_chat_log user、chat.Assistant().respond、storage.add_chat_log assistant）。wt 内 git commit + push origin。main 工作区孤儿编辑 git checkout -- 回滚。",
+  "files_changed": ["personal_assistant/api.py"],
+  "worktree": "opt-api-1783193708 (复用 H-002/M-006 同 area worktree, route-fix stacking 第 6 层; branch auto/opt-api-1783193708; commit 2580277)",
+  "direction": "api:chat-async (route-fix, 不触及 .claude/public-interfaces.txt)",
   "outcome": "succeeded",
-  "outcome_evidence": "git commit b299492 on auto/opt-sunset-prediction-1783334794 pushed to origin. python3 -c 'import ast; ast.parse(...)' SYNTAX_OK. Diff: +41/-5 lines in scripts/xhs_keepalive.py. cp-guard diverged-wt escape hatch used (case-104 pattern): file edited directly in wt, direct git add+commit in wt branch (not main).",
+  "outcome_evidence": "git -C /home/admin/workspace/.opt-worktrees/personal-assistant/opt-api-1783193708 log --oneline -1 → 2580277 fix(api): POST /chat 同步 LLM+storage → asyncio.to_thread 防阻塞事件循环 (audit-2026-07-06-021 M-002); git push origin auto/opt-api-1783193708 → 06fafd7..2580277 success; main working tree personal_assistant/api.py reverted via git checkout -- (no orphan diff)",
   "next_suggestion": [
-    "Dispatch next pending derived_fix: H-003 (direction-shift, post_xhs_browseruse.py prompt injection — needs new worktree)",
-    "Or batch M-001+M-002 (both route-fix, social-scraper.js) into one case for efficiency"
+    "派生 M-003 (storage.py:88 hash()-based IDs predictable/collision-prone) → 换 secrets.token_hex 或 uuid4",
+    "派生 M-004 (config.py:17 .env parser mishandles '=' and mixed quoting) → 用 python-dotenv 或修 split('=', 1)+strip quotes",
+    "派生 M-005 (relay_bridge.py:107 Origin validation bypassed when Origin header absent) → 缺省 deny 而非 allow",
+    "H-001 worktree opt-ws-auth-1783338961 (commit 48555aa) >12h 未合并 main → 提醒用户决策"
   ],
   "audit_type": "code-review",
-  "audit_findings": [],
-  "audit_id": "audit-2026-07-06-020",
+  "audit_findings": [
+    {
+      "file": "personal_assistant/api.py",
+      "line": 325,
+      "severity": "medium",
+      "finding": "POST /chat 同步 def 直接调 LLM.respond() + SQLite add_chat_log，单次请求可阻塞事件循环数秒（LLM latency ~1-5s），期间所有 WS 心跳/广播/其他 HTTP 请求停滞",
+      "remediation": "改 async def + asyncio.to_thread 包装三处同步调用（模式与同文件 _handle_live_message line 161 一致）",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-021",
   "audit_depth": "shallow"
 }

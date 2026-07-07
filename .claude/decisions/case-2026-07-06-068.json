@@ -1,31 +1,28 @@
 {
   "case_id": "case-2026-07-06-068",
-  "agent_id": "autonomous-engine-ralph",
-  "timestamp": "2026-07-06T12:51:51Z",
-  "project": "personal-assistant",
-  "work_unit": "relay_bridge Origin validation bypass (audit M-005)",
-  "situation": "audit-2026-07-06-021 derived_fixes last pending item. relay_bridge.py:107 returned True when Origin header absent, letting attackers skip CSWSH allowlist by omitting the header. Token is primary defense but defense-in-depth requires both gates.",
-  "action": "Added _is_browser_client() heuristic (Sec-WebSocket-Key or Mozilla UA) and tightened _origin_ok() to reject browser clients that omit Origin while continuing to allow non-browser clients (tunnel_client.py, native apps) without Origin. Logged browser_missing_origin for fail2ban.",
-  "files_changed": ["scripts/ecs_relay/relay_bridge.py"],
-  "worktree": "opt-relay-bridge-1783342228",
-  "direction": "relay-bridge:origin-validation",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-06T22:50:00+08:00",
+  "project": "wechat-main",
+  "work_unit": "M-016 daily_report.py --output path validation + atomic write",
+  "situation": "audit-2026-07-06-022 finding M-016: daily_report.py:432 accepts raw --output CLI arg without validating it falls under project root (arbitrary file write), and writes via non-atomic Path.write_text (crash → half-written HTML). Derived fix from wechat-main deep audit.",
+  "action": "Applied two-part fix in worktree opt-wechat-main-1783130541: (1) resolve --output path and validate relative_to(_ROOT), reject with exit 2 if outside project; (2) replace write_text with tempfile.mkstemp + os.fdopen + os.replace for atomic write, cleanup on exception. Added imports os + tempfile.",
+  "files_changed": ["scripts/daily_report.py"],
+  "worktree": "opt-wechat-main-1783130541",
+  "direction": "wechat-main:m016-daily-report-output-safety",
   "outcome": "succeeded",
-  "outcome_evidence": "commit 0d97179 on auto/opt-relay-bridge-1783342228 pushed to origin; git log shows opt(relay-bridge) commit atop d6f650b main base. Code review URL emitted by push remote.",
-  "next_suggestion": [
-    "All audit-2026-07-06-021 derived_fixes now merged/rejected — cycle-complete. Next round triggers new full deep-audit on an un-audited project (candidates not yet in history: wechat-main, moni-master).",
-    "DRIFT ALERT (carried): H-001 worktree opt-ws-auth-1783338961 has fix commit 48555aa but not merged to main >12h — needs user decision before next audit starts."
-  ],
+  "outcome_evidence": "commit 4b0073b on auto/opt-wechat-main-1783130541 pushed to origin; diff adds 26 lines (path validation block + atomic write block + 2 imports); git log confirms amend includes M-016 fix",
+  "next_suggestion": "Dispatch M-017 (hot-scanner.py:738 topic pool merge TOCTOU + no schema) — last pending fix from audit-2026-07-06-022. After M-017 merged/rejected, set audit-cycle-state status=cycle-complete to trigger next full audit.",
   "audit_type": "code-review",
   "audit_findings": [
     {
-      "file": "scripts/ecs_relay/relay_bridge.py",
-      "line": 107,
+      "file": "scripts/daily_report.py",
+      "line": 432,
       "severity": "medium",
-      "finding": "Origin validation bypassed when Origin header absent — attacker can omit header to skip ALLOWED_ORIGINS check entirely",
-      "remediation": "Detect browser clients via Sec-WebSocket-Key / Mozilla UA; require Origin only for browsers, continue allowing non-browser clients without Origin (token gate still applies)",
+      "finding": "--output CLI arg accepted without path validation → arbitrary file write outside project root; non-atomic write_text → crash leaves partial HTML",
+      "remediation": "resolve() + relative_to(_ROOT) guard; tempfile.mkstemp + os.replace atomic write",
       "kind": "route-fix"
     }
   ],
-  "audit_id": "audit-2026-07-06-021",
+  "audit_id": "audit-2026-07-06-022",
   "audit_depth": "shallow"
 }
