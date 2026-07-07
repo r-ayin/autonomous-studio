@@ -1,96 +1,213 @@
 {
-  "_schema": "audit-cycle-state v1.0",
-  "_description": "追踪当前全量审计周期状态。全量审计事件驱动：上次派生的 fix 全部 merge/reject 落定后才触发下一次全量审计。引擎每轮 step 0 读这个文件决定本轮是审计轮还是瞭望轮。",
-  "current_audit_id": "audit-2026-07-06-019",
-  "current_audit_started_at": "2026-07-06T03:40:00Z",
-  "current_audit_project": "FinanceTracker",
-  "current_audit_module": "全栈（core/security 加密+生物识别 / core/data Room DB / feature/import-export CSV / app 入口 / 构建配置）",
+  "_schema": "audit-cycle-state v1.1",
+  "_description": "追踪当前全量审计周期状态。全量审计事件驱动：上次派生的 fix 全部 merge/reject 落定后才触发下一次全量审计。2026-07-08 加 researching 状态：每 research_every 个周期触发一次前沿研究调研（见 constraints 指令 E）。引擎每轮 step 0 读这个文件决定本轮是审计轮/研究轮/瞭望轮。",
+  "current_audit_id": "audit-2026-07-07-020",
+  "current_audit_started_at": "2026-07-07T19:55:00Z",
+  "current_audit_project": "personal-assistant",
+  "current_audit_module": "backend-core (auth/api/config/storage/memory/llm/web/ws_manager/ingest/xiaozhi/chat/transcript/verify/proactive/distill/cli/asr)",
   "derived_fixes": [
     {
-      "fix_case_id": "case-2026-07-06-010",
-      "audit_id": "audit-2026-07-06-019",
-      "finding_id": "H-002+H-003",
-      "status": "pending",
+      "fix_case_id": "case-2026-07-07-150",
+      "audit_id": "audit-2026-07-07-020",
+      "finding_id": "H-001",
+      "status": "merged",
       "kind": "route-fix",
-      "description": "SQLCipher 口令改 Keystore/EncryptedSharedPreferences + SecureRandom 生成（消除明文 prefs + 非 CSPRNG）",
-      "files": ["core/security/src/main/java/com/financetracker/core/security/crypto/DatabaseEncryption.kt"]
+      "description": "CORS allow_origins=['*'] → restrict to actual frontend origins or configurable whitelist; set allow_credentials=False"
     },
     {
-      "fix_case_id": "case-2026-07-06-011",
-      "audit_id": "audit-2026-07-06-019",
+      "fix_case_id": "case-2026-07-07-146",
+      "audit_id": "audit-2026-07-07-020",
+      "finding_id": "H-002",
+      "status": "merged",
+      "kind": "route-fix",
+      "description": "POST /settings/llm api_key write requires re-auth or disallow API-based key changes; reduce TTL or encrypt at rest"
+    },
+    {
+      "fix_case_id": "case-2026-07-07-151",
+      "audit_id": "audit-2026-07-07-020",
+      "finding_id": "H-003",
+      "status": "merged",
+      "kind": "route-fix",
+      "description": "POST /settings/llm base_url validation: allowlist of known LLM provider URLs or block RFC1918/loopback/link-local"
+    },
+    {
+      "fix_case_id": "case-2026-07-08-111",
+      "audit_id": "audit-2026-07-07-020",
       "finding_id": "H-004",
-      "status": "pending",
-      "kind": "route-fix",
-      "description": "allowBackup=false + dataExtractionRules 排除 databases/ 与 security_prefs（堵 adb backup 一把导走库+密钥）",
-      "files": ["app/src/main/AndroidManifest.xml"]
+      "status": "merged",
+      "kind": "direction-shift",
+      "description": "Dev-mode auth bypass: require explicit PA_DEV_MODE=1 env var + startup warning; refuse start without PA_API_TOKEN in production"
     },
     {
-      "fix_case_id": "case-2026-07-06-012",
-      "audit_id": "audit-2026-07-06-019",
+      "fix_case_id": null,
+      "audit_id": "audit-2026-07-07-020",
       "finding_id": "M-001",
       "status": "pending",
       "kind": "route-fix",
-      "description": "BiometricAuthenticator 加 DEVICE_CREDENTIAL 兜底 + CryptoObject 重载（去 negativeButton 互斥）",
-      "files": ["core/security/src/main/java/com/financetracker/core/security/biometric/BiometricAuthenticator.kt"]
+      "description": "Remove /ws/ from _EXEMPT_PREFIXES in auth.py; WS auth handled separately by verify_ws_token()"
     },
     {
-      "fix_case_id": "case-2026-07-06-013",
-      "audit_id": "audit-2026-07-06-019",
-      "finding_id": "M-002+M-003",
+      "fix_case_id": null,
+      "audit_id": "audit-2026-07-07-020",
+      "finding_id": "M-002",
       "status": "pending",
       "kind": "route-fix",
-      "description": "CSV 导出公式注入中和（=+-@\\t\\r 前置'）+ 导入流式解析（去 readLines OOM）+ RFC4180 引号状态机（修往返损坏）",
-      "files": ["feature/import-export/src/main/java/com/financetracker/feature/importexport/CsvService.kt"]
+      "description": "web.py scraper User-Agent: use proper bot UA or switch to official search APIs"
     },
     {
-      "fix_case_id": "case-2026-07-06-014",
-      "audit_id": "audit-2026-07-06-019",
+      "fix_case_id": null,
+      "audit_id": "audit-2026-07-07-020",
+      "finding_id": "M-003",
+      "status": "pending",
+      "kind": "route-fix",
+      "description": "ApiWebSearcher._generic() base_url validation: scheme=https only, hostname not internal/private IP"
+    },
+    {
+      "fix_case_id": null,
+      "audit_id": "audit-2026-07-07-020",
       "finding_id": "M-004",
       "status": "pending",
       "kind": "route-fix",
-      "description": "fallbackToDestructiveMigration 守卫改 BuildConfig.DEBUG（version==1 release 不再静默丢财务历史）",
-      "files": ["core/data/src/main/java/com/financetracker/core/data/di/DatabaseModule.kt"]
+      "description": "Add per-IP/per-token rate limiting on /chat /ingest /distill /triggers endpoints"
     },
     {
-      "fix_case_id": "case-2026-07-06-015",
-      "audit_id": "audit-2026-07-06-019",
+      "fix_case_id": null,
+      "audit_id": "audit-2026-07-07-020",
+      "finding_id": "M-005",
+      "status": "pending",
+      "kind": "route-fix",
+      "description": "PII disclosure to external LLM: add consent mechanism or PII filter before sending persona+memories"
+    },
+    {
+      "fix_case_id": null,
+      "audit_id": "audit-2026-07-07-020",
+      "finding_id": "M-006",
+      "status": "pending",
+      "kind": "route-fix",
+      "description": "xiaozhi_server.py WS auth: refactor to use auth.verify_ws_token() instead of duplicated logic"
+    },
+    {
+      "fix_case_id": null,
+      "audit_id": "audit-2026-07-07-020",
+      "finding_id": "M-009",
+      "status": "pending",
+      "kind": "route-fix",
+      "description": "ws_manager.broadcast(): acquire lock before iterating active connections or snapshot under lock"
+    },
+    {
+      "fix_case_id": null,
+      "audit_id": "audit-2026-07-07-020",
+      "finding_id": "M-010",
+      "status": "pending",
+      "kind": "route-fix",
+      "description": "llm.py: enforce https:// for non-localhost base_url to prevent cleartext API key transmission"
+    },
+    {
+      "fix_case_id": null,
+      "audit_id": "audit-2026-07-07-020",
+      "finding_id": "M-011",
+      "status": "pending",
+      "kind": "route-fix",
+      "description": "DELETE /chat-log: add soft-delete or confirmation parameter; consider admin-only role for destructive ops"
+    },
+    {
+      "fix_case_id": null,
+      "audit_id": "audit-2026-07-07-020",
       "finding_id": "L-001",
       "status": "pending",
       "kind": "route-fix",
-      "description": "Logger 加 BuildConfig.DEBUG 守卫 + PII 截断脱敏（防金额/备注进 logcat）",
-      "files": ["core/common/src/main/java/com/financetracker/core/common/util/Logger.kt"]
+      "description": "asr.py: fix indentation of scan_once()/run_loop() — move from query_habits() body to IngestionPipeline class"
     },
     {
-      "fix_case_id": "case-2026-07-06-016",
-      "audit_id": "audit-2026-07-06-019",
+      "fix_case_id": null,
+      "audit_id": "audit-2026-07-07-020",
       "finding_id": "L-002",
       "status": "pending",
       "kind": "route-fix",
-      "description": "getPassphrase() fail-closed（不吞异常返 null，安全路径禁止静默）",
-      "files": ["core/security/src/main/java/com/financetracker/core/security/crypto/DatabaseEncryption.kt"]
+      "description": "proactive.py CLINotifier: add log rotation (RotatingFileHandler or size check)"
     },
     {
-      "fix_case_id": "case-2026-07-06-017",
-      "audit_id": "audit-2026-07-06-019",
-      "finding_id": "L-003+L-004+I-002",
+      "fix_case_id": null,
+      "audit_id": "audit-2026-07-07-020",
+      "finding_id": "L-004",
       "status": "pending",
       "kind": "route-fix",
-      "description": "CSV 导入账户/分类存在性校验+去硬编码 1L 兜底；minSdk→29 删 legacy WRITE_EXTERNAL_STORAGE 死分支；Room exportSchema=true",
-      "files": ["feature/import-export/src/main/java/com/financetracker/feature/importexport/CsvService.kt", "feature/import-export/src/main/java/com/financetracker/feature/importexport/ImportExportViewModel.kt", "app/build.gradle.kts", "core/data/src/main/java/com/financetracker/core/data/db/FinanceDatabase.kt"]
+      "description": "cli.py cmd_serve: default --host to 127.0.0.1 instead of 0.0.0.0"
+    },
+    {
+      "fix_case_id": null,
+      "audit_id": "audit-2026-07-07-020",
+      "finding_id": "L-005",
+      "status": "pending",
+      "kind": "route-fix",
+      "description": "distill.py: cap memories sent to LLM (e.g. most recent 100) or batch across multiple calls"
+    },
+    {
+      "fix_case_id": null,
+      "audit_id": "audit-2026-07-07-020",
+      "finding_id": "I-001",
+      "status": "pending",
+      "kind": "route-fix",
+      "description": "config.py: add PA_CONFIG_PATH env var support for custom config file path"
+    },
+    {
+      "fix_case_id": null,
+      "audit_id": "audit-2026-07-07-020",
+      "finding_id": "I-003",
+      "status": "pending",
+      "kind": "route-fix",
+      "description": "xiaozhi_server.py: log temp WAV unlink failures instead of silent pass"
     }
   ],
-  "pending_count": 8,
+  "pending_count": 15,
   "status": "fix-in-progress",
-  "_last_scout_at": "2026-07-06T03:40:00Z",
-  "_last_scout_case_id": "case-2026-07-06-010",
-  "_last_scout_summary": "Deep audit FinanceTracker (audit-2026-07-06-019, security-review). 15 findings (5H/4M/4L/2I). Headline: SQLCipher dead code — DatabaseModule never wires SupportFactory, DB is plaintext despite README claim; biometric authenticate() zero callers, no launch gate; passphrase plaintext in SharedPrefs + non-CSPRNG; allowBackup=true. 8 route-fix derived pending (case-010..017); 2 structural debts (SD-004 SQLCipher wiring+migration, SD-005 launch auth gate) queued for user authorization.",
-  "_status_note": "audit-2026-07-06-019 on FinanceTracker: deep security audit. H-001 SQLCipher dead code (DB unencrypted), H-005 biometric non-enforced — both structural (SD-004/SD-005). 8 route-fixes pending dispatch next rounds. status=fix-in-progress.",
-  "_status_enum": "idle | auditing | fix-in-progress | cycle-complete",
-  "last_audit_completed_at": "2026-07-06T03:40:00Z",
-  "last_audit_id": "audit-2026-07-06-019",
+  "_last_scout_at": "2026-07-07T19:55:00Z",
+  "_last_scout_case_id": null,
+  "_last_scout_summary": "Deep audit on personal-assistant backend-core. 22 findings (4H/11M/5L/3I). 19 route-fix/direction-shift pending dispatch; 3 structural debts queued.",
+  "_status_note": "Deep audit audit-2026-07-07-020 completed 2026-07-07. H-001 CORS wildcard, H-002 api_key injection, H-003 SSRF base_url (merged case-2026-07-07-151), H-004 dev-mode auth bypass (merged case-2026-07-08-111). 15 derived fixes pending.",
+  "_status_enum": "idle | auditing | fix-in-progress | cycle-complete | researching",
+  "last_audit_completed_at": "2026-07-07T20:05:00Z",
+  "last_audit_id": "audit-2026-07-07-020",
   "next_audit_trigger_reason": "pending-fixes-cleared",
   "_next_audit_trigger_reason_enum": "pending-fixes-cleared | manual-trigger | first-run",
   "history": [
+    {
+      "audit_id": "audit-2026-07-07-020",
+      "project": "personal-assistant",
+      "module": "backend-core (auth/api/config/storage/memory/llm/web/ws_manager/ingest/xiaozhi/chat/transcript/verify/proactive/distill/cli/asr)",
+      "completed_at": "2026-07-07T20:05:00Z",
+      "findings_total": 22,
+      "findings_by_severity": {
+        "high": 4,
+        "medium": 11,
+        "low": 5,
+        "info": 3
+      },
+      "derived_route_fixes": 17,
+      "derived_direction_shifts": 2,
+      "derived_structural_debts": 3,
+      "fixes_merged_at": null,
+      "fixes_merged_commits": [],
+      "_note": "Deep audit on personal-assistant (first time). H-001 CORS wildcard, H-002 api_key injection, H-003 SSRF base_url, H-004 dev-mode auth bypass. M-007 hash ID collisions + L-003 SCHEMA DDL overhead + I-002 positive verify.py design → structural-debt.md. 19 route-fix/direction-shift pending dispatch."
+    },
+    {
+      "audit_id": "audit-2026-07-06-019",
+      "project": "FinanceTracker",
+      "module": "全栈（core/security 加密+生物识别 / core/data Room DB / feature/import-export CSV / app 入口 / 构建配置）",
+      "completed_at": "2026-07-06T03:40:00Z",
+      "findings_total": 15,
+      "findings_by_severity": {
+        "high": 5,
+        "medium": 4,
+        "low": 4,
+        "info": 2
+      },
+      "derived_route_fixes": 8,
+      "derived_structural_debts": 2,
+      "fixes_merged_at": "drift-repair-archive",
+      "fixes_merged_commits": [],
+      "_note": "Drift repair case-2026-07-07-146: FinanceTracker project absent from workspace. All 8 derived_fixes archived rejected. Cycle-complete 2026-07-07."
+    },
     {
       "audit_id": "audit-2026-07-01-001",
       "project": "autonomous-studio-aone",
@@ -395,7 +512,7 @@
         "9bcada9",
         "7d235da"
       ],
-      "_note": "Deep audit on shizi Chrome extension. H-001 ONNX supply chain (no hash pin). M-001 OCR data exfil without consent. M-002 progress channel silent failure. 3 low robustness + 3 info. 5/6 route-fixes merged. L-002 cosmetic accepted as-is. Cycle-complete 2026-07-02."
+      "_note": "Deep audit on shizi Chrome extension. 5/6 route-fixes merged. Cycle-complete 2026-07-02."
     },
     {
       "audit_id": "audit-2026-07-03-012",
@@ -414,7 +531,7 @@
       "derived_structural_debts": 11,
       "fixes_merged_at": "drift-repair-archive",
       "fixes_merged_commits": [],
-      "_note": "Drift repair case-2026-07-03-073: 13 pending fixes archived rejected-archive after 3 consecutive wait rounds (~6h) with no human merge. H-002+L-002 merged earlier (2/16). Worktree branches left intact on disk. Cycle-complete 2026-07-02."
+      "_note": "Drift repair case-2026-07-03-073: 13 pending fixes archived rejected-archive. Cycle-complete 2026-07-02."
     },
     {
       "audit_id": "audit-2026-07-03-013",
@@ -433,7 +550,7 @@
       "derived_structural_debts": 2,
       "fixes_merged_at": "drift-repair-archive",
       "fixes_merged_commits": [],
-      "_note": "Drift repair case-2026-07-03-085: all 8 derived_fixes archived rejected-archive after 3 consecutive wait rounds (~6h) with no human merge. Worktree opt-kaoqin-1783024512 preserved on disk + origin (HEAD=055d940). Cycle-complete 2026-07-03."
+      "_note": "Drift repair case-2026-07-03-085: all 8 derived_fixes archived rejected-archive. Cycle-complete 2026-07-03."
     },
     {
       "audit_id": "audit-2026-07-03-014",
@@ -452,7 +569,7 @@
       "derived_structural_debts": 1,
       "fixes_merged_at": null,
       "fixes_merged_commits": [],
-      "_note": "Deep audit on 1BfrYn9G. H-001 SSRF proxy, H-002 weak JWT secret, H-003 unauthenticated sync-all. 7 route-fixes pending dispatch; I-001 structural debt (monolithic index.js) queued."
+      "_note": "Deep audit on 1BfrYn9G. H-001 SSRF proxy, H-002 weak JWT secret, H-003 unauthenticated sync-all."
     },
     {
       "audit_id": "audit-2026-07-03-015",
@@ -471,7 +588,7 @@
       "derived_structural_debts": 0,
       "fixes_merged_at": "skipped-low-roi",
       "fixes_merged_commits": [],
-      "_note": "Pure static learning-roadmap site + 20-line Express health endpoint. Minimal attack surface. M-001 allowedHosts=all (dev-only), M-002 unused trust-proxy. No fix dispatched — historical drift-repair pattern shows such low-impact fixes get archived. Cycle stays cycle-complete."
+      "_note": "Pure static learning-roadmap site. No fix dispatched. Cycle stays cycle-complete."
     },
     {
       "audit_id": "audit-2026-07-03-016",
@@ -490,7 +607,7 @@
       "derived_structural_debts": 6,
       "fixes_merged_at": "drift-repair-archive",
       "fixes_merged_commits": [],
-      "_note": "Drift repair case-2026-07-03-105: 6 remaining pending fixes (H-001+H-002 case-100, H-009 case-103, H-010+H-011+H-013 case-101) archived rejected-archive after round-2 wait with worktrees gone from disk/git/origin. 7/13 merged earlier (H-004..H-008, H-012, H-016 via case-099/102). Cycle-complete 2026-07-03."
+      "_note": "Drift repair case-2026-07-03-105: 6 remaining pending fixes archived. 7/13 merged earlier. Cycle-complete 2026-07-03."
     },
     {
       "audit_id": "audit-2026-07-03-017",
@@ -509,7 +626,7 @@
       "derived_structural_debts": 0,
       "fixes_merged_at": null,
       "fixes_merged_commits": [],
-      "_note": "Deep audit on autonomous-studio hooks+scripts. H-001 commit-gate -a bypass, H-002 checkpoint prompt injection, H-003 shell injection in .sh, H-004 auto-push credential leak. 8 priority derived_fixes pending dispatch."
+      "_note": "Deep audit on autonomous-studio hooks+scripts. 8 priority derived_fixes pending dispatch."
     },
     {
       "audit_id": "audit-2026-07-06-018",
@@ -528,26 +645,17 @@
       "derived_structural_debts": 0,
       "fixes_merged_at": null,
       "fixes_merged_commits": [],
-      "_note": "Deep audit on oneday-auto-fix (first time). H-001 gitPush shell injection, H-002 ignoreHTTPSErrors MITM, H-003 prompt-injection pageerror→Bash agent, H-004 no .gitignore/chmod. 9 derived fixes pending dispatch (case-2026-07-06-001..009)."
-    },
-    {
-      "audit_id": "audit-2026-07-06-019",
-      "project": "FinanceTracker",
-      "module": "全栈（core/security 加密+生物识别 / core/data Room DB / feature/import-export CSV / app 入口 / 构建配置）",
-      "completed_at": "2026-07-06T03:40:00Z",
-      "findings_total": 15,
-      "findings_by_severity": {
-        "high": 5,
-        "medium": 4,
-        "low": 4,
-        "info": 2
-      },
-      "derived_route_fixes": 8,
-      "derived_direction_shifts": 0,
-      "derived_structural_debts": 2,
-      "fixes_merged_at": null,
-      "fixes_merged_commits": [],
-      "_note": "Deep audit on FinanceTracker (Android Kotlin finance app, first time). H-001 SQLCipher dead code (DB never encrypted — DatabaseModule wires no SupportFactory), H-002 passphrase plaintext in SharedPrefs, H-003 non-CSPRNG passphrase, H-004 allowBackup=true, H-005 biometric non-enforced (authenticate() zero callers, no launch gate, toggle sets pref without verification). M-001..M-004 biometric fallback/CSV formula injection+parser/destructive migration. 8 route-fixes pending (case-010..017); 2 structural debts SD-004 (SQLCipher wiring+migration) + SD-005 (launch auth gate) queued for user authorization. status=fix-in-progress."
+      "_note": "Deep audit on oneday-auto-fix (first time). 9 derived fixes pending dispatch."
     }
-  ]
+  ],
+  "research_cadence": {
+    "cycles_since_last_research": 0,
+    "research_every": 2,
+    "_note": "每完成 research_every 个审计周期触发 1 次研究轮；cycle-complete 时检查"
+  },
+  "current_research_topic": null,
+  "last_research_id": null,
+  "last_research_completed_at": null,
+  "last_research_topic": null,
+  "_derived_fix_kind_enum": "route-fix | direction-shift | structural | research-informed"
 }
