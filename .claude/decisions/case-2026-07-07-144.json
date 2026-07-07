@@ -1,0 +1,39 @@
+{
+  "case_id": "case-2026-07-07-144",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-07T18:53:00+08:00",
+  "project": "shizi",
+  "work_unit": "sidepanel delete button accessibility (SZ-SP-L-006)",
+  "situation": "Delete buttons in HistoryTab and SidePanelApp SVG overlay lack proper accessibility attributes. HistoryTab uses bare 'x' text with no aria-label; SVG <g> element acting as delete button has no role, tabIndex, aria-label, or keyboard handler. Screen readers cannot identify these controls.",
+  "action": "Added aria-label with contextual info to HistoryTab delete button, wrapped visual 'x' in aria-hidden span. Added role=button, tabIndex=0, aria-label, onKeyDown Enter/Space handler to SVG <g> delete element, marked × text as aria-hidden. Applied fix directly in diverged worktree opt-sidepanel-id-delete-fix-1783378817 (case-104 escape hatch due to cp-guard on opt-sidepanel-1782907225).",
+  "files_changed": [
+    "src/sidepanel/HistoryTab.tsx",
+    "src/sidepanel/SidePanelApp.tsx"
+  ],
+  "worktree": "auto/opt-sidepanel-id-delete-fix-1783378817",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 2352efe on auto/opt-sidepanel-id-delete-fix-1783378817 pushed to origin. Both files modified: HistoryTab button gets aria-label + aria-hidden span; SidePanelApp SVG g gets role=button/tabIndex/aria-label/onKeyDown.",
+  "next_suggestion": "Next pending fix: SZ-PP-L-002 (testVisionConnection has no timeout — button disabled forever on hang) or SZ-SP-L-007 (handleViewHistory does not reset editing state). 15 route-fixes remaining in audit-2026-07-07-047 cycle.",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "src/sidepanel/HistoryTab.tsx",
+      "line": 96,
+      "severity": "low",
+      "finding": "Delete button uses bare 'x' text content with no aria-label — screen readers announce only 'x' with no context about what it deletes",
+      "remediation": "Add aria-label with timestamp context, wrap visual x in aria-hidden span",
+      "kind": "route-fix"
+    },
+    {
+      "file": "src/sidepanel/SidePanelApp.tsx",
+      "line": 913,
+      "severity": "low",
+      "finding": "SVG <g> element acts as interactive delete button but lacks role=button, tabIndex, aria-label, and keyboard event handler — completely invisible to assistive technology",
+      "remediation": "Add role=button, tabIndex=0, aria-label, onKeyDown for Enter/Space, mark decorative × text aria-hidden",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-047",
+  "audit_depth": "shallow"
+}
