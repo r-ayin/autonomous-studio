@@ -1,0 +1,33 @@
+{
+  "case_id": "case-2026-07-08-018",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-08T20:15:00+08:00",
+  "project": "sunset-prediction",
+  "work_unit": "scripts:mail-push-port-guard",
+  "situation": "audit-2026-07-08-046 derived fix SP-SCR-M-001: mail_push.py line 90 `int(os.environ.get('SMTP_PORT', '465'))` crashes with ValueError when SMTP_PORT env var is empty string or non-numeric. Cron environments may set SMTP_PORT='' explicitly, bypassing the default '465' fallback and causing unhandled exception that aborts the entire mail push.",
+  "action": "Replace bare int() cast with try/except guard: strip whitespace from env value, fall back to 465 on empty or ValueError, emit warning to stderr for visibility. Single-file minimal route-fix per audit finding remediation.",
+  "files_changed": [
+    "scripts/mail_push.py"
+  ],
+  "worktree": "opt-scripts-1783396445",
+  "direction": "scripts:mail-push-port-guard",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh committed eb5c0d7 to auto/opt-scripts-1783396445, pushed to origin. Fix adds ValueError guard with stderr warning and default fallback.",
+  "next_suggestion": [
+    "Continue dispatching remaining 8 pending route-fixes from audit-2026-07-08-046 (SP-SCR-M-003 social-scraper userAgent next)",
+    "After all pending fixes merged/rejected, cycle-complete triggers next full audit"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "scripts/mail_push.py",
+      "line": 90,
+      "severity": "medium",
+      "finding": "int(os.environ.get('SMTP_PORT', '465')) raises ValueError on empty string or non-numeric env value, crashing mail push silently in cron",
+      "remediation": "Strip + try/except with default 465 fallback and stderr warning",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-08-046",
+  "audit_depth": "shallow"
+}
