@@ -1,0 +1,30 @@
+{
+  "case_id": "case-2026-07-08-008",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-07T00:22:27Z",
+  "project": "wechat-main",
+  "work_unit": "scripts/knowledge_base.py unbounded file read size guard (WC-EXT-M-003)",
+  "situation": "audit-2026-07-08-041 derived_fixes WC-EXT-M-003 pending: knowledge_base.py:75 calls article_path.read_text() on CLI-supplied --article path with no size guard. Attacker-controlled or accidentally huge file causes OOM / memory-pressure DoS in long-running pipeline process.",
+  "action": "Direct-edit worktree escape hatch (cp-guard skipped because worktree file == main; per memory opt-worktree-absolute-file-path + stack-on-diverged-wt-escape-hatch). Added 10 MB stat()-based size guard before read_text; reject with structured JSON error. Committed and pushed on existing route-fix worktree branch auto/opt-wechat-main-1783130541.",
+  "files_changed": [
+    "scripts/knowledge_base.py"
+  ],
+  "worktree": "opt-wechat-main-1783130541",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit f1ebed8 on auto/opt-wechat-main-1783130541 pushed to origin (eb8f488..f1ebed8); git diff --cached shows 1 file changed, 15 insertions(+); remote accepted push without rejection",
+  "next_suggestion": "Next pending fix: WC-EXT-L-001 research_cache.py:166 non-atomic cache write (low severity). After all 3 pending cleared, audit-cycle-state transitions to cycle-complete → next full audit triggers.",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "scripts/knowledge_base.py",
+      "line": 75,
+      "severity": "medium",
+      "finding": "Unbounded read_text on CLI-supplied --article path — no size validation before loading entire file into memory. OOM / memory-pressure vector when user points at multi-GB file.",
+      "remediation": "Stat file first; reject if st_size > 10 MB with structured JSON error before calling read_text.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-08-041",
+  "audit_depth": "shallow"
+}
