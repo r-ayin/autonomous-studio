@@ -11,9 +11,10 @@ model: sonnet
 repository: https://code.alibaba-inc.com/qunbu/autonomous-studio
 ---
 
-# Autonomous Studio v6.1
+# Autonomous Studio v6.2
 
-> **六阶段流水线**：需求→PRD→开发→验证→评审→部署，按需加载 phase 文件，不全读。
+> **七阶段流水线**：需求→PRD→开发→验证→评审→部署→归档，按需加载 phase 文件，不全读。
+> （status.json 的 currentStage 有 9 个取值：含 prd-review / archiving 等细分状态）
 > **确定性 > LLM 自评**：hook 强制 + 确定性脚本兜底，提示词不是护栏。
 > **worktree 隔离**：自主模式的改动进独立分支，main 永远安全，人审 diff 才合并。
 >
@@ -69,9 +70,9 @@ repository: https://code.alibaba-inc.com/qunbu/autonomous-studio
 
 ### 判断逻辑（先检查再决定是否加载）
 
-1. 读项目 CLAUDE.md，检查是否包含 `<!-- STUDIO:BEGIN v6.1 -->`
-2. **版本匹配**（含 `v6.1` 标记）→ **跳过注入**，不读 `studio-inject.md`，节省上下文
-3. **版本不匹配**（含旧版本标记如 `v5.4`）→ Read `~/.claude/skills/autonomous-studio/studio-inject.md`，替换旧内容
+1. 读项目 CLAUDE.md，检查是否包含 `<!-- STUDIO:BEGIN v6.2 -->`
+2. **版本匹配**（含 `v6.2` 标记）→ **跳过注入**，不读 `studio-inject.md`，节省上下文
+3. **版本不匹配**（含旧版本标记如 `v5.4`/`v6.1`）→ Read `~/.claude/skills/autonomous-studio/studio-inject.md`，替换旧内容
 4. **不存在标记** → Read `~/.claude/skills/autonomous-studio/studio-inject.md`，追加到文件末尾
 5. **CLAUDE.md 不存在** → 创建文件，Read 并写入注入内容
 
@@ -95,9 +96,9 @@ repository: https://code.alibaba-inc.com/qunbu/autonomous-studio
 
 ---
 
-## 六阶段 Studio 流水线
+## 七阶段 Studio 流水线
 
-需求 → PRD → 技术方案 → 开发 → 验证 → 评审 → 部署。`phases/phase-{build,dev,ship}.md` 按需 Read，不全加载。
+需求 → PRD → 开发 → 验证 → 评审 → 部署 → 归档。`phases/phase-{build,dev,ship}.md` 按需 Read，不全加载。
 
 ### 阶段速查
 

@@ -1,4 +1,4 @@
-# =============================================================================
+﻿# =============================================================================
 # watchdog-boot.ps1 — L6 外部监控注册/自修复脚本 (Windows 原生版 v6.2)
 # =============================================================================
 # 功能:
@@ -55,11 +55,12 @@ if ($existing) {
     }
 } else {
     $action = New-ScheduledTaskAction -Execute "powershell.exe" `
-        -Argument "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$WatchdogScript`""
-    # 登录触发 + 每 5 分钟重复（无限期）
-    $trigger = New-ScheduledTaskTrigger -AtLogOn
-    $trigger.Repetition = (New-ScheduledTaskTrigger -Once -At (Get-Date) `
-        -RepetitionInterval (New-TimeSpan -Minutes 5)).Repetition
+        -Argument "-NoProfile -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$WatchdogScript`"" `
+        -WorkingDirectory $BasePath
+    # Once 触发 + 每 5 分钟重复 3650 天（实测可用配方；MaxValue 会超 XML Duration 范围）
+    $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) `
+        -RepetitionInterval (New-TimeSpan -Minutes 5) `
+        -RepetitionDuration (New-TimeSpan -Days 3650)
     $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries `
         -DontStopIfGoingOnBatteries -StartWhenAvailable `
         -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Minutes 2)

@@ -1,4 +1,4 @@
-# =============================================================================
+﻿# =============================================================================
 # Autonomous Studio External Watchdog — Windows Native (L6 外部监控层)
 # =============================================================================
 # watchdog.sh 的 Windows 移植版。独立于 Claude Code 进程的健康守护。
@@ -59,10 +59,14 @@ try {
         }
     }
 
-    # ── 3. Claude 进程检查（命令行锚定本项目目录，避免误匹配其他会话）──
+    # ── 3. Claude 进程检查 ──
+    # 优先命令行锚定本项目目录；Windows 下 claude.exe 命令行常不含路径，
+    # 匹配不到时回退为全局 claude 进程计数（单用户机可接受）。
     $projPattern = [regex]::Escape($ProjectDir)
-    $claudeProcs = @(Get-CimInstance Win32_Process |
-        Where-Object { $_.CommandLine -match "claude" -and $_.CommandLine -match $projPattern }).Count
+    $allClaude = @(Get-CimInstance Win32_Process | Where-Object {
+        ($_.Name -match "^claude") -or ($_.CommandLine -match "claude") })
+    $anchored = @($allClaude | Where-Object { $_.CommandLine -match $projPattern }).Count
+    $claudeProcs = if ($anchored -gt 0) { $anchored } else { @($allClaude | Where-Object { $_.Name -match "^claude" }).Count }
     if ($claudeProcs -eq 0) {
         New-Item -ItemType File -Path $ResumeFlag -Force | Out-Null
         Write-Log "ALERT: No Claude processes running in $ProjectDir"
