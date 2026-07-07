@@ -93,6 +93,12 @@ def main():
         print(json.dumps({"protocol_check": "skipped", "reason": "no file_path"}))
         return
 
+    # 全局部署守卫：工作区未安装 project-protocol skill = 未采用三件套协议 → 静默跳过
+    # （避免全局注册后在无关项目里输出"自举失败"噪音）
+    if not os.path.isfile(BOOTSTRAP_SCRIPT):
+        print(json.dumps({"protocol_check": "skipped", "reason": "protocol not adopted"}))
+        return
+
     project_name, project_dir = get_project_dir(file_path)
 
     if project_name is None:

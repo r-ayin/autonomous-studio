@@ -3,7 +3,7 @@ name: autonomous-studio
 description: >-
   从需求到上线的全链路研发流水线。管理阶段推进（需求→PRD→开发→验证→评审→部署→归档），
   注入行为规则到项目 CLAUDE.md，驱动子 Agent 按 PRD 自动开发。
-  支持自主模式（由 autonomous-engine 接管持续自治循环）。
+  支持自主模式（触发词「自主模式/别等我/自动继续」启动持续自治循环）。
   使用场景：启动新功能开发、聊需求写 PRD、查看项目状态和进度、
   执行代码评审和验证、部署上线、
   或任何涉及研发流程阶段管理的操作。
@@ -18,7 +18,7 @@ repository: https://code.alibaba-inc.com/qunbu/autonomous-studio
 > **worktree 隔离**：自主模式的改动进独立分支，main 永远安全，人审 diff 才合并。
 >
 > SKILL.md 负责激活 + 行为规则注入 + 阶段路由。
-> 自主模式（持续自治循环）由 `autonomous-engine` skill 独立管理。
+> 自主模式（持续自治循环）由本 skill 的自主入口管理：触发词激活 → `scripts/autonomous-loop.sh` + `decision-agent-prompt.md`。
 > 详细阶段规范在 `phases/` 下分文件，按需 Read 对应阶段文件，不要全读。
 
 ---
@@ -28,7 +28,7 @@ repository: https://code.alibaba-inc.com/qunbu/autonomous-studio
 **每次 Studio 被激活时，先检查本地 skill 是否是最新版本。**
 
 1. 检查本地版本标记：`cat ~/.claude/skills/autonomous-studio/.version 2>/dev/null`
-2. 获取远程最新 commit：`git ls-remote https://xhq02486164:B06ESflq0Gg_cI_eYrrj@code.alibaba-inc.com/qunbu/autonomous-studio.git HEAD | cut -f1`
+2. 获取远程最新 commit：`git ls-remote https://code.alibaba-inc.com/qunbu/autonomous-studio.git HEAD | cut -f1`（凭证走 git credential helper / `~/.git-credentials`，**禁止在文档或脚本中内联明文 token**；aone 不可达时回退 `git ls-remote https://github.com/r-ayin/autonomous-studio.git HEAD`）
 3. 比对：本地 hash ≠ 远程 hash → 需要更新
 4. 更新方式：克隆仓库到 /tmp/_studio_update → 复制核心文件（SKILL.md、studio-inject.md、phases/、scripts/、hooks/、evals/）到 ~/.claude/skills/autonomous-studio/ → 写 .version → 清理
 5. 更新后告知用户版本变化
@@ -44,7 +44,7 @@ repository: https://code.alibaba-inc.com/qunbu/autonomous-studio
 1.5. **安装 Studio Hook**（幂等）：`bash ~/.claude/skills/autonomous-studio/hooks/install-studio-hooks.sh`
 2. **★ 将行为规则注入项目 CLAUDE.md**（用 `<!-- STUDIO:BEGIN/END -->` 标记包裹，已存在则替换）— 见 Step 2
 3. 向用户报告：当前阶段 → 已有产出 → 下一步建议 → 可跳过的步骤
-4. 用户说"自动模式/别等我"时 → 提示使用 `/autonomous-engine` 启动持续自治循环
+4. 用户说"自动模式/别等我"时 → 进入自主模式：建 `.claude/.autonomous_active` 标记 → 按 `scripts/autonomous-loop.sh` 持续自治循环（worktree 隔离，详见 studio-inject.md 铁律 4）
 
 ### 阶段检测（status.json 不存在时）
 
@@ -126,13 +126,12 @@ PRD 产出依赖 DAG（`blockedBy`）+ 文件所有权（`files`）→ `parallel
 
 ## 补充说明
 
-### 与 /autonomous-engine 的关系
+### 两种模式（单 skill 双入口）
 
-`/autonomous-studio` 和 `/autonomous-engine` 是**同一个 skill 的两个入口**，共享同一套代码库（`qunbu/autonomous-studio`）。
+本 skill 承载两种模式，共享同一套代码库（`qunbu/autonomous-studio`）：
 
-- **`/autonomous-studio`**（本命令）= 流水线入口（阶段推进、规则注入、phase 路由）
-- **`/autonomous-engine`** = 自主模式入口（持续自治循环、worktree 隔离、确定性扫描、蒸馏闭环）
-- 用户说"自动模式/别等我"→ 提示使用 `/autonomous-engine`
+- **Studio 流水线模式** = 阶段推进、规则注入、phase 路由（默认入口）
+- **自主模式** = 持续自治循环、worktree 隔离、确定性扫描、蒸馏闭环（触发词「自主模式/别等我/自动继续」激活）
 
 ### 子代理决策手册
 → `~/.claude/skills/autonomous-studio/decision-agent-prompt.md`

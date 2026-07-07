@@ -1,4 +1,6 @@
 #!/bin/bash
+# polyglot python shim: Linux(python3) / Windows(python)
+PY="$(command -v python3 || command -v python || echo python)"
 # studio-lint-guard.sh — ACI 风格的编辑前语法校验（Tier 0 Hook）
 #
 # 设计来源：SWE-agent ACI 论文（NeurIPS 2024）的核心发现：
@@ -16,14 +18,14 @@ if [ "$HOOK_EVENT" != "PreToolUse" ]; then
 fi
 
 INPUT=$(cat)
-TOOL_NAME=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('tool_name',''))" 2>/dev/null)
+TOOL_NAME=$(echo "$INPUT" | "$PY" -c "import sys,json; d=json.load(sys.stdin); print(d.get('tool_name',''))" 2>/dev/null)
 
 if [ "$TOOL_NAME" != "Write" ] && [ "$TOOL_NAME" != "Edit" ]; then
   echo '{}'
   exit 0
 fi
 
-FILE_PATH=$(echo "$INPUT" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d.get('tool_input',{}).get('file_path',''))" 2>/dev/null)
+FILE_PATH=$(echo "$INPUT" | "$PY" -c "import sys,json; d=json.load(sys.stdin); print(d.get('tool_input',{}).get('file_path',''))" 2>/dev/null)
 
 if [ -z "$FILE_PATH" ]; then
   echo '{}'
@@ -36,14 +38,14 @@ ERROR=""
 case "$EXT" in
   py)
     # Write uses 'content'; Edit uses 'new_string'. Extract whichever is present.
-    CONTENT=$(echo "$INPUT" | python3 -c "
+    CONTENT=$(echo "$INPUT" | "$PY" -c "
 import sys, json
 d = json.load(sys.stdin)
 ti = d.get('tool_input', {})
 print(ti.get('content') or ti.get('new_string') or '')
 " 2>/dev/null)
     if [ -n "$CONTENT" ]; then
-      ERROR=$(echo "$CONTENT" | python3 -c "
+      ERROR=$(echo "$CONTENT" | "$PY" -c "
 import sys, py_compile, tempfile, os
 code = sys.stdin.read()
 tmp = tempfile.NamedTemporaryFile(suffix='.py', delete=False, mode='w')
@@ -60,14 +62,14 @@ finally:
     ;;
   json)
     # Write uses 'content'; Edit uses 'new_string'. Extract whichever is present.
-    CONTENT=$(echo "$INPUT" | python3 -c "
+    CONTENT=$(echo "$INPUT" | "$PY" -c "
 import sys, json
 d = json.load(sys.stdin)
 ti = d.get('tool_input', {})
 print(ti.get('content') or ti.get('new_string') or '')
 " 2>/dev/null)
     if [ -n "$CONTENT" ]; then
-      ERROR=$(echo "$CONTENT" | python3 -c "
+      ERROR=$(echo "$CONTENT" | "$PY" -c "
 import sys, json
 try:
     json.loads(sys.stdin.read())
@@ -83,7 +85,7 @@ esac
 
 if [ -n "$ERROR" ]; then
   export LINT_GUARD_ERROR="$ERROR"
-  python3 -c "
+  "$PY" -c "
 import json, os
 err = os.environ.get('LINT_GUARD_ERROR', '')
 print(json.dumps({

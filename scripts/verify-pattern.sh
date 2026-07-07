@@ -1,4 +1,6 @@
 #!/bin/bash
+# polyglot python shim: Linux(python3) / Windows(python)
+PY="$(command -v python3 || command -v python || echo python)"
 # verify-pattern.sh — 蒸馏质量门禁（确定性，零 LLM，bash exit 1 不可协商）
 #
 # 4 个 gate，任一失败 → exit 1，distill-patterns.py 不落盘。
@@ -18,14 +20,14 @@ FAIL=0
 echo "[verify-pattern] 项目: $P"
 
 # 前置：calibration 必须是合法 JSON
-if ! python3 -c "import json,sys; json.load(open('$CAL'))" 2>/dev/null; then
+if ! "$PY" -c "import json,sys; json.load(open('$CAL'))" 2>/dev/null; then
   echo "  ❌ GATE-0: calibration.json 非合法 JSON，先修 distill-patterns.py 的鲁棒加载"
   exit 1
 fi
 echo "  ✓ GATE-0: calibration.json 合法"
 
 # 用 python 跑 4 个 gate（bash 调度，python 判定）
-python3 - "$P" "$MIN_SAMPLE" "$ACC_FLOOR" "$CAP" <<'PY' || FAIL=1
+"$PY" - "$P" "$MIN_SAMPLE" "$ACC_FLOOR" "$CAP" <<'PY' || FAIL=1
 import json, os, re, sys
 P, MIN_SAMPLE, ACC_FLOOR, CAP = sys.argv[1], int(sys.argv[2]), float(sys.argv[3]), int(sys.argv[4])
 CAL = f"{P}/.claude/decisions/calibration.json"

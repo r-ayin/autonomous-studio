@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# polyglot python shim: Linux(python3) / Windows(python)
+PY="$(command -v python3 || command -v python || echo python)"
 # parallel-dispatch.sh — 并发构建 Wave 分发（确定性 plumbing）
 #
 # 读 planning/parallel-plan.json，为指定 wave 的每个 task 创建独立 worktree + 分支，
@@ -25,8 +27,8 @@ if [[ ! -f "$PLAN" ]]; then
   exit 1
 fi
 
-# 用 python3 解析 JSON（不依赖 jq）
-read -r MAX_CONCURRENCY TASKS_JSON <<< "$(python3 - "$PLAN" "$WAVE" <<'PY'
+# 用 "$PY" 解析 JSON（不依赖 jq）
+read -r MAX_CONCURRENCY TASKS_JSON <<< "$("$PY" - "$PLAN" "$WAVE" <<'PY'
 import json, sys
 plan = json.load(open(sys.argv[1]))
 wave = int(sys.argv[2])
@@ -46,12 +48,12 @@ if [[ -z "$TASKS_JSON" || "$TASKS_JSON" == "[]" ]]; then
 fi
 
 mkdir -p "$WORKTREE_BASE"
-echo "=== Wave $WAVE: $(echo "$TASKS_JSON" | python3 -c 'import json,sys; print(len(json.load(sys.stdin)))') 个 task, 并发上限 $MAX_CONCURRENCY ==="
+echo "=== Wave $WAVE: $(echo "$TASKS_JSON" | "$PY" -c 'import json,sys; print(len(json.load(sys.stdin)))') 个 task, 并发上限 $MAX_CONCURRENCY ==="
 
 # 为每个 task 建 worktree + 分支 + 写 prompt
 PIDS=()
 SPAWN_COUNT=0
-for TASK_ID in $(echo "$TASKS_JSON" | python3 -c 'import json,sys; [print(t) for t in json.load(sys.stdin)]'); do
+for TASK_ID in $(echo "$TASKS_JSON" | "$PY" -c 'import json,sys; [print(t) for t in json.load(sys.stdin)]'); do
   BRANCH="parallel/${TASK_ID}"
   WT_DIR="${WORKTREE_BASE}/${TASK_ID}"
 

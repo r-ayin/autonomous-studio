@@ -1,4 +1,6 @@
 #!/bin/bash
+# polyglot python shim: Linux(python3) / Windows(python)
+PY="$(command -v python3 || command -v python || echo python)"
 # studio-precheck.sh — 心跳预检，返回 proceed 或 skip:{原因}
 # 用法: bash studio-precheck.sh /path/to/project
 
@@ -16,7 +18,7 @@ fi
 
 # 2. calibration 冷却检查
 if [ -f "$CAL_FILE" ]; then
-  CONSECUTIVE=$(python3 -c "
+  CONSECUTIVE=$("$PY" -c "
 import json, sys
 try:
     d = json.load(open('$CAL_FILE'))
@@ -40,7 +42,7 @@ fi
 
 # 4. autoAdvance 开关
 if [ -f "$STATUS_FILE" ]; then
-  AUTO=$(python3 -c "
+  AUTO=$("$PY" -c "
 import json, sys
 try:
     d = json.load(open('$STATUS_FILE'))

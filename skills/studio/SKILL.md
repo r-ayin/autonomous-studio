@@ -14,7 +14,7 @@ triggers:
 sync:
   # 任何对话中更新此 Skill 后，执行以下命令同步到仓库：
   # cd /tmp/autonomous-studio && git pull origin main && vim skills/studio/SKILL.md && git add skills/studio/SKILL.md && git commit -m "feat(studio): 更新 SKILL.md" && git push origin main
-  target_repo: "https://xhq02486164:B06ESflq0Gg_cI_eYrrj@code.alibaba-inc.com/qunbu/autonomous-studio.git"
+  target_repo: "https://code.alibaba-inc.com/qunbu/autonomous-studio.git"
   target_path: "skills/studio/SKILL.md"
 ---
 
