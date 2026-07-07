@@ -1,0 +1,38 @@
+{
+  "case_id": "case-2026-07-08-007",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-08T08:45:00+08:00",
+  "project": "wechat-main",
+  "work_unit": "pipeline.py --slug CLI override sanitize enforcement (consolidated WC-EXT-M-001 + WC-EXT-M-002)",
+  "situation": "audit-2026-07-08-041 found M-001 (steps.py:256 shell injection via unsanitized slug in bash cmd interpolation) and M-002 (pipeline.py:125 --slug bypasses _slugify — root cause). Both share identical root cause: CLI --slug value flows unvalidated into steps.build_steps → f-string bash commands. opt-worktree.sh cp-guard blocked reuse of opt-wechat-main-1783130541 due to prior unmerged pipeline.py divergence (atomic write + shlex.quote fixes from earlier audit cycle). Per memory [[Stack on diverged wt escape hatch]], edited directly in diverged worktree and committed there.",
+  "action": "Enforced _slugify() re-sanitization on --slug CLI override in cmd_init(); added warning log when sanitized value differs from raw input. Consolidates M-001 + M-002 into single fix since both are same root cause class. Committed directly in diverged worktree opt-wechat-main-1783130541 after cp-guard block.",
+  "files_changed": [
+    "scripts/pipeline.py"
+  ],
+  "worktree": "opt-wechat-main-1783130541",
+  "direction": "wechat-main:slug-sanitize-enforcement",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit eb8f488 on auto/opt-wechat-main-1783130541 branch; pushed to origin (a3459a9..eb8f488). pipeline.py:134-139 now re-runs _slugify on raw_slug with warning when sanitized. Code review URL: https://code.alibaba-inc.com/qunbu/wechat/codereview/new?from=main&to=auto/opt-wechat-main-1783130541",
+  "next_suggestion": "Next pending fix: WC-EXT-M-003 knowledge_base.py:75 unbounded file read (size guard before read_text on CLI-supplied article path). After that L-001 research_cache.py non-atomic cache write, L-002 persona_drift.py unbounded markdown read.",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "scripts/pipeline.py",
+      "line": 125,
+      "severity": "medium",
+      "finding": "WC-EXT-M-002: --slug CLI override bypassed _slugify sanitization; raw user input interpolated into bash STEP.cmd strings in steps.py:250/256/263 enables command injection and path traversal",
+      "remediation": "Always re-run _slugify on --slug value before passing to build_steps; warn when sanitized value differs from raw input",
+      "kind": "route-fix"
+    },
+    {
+      "file": "scripts/steps.py",
+      "line": 256,
+      "severity": "medium",
+      "finding": "WC-EXT-M-001: slug interpolated into bash command string via f-string without shell quoting; downstream sink of M-002 root cause",
+      "remediation": "Fixed at source (pipeline.py entry enforcement); defense-in-depth would also shlex.quote slug in each cmd f-string but not needed after entry sanitize",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-08-041",
+  "audit_depth": "shallow"
+}
