@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-08-058",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-08T10:35:00+08:00",
+  "project": "shizi",
+  "work_unit": "SZ-SP-L-004: History list renders all items without virtualization",
+  "situation": "HistoryTab.tsx uses history.map() to render entire list in DOM with no viewport constraint or lazy loading. In sidepanel (~400px wide), large history causes excessive DOM nodes, layout jank, and memory pressure from base64 thumbnail decoding.",
+  "action": "Added max-h-[calc(100vh-140px)] overflow-y-auto to list container for native browser scrolling (no JS virtualizer needed for extension sidepanel scale). Added loading='lazy' to img tags to defer off-screen thumbnail decoding.",
+  "files_changed": ["src/sidepanel/HistoryTab.tsx"],
+  "worktree": "opt-sidepanel-1782907225",
+  "direction": "sidepanel:history-virtualization",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 56d01ed on auto/opt-sidepanel-1782907225 pushed to origin. List container now scrollable; images lazy-loaded. Direct-edit path per case-104 escape hatch (cp-guard triggered due to prior unmerged fixes on same file).",
+  "next_suggestion": "Next pending: SZ-SP-L-005 (Tab buttons lack ARIA attributes) or SZ-PP-L-002 (testVisionConnection no timeout)",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-07-047",
+  "audit_depth": "shallow"
+}
