@@ -39,18 +39,18 @@
       "description": "Dev-mode auth bypass: require explicit PA_DEV_MODE=1 env var + startup warning; refuse start without PA_API_TOKEN in production"
     },
     {
-      "fix_case_id": null,
+      "fix_case_id": "case-2026-07-07-147",
       "audit_id": "audit-2026-07-07-020",
       "finding_id": "M-001",
-      "status": "pending",
+      "status": "merged",
       "kind": "route-fix",
-      "description": "Remove /ws/ from _EXEMPT_PREFIXES in auth.py; WS auth handled separately by verify_ws_token()"
+      "description": "Remove /ws/ from _EXEMPT_PREFIXES in auth.py; middleware now checks WS upgrade query token for defense-in-depth"
     },
     {
-      "fix_case_id": null,
+      "fix_case_id": "case-2026-07-08-112",
       "audit_id": "audit-2026-07-07-020",
       "finding_id": "M-002",
-      "status": "pending",
+      "status": "merged",
       "kind": "route-fix",
       "description": "web.py scraper User-Agent: use proper bot UA or switch to official search APIs"
     },
@@ -157,14 +157,41 @@
       "status": "pending",
       "kind": "route-fix",
       "description": "xiaozhi_server.py: log temp WAV unlink failures instead of silent pass"
+    },
+    {
+      "fix_case_id": null,
+      "audit_id": "research-2026-07-07-001",
+      "finding_id": "RF-001",
+      "status": "pending",
+      "kind": "research-informed",
+      "description": "SenseVoice 替换 faster-whisper：单次前向获得 ASR+情绪+语种+音频事件多维信号，补 asr.py 缺失的情绪维度",
+      "source": {"type": "oss", "name": "SenseVoice", "url": "https://github.com/FunAudioLLM/SenseVoice", "reference_idea": "single-forward multi-task ASR+SER+LID"}
+    },
+    {
+      "fix_case_id": null,
+      "audit_id": "research-2026-07-07-001",
+      "finding_id": "RF-002",
+      "status": "pending",
+      "kind": "research-informed",
+      "description": "引入分层记忆架构（Letta/MemGPT 风格 working/long_term/episodic 三层 + agent 自编辑）替代 memory.py 全量塞 prompt",
+      "source": {"type": "oss", "name": "Letta", "url": "https://github.com/letta-ai/letta", "reference_idea": "tiered self-editing memory with agent-controlled paging"}
+    },
+    {
+      "fix_case_id": null,
+      "audit_id": "research-2026-07-07-001",
+      "finding_id": "RF-003",
+      "status": "pending",
+      "kind": "research-informed",
+      "description": "接入真实向量检索（sqlite-vss/chromadb）替代 HashingEmbedder，实现语义记忆召回",
+      "source": {"type": "oss", "name": "Mem0", "url": "https://github.com/mem0ai/mem0", "reference_idea": "automatic fact extraction + vector retrieval for conversational memory"}
     }
   ],
-  "pending_count": 15,
+  "pending_count": 16,
   "status": "fix-in-progress",
   "_last_scout_at": "2026-07-07T19:55:00Z",
   "_last_scout_case_id": null,
   "_last_scout_summary": "Deep audit on personal-assistant backend-core. 22 findings (4H/11M/5L/3I). 19 route-fix/direction-shift pending dispatch; 3 structural debts queued.",
-  "_status_note": "Deep audit audit-2026-07-07-020 completed 2026-07-07. H-001 CORS wildcard, H-002 api_key injection, H-003 SSRF base_url (merged case-2026-07-07-151), H-004 dev-mode auth bypass (merged case-2026-07-08-111). 15 derived fixes pending.",
+  "_status_note": "2026-07-08 case-112: M-002 web.py bot UA fix merged (88ec20e on opt-web-1782977902)。原 14 audit pending - 1 merged = 13；+ 3 research-informed = 16 pending。status 仍 fix-in-progress。",
   "_status_enum": "idle | auditing | fix-in-progress | cycle-complete | researching",
   "last_audit_completed_at": "2026-07-07T20:05:00Z",
   "last_audit_id": "audit-2026-07-07-020",
@@ -653,9 +680,9 @@
     "research_every": 2,
     "_note": "每完成 research_every 个审计周期触发 1 次研究轮；cycle-complete 时检查"
   },
-  "current_research_topic": null,
-  "last_research_id": null,
-  "last_research_completed_at": null,
-  "last_research_topic": null,
+  "current_research_topic": "personal-assistant 本地优先语音数字分身的 ASR+说话人区分+LLM 调度+记忆闭环——对比开源同类项目（Mallimo/Leon/home-assistant voice pipeline/Coqui 等）的端到端实现方案，找出本项目可借鉴的架构优化",
+  "last_research_id": "research-2026-07-07-001",
+  "last_research_completed_at": "2026-07-07T23:55:00Z",
+  "last_research_topic": "personal-assistant 本地优先语音数字分身的 ASR+说话人区分+LLM 调度+记忆闭环——对比开源同类项目",
   "_derived_fix_kind_enum": "route-fix | direction-shift | structural | research-informed"
 }

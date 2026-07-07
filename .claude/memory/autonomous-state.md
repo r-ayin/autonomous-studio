@@ -14,15 +14,15 @@ metadata:
 
 # 引擎状态 v3.0
 
-- **最后活跃: 2026-07-06T11:00Z（oneday-auto-fix 项目经 audit-2026-07-06-018 审出 17 findings/9 derived fix 后，用户决定删项目不修；9 fix 全标 rejected，cycle 回 complete；引擎待重启选新项目审计）**
-- **活跃项目**: audit-cycle-state status=cycle-complete, pending=0, 9/9 rejected（oneday-auto-fix 已删，fix 目标不存在）。下轮重启 step0 看到 cycle-complete → 触发新全量审计，从剩余未深审项目选目标（FinanceTracker / kaoqin / huiyis 等，避开 skills/x-tool 纯文档）。
-- **当前阶段**: cycle-complete → 待重启触发新全量审计（oneday-auto-fix 已删，勿再派它的 fix）
+- **最后活跃: 2026-07-07T12:58Z（case-2026-07-08-112：M-002 web.py bot UA fix merged on opt-web-1782977902, commit 88ec20e）**
+- **活跃项目**: audit-cycle-state status=fix-in-progress, pending=16 (13 audit + 3 research), current_audit=audit-2026-07-07-020 (personal-assistant), last_research=research-2026-07-07-001。
+- **当前阶段**: fix-in-progress → H-001~H-004 + M-001 + M-002 merged; 研究轮 RF-001/002/003 pending; 下轮继续派生 M-003 SSRF
 - **GOAL_STATUS**: active
-- **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动；审计轮次事件驱动 audit-cycle-state + 敏感路径 audit-log 埋点）
-- **LAST_UPDATED**: 2026-07-06(用户删 oneday-auto-fix 项目; audit-2026-07-06-018 的 9 derived_fixes 全 rejected; cycle-complete; 待重启选新项目审计)
-- **LAST_WORKTREE**: null（oneday-auto-fix 非仓未开 worktree，已删）
+- **ACTIVE_GOAL**: 持续自治管线（无限制预算，scout-scan 驱动；审计轮次事件驱动 audit-cycle-state + 敏感路径 audit-log 埋点 + 研究轮 bounded 联网调研）
+- **LAST_UPDATED**: 2026-07-07(case-2026-07-08-112: M-002 web.py bot UA route-fix merged, pending 17→16)
+- **LAST_WORKTREE**: opt-web-1782977902（M-002 fix, 88ec20e, pushed origin auto/opt-web-1782977902）
 - **LAST_OUTCOME**: done
-- **NEXT_SUGGESTION**: [1] 重启引擎：`setsid bash scripts/autonomous-loop.sh /home/admin/workspace /home/admin/workspace/autonomous-studio-aone --bg`（父目录双参数）。[2] step0 见 cycle-complete → 自动触发新全量审计，从未深审项目选目标（FinanceTracker 74 Kotlin / kaoqin / huiyis，避开 skills/x-tool 纯文档）。[3] 勿再派 oneday-auto-fix 的 fix（项目已删，9 fix 已 rejected）。
+- **NEXT_SUGGESTION**: [1] 派生 M-003 ApiWebSearcher._generic base_url SSRF validation (route-fix, 同 area web 复用 opt-web-1782977902)。[2] M-004 rate limiting /chat /ingest /distill。[3] RF-001 SenseVoice 替换 faster-whisper (direction-shift, effort=M)。[4] RF-002+RF-003 合并 direction-shift (分层记忆+向量检索触及 memory.py 公共接口)。[5] 提醒用户 merge opt-web-1782977902 (含 M-002 + 4 prior commits)。[6] structural debts SD-PA-001/002/003 待授权。
 - **自主循环**: 🟢 活跃
   - L1 Inline: 每次回复末尾内联检查 (+ git status)
   - L2 Heartbeat: CronCreate 每7分钟（执行轨——推进 Studio 阶段或主动扫描）
@@ -74,10 +74,10 @@ metadata:
 <!-- GOAL_ID: G-2026-06-15-002 -->
 <!-- GOAL_STATUS: active -->
 <!-- ACTIVE_GOAL: ralph-wiggum-autonomous-loop (每轮一个小工作单位，scout-scan 排序选任务) -->
-<!-- LAST_UPDATED: 2026-07-06(case-2026-07-06-001 deep-audit oneday-auto-fix audit-2026-07-06-018; 17 findings→9 pending derived fix) -->
-<!-- LAST_WORKTREE: null（审计轮不派 fix） -->
+<!-- LAST_UPDATED: 2026-07-07(case-2026-07-08-112: M-002 web.py bot UA route-fix merged, pending 17→16) -->
+<!-- LAST_WORKTREE: opt-web-1782977902（M-002 fix, 88ec20e） -->
 <!-- LAST_OUTCOME: done -->
-<!-- NEXT_SUGGESTION: [1] 派 case-2026-07-06-001 H-001 oneday-auto-fix gitPush --branch shell 注入(单文件 route-fix 复用 worktree). [2] case-2026-07-06-003 H-003 direction-shift prompt 净化+去 Bash 工具(开新 worktree). [3] case-2026-07-06-002 H-002 ignoreHTTPSErrors 多文件批改. 全 9 fix merged|rejected 后 cycle-complete → 下次全量审计 FinanceTracker(Kotlin 按模块分段). -->
+<!-- NEXT_SUGGESTION: [1] M-003 ApiWebSearcher base_url SSRF。[2] M-004 rate limit。[3] RF-001 SenseVoice direction-shift。[4] RF-002+RF-003 合并 direction-shift。[5] merge opt-web-1782977902。[6] structural debts 待授权。 -->
 
 | 字段 | 内容 |
 |------|------|

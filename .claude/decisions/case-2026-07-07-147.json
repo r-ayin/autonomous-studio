@@ -1,0 +1,32 @@
+{
+  "case_id": "case-2026-07-07-147",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-07T21:30:00Z",
+  "project": "personal-assistant",
+  "work_unit": "auth:ws-exempt-removal (M-001 derived fix)",
+  "situation": "audit-2026-07-07-020 finding M-001: /ws/ in _EXEMPT_PREFIXES causes HTTP middleware to skip auth for WS upgrade requests. While existing WS handlers (/ws/live, /ws/audio) call verify_ws_token() and /ws/xiaozhi uses auth._check() internally, any future WS endpoint added without explicit auth would be silently unprotected. Defense-in-depth gap.",
+  "action": "Removed /ws/ from _EXEMPT_PREFIXES. Updated auth_middleware and verify_http to detect /ws/ paths and extract token from query param ?token= instead of Authorization header. This provides defense-in-depth: middleware now validates WS upgrade requests before they reach handlers. Existing handlers retain their own auth checks (double-check pattern). Stacked on top of H-004 dev-mode fix in existing opt-auth-1783427422 worktree via direct wt edit (cp-guard escape hatch per MEMORY [[Stack on diverged wt escape hatch]]).",
+  "files_changed": ["personal_assistant/auth.py"],
+  "worktree": "opt-auth-1783427422",
+  "direction": "auth:ws-exempt-removal",
+  "outcome": "succeeded",
+  "outcome_evidence": "git commit 8b0d8c7 on auto/opt-auth-1783427422; pushed to origin successfully. Diff: 27 insertions, 7 deletions in auth.py. Three functions modified: _EXEMPT_PREFIXES tuple (removed /ws/), auth_middleware (added WS query-param token extraction), verify_http (same WS path handling). All existing WS handler auth checks remain intact as second layer.",
+  "next_suggestion": [
+    "派生 M-002 fix: web.py scraper User-Agent 改为合规 bot UA 或切换官方搜索 API",
+    "派生 M-006 fix: xiaozhi_server.py WS auth 重构为使用 auth.verify_ws_token() 消除重复实现",
+    "剩余 14 pending derived_fixes 逐个派生（M-003/M-004/M-005/M-009/M-010/M-011/L-001/L-002/L-004/L-005/I-001/I-003）"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "personal_assistant/auth.py",
+      "line": 49,
+      "severity": "medium",
+      "finding": "/ws/ in _EXEMPT_PREFIXES exempts WS upgrade requests from HTTP middleware auth check. If a WS handler omits its own auth, the endpoint is silently unprotected. Defense-in-depth gap.",
+      "remediation": "Remove /ws/ from exempt list; add WS-aware token extraction (query param) in middleware. Applied in this case.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-020",
+  "audit_depth": "shallow"
+}

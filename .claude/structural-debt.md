@@ -95,3 +95,35 @@ Status enum: `open | scheduled | resolved`
 - **severity**: medium
 - **status**: open
 - **source_finding**: ESE-RT-M02
+## SD-PA-001 — storage.py hash()-based ID generation non-deterministic + collision-prone
+
+- **debt_id**: SD-PA-001
+- **audit_id**: audit-2026-07-07-020
+- **project**: personal-assistant
+- **description**: Memory/event/reminder/intervention ID generation uses `abs(hash())%10**12` which is non-deterministic across Python runs (PYTHONHASHSEED randomization) and has collision risk. Same pattern in add_event (L219), add_reminder (L254), add_intervention (L184). Fix requires replacing all ID generation with uuid4() or hashlib.sha256(), plus migration logic for existing records. Cross-cutting change touches storage.py core + any code that depends on deterministic IDs.
+- **affected_files**: personal_assistant/storage.py (L88, L184, L219, L254)
+- **severity**: medium
+- **status**: open
+- **source_finding**: M-007
+
+## SD-PA-002 — storage.py connect() re-executes full SCHEMA DDL on every call
+
+- **debt_id**: SD-PA-002
+- **audit_id**: audit-2026-07-07-020
+- **project**: personal-assistant
+- **description**: Every `connect()` call re-runs 11 CREATE TABLE IF NOT EXISTS + CREATE INDEX statements via executescript(). While IF NOT EXISTS prevents errors, this adds unnecessary overhead to every DB operation. Fix requires connection pooling or schema-version tracking (e.g., PRAGMA user_version) with conditional DDL execution. Structural because it changes the DB initialization architecture.
+- **affected_files**: personal_assistant/storage.py (L52)
+- **severity**: low
+- **status**: open
+- **source_finding**: L-003
+
+## SD-PA-003 — config.py module-level global CONFIG loaded at import time
+
+- **debt_id**: SD-PA-003
+- **audit_id**: audit-2026-07-07-020
+- **project**: personal-assistant
+- **description**: CONFIG is a module-level global loaded at import time (`CONFIG = load_config()`). Runtime overrides via set_override() partially address this, but .env changes after startup are never picked up. Full fix requires lazy config loading or a config reload mechanism with cache invalidation. Low urgency — acceptable for single-process app but limits testability and multi-instance deployment.
+- **affected_files**: personal_assistant/config.py (L74)
+- **severity**: low
+- **status**: open
+- **source_finding**: M-008
