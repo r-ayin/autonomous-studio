@@ -1,0 +1,64 @@
+{
+  "case_id": "case-2026-07-07-133",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-07T13:40:00+08:00",
+  "project": "shizi",
+  "work_unit": "SZ-BG-H-001: add runtime message validation to handleMessage",
+  "situation": "audit-2026-07-07-047 found SZ-BG-H-001 (high): handleMessage in src/background/index.ts destructures message fields (settings, imageData, region, id, ocrResults, regions, imageSize) without any runtime type-checking or schema validation. A compromised content script or externally-injected chrome.runtime message could inject a crafted VisionConfig with malicious baseUrl/apiKey that gets persisted via saveSettings and used for all subsequent API calls — credential exfiltration vector.",
+  "action": "Added validateSettings() function with allowlisted keys at every nesting level (vision/counter/detectionParams), type checks on every field, range validation on numeric params, and enum validation on detectionMethod/segmentationModel. Added isImageDataString() guard requiring data:image/ prefix on imageData fields. Added validateBoundingBox() for region coordinates. Wired validation into saveSettings, deleteHistory, refilter, ocrRegion, and runPipeline message handlers. All invalid inputs return {success:false, error} instead of proceeding.",
+  "files_changed": ["src/background/index.ts"],
+  "worktree": "opt-background-1783213292",
+  "direction": "background:message-validation",
+  "outcome": "succeeded",
+  "outcome_evidence": "Committed 5fd19ca to auto/opt-background-1783213292, pushed to origin. validateSettings rejects unknown keys, wrong types, out-of-range values. isImageDataString blocks non-data-URI strings. validateBoundingBox enforces numeric coords. All 6 message handlers now validate before processing.",
+  "next_suggestion": [
+    "SZ-PP-H-001: Add file size limit (10MB) to ImageUploader.processFile() to prevent memory bomb via large file base64 encoding",
+    "SZ-SH-H-001: Remove host_permissions <all_urls> and activeTab from manifest.json — extension never uses tab/scripting APIs",
+    "SZ-BG-H-002: Replace O(n²) blobToBase64 string concatenation with chunked approach in ocr-internal.ts"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "src/background/index.ts",
+      "line": 26,
+      "severity": "high",
+      "finding": "saveSettings accepted unvalidated message.settings — attacker could inject malicious VisionConfig.baseUrl/apiKey for credential exfiltration",
+      "remediation": "Added validateSettings() with allowlisted keys, type checks, and range validation before persisting",
+      "kind": "route-fix"
+    },
+    {
+      "file": "src/background/index.ts",
+      "line": 42,
+      "severity": "high",
+      "finding": "deleteHistory accepted unvalidated message.id",
+      "remediation": "Added typeof check requiring non-empty string",
+      "kind": "route-fix"
+    },
+    {
+      "file": "src/background/index.ts",
+      "line": 53,
+      "severity": "high",
+      "finding": "refilter accepted unvalidated ocrResults/regions/imageSize arrays",
+      "remediation": "Added Array.isArray checks, imageSize tuple validation, and validateBoundingBox on each region",
+      "kind": "route-fix"
+    },
+    {
+      "file": "src/background/index.ts",
+      "line": 64,
+      "severity": "high",
+      "finding": "ocrRegion accepted unvalidated imageData and region",
+      "remediation": "Added isImageDataString guard and validateBoundingBox",
+      "kind": "route-fix"
+    },
+    {
+      "file": "src/background/index.ts",
+      "line": 73,
+      "severity": "high",
+      "finding": "runPipeline accepted unvalidated imageData",
+      "remediation": "Added isImageDataString guard before pipeline execution",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-047",
+  "audit_depth": "shallow"
+}
