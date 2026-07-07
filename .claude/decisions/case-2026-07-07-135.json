@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-07-135",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-07T21:30:00+08:00",
+  "project": "shizi",
+  "work_unit": "SZ-BG-H-003: tile ownership boundary fix in mergeOcrResults",
+  "situation": "mergeOcrResults in ocr-internal.ts used global midpoint (midX/midY) to assign OCR results to tiles via quadrant check. Tiles overlap by 30% (tile size = 70%, stride = 30%). The global midpoint falls inside the overlap zone, causing text blocks near image center to be dropped from the correct tile and potentially lost entirely.",
+  "action": "Replaced quadrant-based ownership check (tileOwnsLeft/tileOwnsTop vs resultInLeft/resultInTop against midX/midY) with tile actual bounds check. Each tile now keeps results whose center falls within [tile.x, tile.x+tile.w) × [tile.y, tile.y+tile.h). Overlap-zone duplicates are resolved by downstream nmsDedup call. Removed unused scaledW/scaledH/midX/midY variables.",
+  "files_changed": ["src/background/ocr-internal.ts"],
+  "worktree": "opt-background-1783213292",
+  "direction": "background:tile-boundary-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 64a0fcb on auto/opt-background-1783213292. Diff: -10 lines (quadrant logic + unused vars), +9 lines (bounds check + comment). Branch pushed to origin. Stacked on prior SZ-BG-H-001/H-002 fixes in same worktree.",
+  "next_suggestion": "Next HIGH priority pending fix: SZ-SP-H-001 (containerRef dual assignment in SidePanelApp.tsx) or SZ-PP-H-001 (upload size limit in ImageUploader.tsx). Both are route-fixes in different areas requiring new worktrees.",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "src/background/ocr-internal.ts",
+      "line": "258-281",
+      "severity": "high",
+      "finding": "Tile ownership quadrant check uses global midpoint instead of tile actual bounds, dropping valid OCR results near tile boundaries in the 30% overlap zone",
+      "remediation": "Replace quadrant check with tile bounds check; rely on NMS dedup for overlap-zone duplicates",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-047",
+  "audit_depth": "shallow"
+}
