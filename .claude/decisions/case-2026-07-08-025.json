@@ -1,0 +1,31 @@
+{
+  "case_id": "case-2026-07-08-025",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-08T15:53:00+08:00",
+  "project": "shizi",
+  "work_unit": "SZ-PP-M-002: MIME type check relies solely on file.type — trivially bypassable",
+  "situation": "ImageUploader.tsx line 14 only checks file.type.startsWith('image/') to validate uploads. This MIME type is set by the browser based on file extension and can be trivially spoofed by renaming a non-image file to .png. No content-based validation exists.",
+  "action": "Added async validateImageMagicBytes() function that reads first 12 bytes and checks against known image format signatures (PNG/JPEG/GIF89a/GIF87a/WebP/BMP/ICO). Integrated into processFile() after size check, before FileReader.readAsDataURL. WebP requires secondary check at offset 8 for 'WEBP' marker since RIFF header is shared with other formats.",
+  "files_changed": ["src/popup/ImageUploader.tsx"],
+  "worktree": "opt-popup-1783215325",
+  "direction": "popup:mime-validation",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 7e01bd8 on auto/opt-popup-1783215325 pushed to origin. +64/-11 lines. cp-guard triggered (SZ-PP-H-001 unmerged in wt), used case-104 direct wt commit escape hatch.",
+  "next_suggestion": [
+    "SZ-PP-M-003: getSettings sendMessage has no .catch — permanent loading",
+    "SZ-PP-M-004: Debounced saveSettings has no error handling and stale closure risk"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "src/popup/ImageUploader.tsx",
+      "line": 14,
+      "severity": "medium",
+      "finding": "MIME type check relies solely on file.type.startsWith('image/') which is trivially bypassable via renamed extensions or spoofed Content-Type",
+      "remediation": "Added magic-byte validation reading first 12 bytes and matching against PNG/JPEG/GIF/WebP/BMP/ICO signatures before processing",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-047",
+  "audit_depth": "shallow"
+}
