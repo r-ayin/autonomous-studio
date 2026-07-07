@@ -1,0 +1,76 @@
+{
+  "case_id": "case-2026-07-08-006",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-08T08:30:00+08:00",
+  "project": "wechat-main",
+  "work_unit": "Deep audit of unaudited modules (benchmark/hotspot-entry/persona/planning/prompts/reference/tests + feedback_collector/knowledge_base/persona_drift/steps slug bypass)",
+  "situation": "audit-cycle-state was cycle-complete with all workspace projects audited ≥1×. wechat-main audit-022 covered scripts/+script-verifier/+topic-pool/ but left 7 directories + several source files unaudited. Incremental deep audit triggered.",
+  "action": "Ran sonnet sub-agent to deep-audit remaining modules. Read 23 files across benchmark/, hotspot-entry/, persona/, planning/, prompts/, reference/, tests/, and source scripts (feedback_collector.py, knowledge_base.py, persona_drift.py, steps.py, pipeline.py). Found 6 actionable findings (1H+3M+2L) after deduplication against audit-022 H-001. Wrote audit report audit-2026-07-08-041.md. Updated audit-cycle-state to fix-in-progress with 6 pending derived_fixes.",
+  "files_changed": [
+    ".claude/audits/audit-2026-07-08-041.md",
+    ".claude/audit-cycle-state.json"
+  ],
+  "worktree": null,
+  "direction": "audit-only",
+  "outcome": "succeeded",
+  "outcome_evidence": "audit-2026-07-08-041.md written (6 findings: WC-EXT-H-002, WC-EXT-M-001..M-003, WC-EXT-L-001..L-002). audit-cycle-state.json updated: status=fix-in-progress, pending_count=6, last_audit_id=audit-2026-07-08-041. WC-EXT-H-001 deduped against audit-022 H-001 (same file+line). No opt-worktree commit this round (audit-only per protocol).",
+  "next_suggestion": [
+    "派生 WC-EXT-H-002 fix: feedback_collector.py slug validation at CLI ingestion point",
+    "派生 WC-EXT-M-002 fix: pipeline.py:125 apply _slugify to args.slug (root cause fix eliminates M-001 downstream)",
+    "派生 WC-EXT-M-003 fix: knowledge_base.py size guard before read_text",
+    "派生 WC-EXT-L-001/L-002 fixes: atomic cache write + persona_drift size guard"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "scripts/feedback_collector.py",
+      "line": 62,
+      "severity": "high",
+      "finding": "slug JSONL log injection — unsanitized CLI slug embedded in JSONL record enables format corruption",
+      "remediation": "Validate slug against re.fullmatch(r'[a-z0-9][a-z0-9_-]{0,63}', slug) at CLI ingestion point",
+      "kind": "route-fix"
+    },
+    {
+      "file": "scripts/steps.py",
+      "line": 256,
+      "severity": "medium",
+      "finding": "shell injection via slug interpolated into bash command strings when --slug bypasses _slugify",
+      "remediation": "Apply _slugify to args.slug or use shlex.quote for all interpolated values",
+      "kind": "route-fix"
+    },
+    {
+      "file": "scripts/pipeline.py",
+      "line": 125,
+      "severity": "medium",
+      "finding": "--slug CLI override bypasses _slugify sanitization — root cause of shell injection class",
+      "remediation": "slug = _slugify(args.slug) if args.slug else _slugify(topic)",
+      "kind": "route-fix"
+    },
+    {
+      "file": "scripts/knowledge_base.py",
+      "line": 75,
+      "severity": "medium",
+      "finding": "unbounded file read — no size guard before read_text on CLI-supplied article path",
+      "remediation": "Add stat().st_size check, reject >10MB",
+      "kind": "route-fix"
+    },
+    {
+      "file": "scripts/research_cache.py",
+      "line": 166,
+      "severity": "low",
+      "finding": "non-atomic cache write — crash mid-write leaves corrupted JSON",
+      "remediation": "Write to .tmp then os.rename() for atomic replacement",
+      "kind": "route-fix"
+    },
+    {
+      "file": "scripts/persona_drift.py",
+      "line": 90,
+      "severity": "low",
+      "finding": "unbounded markdown read in extract_style_vector — no size guard",
+      "remediation": "Add size check, skip files exceeding threshold",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-08-041",
+  "audit_depth": "deep"
+}
