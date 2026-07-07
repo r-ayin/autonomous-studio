@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-07-07-140",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-07T17:28:00+08:00",
+  "project": "shizi",
+  "work_unit": "background:setPanelBehavior-dedup",
+  "situation": "audit-047 SZ-BG-L-003 (low): chrome.sidePanel.setPanelBehavior called twice — once inside onInstalled listener (line 297) and again at top-level (line 300). setPanelBehavior persists across browser sessions; the top-level call fires on every service worker wake with no additional effect, wasting IPC.",
+  "action": "Removed redundant top-level setPanelBehavior call. Kept only the onInstalled path. Added comment explaining persistence semantics to prevent future re-addition.",
+  "files_changed": ["src/background/index.ts"],
+  "worktree": "auto/opt-background-1783213292",
+  "direction": "background:panel-behavior-dedup",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 8221c7b on auto/opt-background-1783213292. Pushed to origin. File reduced from 2 setPanelBehavior calls to 1. cp-guard triggered (diverged wt), used case-104 direct-edit channel per memory [[Stack on diverged wt escape hatch]].",
+  "next_suggestion": [
+    "SZ-BG-L-004: CJK regex misses Extension B-F and compatibility ideographs (low, route-fix)",
+    "SZ-BG-L-005: uploadImage retry chain does not indicate retry count in error (low, route-fix)"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-07-047",
+  "audit_depth": "shallow"
+}
