@@ -3,73 +3,15 @@
  *
  * Replaces local SQLite operations with HTTP calls to aone-agent-server.
  * API base URL is read from process.env.DEVOUT_SERVER_URL.
+ *
+ * Shared HTTP helpers (getBaseUrl/getHeaders/apiGet/apiPost/apiPut) live in
+ * ./http-base.js — extracted per audit-2026-07-02-006 finding L-001.
+ * Timeout logic preserved from H-001 / H-002 fixes.
  */
 
-// ─── Internal helpers ────────────────────────────────────────────────────────
-
-function getBaseUrl() {
-  const url = process.env.DEVOUT_SERVER_URL;
-  if (!url) {
-    throw new Error('DEVOUT_SERVER_URL not set');
-  }
-  return url.replace(/\/$/, '');
-}
-
-function getHeaders() {
-  const headers = { 'Content-Type': 'application/json' };
-  if (process.env.CODE_PRIVATE_TOKEN) {
-    headers['X-Agent-Authorization'] = `Code ${process.env.CODE_PRIVATE_TOKEN}`;
-  } else if (process.env.DEVOUT_TOKEN) {
-    headers['token'] = process.env.DEVOUT_TOKEN;
-  }
-  return headers;
-}
+import { apiGet, apiPost, apiPut } from './http-base.js';
 
 const API_PREFIX = '/api/v1/agent/tasks';
-
-async function apiGet(path) {
-  const url = `${getBaseUrl()}${path}`;
-  const res = await fetch(url, {
-    method: 'GET',
-    headers: getHeaders(),
-  });
-  if (res.status === 404) {
-    return null;
-  }
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`GET ${url} failed with status ${res.status}: ${text}`);
-  }
-  return res.json();
-}
-
-async function apiPost(path, body) {
-  const url = `${getBaseUrl()}${path}`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: getHeaders(),
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`POST ${url} failed with status ${res.status}: ${text}`);
-  }
-  return res.json();
-}
-
-async function apiPut(path, body) {
-  const url = `${getBaseUrl()}${path}`;
-  const res = await fetch(url, {
-    method: 'PUT',
-    headers: getHeaders(),
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`PUT ${url} failed with status ${res.status}: ${text}`);
-  }
-  return res.json();
-}
 
 // ─── Exported API ────────────────────────────────────────────────────────────
 

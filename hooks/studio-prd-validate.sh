@@ -18,11 +18,13 @@ if [[ ! -f "$FILE_PATH" ]]; then
     exit 0
 fi
 
+export FILE_PATH
 python3 << PYEOF
-import json, sys
+import json, os, sys
 
 try:
-    with open("$FILE_PATH") as f:
+    file_path = os.environ["FILE_PATH"]
+    with open(file_path) as f:
         prd = json.load(f)
 except json.JSONDecodeError as e:
     print(f"prd.json 格式错误: {e}")

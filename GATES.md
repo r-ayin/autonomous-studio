@@ -8,7 +8,7 @@
 - [ ] L1 Inline 检查每次回复末尾执行（行为约束，无法静态核验）
 - [ ] L2 Heartbeat CronCreate 注册存活（每 2 小时，GLM 预算制）（会话状态，需 CronList 核验）
 - [ ] L3 Deep CronCreate 注册存活（每 4 小时）（会话状态，需 CronList 核验）
-- [ ] 核心 Hook 注册存活（decision-observer / save-checkpoint / resume-checkpoint / **incremental-save** / discovery-gate / protocol-check / stop-completion-gate / post-edit-lint）⚠️ 7/8 已注册；incremental-save.py 脚本存在但**未在 settings.json 中注册**，其余均已确认
+- [ ] 核心 Hook 注册存活（decision-observer / discovery-gate / protocol-check / patterns-write-gate / autonomous-commit-gate / pipeline-gate / post-edit-lint / notify-phone / stop-completion-gate）✅ 9/9 已注册；另有 5 个脚本存在于磁盘但未注册（auto-commit / codegraph-sync / incremental-save / resume-checkpoint / save-checkpoint），详见 `.claude/hooks/UNREGISTERED.md`
 - [x] stop-completion-gate.py 在 Stop 时生效（Stop hook 已注册：`python "…/stop-completion-gate.py"`）
 - [x] post-edit-lint.py 在 Edit/Write 后生效（PostToolUse Edit|Write hook 已注册）
 - [x] SKILL.md 可被 Skill 工具正确加载（name: autonomous-studio 已确认）

@@ -22,9 +22,6 @@
 # 不在 workspace 根目录跑——case/state/audit 都落 engine-dir/.claude/。
 set -uo pipefail
 
-# L-001 fix (audit-2026-07-01-002): Ctrl-C / SIGTERM 时清理 claude -p 子进程，防孤儿
-trap 'echo "[trap] 收到信号，终止子进程组..."; kill 0 2>/dev/null; exit 130' INT TERM
-
 WORKSPACE="${1:-.}"
 ENGINE_DIR="${2:-$WORKSPACE/autonomous-studio}"
 BG_FLAG="${3:-}"
@@ -35,17 +32,36 @@ mkdir -p "$ENGINE_DIR/.claude"
 
 # --bg: 自举为后台进程（nohup + 日志重定向），父进程退出。
 # M-004 fix (audit-2026-07-01-002): 文档声称支持但原代码未实现。
+# EC-017 fix: setsid 隔离进程组，防止 --bg 子进程树泄漏到启动终端的进程组。
+#   setsid 让 re-exec 的子进程成为新 session leader（新进程组），这样：
+#   1. 终端关闭（SIGHUP）不传播给后台循环——nohup 挡 HUP，setsid 断父进程组关联
+#   2. kill $BG_PID 或 kill -TERM -$BG_PID 能杀掉整个后台进程树（同组）
+#   3. trap `kill 0` 只杀后台自己的进程组，不误杀启动终端的其他进程
+#   trap 延迟到 --bg 出口之后安装（launcher 进程不需要也不应该 kill 0）。
 if [[ "$BG_FLAG" == "--bg" ]]; then
   LOG_FILE="/tmp/autonomous-loop-$(date +%Y%m%d-%H%M%S).log"
-  nohup "$0" "$WORKSPACE" "$ENGINE_DIR" </dev/null >"$LOG_FILE" 2>&1 &
+  setsid nohup "$0" "$WORKSPACE" "$ENGINE_DIR" </dev/null >"$LOG_FILE" 2>&1 &
   BG_PID=$!
   echo "[autonomous-loop] 已后台启动 PID=$BG_PID 日志=$LOG_FILE"
   echo "[autonomous-loop] 停: touch $STOP_MARKER  或 kill $BG_PID"
   exit 0
 fi
 
-# 清掉旧的停止标记（启动时）
-rm -f "$STOP_MARKER"
+# L-001 fix (audit-2026-07-01-002): Ctrl-C / SIGTERM 时清理 claude -p 子进程，防孤儿
+# AS-EC-007 fix (audit-2026-07-02-002): trap 同时清理 run_round 中 mktemp 的临时文件，
+#   避免 SIGINT 落在 mktemp→shred 窗口内导致敏感输出泄漏到 /tmp。
+# EC-017: trap 放在 --bg exit 之后，只在实际长跑工作进程中安装。
+#   launcher 进程（--bg 分支）不安装 trap——它 exit 0 即走，无需 kill 0。
+CURRENT_OUT_FILE=""
+trap 'echo "[trap] 收到信号，终止子进程组..."; if [ -n "$CURRENT_OUT_FILE" ] && [ -e "$CURRENT_OUT_FILE" ]; then shred -u "$CURRENT_OUT_FILE" 2>/dev/null || rm -f "$CURRENT_OUT_FILE"; fi; kill 0 2>/dev/null; exit 130' INT TERM
+
+# 启动时若停止标记仍存在 → 用户已暂停。外部重启者（沙箱 .start / watchdog）会
+# 反复拉起本脚本，必须在启动处立即退出且**不擦除标记**——否则每次重启都擦掉
+# 标记后跑一轮，停止信号被击穿（打地鼠）。恢复运行：用户 rm 标记即可。
+if [[ -f "$STOP_MARKER" ]]; then
+  echo "[$(date +%H:%M:%S)] 启动时检测到停止标记，立即退出（暂停中，保留标记）"
+  exit 0
+fi
 
 PROMPT='你是 autonomous-studio 引擎的持续自治循环（Ralph Wiggum 模式，每轮新 context）。
 当前轮次：推进持久化自动开发研究管线的**一个小工作单位** 或 **一次全量深度审计**（由 audit-cycle-state 决定）。
@@ -77,13 +93,13 @@ echo "engine-dir: $ENGINE_DIR"
 echo "停止: touch $STOP_MARKER  或  kill $$"
 echo ""
 
-# 模型策略（用户 2026-07-01 改）：自动决策引擎只跑 qwen3.7-max，不再 GLM-5.2/fallback 切换。
-# 原因：用户指示自动模式只跑 qwen3.7-max，避免 GLM 限流波动 + 简化模型策略。
+# 模型策略（用户 2026-07-04 改）：自动决策引擎默认跑 GLM-5.2，qwen3.7-max 作 402 兜底。
+# 原因：用户指示默认改回 GLM-5.2；保留 qwen3.7-max 兜底是因为 GLM-5.2 在连续自治下配额易 402 耗尽（2026-06-29 实测 6264 轮末段数百轮 402 空转），限流时切独立额度的 qwen 续跑。
 # 代理层：env ANTHROPIC_MODEL 经重映射，settings.json 的 model 字段对 claude -p 无效，必须 --model。
-PRIMARY_MODEL="qwen3.7-max"        # 自动模式唯一模型，独立额度已验证 200
-FALLBACK_MODEL="qwen3.7-max"      # 同模型，不切换；保留变量名供下方逻辑兼容
-STICKY_FAIL_THRESHOLD=9999        # 极大值，永不粘性切换（同模型无意义切换）
-PROBE_EVERY=9999                  # 同上
+PRIMARY_MODEL="glm-5.2"            # 自动模式默认模型（用户 2026-07-04 改回）
+FALLBACK_MODEL="qwen3.7-max"      # GLM 402 限流时兜底，代理层独立额度
+STICKY_FAIL_THRESHOLD=3           # GLM 连续 3 轮 402 → 粘到 qwen 兜底，每 PROBE_EVERY 轮探测恢复
+PROBE_EVERY=5                   # 粘到 qwen 后每 5 轮探测 GLM 是否恢复
 STICKY_FALLBACK=0
 GLM_FAIL_STREAK=0
 PROBE_COUNTDOWN=0
@@ -96,6 +112,7 @@ PROBE_COUNTDOWN=0
 run_round() {
   local model="$1" out_file rc=0
   out_file=$(mktemp) || return 1
+  CURRENT_OUT_FILE="$out_file"
   claude -p "$PROMPT" --model "$model" --permission-mode bypassPermissions >"$out_file" 2>&1 || true
   tail -30 "$out_file"
   # L-003 fix (audit-2026-07-01-002): 收窄限流 grep，避免误匹配 'line 429'/'insufficient coverage' 等正常输出
@@ -103,62 +120,69 @@ run_round() {
   if grep -qiE '\b(402|429)\b|quota[ _]?(exceeded|limit)|rate[ _]?limit(ed)?' "$out_file"; then
     rc=1
   fi
+  # AS-EC-007: shred 之前清空 CURRENT_OUT_FILE，缩小 trap 清理窗口；trap 兜底已赋值但未清空的 SIGINT 场景
+  CURRENT_OUT_FILE=""
   shred -u "$out_file" 2>/dev/null || rm -f "$out_file"
   return $rc
 }
 
 ITER=0
 while true; do
-  # 检查停止标记
+  # 检查停止标记（不擦除：外部重启者会反复拉起本脚本，擦除即击穿暂停）
   if [[ -f "$STOP_MARKER" ]]; then
-    echo "[$(date +%H:%M:%S)] 收到停止标记，退出循环（共 $ITER 轮）"
-    rm -f "$STOP_MARKER"
+    echo "[$(date +%H:%M:%S)] 收到停止标记，退出循环（共 $ITER 轮，保留标记供重启者识别）"
     break
   fi
   ITER=$((ITER+1))
   echo "[$(date +%H:%M:%S)] === 轮次 $ITER ==="
-  # 每轮新 context（cloudcli claude 无 --max-iterations）；预算不设上限（用户 2026-06-27），靠 while 重开天然限单轮规模
-  # bypassPermissions：不弹权限提示（否则后台卡）；安全由 hook 兜底
-  #   - autonomous-commit-gate: 拦 main 提交
-  #   - discovery-gate / patterns-write-gate / stop-completion-gate: 各自门禁
-  cd "$ENGINE_DIR"
-  # 模型自适应：优先 GLM-5.2，限流回退 qwen3.7-max（见上方策略变量）
-  if (( STICKY_FALLBACK )); then
-    # 已粘到 fallback：直接 qwen3.7-max，周期性探 GLM-5.2 恢复
-    if (( PROBE_COUNTDOWN <= 0 )); then
-      echo "[$(date +%H:%M:%S)] 探测 $PRIMARY_MODEL 是否恢复..."
-      if run_round "$PRIMARY_MODEL"; then
-        echo "[$(date +%H:%M:%S)] $PRIMARY_MODEL 恢复，解除粘性回退"
-        STICKY_FALLBACK=0; GLM_FAIL_STREAK=0
+  # AS-H-001 fix (audit-2026-07-01-007): 循环体包进 subshell，cd 仅在子进程生效。
+  # 原实现 cd "$ENGINE_DIR" 在 while 内直接执行，run_round 内的 claude -p 或后续命令
+  # 若改 cwd（如 cd 到子项目），下一轮 STOP_MARKER/case 路径基于错误 cwd 计算→
+  # 引擎静默写入错误位置或找不到停止标记。subshell 隔离后父 shell cwd 永驻启动目录。
+  (
+    cd "$ENGINE_DIR" || exit 1
+    # 每轮新 context（cloudcli claude 无 --max-iterations）；预算不设上限（用户 2026-06-27），靠 while 重开天然限单轮规模
+    # bypassPermissions：不弹权限提示（否则后台卡）；安全由 hook 兜底
+    #   - autonomous-commit-gate: 拦 main 提交
+    #   - discovery-gate / patterns-write-gate / stop-completion-gate: 各自门禁
+    # 模型自适应：优先 GLM-5.2，限流回退 qwen3.7-max（见上方策略变量）
+    if (( STICKY_FALLBACK )); then
+      # 已粘到 fallback：直接 qwen3.7-max，周期性探 GLM-5.2 恢复
+      if (( PROBE_COUNTDOWN <= 0 )); then
+        echo "[$(date +%H:%M:%S)] 探测 $PRIMARY_MODEL 是否恢复..."
+        if run_round "$PRIMARY_MODEL"; then
+          echo "[$(date +%H:%M:%S)] $PRIMARY_MODEL 恢复，解除粘性回退"
+          STICKY_FALLBACK=0; GLM_FAIL_STREAK=0
+        else
+          echo "[$(date +%H:%M:%S)] $PRIMARY_MODEL 仍限流，回退 $FALLBACK_MODEL"
+          run_round "$FALLBACK_MODEL" || true
+          PROBE_COUNTDOWN=$PROBE_EVERY
+        fi
       else
-        echo "[$(date +%H:%M:%S)] $PRIMARY_MODEL 仍限流，回退 $FALLBACK_MODEL"
         run_round "$FALLBACK_MODEL" || true
-        PROBE_COUNTDOWN=$PROBE_EVERY
+        PROBE_COUNTDOWN=$((PROBE_COUNTDOWN-1))
       fi
     else
-      run_round "$FALLBACK_MODEL" || true
-      PROBE_COUNTDOWN=$((PROBE_COUNTDOWN-1))
-    fi
-  else
-    # 正常：先 GLM-5.2，限流即本轮回退 qwen3.7-max
-    if run_round "$PRIMARY_MODEL"; then
-      GLM_FAIL_STREAK=0
-    else
-      echo "[$(date +%H:%M:%S)] $PRIMARY_MODEL 限流，回退 $FALLBACK_MODEL"
-      run_round "$FALLBACK_MODEL" || true
-      GLM_FAIL_STREAK=$((GLM_FAIL_STREAK+1))
-      if (( GLM_FAIL_STREAK >= STICKY_FAIL_THRESHOLD )); then
-        echo "[$(date +%H:%M:%S)] $PRIMARY_MODEL 连续 $GLM_FAIL_STREAK 轮限流，粘到 $FALLBACK_MODEL（每 $PROBE_EVERY 轮探测恢复）"
-        STICKY_FALLBACK=1
-        PROBE_COUNTDOWN=$PROBE_EVERY
+      # 正常：先 GLM-5.2，限流即本轮回退 qwen3.7-max
+      if run_round "$PRIMARY_MODEL"; then
+        GLM_FAIL_STREAK=0
+      else
+        echo "[$(date +%H:%M:%S)] $PRIMARY_MODEL 限流，回退 $FALLBACK_MODEL"
+        run_round "$FALLBACK_MODEL" || true
+        GLM_FAIL_STREAK=$((GLM_FAIL_STREAK+1))
+        if (( GLM_FAIL_STREAK >= STICKY_FAIL_THRESHOLD )); then
+          echo "[$(date +%H:%M:%S)] $PRIMARY_MODEL 连续 $GLM_FAIL_STREAK 轮限流，粘到 $FALLBACK_MODEL（每 $PROBE_EVERY 轮探测恢复）"
+          STICKY_FALLBACK=1
+          PROBE_COUNTDOWN=$PROBE_EVERY
+        fi
       fi
     fi
-  fi
-  echo "[$(date +%H:%M:%S)] 轮次 $ITER 结束，提交在 opt-worktree（待人工 opt-worktree.sh show/merge）"
-  # 循环末尾归档孤儿 case（case-341 未竟，多轮遗留）：跨项目轮次写的 case 滞留 AS main
-  # 成 untracked→scout 误算 dirty/撞号。扫 AS main untracked case-*.json，cp 进 housekeeping
-  # worktree 提交、main 还原。自测守卫已在脚本内；失败不阻断主循环（|| true）。
-  bash "$ENGINE_DIR/scripts/loop-archive-cases.sh" autonomous-studio || true
+    echo "[$(date +%H:%M:%S)] 轮次 $ITER 结束，提交在 opt-worktree（待人工 opt-worktree.sh show/merge）"
+    # 循环末尾归档孤儿 case（case-341 未竟，多轮遗留）：跨项目轮次写的 case 滞留 AS main
+    # 成 untracked→scout 误算 dirty/撞号。扫 AS main untracked case-*.json，cp 进 housekeeping
+    # worktree 提交、main 还原。自测守卫已在脚本内；失败不阻断主循环（|| true）。
+    bash "$ENGINE_DIR/scripts/loop-archive-cases.sh" autonomous-studio || true
+  )
   sleep 2  # 短暂喘息，避免空转打爆 API
 done
 

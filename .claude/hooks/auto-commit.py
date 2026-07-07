@@ -3,7 +3,10 @@
 
 触发: Stop (每轮结束) / SessionEnd (SSH断开保护)
 行为: 扫描所有项目仓库 → 有变更 → git add + commit + 更新 PROGRESS.md
-规则: 绝不 push，跳过 .claude/ 等内部文件，merge 冲突时跳过并告警
+规则: 子仓库(is_subrepo=True)自动 push origin；根仓库仅本地 commit。
+      跳过 .claude/、凭证/密钥等敏感文件，merge 冲突时跳过并告警。
+H-004 fix (audit-2026-07-03-017): 原 docstring "绝不 push" 与 line 394 实际行为矛盾；
+      EXCLUDED_PREFIXES 缺 secret 文件模式致凭证泄漏风险。本提交修正文档+补排除列表。
 """
 
 import os
@@ -15,6 +18,12 @@ import string
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
+
+# AC-F003 fix: fcntl 用于 .autonomous_active SH 锁，消除 TOCTOU。Windows 退化。
+try:
+    import fcntl as _fcntl_mod
+except ImportError:
+    _fcntl_mod = None  # Windows / non-Unix
 
 # ── Windows UTF-8 兼容 ───────────────────────────────
 if sys.platform == "win32":
@@ -37,10 +46,54 @@ KNOWN_REPOS = [
 ]
 
 # ── 排除规则 ──────────────────────────────────────────
+# H-004 fix (audit-2026-07-03-017): 补凭证/密钥文件模式，防 auto-push 泄漏到 origin。
+# 原列表仅排内部缓存/构建目录，未覆盖 .env/*.pem/*.key/credentials*/.npmrc/.pypirc/id_rsa*。
 EXCLUDED_PREFIXES = (
     ".claude", "node_modules", ".venv", "__pycache__",
     ".git", ".pytest_cache", "Inno Setup 6", "Telegram Desktop",
 )
+
+# Secret/credential file patterns (glob-style matched against basename).
+# Auto-push to origin combined with missing exclusions created a credential
+# leakage path (H-004). Patterns cover common env/secret/key files across
+# ecosystems; extend as new secret formats appear.
+SECRET_FILE_PATTERNS = (
+    ".env", ".env.",           # dotenv + variants (.env.local, .env.production, ...)
+    ".npmrc", ".pypirc",       # package registry creds
+    "id_rsa", "id_dsa", "id_ecdsa", "id_ed25519",  # SSH private keys
+    ".pem", ".key", ".p12", ".pfx", ".keystore",    # TLS/cert private material
+    "credentials", "secrets",  # generic cred files (credentials.json, secrets.yaml, ...)
+    ".htpasswd",               # HTTP basic auth store
+    "token",                   # token files (token.txt, token.json, ...)
+)
+
+
+def _is_secret_file(path: str) -> bool:
+    """Return True if basename matches any SECRET_FILE_PATTERNS (prefix match).
+    Used alongside EXCLUDED_PREFIXES to block credential-bearing files from
+    auto-commit + auto-push. Fail-safe: pattern match failure defaults to NOT
+    secret (permissive) so legitimate files aren't silently dropped; audit-log
+    records excluded paths for review."""
+    base = os.path.basename(path)
+    for pat in SECRET_FILE_PATTERNS:
+        if base == pat or base.startswith(pat):
+            return True
+    return False
+
+# AC-F005 (audit): 额外敏感后缀/文件名硬排除（与SECRET_FILE_PATTERNS互补，防凭证泄露）
+# AC-F005 fix: 敏感文件后缀/文件名硬排除（防凭证泄露到 git history）
+SENSITIVE_SUFFIXES = (
+    ".env", ".pem", ".key", ".p12", ".pfx", ".jks", ".keystore",
+    ".secret", ".secrets", ".credentials", ".token",
+    ".aws", ".npmrc", ".pypirc", ".dockercfg",
+)
+SENSITIVE_BASENAMES = {
+    ".env", ".env.local", ".env.production", ".env.staging", ".env.development",
+    "id_rsa", "id_dsa", "id_ecdsa", "id_ed25519",
+    "google-services.json", "GoogleService-Info.plist",
+    "credentials.json", "service-account.json", "client_secret.json",
+    ".htpasswd", "shadow", "passwd",
+}
 
 # 根仓库中属于子仓库的路径（由 _belongs_to_subrepo 动态判断）
 SUBREPO_NAMES = {r["name"] for r in KNOWN_REPOS if r["is_subrepo"]}
@@ -98,13 +151,58 @@ def _audit_log_commit(repo_name: str, result: str, detail: str = ""):
         pass  # 审计写失败不影响提交主流程
 
 
+def _acquire_autonomous_active_sh_lock():
+    """AC-F003 fix: 对 .autonomous_active 加 fcntl SH 锁，贯穿整个 do_commit。
+
+    目的：消除「os.path.exists(marker) → ... → git add/commit」之间的 TOCTOU 窗口。
+    并发场景下若另一进程在 check 后、commit 前删除 marker，原代码会绕过 gate 直接
+    commit main；持 SH 锁期间 marker 不可被 unlink（unlink 需先获 EX 锁或等 SH 释放），
+    保证自主模式激活状态在整个提交流程内稳定可见。
+
+    Returns: (fd, locked). fd=None 表示未获锁（marker 不存在或非 Unix）；
+             locked=True 仅当成功获取 SH 锁。调用方在 finally 中 close(fd) 释放。
+    Fail-safe: 任何异常返回 (None, False)，由调用方按"未获锁=保守跳过"处理。
+    """
+    marker = os.path.join(WORKSPACE_ROOT, ".claude", ".autonomous_active")
+    if _fcntl_mod is None:
+        # Windows / 无 fcntl：退化回 exists 检查（保留原行为，TOCTOU 仍存在但平台受限）
+        return (None, os.path.exists(marker))
+    try:
+        if not os.path.exists(marker):
+            return (None, False)
+        fd = os.open(marker, os.O_RDONLY)
+        try:
+            _fcntl_mod.flock(fd, _fcntl_mod.LOCK_SH | _fcntl_mod.LOCK_NB)
+            return (fd, True)
+        except (IOError, OSError):
+            # marker 被 EX 锁占用或已消失 → 视为自主模式仍激活/竞争失败，保守跳过
+            try:
+                os.close(fd)
+            except Exception:
+                pass
+            return (None, False)
+    except Exception:
+        return (None, False)
+
+
 def is_excluded(file_path: str) -> bool:
-    """检查路径是否应跳过"""
+    """检查路径是否应跳过。H-004 fix: 同时按 SECRET_FILE_PATTERNS 过滤凭证文件，
+    防 auto-push 泄漏到 origin。"""
     fp = file_path.replace("\\", "/")
     for prefix in EXCLUDED_PREFIXES:
         if fp == prefix or fp.startswith(prefix + "/"):
             return True
-    return False
+    # Secret-file check (basename match; covers .env, *.pem, credentials.json, etc.)
+    if _is_secret_file(fp):
+        return True
+    # AC-F005 fix: 敏感后缀/文件名硬排除
+    basename = os.path.basename(fp).lower()
+    if basename in {b.lower() for b in SENSITIVE_BASENAMES}:
+        return True
+    for suffix in SENSITIVE_SUFFIXES:
+        if fp.lower().endswith(suffix):
+            return True
+        return False
 
 
 def belongs_to_subrepo(file_path: str) -> bool:
@@ -320,97 +418,109 @@ def do_commit(repo_name: str, repo_path: str, is_subrepo: bool,
     resolved = os.path.join(WORKSPACE_ROOT, repo_path)
     resolved = os.path.abspath(resolved)
 
-    # 自主模式激活时不自动提交（避免绕过 autonomous-commit-gate 直接进 main）
-    # 改由 controller 走 scripts/opt-worktree.sh commit → optimization worktree 等人工审
-    if os.path.exists(os.path.join(WORKSPACE_ROOT, ".claude", ".autonomous_active")):
-        if not suppress_output:
-            print(f"  [AUTO-COMMIT] ⏸️ {repo_name}: 自主模式激活，跳过自动提交 main "
-                  f"（改用 scripts/opt-worktree.sh commit <area:sub> \"<说明>\"）", file=sys.stderr)
-        return False
-
-    # 检测 merge 冲突
-    if has_merge_conflict(resolved):
-        if not suppress_output:
-            print(f"  [AUTO-COMMIT] ⚠️ {repo_name}: 检测到合并冲突，跳过自动提交",
-                  file=sys.stderr)
-        return False
-
-    # 获取项目文件变更
-    changes = get_project_changes(resolved, is_subrepo)
-    if not changes:
-        return False
-
-    # 生成 commit 消息
-    commit_msg = generate_commit_message(repo_name, changes)
-
-    # 先更新 PROGRESS.md（让这次提交包含 PROGRESS.md 的变更）
-    proj_path = resolved
-    update_progress_md(proj_path, changes, commit_msg)
-
-    # Stage 仅过滤后的项目文件 + PROGRESS.md（case-396 security-review：
-    # 原 `git add -A` 暂存全部变更，绕过 EXCLUDED_PREFIXES 过滤——过滤仅作用于
-    # commit 消息生成，实际暂存把 .claude/ 等内部文件及非 gitignore 的 .env/凭证
-    # 一并暂存并 commit+push 到 origin，违背 L6 文档意图"跳过 .claude/ 等内部文件"。
-    # 改显式列路径暂存：只 stage changes（已过滤）+ PROGRESS.md。fail-safe——
-    # 若路径含特殊字符致 git status --porcelain 带引号、git add 失败，则放弃本次
-    # 提交（return False），绝不退回 `git add -A` 泄漏，安全姿态优先。）
-    stage_paths = [c["path"] for c in changes]
-    if "PROGRESS.md" not in stage_paths and os.path.isfile(os.path.join(resolved, "PROGRESS.md")):
-        stage_paths.append("PROGRESS.md")
-    if not stage_paths:
-        return False
-    rc, _, err = git(resolved, ["add", "--"] + stage_paths)
-    if rc != 0:
-        if not suppress_output:
-            print(f"  [AUTO-COMMIT] ⚠️ {repo_name}: git add 失败 — {err[:100]}",
-                  file=sys.stderr)
-        _audit_log_commit(repo_name, "failure", f"git add 失败: {err[:160]}")
-        return False
-
-    # Commit
-    rc, out, err = git(resolved, ["commit", "-m", commit_msg])
-    if rc != 0:
-        if "nothing to commit" in err.lower() + (out or "").lower():
-            return False
-        if not suppress_output:
-            print(f"  [AUTO-COMMIT] ⚠️ {repo_name}: commit 失败 — {err[:100]}",
-                  file=sys.stderr)
-        _audit_log_commit(repo_name, "failure", f"commit 失败: {err[:160]}")
-        return False
-
-    _audit_log_commit(repo_name, "success",
-                      f"commit {len(changes)} 文件: {commit_msg.splitlines()[0][:120]}")
-
-    if not suppress_output:
-        print(f"  [AUTO-COMMIT] ✅ {repo_name}: {len(changes)} 文件已提交",
-              file=sys.stderr)
-
-    # 🚀 自动推送子仓库到 origin（x-tool 父仓库除外，不在此列表）
+    # AC-F003 fix: 自主模式检测改用 fcntl SH 锁持锁贯穿整个提交流程，消除 TOCTOU。
+    # 原 os.path.exists(marker) 单次 check 与后续 git add/commit 之间存在窗口，并发
+    # 删除 marker 可绕过 gate 直接 commit main。SH 锁期间 marker 不可被 unlink，保证
+    # 激活状态全程稳定可见。fd 在 finally 中 close 释放；任何早 return 路径都安全释放。
+    lock_fd, autonomous_active = _acquire_autonomous_active_sh_lock()
     try:
-        rc_branch, branch, _ = git(resolved, ["rev-parse", "--abbrev-ref", "HEAD"])
-        if rc_branch == 0 and branch:
-            rc_remote, remote, _ = git(resolved, ["remote", "get-url", "origin"])
-            if rc_remote == 0:
-                rc_push, _, push_err = git(resolved, ["push", "origin", branch], timeout=60)
-                if rc_push == 0:
-                    # DO B 审计埋点（case-464 security-review 发现）：push origin 是敏感
-                    # 出站 subprocess 调用，原仅 stderr 打印不可观测。补 success 记录，
-                    # 使 push 行为可审计（result 如实反映成功/失败，不恒 success）。
-                    _audit_log_commit(repo_name, "success",
-                                      f"push origin/{branch}: {len(changes)} 文件")
-                    if not suppress_output:
-                        print(f"  [AUTO-PUSH] ✅ {repo_name}: → origin/{branch}", file=sys.stderr)
-                else:
-                    _audit_log_commit(repo_name, "failure",
-                                      f"push origin/{branch} 失败: {push_err[:160]}")
-                    if not suppress_output:
-                        print(f"  [AUTO-PUSH] ⚠️ {repo_name}: push 失败 — {push_err[:100]}", file=sys.stderr)
-    except Exception as push_exc:
-        # DO B（case-464）：push 异常路径亦记 failure，原 pass 吞掉不可审计。
-        _audit_log_commit(repo_name, "failure", f"push 异常: {str(push_exc)[:160]}")
-        pass  # push 失败不阻塞主流程
+        if autonomous_active:
+            if not suppress_output:
+                print(f"  [AUTO-COMMIT] ⏸️ {repo_name}: 自主模式激活（SH-locked），跳过自动提交 main "
+                      f"（改用 scripts/opt-worktree.sh commit <area:sub> \"<说明>\"）", file=sys.stderr)
+            return False
 
-    return True
+        # 检测 merge 冲突
+        if has_merge_conflict(resolved):
+            if not suppress_output:
+                print(f"  [AUTO-COMMIT] ⚠️ {repo_name}: 检测到合并冲突，跳过自动提交",
+                      file=sys.stderr)
+            return False
+
+        # 获取项目文件变更
+        changes = get_project_changes(resolved, is_subrepo)
+        if not changes:
+            return False
+
+        # 生成 commit 消息
+        commit_msg = generate_commit_message(repo_name, changes)
+
+        # 先更新 PROGRESS.md（让这次提交包含 PROGRESS.md 的变更）
+        proj_path = resolved
+        update_progress_md(proj_path, changes, commit_msg)
+
+        # Stage 仅过滤后的项目文件 + PROGRESS.md（case-396 security-review：
+        # 原 `git add -A` 暂存全部变更，绕过 EXCLUDED_PREFIXES 过滤——过滤仅作用于
+        # commit 消息生成，实际暂存把 .claude/ 等内部文件及非 gitignore 的 .env/凭证
+        # 一并暂存并 commit+push 到 origin，违背 L6 文档意图"跳过 .claude/ 等内部文件"。
+        # 改显式列路径暂存：只 stage changes（已过滤）+ PROGRESS.md。fail-safe——
+        # 若路径含特殊字符致 git status --porcelain 带引号、git add 失败，则放弃本次
+        # 提交（return False），绝不退回 `git add -A` 泄漏，安全姿态优先。）
+        stage_paths = [c["path"] for c in changes]
+        if "PROGRESS.md" not in stage_paths and os.path.isfile(os.path.join(resolved, "PROGRESS.md")):
+            stage_paths.append("PROGRESS.md")
+        if not stage_paths:
+            return False
+        rc, _, err = git(resolved, ["add", "--"] + stage_paths)
+        if rc != 0:
+            if not suppress_output:
+                print(f"  [AUTO-COMMIT] ⚠️ {repo_name}: git add 失败 — {err[:100]}",
+                      file=sys.stderr)
+            _audit_log_commit(repo_name, "failure", f"git add 失败: {err[:160]}")
+            return False
+
+        # Commit
+        rc, out, err = git(resolved, ["commit", "-m", commit_msg])
+        if rc != 0:
+            if "nothing to commit" in err.lower() + (out or "").lower():
+                return False
+            if not suppress_output:
+                print(f"  [AUTO-COMMIT] ⚠️ {repo_name}: commit 失败 — {err[:100]}",
+                      file=sys.stderr)
+            _audit_log_commit(repo_name, "failure", f"commit 失败: {err[:160]}")
+            return False
+
+        _audit_log_commit(repo_name, "success",
+                          f"commit {len(changes)} 文件: {commit_msg.splitlines()[0][:120]}")
+
+        if not suppress_output:
+            print(f"  [AUTO-COMMIT] ✅ {repo_name}: {len(changes)} 文件已提交",
+                  file=sys.stderr)
+
+        # 🚀 自动推送子仓库到 origin（x-tool 父仓库除外，不在此列表）
+        try:
+            rc_branch, branch, _ = git(resolved, ["rev-parse", "--abbrev-ref", "HEAD"])
+            if rc_branch == 0 and branch:
+                rc_remote, remote, _ = git(resolved, ["remote", "get-url", "origin"])
+                if rc_remote == 0:
+                    rc_push, _, push_err = git(resolved, ["push", "origin", branch], timeout=60)
+                    if rc_push == 0:
+                        # DO B 审计埋点（case-464 security-review 发现）：push origin 是敏感
+                        # 出站 subprocess 调用，原仅 stderr 打印不可观测。补 success 记录，
+                        # 使 push 行为可审计（result 如实反映成功/失败，不恒 success）。
+                        _audit_log_commit(repo_name, "success",
+                                          f"push origin/{branch}: {len(changes)} 文件")
+                        if not suppress_output:
+                            print(f"  [AUTO-PUSH] ✅ {repo_name}: → origin/{branch}", file=sys.stderr)
+                    else:
+                        _audit_log_commit(repo_name, "failure",
+                                          f"push origin/{branch} 失败: {push_err[:160]}")
+                        if not suppress_output:
+                            print(f"  [AUTO-PUSH] ⚠️ {repo_name}: push 失败 — {push_err[:100]}", file=sys.stderr)
+        except Exception as push_exc:
+            # DO B（case-464）：push 异常路径亦记 failure，原 pass 吞掉不可审计。
+            _audit_log_commit(repo_name, "failure", f"push 异常: {str(push_exc)[:160]}")
+            pass  # push 失败不阻塞主流程
+
+        return True
+    finally:
+        # AC-F003 fix: 释放 SH 锁。fd=None 时 close 是 no-op 安全；任何早 return 路径
+        # （含自主模式激活/merge-conflict/no-changes/git-failure）都经此释放，无泄漏。
+        if lock_fd is not None:
+            try:
+                os.close(lock_fd)
+            except Exception:
+                pass
 
 
 # ── 入口 ──────────────────────────────────────────────

@@ -501,8 +501,13 @@ def handle_user_prompt_submit(data: dict):
     # ── Studio 阶段确认处理（解决冲突6）──────────────────
     stage_confirmed = None
     if classification == "stage_confirm" and studio_status:
+        # 先捕获 stage —— confirm_studio_draft 会就地清掉 draftPending.stage，
+        # 读后变异会导致 stage_confirmed 恒为 None、审计追踪丢失（audit HIGH）。
+        stage_confirmed = studio_status.get("engine", {}).get("draftPending", {}).get("stage")
         if confirm_studio_draft(studio_status, prompt):
-            stage_confirmed = studio_status.get("engine", {}).get("draftPending", {}).get("stage")
+            pass  # stage_confirmed 已在 confirm 前捕获
+        else:
+            stage_confirmed = None  # confirm 失败，不记录
 
     # ── 紧急制动处理（解决冲突5）──────────────────
     if classification == "stop_auto" and studio_status:

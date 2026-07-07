@@ -82,24 +82,55 @@ def should_resume(checkpoint):
     return age is not None and age < 24
 
 
+def _sanitize_for_prompt(value, max_len=200):
+    """Sanitize a string field before interpolating into system prompt.
+
+    H-002 hardening: checkpoint JSON fields (branch, last_prompt, cwd, etc.)
+    are attacker-controlled if .claude/checkpoints/latest.json is writable.
+    Strip markdown/prompt-injection vectors and cap length.
+    """
+    if not isinstance(value, str):
+        return str(value)
+    # Truncate first to avoid processing huge payloads
+    s = value[:max_len]
+    # Strip control characters except newline/tab (keep readable but no escapes)
+    s = "".join(c for c in s if c.isprintable() or c in ("\n", "\t"))
+    # Neutralize markdown injection: escape backticks, brackets, angle brackets
+    for ch in ("`", "[", "]", "<", ">"):
+        s = s.replace(ch, "\\" + ch)
+    # Strip leading directives that look like prompt injection
+    lower = s.lower().strip()
+    injection_prefixes = (
+        "ignore all", "ignore previous", "disregard", "forget everything",
+        "new instructions", "system:", "assistant:", "user:",
+    )
+    if any(lower.startswith(p) for p in injection_prefixes):
+        s = "[REDACTED: potential prompt injection]"
+    return s
+
+
 def build_resume_directive(checkpoint):
     git_info = checkpoint.get("git", {})
-    branch = git_info.get("branch", "N/A")
-    last_commit = git_info.get("last_commit", "N/A")
-    cwd = checkpoint.get("cwd", PROJECT_DIR)
-    timestamp = checkpoint.get("timestamp", "unknown")
+    branch = _sanitize_for_prompt(git_info.get("branch", "N/A"), max_len=100)
+    last_commit = _sanitize_for_prompt(git_info.get("last_commit", "N/A"), max_len=100)
+    cwd = _sanitize_for_prompt(checkpoint.get("cwd", PROJECT_DIR), max_len=300)
+    timestamp = _sanitize_for_prompt(checkpoint.get("timestamp", "unknown"), max_len=50)
     activities = checkpoint.get("recent_activity", [])
     last_prompt = ""
     for a in reversed(activities):
         if a.get("event") == "prompt":
             last_prompt = a.get("text", "")
             break
+    last_prompt = _sanitize_for_prompt(last_prompt, max_len=200)
     memory_files = checkpoint.get("memory_files", [])
-    memory_list = ", ".join(m.get("name", "") for m in memory_files[:8])
-    session_id = checkpoint.get("session_id", "")[-8:]
+    memory_list = _sanitize_for_prompt(
+        ", ".join(m.get("name", "") for m in memory_files[:8]), max_len=200
+    )
+    session_id = _sanitize_for_prompt(checkpoint.get("session_id", "")[-8:], max_len=16)
     age = checkpoint_age(checkpoint)
     age_str = f"{age:.1f} 小时" if age else "未知"
 
+    # Render user-controlled data in fenced code block to prevent markdown interpretation
     return f"""## [AUTO-RESUME] 自动会话恢复
 
 上一条 Claude Code 会话在 **{age_str}前** 中断（SSH 断开 / 进程终止）。
@@ -111,17 +142,17 @@ def build_resume_directive(checkpoint):
 3. 如果 MEMORY.md 存在，也读取它: `{PROJECT_DIR.replace(chr(92), '/')}/.claude/memory/MEMORY.md`
 4. 然后向用户报告上次会话状态
 
-### 上次会话快照
-| 项目 | 内容 |
-|------|------|
-| 会话 ID | ...{session_id} |
-| 中断时间 | {timestamp} |
-| 距今 | {age_str} |
-| Git 分支 | {branch} |
-| 最后提交 | {last_commit} |
-| 工作目录 | {cwd} |
-| Memory 文件 | {memory_list or '（无）'} |
-| 最后对话 | {last_prompt[:200] if last_prompt else '（无记录）'} |
+### 上次会话快照（数据来自 checkpoint JSON，已净化）
+```
+会话 ID:     ...{session_id}
+中断时间:    {timestamp}
+距今:        {age_str}
+Git 分支:    {branch}
+最后提交:    {last_commit}
+工作目录:    {cwd}
+Memory 文件: {memory_list or '（无）'}
+最后对话:    {last_prompt or '（无记录）'}
+```
 """
 
 

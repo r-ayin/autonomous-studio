@@ -5,66 +5,45 @@
  * API base URL is read from process.env.DEVOUT_SERVER_URL.
  *
  * All functions use scene="DEPLOY" and operate on deploy task events.
+ *
+ * Shared HTTP helpers (getBaseUrl/getHeaders/apiPost/apiPut) live in
+ * ./http-base.js — extracted per audit-2026-07-02-006 finding L-001.
+ * Timeout logic preserved from H-001 / H-002 fixes.
  */
+
+import { apiPost, apiPut } from './http-base.js';
 
 const TERMINAL_STATUSES = new Set(['SUCCESS', 'FAILED']);
 
-// ─── Internal helpers ────────────────────────────────────────────────────────
-
-function getBaseUrl() {
-  const url = process.env.DEVOUT_SERVER_URL;
-  if (!url) {
-    throw new Error('DEVOUT_SERVER_URL not set');
+/**
+ * Safely parse a JSON string; returns fallback on malformed input instead of throwing.
+ * Prevents deserializeEvent / findBatchEvent from crashing the deploy pipeline
+ * when the server returns corrupted payload strings (audit finding M-001).
+ * Logging is best-effort and synchronous to avoid breaking sync call sites.
+ */
+function safeJsonParse(text, fallback = {}) {
+  if (text == null) return fallback;
+  try {
+    return JSON.parse(text);
+  } catch (err) {
+    try {
+      process.stderr.write(
+        `[event-client] JSON.parse failed: ${err.message} | snippet=${String(text).slice(0, 200)}\n`
+      );
+    } catch { /* ignore */ }
+    return fallback;
   }
-  return url.replace(/\/$/, '');
-}
-
-function getHeaders() {
-  const headers = { 'Content-Type': 'application/json' };
-  if (process.env.CODE_PRIVATE_TOKEN) {
-    headers['X-Agent-Authorization'] = `Code ${process.env.CODE_PRIVATE_TOKEN}`;
-  } else if (process.env.DEVOUT_TOKEN) {
-    headers['token'] = process.env.DEVOUT_TOKEN;
-  }
-  return headers;
-}
-
-async function apiPost(path, body) {
-  const url = `${getBaseUrl()}${path}`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: getHeaders(),
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`POST ${url} failed with status ${res.status}: ${text}`);
-  }
-  return res.json();
-}
-
-async function apiPut(path, body) {
-  const url = `${getBaseUrl()}${path}`;
-  const res = await fetch(url, {
-    method: 'PUT',
-    headers: getHeaders(),
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`PUT ${url} failed with status ${res.status}: ${text}`);
-  }
-  return res.json();
 }
 
 /**
  * Deserialize a raw event from the server (payload is a JSON string → object).
+ * Tolerates malformed payload by falling back to {} (audit finding M-001).
  */
 function deserializeEvent(raw) {
   if (!raw) return null;
   return {
     ...raw,
-    payload: raw.payload ? JSON.parse(raw.payload) : {},
+    payload: safeJsonParse(raw.payload, {}),
   };
 }
 
@@ -116,7 +95,7 @@ export async function findBatchEvent(taskId, batchIndex) {
   });
   const items = extractItems(resp);
   const match = items.find(raw => {
-    const payload = raw.payload ? JSON.parse(raw.payload) : {};
+    const payload = safeJsonParse(raw.payload, {});
     return payload.batch_index === batchIndex;
   });
   return match ? deserializeEvent(match) : null;

@@ -12,9 +12,32 @@
  */
 
 import { findEvent, findBatchEvent, createEvent, updateEvent } from './lib/event-client.js';
+import { writeAuditLog } from './lib/audit-log-helper.js';
 import { parseArgs } from 'node:util';
 
 const TERMINAL_STATUSES = new Set(['SUCCESS', 'FAILED']);
+
+/**
+ * Safely parse CLI-supplied JSON strings; returns fallback on malformed input.
+ * Prevents the entire report-event invocation from crashing when a user/script
+ * passes corrupted --check-items / --resolved-strategy / --payload (audit finding L-003).
+ */
+function safeJsonParseCli(text, fallback, context) {
+  if (text == null) return fallback;
+  try {
+    return JSON.parse(text);
+  } catch (err) {
+    writeAuditLog({
+      auditAction: 'cli-json-parse-failed',
+      resourceType: 'cli-argument',
+      resourceId: context || 'unknown',
+      result: 'failure',
+      details: { error: err.message, snippet: String(text).slice(0, 200) },
+      metadata: { tags: ['prod-deploy', 'report-event', 'malformed-cli-json'] },
+    });
+    return fallback;
+  }
+}
 
 // ─── Event Handlers ─────────────────────────────────────────────────────────
 
@@ -78,6 +101,15 @@ async function handleBuild(taskId, args) {
   if (!existing) {
     const payload = { pipeline_id: values['pipeline-id'], cr_id: values['cr-id'] };
     const event = await createEvent(taskId, 'build', payload);
+    // DO B audit-log: build creation implies pipeline trigger (sensitive path)
+    writeAuditLog({
+      auditAction: 'pipeline-triggered',
+      resourceType: 'pipeline',
+      resourceId: values['pipeline-id'] || taskId,
+      result: 'success',
+      details: { reason: 'build-event-created', correlationId: taskId },
+      metadata: { tags: ['prod-deploy', 'build', 'pipeline-trigger'] },
+    });
     if (values.status) {
       const fields = values['error-message'] ? { error_message: values['error-message'] } : null;
       return updateEvent(event, values.status, fields);
@@ -111,7 +143,7 @@ async function handlePreCheck(taskId, args) {
     strict: false,
   });
 
-  const checkItems = values['check-items'] ? JSON.parse(values['check-items']) : null;
+  const checkItems = values['check-items'] ? safeJsonParseCli(values['check-items'], null, 'pre_check:check-items') : null;
   const existing = await findEvent(taskId, 'pre_check');
 
   if (!existing) {
@@ -162,7 +194,7 @@ async function handleDeployPlan(taskId, args) {
     strict: false,
   });
 
-  const resolvedStrategy = values['resolved-strategy'] ? JSON.parse(values['resolved-strategy']) : {};
+  const resolvedStrategy = values['resolved-strategy'] ? safeJsonParseCli(values['resolved-strategy'], {}, 'deploy_plan:resolved-strategy') : {};
   const existing = await findEvent(taskId, 'deploy_plan');
 
   if (existing) {
@@ -195,7 +227,7 @@ async function handleDeployBatch(taskId, args) {
   const batchIndex = parseInt(values['batch-index'], 10);
   const batchTotal = values['batch-total'] ? parseInt(values['batch-total'], 10) : null;
   const instances = values['instances'] ? parseInt(values['instances'], 10) : null;
-  const extraPayload = values.payload ? JSON.parse(values.payload) : null;
+  const extraPayload = values.payload ? safeJsonParseCli(values.payload, null, `deploy_batch:payload:${values['batch-index'] || '?'}`) : null;
 
   const existing = await findBatchEvent(taskId, batchIndex);
 
@@ -206,6 +238,18 @@ async function handleDeployBatch(taskId, args) {
     if (instances != null) eventPayload.instances = instances;
     if (extraPayload) Object.assign(eventPayload, extraPayload);
     const event = await createEvent(taskId, 'deploy_batch', eventPayload, values['deploy-order-id']);
+    // DO B audit-log: batch deploy start is a sensitive path (deploy action)
+    writeAuditLog({
+      auditAction: 'batch-deploy-start',
+      resourceType: 'deployment',
+      resourceId: `${values['deploy-order-id'] || taskId}:batch-${batchIndex}`,
+      result: 'success',
+      details: {
+        reason: 'batch-deploy-created',
+        correlationId: taskId,
+      },
+      metadata: { tags: ['prod-deploy', 'deploy-batch', `batch-${batchIndex}`] },
+    });
     if (values.status) {
       const fields = values['error-message'] ? { error_message: values['error-message'] } : null;
       return updateEvent(event, values.status, fields);

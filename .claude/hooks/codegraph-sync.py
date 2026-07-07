@@ -109,6 +109,7 @@ def scan_codegraph_capabilities():
 
         # 对每个子命令获取详细帮助
         known_capabilities = load_existing_capabilities()
+        _scan_failures = []  # 跟踪瞬时失败的子命令，防静默丢数据（audit HIGH）
         for cmd in commands:
             if cmd in ("help", "version", "telemetry", "install", "uninstall"):
                 # 这些命令引擎不需要深度集成
@@ -134,8 +135,22 @@ def scan_codegraph_capabilities():
                         "engine_value": existing.get("engine_value", desc) if existing else desc,
                         "options": options,
                     })
+                else:
+                    _scan_failures.append(cmd)
             except Exception:
-                pass
+                _scan_failures.append(cmd)
+
+        # 瞬时失败的子命令：从旧注册表承接，避免 version-gate(362 行)把残缺注册表
+        # 永久落盘后不再重扫（一次瞬时失败 → 永久丢命令数据）。
+        if _scan_failures:
+            _have = {c.get("name") for c in capabilities["cli_commands"]}
+            for cmd in _scan_failures:
+                if cmd in _have:
+                    continue
+                existing = find_existing_command(known_capabilities, cmd)
+                if existing:
+                    capabilities["cli_commands"].append(existing)
+                    sys.stderr.write(f"[codegraph-sync] 子命令 {cmd} 扫描失败，从旧注册表承接\n")
 
         # MCP tools (从已知信息推断，需要实际 MCP 连接才能枚举)
         capabilities["mcp_tools"] = [

@@ -8,6 +8,7 @@
 """
 import os
 import sys
+import shutil
 import json
 import subprocess
 
@@ -18,6 +19,38 @@ if sys.platform == "win32":
         pass
 
 WORKSPACE_ROOT = os.environ.get("CLAUDE_PROJECT_DIR", os.getcwd())
+
+
+def _audit_log(action, resource, result):
+    """Append-only audit log for security-relevant events (constraints B).
+
+    Writes to <project>/.audit/audit-YYYY-MM-DD.jsonl. Never raises; failures
+    are silently dropped so the hook stays non-blocking.
+    """
+    try:
+        from datetime import datetime, timezone
+        import random
+        import string
+
+        now = datetime.now(timezone.utc)
+        rand6 = "".join(random.choices(string.ascii_lowercase + string.digits, k=6))
+        entry = {
+            "id": f"audit-{now.strftime('%Y%m%d-%H%M%S')}-{rand6}",
+            "timestamp": now.isoformat(),
+            "userId": os.environ.get("USER", os.environ.get("USERNAME", "unknown")),
+            "userRole": "engine",
+            "action": action,
+            "resource": resource,
+            "result": result,
+            "ip": "local",
+        }
+        audit_dir = os.path.join(WORKSPACE_ROOT, ".audit")
+        os.makedirs(audit_dir, exist_ok=True)
+        log_path = os.path.join(audit_dir, f"audit-{now.strftime('%Y-%m-%d')}.jsonl")
+        with open(log_path, "a", encoding="utf-8") as f:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+    except Exception:
+        pass  # Audit logging must never break the hook.
 
 
 def main():
@@ -41,9 +74,24 @@ def main():
 
     findings = []
 
-    # 绝对化
+    # 绝对化 + path traversal guard (PEL-001 fix)
     if not os.path.isabs(file_path):
         file_path = os.path.join(WORKSPACE_ROOT, file_path)
+    try:
+        real_path = os.path.realpath(file_path)
+        real_root = os.path.realpath(WORKSPACE_ROOT)
+        # Ensure resolved path is within workspace root.
+        # realpath resolves symlinks and '..' so prefix check is safe.
+        if not (real_path == real_root or real_path.startswith(real_root + os.sep)):
+            _audit_log("path-traversal-blocked", file_path, "denied")
+            print("{}")
+            return
+        file_path = real_path
+    except (OSError, ValueError):
+        # Unresolvable path (broken symlink, null byte, etc.) — deny silently.
+        _audit_log("path-unresolvable", file_path, "denied")
+        print("{}")
+        return
     if not os.path.exists(file_path):
         print("{}")
         return
@@ -54,10 +102,11 @@ def main():
     if ext == "py":
         try:
             cr = subprocess.run(
-                ["python", "-m", "py_compile", "--", file_path],
+                [sys.executable, "-m", "py_compile", "--", file_path],
                 cwd=WORKSPACE_ROOT, capture_output=True, text=True, timeout=15)
             if cr.returncode != 0:
-                findings.append(f"❌ Python 语法错误: {(cr.stderr or '').strip().splitlines()[-1] if cr.stderr else ''}")
+                _elines = (cr.stderr or '').strip().splitlines()
+                findings.append(f"❌ Python 语法错误: {_elines[-1] if _elines else '(无错误详情)'}")
         except Exception as e:
             pass  # 不报错，静默跳过
 
@@ -73,7 +122,7 @@ def main():
             if os.path.exists(tf):
                 try:
                     tr = subprocess.run(
-                        ["python", "-m", "pytest", tf, "--tb=short", "-q"],
+                        [sys.executable, "-m", "pytest", tf, "--tb=short", "-q"],
                         cwd=WORKSPACE_ROOT, capture_output=True, text=True, timeout=60)
                     tail = (tr.stdout or tr.stderr or "").strip().splitlines()
                     summary = tail[-1] if tail else "(无输出)"
@@ -87,7 +136,7 @@ def main():
 
     # TypeScript/JavaScript：类型检查
     elif ext in ("ts", "tsx", "js", "jsx"):
-        if subprocess.run(["which", "npx"], capture_output=True).returncode == 0:
+        if shutil.which("npx") is not None:
             try:
                 tr = subprocess.run(
                     ["npx", "--no-install", "tsc", "--noEmit", file_path],

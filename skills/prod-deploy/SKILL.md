@@ -51,7 +51,7 @@ repository: https://code.alibaba-inc.com/qunbu/prod-deploy
 **关键特性**：
 - 无需追踪 event_id — 脚本通过 task_id + event_type（+ batch_index）自动定位事件
 - 首次调用创建事件（status=RUNNING），后续调用 merge 更新 payload
-- 传入 --status 时更新为终态（SUCCESS/FAILED），终态不可再修改
+- 传入 --status 时更新为终态（SUCCESS/FAILED），终态后 status 不可再修改；但仍可追加 payload 字段（如 observation_result）
 - 轮询类脚本为单次执行，需要你自行循环调用（每 5s 一次）
 
 ## report-event.js 各事件类型参数
