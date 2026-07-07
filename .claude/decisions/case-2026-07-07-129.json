@@ -1,0 +1,32 @@
+{
+  "case_id": "case-2026-07-07-129",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-07T19:50:00+08:00",
+  "project": "sunset-prediction",
+  "work_unit": "prediction-engine gaussian sigma=0 guard",
+  "situation": "audit-2026-07-08-046 finding SP-ENG-M-005: gaussian(x, peak, sigma) divides by 2*sigma**2 with no zero-guard. Current callers use hardcoded sigma (25, 22) so bug is latent, but calibration or future callers passing sigma=0 from degenerate data would produce NaN that propagates through humidityScore → composite score → all predictions.",
+  "action": "Add sigma===0 early return 0 to gaussian(). Stack on existing diverged worktree opt-prediction-engine-1783395732 (which already has SP-ENG-H-003 setWeights NaN guard). Direct wt edit + wt-internal commit per stack-on-diverged-wt escape hatch (cp-guard blocks when wt differs from main HEAD).",
+  "files_changed": ["src/prediction-engine.js"],
+  "worktree": "opt-prediction-engine-1783395732",
+  "direction": "prediction-engine:gaussian-sigma-zero",
+  "outcome": "succeeded",
+  "outcome_evidence": "sha 9bd202e on auto/opt-prediction-engine-1783395732, pushed to origin. gaussian() now returns 0 when sigma===0 instead of NaN.",
+  "next_suggestion": [
+    "Continue dispatching pending SP-ENG-M-005 siblings: SP-SCR-M-001 (mail_push.py SMTP_PORT int crash)",
+    "SP-SCR-M-003 (social-scraper.js hardcoded Chrome/120 userAgent)",
+    "SP-SCR-M-004 (social-scraper.js ESM require('fs') ReferenceError)"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "src/prediction-engine.js",
+      "line": 6,
+      "severity": "medium",
+      "finding": "gaussian(x, peak, sigma) divides by 2*sigma**2 without zero-guard; sigma=0 produces NaN",
+      "remediation": "Add if (sigma === 0) return 0 early return",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-08-046",
+  "audit_depth": "shallow"
+}
