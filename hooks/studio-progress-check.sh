@@ -1,8 +1,10 @@
 #!/bin/bash
+# polyglot python shim: Linux(python3) / Windows(python)
+PY="$(command -v python3 || command -v python || echo python)"
 # PostToolUse hook: 每次写入 prd.json 后自动检查进度
 
 # 从 CLAUDE_TOOL_INPUT 获取文件路径
-FILE_PATH=$(echo "$CLAUDE_TOOL_INPUT" | python3 -c "
+FILE_PATH=$(echo "$CLAUDE_TOOL_INPUT" | "$PY" -c "
 import sys, json
 try:
     data = json.load(sys.stdin)
@@ -27,7 +29,7 @@ fi
 # 用 Python 检查: 所有 P0 task 是否都 done + 当前 stage
 # AS-L-001 fix: heredoc 加引号防 bash 预展开；路径经 env var 传入，避免空格/特殊字符断词
 export STATUS_FILE FILE_PATH
-python3 << 'PYEOF'
+"$PY" << 'PYEOF'
 import json, os, sys
 from datetime import datetime
 

@@ -172,12 +172,56 @@ def score_e2_cross_stage_consistency(project_path, data_model_entities, openapi_
 def score_e3_external_stability(project_path):
     """
     E3: 外部环境稳定性 (0-2)
-    非代码因素，主观评估。CodeGraph 可以提供辅助信息（依赖库版本变化）。
+    通过 HEAD~5..HEAD 范围内依赖声明文件的实际内容变化评估。
+    - 有版本变更 → score=1（外部依赖在动，需关注兼容性）
+    - 无版本变更 → score=2（外部依赖稳定）
+    - 无法读取依赖文件/git → score=1 + unavailable=True（不奖励不可观测状态）
     """
+    dep_files = [
+        "package.json",
+        "pyproject.toml",
+        "requirements.txt",
+        "Pipfile.lock",
+        "go.mod",
+        "Cargo.toml",
+    ]
+
+    # 先确认项目里至少有一个依赖声明文件存在；全无则视为数据缺失
+    existing = [f for f in dep_files if (Path(project_path) / f).exists()]
+    if not existing:
+        return {
+            "score": 1,
+            "detail": "未找到已知依赖声明文件，无法评估外部稳定性",
+            "unavailable": True,
+            "checked_files": [],
+        }
+
+    try:
+        result = subprocess.run(
+            ["git", "diff", "--name-only", "HEAD~5..HEAD", "--"] + existing,
+            capture_output=True, text=True, timeout=10, cwd=project_path,
+        )
+        changed = [ln.strip() for ln in result.stdout.splitlines() if ln.strip()]
+    except Exception as e:
+        return {
+            "score": 1,
+            "detail": f"git diff 失败，无法评估外部稳定性: {e}",
+            "unavailable": True,
+            "checked_files": existing,
+        }
+
+    if changed:
+        return {
+            "score": 1,
+            "detail": f"最近 5 次提交修改了依赖声明: {', '.join(changed)}",
+            "changed_dep_files": changed,
+            "checked_files": existing,
+        }
     return {
         "score": 2,
-        "detail": "E3 为外部环境主观评估，CodeGraph 无直接贡献。建议检查 package.json/pyproject.toml 版本变化。",
-        "note": "subjective",
+        "detail": f"最近 5 次提交未修改依赖声明 ({len(existing)} 个文件检查)",
+        "changed_dep_files": [],
+        "checked_files": existing,
     }
 
 
@@ -191,6 +235,13 @@ def score_e4_cumulative_deviation(project_path):
             ["git", "diff", "--stat", "HEAD~5..HEAD"],
             capture_output=True, text=True, timeout=10, cwd=project_path
         )
+        if result.returncode != 0:
+            return {
+                "score": 1,
+                "detail": f"git diff 返回非零退出码 ({result.returncode})，数据不可用，给中间分并标记 unavailable",
+                "file_count": 0,
+                "unavailable": True,
+            }
         lines = result.stdout.strip().split("\n")
         file_count = max(0, len(lines) - 1)  # 最后一行是 summary
         if file_count <= 3:
@@ -204,8 +255,13 @@ def score_e4_cumulative_deviation(project_path):
             "detail": f"最近 5 次提交涉及 {file_count} 个文件",
             "file_count": file_count,
         }
-    except Exception:
-        return {"score": 2, "detail": "无法获取 git diff 统计，默认满分", "file_count": 0}
+    except Exception as e:
+        return {
+            "score": 1,
+            "detail": f"无法获取 git diff 统计 ({type(e).__name__})，数据不可用，给中间分并标记 unavailable",
+            "file_count": 0,
+            "unavailable": True,
+        }
 
 
 def score_all(project_path, spec_entities=None, data_model_entities=None, openapi_endpoints=None):
@@ -216,8 +272,19 @@ def score_all(project_path, spec_entities=None, data_model_entities=None, openap
     e3 = score_e3_external_stability(project_path)
     e4 = score_e4_cumulative_deviation(project_path)
 
+    # 动态 max_score：unavailable 维度按其实际得分计入，但扣除其"本可拿到的满分差额"，
+    # 避免 unavailable 维度拉低百分比或虚高总分。
+    dimension_maxes = {"E1": 4, "E2": 4, "E3": 2, "E4": 2}
+    dims_map = {
+        "E1": e1, "E2": e2, "E3": e3, "E4": e4,
+    }
+    max_score = sum(
+        dimension_maxes[k] for k, d in dims_map.items() if not d.get("unavailable")
+    )
+    # 若全部 unavailable（极端情况），保底 max=1 防除零
+    if max_score == 0:
+        max_score = 1
     total = e1["score"] + e2["score"] + e3["score"] + e4["score"]
-    max_score = 10
 
     return {
         "project": str(path.name),

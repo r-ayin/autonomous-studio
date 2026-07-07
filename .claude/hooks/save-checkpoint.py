@@ -35,7 +35,8 @@ def run(argv, timeout=3):
     """
     try:
         return subprocess.check_output(
-            argv, shell=False, cwd=PROJECT_DIR, text=True, encoding="utf-8", timeout=timeout
+            argv, shell=False, cwd=PROJECT_DIR, text=True, encoding="utf-8",
+            errors="replace", timeout=timeout
         ).strip()
     except Exception:
         return ""

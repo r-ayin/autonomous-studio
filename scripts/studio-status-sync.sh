@@ -197,6 +197,40 @@ if os.path.exists(status_path):
                              if t.get("priority")=="P0") if total else False
     prog["lastSync"] = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
     st["lastUpdated"] = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+
+    # 刷新 stageArtifacts 指针到当前扫描的 PRD，避免滞留在旧版本
+    # （只 prd/prdTasks/handoff 三个指针；reviewFindings 由审查阶段管，不动）
+    eng = st.get("engine", {})
+    if not isinstance(eng, dict):
+        eng = {}
+        st["engine"] = eng
+    sa = eng.get("stageArtifacts")
+    if not isinstance(sa, dict):
+        sa = {}
+        eng["stageArtifacts"] = sa
+    prd_rel = os.path.relpath(prd_path, proj)
+    sa["prdTasks"] = prd_rel
+    # handoff: prd-xxx.json -> handoff-xxx.md（存在才指）
+    handoff_rel = prd_rel.replace("/prd-", "/handoff-").rsplit(".json", 1)[0] + ".md"
+    if os.path.exists(os.path.join(proj, handoff_rel)):
+        sa["handoff"] = handoff_rel
+    # prd 文档形式：同名 .html / .md；都没有则指向 json 本身，至少不滞留旧版本
+    base = prd_rel.rsplit(".json", 1)[0]
+    prd_doc = next((base + ext for ext in (".html", ".md")
+                    if os.path.exists(os.path.join(proj, base + ext))), prd_rel)
+    sa["prd"] = prd_doc
+
+    # 全部 done 时：解锁 locked，刷新 notes 到当前版本
+    # （只在版本化 PRD 且全完成时动 notes/locked，避免覆盖人写的中途进展说明）
+    all_done = total > 0 and done_count == total
+    fname = os.path.basename(prd_path)
+    ver = fname[4:-5] if (fname.startswith("prd-") and fname.endswith(".json")) else ""
+    if all_done and ver:
+        st["locked"] = False
+        st["notes"] = (f"{ver}: {done_count}/{total} 任务全 done"
+                       f"（studio-status-sync 自动回填 "
+                       f"{datetime.datetime.now().strftime('%Y-%m-%d %H:%M')}）")
+
     with open(status_path, "w") as f:
         json.dump(st, f, ensure_ascii=False, indent=2)
     print(f"已回写 {status_path}: completedTasks={done_count}/{total}")

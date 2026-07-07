@@ -191,7 +191,7 @@ def build_engine_firmware():
     except Exception:
         pass
 
-    return f"""## 🔴 [AUTONOMOUS ENGINE FIRMWARE v3.0 — SessionStart 强制注入]
+    return f"""## 🔴 [AUTONOMOUS ENGINE FIRMWARE v6.2 — SessionStart 强制注入]
 
 此指令由 `resume-checkpoint.py` Hook 注入，**每次会话启动必定执行**。
 即使 CLAUDE.md 被压缩/丢失，以下指令仍然存在。{studio_context}
@@ -215,7 +215,7 @@ def build_engine_firmware():
 - `SKILL.md` → 存在？缺失→从 decision-patterns.md 重建
 - `decision-agent-prompt.md` → 存在？（子代理操作手册）
 - CronCreate 心跳 → 存活？缺失→自动 CronCreate 重建
-- **L6 Watchdog** → 读 `.claude/.watchdog_heartbeat`，年龄 >10min? → WSL cron 可能挂了 → 尝试 `wsl -d Ubuntu -- sudo service cron start`
+- **L6 Watchdog** → 读 `.claude/.watchdog_heartbeat`，年龄 >10min? → watchdog 计划任务可能挂了 → 尝试 `schtasks /Run /TN AutonomousStudioWatchdog`（Windows）或检查系统 cron（Linux）
 
 ### 会话隔离
 - 每条决策日志带 `session_id`，跨会话不混淆
@@ -226,12 +226,12 @@ def build_engine_firmware():
 读 `.claude/.watchdog_heartbeat`：
 - 存在且 <10分钟 → ✅ L6 正常
 - 存在但 >10分钟 → ⚠️ L6 可能失活，报告用户
-- 不存在 → 🔴 L6 未启动，尝试 `wsl -d Ubuntu -- sudo service cron start` 恢复
+- 不存在 → 🔴 L6 未启动，尝试 `schtasks /Run /TN AutonomousStudioWatchdog`（Windows）或系统 cron（Linux）恢复
 - 检查 `.claude/.watchdog_stale` → 存在说明上次会话异常中断
 - 检查 `.claude/.watchdog_resume_needed` → 存在说明进程已死过
 
-### 外部监控 (WSL watchdog)
-- `{{PROJECT_DIR}}/.claude/watchdog.sh` 每 5 分钟检查进程健康
+### 外部监控 (L6 watchdog)
+- Windows: 任务计划程序 `AutonomousStudioWatchdog` 每 5 分钟运行 `watchdog-boot.ps1`；Linux: 系统 cron 运行 `{{PROJECT_DIR}}/.claude/watchdog.sh`
 - 检查点僵死 >15min → 写入 `.watchdog_stale` 标记
 - 进程不存在 → 写入 `.watchdog_resume_needed` 标记
 - 新会话启动 → 读取 Watchdog 标记，若有僵死记录则报告

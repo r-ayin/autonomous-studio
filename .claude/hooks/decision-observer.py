@@ -18,6 +18,7 @@ import json
 import re
 import random
 import string
+import tempfile
 from datetime import datetime, timezone
 
 # 强制 UTF-8：防止 Windows GBK 环境导致 stdin 解码失败 / stdout emoji 崩溃
@@ -138,11 +139,29 @@ def safe_read_json(filepath: str) -> dict:
 
 
 def safe_write_json(filepath: str, data: dict):
-    """安全写入 JSON 文件"""
+    """Atomic JSON write: tempfile + os.replace prevents partial-file corruption on crash/interrupt.
+
+    Mirrors the pattern used by stop-completion-gate.py (case-2026-07-04-404 fix).
+    """
     try:
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open(filepath, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
+        dirpath = os.path.dirname(filepath) or "."
+        os.makedirs(dirpath, exist_ok=True)
+        fd, tmp_path = tempfile.mkstemp(
+            prefix=".safe-write-", suffix=".tmp", dir=dirpath
+        )
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False, indent=2)
+                f.flush()
+                os.fsync(f.fileno())
+            os.replace(tmp_path, filepath)
+        except BaseException:
+            # Clean up temp file on any failure (including KeyboardInterrupt)
+            try:
+                os.unlink(tmp_path)
+            except OSError:
+                pass
+            raise
     except Exception:
         pass
 

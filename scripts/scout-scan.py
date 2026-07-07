@@ -540,6 +540,11 @@ def health_priority(r):
             # planning/ 已在某 worktree 待合并——不加分（别再推荐补，应推合并），
             # 否则该项目会因"无 planning/"持续霸榜 #1 让引擎重做已做工作（3 轮撞盲区）
             reasons.append(f"planning/ 待合并({','.join(pend_planning)})")
+        elif r.get("has_planning_codebase"):
+            # .planning/codebase/ 事实层已存在（agents-map 产物），项目已接受 .planning 约定。
+            # 不再按"完全无 planning/"扣满分，降为提示性 +0.5，避免对已有事实层的项目误推泛泛"补 planning/"。
+            score += 0.5
+            reasons.append(".planning/codebase/ 已有，缺 roadmap")
         else:
             score += 1
             reasons.append("无 planning/")
@@ -584,6 +589,8 @@ def health_priority(r):
         unit = f"triage 前 1-2 个 TODO（标注或清掉）"
     elif not r["has_planning"] and pend_planning:
         unit = f"等合并 planning/（已在 {','.join(pend_planning)} worktree，别重做——先查 worktree log）"
+    elif not r["has_planning"] and r.get("has_planning_codebase"):
+        unit = "补 .planning/roadmap.md（事实层 codebase/ 已有，缺路线图；1 文件）"
     elif not r["has_planning"]:
         unit = "补 planning/ 目录（路线图文档，无需深读代码）"
     else:
@@ -608,10 +615,47 @@ def health_priority(r):
     return {"score": round(score, 2), "reasons": reasons, "work_unit": unit}
 
 
+def validate_public_interfaces(path, project_name):
+    """校验 .claude/public-interfaces.txt 中属于本项目的条目是否真实存在于磁盘。
+
+    audit-2026-07-03-005 AS-INFRA-M02: opt-worktree.sh judge_direction_kind() 对缺失条目
+    静默忽略（grep -qxF miss → route-fix），导致已删除/重命名的公共接口文件仍留在清单里，
+    后续真改动同名新文件时无法触发 direction-shift、cp-guard 漏拦。本函数把"清单与磁盘
+    不一致"作为健康信号暴露到 scout 报告 + stderr WARN，让引擎/用户在瞭望轮就能发现，
+    而非等到下一次审计才挖出。
+
+    返回 (missing_entries: list[str], pi_file_present: bool)。pi_file 不存在视为项目未启用
+    该机制，不报错（向后兼容）。
+    """
+    pi_file = os.path.join(path, ".claude", "public-interfaces.txt")
+    if not os.path.isfile(pi_file):
+        return [], False
+    missing = []
+    try:
+        with open(pi_file, encoding="utf-8", errors="ignore") as fh:
+            for raw in fh:
+                line = raw.strip()
+                if not line or line.startswith("#"):
+                    continue
+                # 格式 <project>:<relpath>；只校验本项目名下条目
+                if ":" not in line:
+                    continue
+                proj, rel = line.split(":", 1)
+                if proj != project_name:
+                    continue
+                target = os.path.join(path, rel)
+                if not os.path.exists(target):
+                    missing.append(rel)
+    except Exception:
+        return [], True
+    return missing, True
+
+
 def scan_project(p):
     """扫描单个项目，返回健康报告 + 索引"""
     path = p["path"]
     m_counts, m_files, m_deferred = count_markers(path)
+    pi_missing, pi_present = validate_public_interfaces(path, p["name"])
     rep = {
         "name": p["name"],
         "path": path,
@@ -621,12 +665,15 @@ def scan_project(p):
         "gates_exists": os.path.isfile(os.path.join(path, "GATES.md")),
         "gates_pending_wts": pending_in_opt_worktrees(path, "GATES.md"),
         "has_planning": os.path.isdir(os.path.join(path, "planning")),
+        "has_planning_codebase": os.path.isdir(os.path.join(path, ".planning", "codebase")),
         "planning_pending_wts": pending_planning_in_worktrees(path),
         "markers": m_counts,
         "markers_deferred": m_deferred,
         "marker_files": sorted(m_files),
         "triage_pending_wts": pending_triage_in_worktrees(path, m_files),
         "pending_worktrees": count_pending_worktrees(path),
+        "public_interfaces_present": pi_present,
+        "public_interfaces_missing": pi_missing,
     }
     # 文件索引（限制规模，避免大库超时）
     tree, symbols, n = file_tree_and_symbols(path)
@@ -722,6 +769,16 @@ def main():
                 if pw.get("stale", 0):
                     parts.append(f"空(可清理)={pw['stale']}")
                 print(f"  待处理 worktree: {', '.join(parts)}")
+            pi_miss = r.get("public_interfaces_missing", [])
+            if pi_miss:
+                # AS-INFRA-M02: 暴露 public-interfaces.txt stale 条目到瞭望报告。
+                # judge_direction_kind() 对缺失条目静默忽略 → direction-shift 漏判；
+                # 此处 WARN 让用户/引擎及时感知并触发清单维护（route-fix 即可）。
+                print(f"  ⚠️  public-interfaces.txt 有 {len(pi_miss)} 条 stale 条目（文件不存在）:")
+                for m in pi_miss[:10]:
+                    print(f"      - {m}")
+                if len(pi_miss) > 10:
+                    print(f"      ... 另有 {len(pi_miss) - 10} 条（JSON 报告看全）")
 
         # 推荐工作单位（按健康度排序）——给引擎确定性选材，避免自由心证总挑自己
         print("\n=== 推荐工作单位（按健康度排序，越高越该被照顾）===")
@@ -732,6 +789,40 @@ def main():
             print(f"      理由: {'; '.join(rc['reasons']) or '健康度良好'}")
         if recs and recs[0]["score"] == 0:
             print("  （所有项目健康度良好，无紧迫小工作单位——可做文档润色或跳过）")
+
+        # === Public-interfaces entry existence check ===
+        # AS-INFRA-M02: public-interfaces.txt may list files that were moved/deleted.
+        # Stale entries cause opt-worktree.sh judge_direction_kind to silently misclassify
+        # (missing file → not matched → route-fix when it should be direction-shift or vice versa).
+        pi_path = os.path.join(ws, "autonomous-studio", ".claude", "public-interfaces.txt")
+        if os.path.isfile(pi_path):
+            try:
+                stale_entries = []
+                with open(pi_path, encoding="utf-8") as pf:
+                    for lineno, raw in enumerate(pf, 1):
+                        line = raw.strip()
+                        if not line or line.startswith("#"):
+                            continue
+                        if ":" not in line:
+                            continue
+                        proj, relpath = line.split(":", 1)
+                        proj = proj.strip()
+                        relpath = relpath.strip()
+                        if not proj or not relpath:
+                            continue
+                        full = os.path.join(ws, proj, relpath)
+                        if not os.path.exists(full):
+                            stale_entries.append((lineno, proj, relpath))
+                if stale_entries:
+                    print(f"\n⚠️  Public-interfaces integrity: {len(stale_entries)} entries reference missing files:")
+                    for lineno, proj, relpath in stale_entries[:10]:
+                        print(f"    - L{lineno} {proj}:{relpath}")
+                    if len(stale_entries) > 10:
+                        print(f"    ... and {len(stale_entries) - 10} more")
+                    print("  → Update autonomous-studio/.claude/public-interfaces.txt to match current tree.")
+                    print("  → Stale entries can cause opt-worktree.sh direction classification errors.")
+            except OSError:
+                pass  # Non-fatal
 
 
 if __name__ == "__main__":
