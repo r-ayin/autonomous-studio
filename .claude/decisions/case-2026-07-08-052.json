@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-07-08-052",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-08T16:45:00+08:00",
+  "project": "shizi",
+  "work_unit": "SZ-SH-M-001: No storage quota handling for HistoryItem thumbnails",
+  "situation": "chrome.storage.local has 10MB default quota. saveHistoryItem writes entire history array (up to 50 items × ~5-10KB each with base64 thumbnails + CountResult.details) without catching QuotaExceededError. When quota is hit, write silently fails and newest history item is lost with no user feedback.",
+  "action": "Added isQuotaError() detector and progressive eviction loop to saveHistoryItem. On QuotaExceededError, drops oldest entries one-by-one until write succeeds or MIN_HISTORY_KEEP=5 reached. Non-quota errors re-thrown. cp-guard triggered (storage.ts diverged in worktree from prior unmerged commits), used case-104 direct wt commit escape hatch.",
+  "files_changed": ["src/shared/storage.ts"],
+  "worktree": "auto/opt-shizi-1783404582",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 47f7516 on auto/opt-shizi-1783404582 pushed to origin. 1 file changed, 41 insertions(+), 1 deletion(-). Adds isQuotaError helper + try/catch with progressive eviction in saveHistoryItem.",
+  "next_suggestion": [
+    "SZ-SH-M-002: Source manifest lacks CSP; build.mjs adds wasm-unsafe-eval — dev/prod divergence",
+    "SZ-SH-M-003: esbuild minification without sourcemaps makes production debugging impossible"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-07-047",
+  "audit_depth": "shallow"
+}
