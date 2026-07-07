@@ -1,0 +1,33 @@
+{
+  "case_id": "case-2026-07-08-010",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-07T00:33:41Z",
+  "project": "wechat-main",
+  "work_unit": "persona_drift.py size guard (WC-EXT-L-002)",
+  "situation": "audit-2026-07-08-041 derived_fixes 最后一个 pending: WC-EXT-L-002 persona_drift.py:90 unbounded markdown read — extract_style_vector 直接 read_text(encoding='utf-8') 无大小上限，CLI 传入大文件可致 OOM。同 audit 的 WC-EXT-M-003 knowledge_base.py 已有 stat-first 10MB guard 模式（commit f1ebed8）可复用。",
+  "action": "在 extract_style_vector 入口加 _MAX_ARTICLE_BYTES=10MB 常量 + stat().st_size 预检；超限 raise RuntimeError 由 main() try/except 捕获记入 articles[].error（与现有异常处理一致）。复用 knowledge_base.py WC-EXT-M-003 模式，保持 wechat-main scripts 内 size guard 语义一致。",
+  "files_changed": [
+    "scripts/persona_drift.py"
+  ],
+  "worktree": "opt-persona-drift-1783384405",
+  "direction": "route-fix",
+  "outcome": "merged",
+  "outcome_evidence": "Worktree commit 452289f on auto/opt-persona-drift-1783384405 pushed to origin. Diff shows +13 lines adding _MAX_ARTICLE_BYTES constant and stat-first guard before read_text. Branch exists on origin (push success in opt-worktree.sh output).",
+  "next_suggestion": [
+    "All audit-2026-07-08-041 derived_fixes now merged → cycle-complete. Next round triggers new full audit on an unaudited module.",
+    "shizi PROGRESS.md stale 7.9 days (scout #1) — refresh if no higher-priority target emerges."
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "scripts/persona_drift.py",
+      "line": 90,
+      "severity": "low",
+      "finding": "unbounded file read — extract_style_vector calls file_path.read_text(encoding='utf-8') without size guard; CLI-supplied large markdown file causes OOM / memory-pressure DoS",
+      "remediation": "Add stat-first 10MB size guard before read_text, raise RuntimeError on exceed (mirrors knowledge_base.py WC-EXT-M-003 pattern)",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-08-041",
+  "audit_depth": "shallow"
+}
