@@ -1,0 +1,38 @@
+{
+  "case_id": "case-2026-07-07-116",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-07T00:52:00+08:00",
+  "project": "personal-assistant",
+  "work_unit": "xiaozhi_server WAV/PCM size cap (PA-AUD-H-002 derived fix)",
+  "situation": "audit-2026-07-08-042 finding PA-AUD-H-002: xiaozhi_server.py:171 _asr() writes wav_bytes to disk via tempfile.mkstemp with no upper-bound check. Malicious or buggy xiaozhi device can stream multi-GB audio across listen:start→stop window → server disk-fill DoS. Symmetrically, _on_audio accumulates PCM in memory without cap → OOM if device never sends listen:stop.",
+  "action": "Added two module-level constants MAX_WAV_BYTES=MAX_PCM_BYTES=50MB (~26min 16kHz/16bit mono, far above any real utterance). Inserted PCM cap guard at top of _on_audio that flips self._aborted and logs warning when exceeded. Inserted WAV cap guard in _finalize_utterance between _to_wav() and _asr() call that drops oversized utterance with warning log instead of writing to disk.",
+  "files_changed": [
+    "personal_assistant/xiaozhi_server.py"
+  ],
+  "worktree": "opt-xiaozhi-1783385638",
+  "direction": "xiaozhi:dos-guard",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh committed + pushed auto/opt-xiaozhi-1783385638 to origin; git show confirms MAX_WAV_BYTES/MAX_PCM_BYTES constants + _on_audio PCM cap branch + _finalize_utterance WAV cap branch present on worktree branch. Main checkout reverted (expected post-migration).",
+  "next_suggestion": "Next pending derived_fix by severity: PA-AUD-M-001 (audio_params unsanitized sample_rate → frame_size explosion DoS, same file). Then M-002 (discard threshold uses wrong rate), M-003 (proactive log injection), L-001 (JSON parse silent), L-002 (transcript unbounded read). All route-fix class, all single-file except M-003 targets proactive.py.",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "personal_assistant/xiaozhi_server.py",
+      "line": 177,
+      "severity": "high",
+      "finding": "_asr() writes arbitrary-size wav_bytes to tempfile.mkstemp without upper bound → disk-fill DoS vector from malicious/buggy xiaozhi device",
+      "remediation": "Add MAX_WAV_BYTES constant (50MB); check len(wav_bytes) before write; drop + warn if exceeded",
+      "kind": "route-fix"
+    },
+    {
+      "file": "personal_assistant/xiaozhi_server.py",
+      "line": 129,
+      "severity": "medium",
+      "finding": "_on_audio extends _pcm_buf without memory cap → OOM if device streams indefinitely without listen:stop",
+      "remediation": "Add MAX_PCM_BYTES constant; check len(_pcm_buf) before extend; abort utterance + warn if exceeded",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-08-042",
+  "audit_depth": "shallow"
+}
