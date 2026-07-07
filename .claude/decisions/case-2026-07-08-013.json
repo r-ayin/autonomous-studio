@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-08-013",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-07T02:54:24Z",
+  "project": "personal-assistant",
+  "work_unit": "calendar:iso-validation",
+  "situation": "PA-B2-M-006 from audit-2026-07-08-045: calendar.py search() LLM fallback returns start/end used directly in events_range SQL string comparison without ISO format validation. Malformed LLM output causes silently wrong query results.",
+  "action": "Added _validate_iso_dt() helper using datetime.fromisoformat() to validate and normalize ISO datetime strings. Modified search() LLM fallback path to validate both start and end before passing to events_range; invalid formats cause fallthrough to keyword search instead of corrupt SQL comparison.",
+  "files_changed": ["personal_assistant/calendar.py"],
+  "worktree": "opt-calendar-1783392797",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 20770cb on auto/opt-calendar-1783392797 pushed to origin. 1 file changed, 19 insertions(+), 1 deletion(-). _validate_iso_dt handles YYYY-MM-DDTHH:MM, YYYY-MM-DDTHH:MM:SS, and YYYY-MM-DD (complemented to T00:00). Invalid strings return None → s/e become None → fallthrough to events_search.",
+  "next_suggestion": "Next pending fix: PA-B2-L-002 (reminders.py notify log append non-atomic without locking). After all 3 pending route-fixes merged/rejected, audit-cycle-state transitions to cycle-complete → triggers next full audit.",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "personal_assistant/calendar.py",
+      "line": 69,
+      "severity": "medium",
+      "finding": "LLM-fallback time range used without ISO validation → silently wrong SQL comparison results",
+      "remediation": "Added _validate_iso_dt() validator; invalid LLM output falls through to keyword search",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-08-045",
+  "audit_depth": "shallow"
+}
