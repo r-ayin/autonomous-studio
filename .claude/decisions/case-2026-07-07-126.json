@@ -1,0 +1,31 @@
+{
+  "case_id": "case-2026-07-07-126",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-07T11:25:00+08:00",
+  "project": "sunset-prediction",
+  "work_unit": "SP-SRV-H-001 shell command injection via BROWSER_USE_POST_LIMIT",
+  "situation": "audit-2026-07-08-046 finding SP-SRV-H-001 (high severity route-fix): server.js line 104 parses BROWSER_USE_POST_LIMIT with parseInt then interpolates into execAsync shell template. parseInt tolerates trailing junk ('3; rm -rf /' → 3, safe) but returns NaN on empty/non-numeric input; NaN in template literal becomes literal 'NaN' string in shell args (benign but wrong). Raw env string is not directly injected thanks to parseInt, but the sanitization intent is implicit and unauditable.",
+  "action": "Edit server.js in existing opt-server-1783335841 worktree (cp-guard triggered because wt already diverged from main per case-104 escape hatch). Replace bare parseInt with explicit Number.isFinite guard + default fallback 3. Commit directly in wt + push to origin.",
+  "files_changed": ["server.js"],
+  "worktree": "opt-server-1783335841",
+  "direction": "server:shell-injection-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit e00d179 on auto/opt-server-1783335841 pushed to origin (bc2505d..e00d179). git diff shows parseInt replaced with Number.isFinite guard. No other files modified.",
+  "next_suggestion": [
+    "派生下一个 pending fix: SP-SRV-H-002 routes.js GET /predictions?date= lacks YYYY-MM-DD format validation (same audit)",
+    "SP-SRV-H-002 与 SP-SRV-M-005 (err.message leak) 都改 routes.js，可考虑合并到一个 worktree 减少分支数"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "server.js",
+      "line": 104,
+      "severity": "high",
+      "finding": "BROWSER_USE_POST_LIMIT env var interpolated into execAsync shell template after parseInt; NaN edge case produces literal 'NaN' in shell args",
+      "remediation": "Explicit Number.isFinite guard with default fallback 3; only validated finite integer reaches shell",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-08-046",
+  "audit_depth": "shallow"
+}
