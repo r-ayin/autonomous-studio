@@ -19,6 +19,23 @@ HEARTBEAT_FILE="$PROJECT_DIR/.claude/.watchdog_heartbeat"
 STALE_MARKER="$PROJECT_DIR/.claude/.watchdog_stale"
 RESUME_FLAG="$PROJECT_DIR/.claude/.watchdog_resume_needed"
 LOCK_FILE="$PROJECT_DIR/.claude/.watchdog.lock"
+AUDIT_DIR="$PROJECT_DIR/.audit"
+
+# ── audit-log helper (best-effort; never exits non-zero) ───────────────
+# Usage: _audit_log <action> <resource_type> <resource_id> <result> [details_json]
+_audit_log() {
+    local action="$1" rtype="$2" rid="$3" result="$4" details="${5:-{}}"
+    mkdir -p "$AUDIT_DIR" 2>/dev/null || return 0
+    local day
+    day="$(date -u +%Y-%m-%d)"
+    local path="$AUDIT_DIR/audit-${day}.jsonl"
+    local ts rand6 event_id
+    ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    rand6="$(head -c 3 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+    event_id="audit-$(date -u +%Y%m%d-%H%M%S)-${rand6}"
+    printf '{"id":"%s","timestamp":"%s","userId":"autonomous-engine","userRole":"engine","action":"%s","resource":{"type":"%s","identifier":"%s"},"result":"%s","ip":"local","details":%s}\n' \
+        "$event_id" "$ts" "$action" "$rtype" "$rid" "$result" "$details" >>"$path" 2>/dev/null || true
+}
 
 # ── 0. 实例锁（防止重叠 cron 运行）─────────────────────
 exec 200>"$LOCK_FILE"
@@ -73,9 +90,11 @@ if [ $AGE_MINUTES -gt 15 ]; then
         echo "session_interrupted_at=$(date -Iseconds)" > "$STALE_MARKER"
         echo "last_checkpoint_age=${AGE_MINUTES}min" >> "$STALE_MARKER"
         echo "recovery_hint=run_resume-checkpoint" >> "$STALE_MARKER"
+        _audit_log "mark-stale" "watchdog-marker" "stale" "success" "{\"age_minutes\":${AGE_MINUTES},\"reason\":\"cc_process_missing\"}"
 
         echo "watchdog_detected_stale_at=$(date -Iseconds)" > "$RESUME_FLAG"
         echo "last_active_checkpoint=$CHECKPOINT_TS" >> "$RESUME_FLAG"
+        _audit_log "mark-resume-needed" "watchdog-marker" "resume_needed" "success" "{\"last_checkpoint\":\"$CHECKPOINT_TS\"}"
     else
         echo "[$(date -Iseconds)] WARNING: Process alive but checkpoint not updated"
     fi
@@ -86,6 +105,7 @@ else
         MARKER_AGE=$(($(date +%s) - $(stat -c %Y "$STALE_MARKER" 2>/dev/null || echo 0)))
         if [ $MARKER_AGE -gt 1800 ]; then
             rm -f "$STALE_MARKER" "$RESUME_FLAG"
+            _audit_log "clear-stale" "watchdog-marker" "stale+resume" "success" "{\"marker_age_seconds\":${MARKER_AGE}}"
         fi
     fi
 fi
