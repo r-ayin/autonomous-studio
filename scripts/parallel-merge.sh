@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# polyglot python shim: Linux(python3) / Windows(python)
+PY="$(command -v python3 || command -v python || echo python)"
 # parallel-merge.sh — 并发构建增量合并（确定性 plumbing）
 #
 # 读 planning/parallel-plan.json，按 wave 顺序逐个把 parallel/{task-id} 合并进当前分支，
@@ -19,7 +21,7 @@ if [[ ! -f "$PLAN" ]]; then
 fi
 
 # 收集所有 task（按 wave 顺序）= 依赖序
-TASKS=$(python3 - "$PLAN" <<'PY'
+TASKS=$("$PY" - "$PLAN" <<'PY'
 import json, sys
 plan = json.load(open(sys.argv[1]))
 out = []
@@ -36,7 +38,7 @@ if [[ -z "$INTEGRATION_TEST" ]]; then
   elif [[ -f Makefile ]] && grep -qE '^test:' Makefile; then
     INTEGRATION_TEST="make test"
   elif ls test_*.py tests/test_*.py 2>/dev/null | head -1 | grep -q .; then
-    INTEGRATION_TEST="python3 -m pytest --tb=short -q"
+    INTEGRATION_TEST=""$PY" -m pytest --tb=short -q"
   else
     INTEGRATION_TEST=""
   fi

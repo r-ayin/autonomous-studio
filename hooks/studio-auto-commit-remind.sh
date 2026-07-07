@@ -1,7 +1,9 @@
 #!/bin/bash
+# polyglot python shim: Linux(python3) / Windows(python)
+PY="$(command -v python3 || command -v python || echo python)"
 # PostToolUse hook: Studio 开发阶段提醒提交代码
 
-FILE_PATH=$(echo "$CLAUDE_TOOL_INPUT" | python3 -c "
+FILE_PATH=$(echo "$CLAUDE_TOOL_INPUT" | "$PY" -c "
 import sys, json
 try:
     data = json.load(sys.stdin)
@@ -36,7 +38,7 @@ STATUS_FILE="$PROJECT_DIR/planning/status.json"
 
 # 检查是否在开发阶段
 export AUTO_COMMIT_REMIND_STATUS_FILE="$STATUS_FILE"
-STAGE=$(python3 -c "
+STAGE=$("$PY" -c "
 import json, os
 try:
     d = json.load(open(os.environ.get('AUTO_COMMIT_REMIND_STATUS_FILE', '')))

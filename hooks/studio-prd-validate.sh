@@ -1,7 +1,9 @@
 #!/bin/bash
+# polyglot python shim: Linux(python3) / Windows(python)
+PY="$(command -v python3 || command -v python || echo python)"
 # PostToolUse hook: 验证 prd.json 格式
 
-FILE_PATH=$(echo "$CLAUDE_TOOL_INPUT" | python3 -c "
+FILE_PATH=$(echo "$CLAUDE_TOOL_INPUT" | "$PY" -c "
 import sys, json
 try:
     data = json.load(sys.stdin)
@@ -19,7 +21,7 @@ if [[ ! -f "$FILE_PATH" ]]; then
 fi
 
 export FILE_PATH
-python3 << PYEOF
+"$PY" << PYEOF
 import json, os, sys
 
 try:
