@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-08-048",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-08T14:52:00+08:00",
+  "project": "shizi",
+  "work_unit": "SZ-BG-M-006: extractJson bracket-matching fix",
+  "situation": "audit-2026-07-07-047 derived fix dispatch. extractJson in vision-adapter.ts used naive response.slice(jsonStart) to end-of-string then JSON.parse. When Vision API returns trailing prose after the JSON array/object, parse fails or extracts wrong substring. Also rejected SZ-BG-M-005 as duplicate (already fixed in prior audit cycle commit 5d3d756 SH2-M-003).",
+  "action": "Replaced slice-to-end fallback with bracket-matching extractor (extractBalancedJson) that tracks depth of [/{ vs ]/} while respecting string literal boundaries. Only extracts balanced JSON substring. Falls through to error if no balanced match found.",
+  "files_changed": ["src/background/vision-adapter.ts"],
+  "worktree": "opt-background-1783213292",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 47c1bc5 on auto/opt-background-1783213292 pushed to origin. Pre-existing test failure (ocr-slice.test.ts:125) confirmed unrelated — fails identically without this change (git stash test). All other 52 tests pass.",
+  "next_suggestion": "Next pending fix: SZ-BG-M-007 (Vision API fetch calls have no timeout — can hang indefinitely). Then SZ-BG-M-008 (Non-PNG images skip all scaling/tiling/enhancement).",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "src/background/vision-adapter.ts",
+      "line": 223,
+      "severity": "medium",
+      "finding": "extractJson slices from first [/{ to end of string then parses — when model response contains trailing text after valid JSON, parse either fails (throwing away valid data) or accidentally succeeds on a wrong substring if earlier pseudo-JSON exists",
+      "remediation": "Replace with bracket-matching extraction that finds balanced closing bracket, respecting string literals. Only attempt JSON.parse on the balanced substring.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-047",
+  "audit_depth": "shallow"
+}
