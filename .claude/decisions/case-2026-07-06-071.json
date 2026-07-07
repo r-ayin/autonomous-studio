@@ -1,0 +1,34 @@
+{
+  "case_id": "case-2026-07-06-071",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-06T21:19:43+08:00",
+  "project": "wechat-main",
+  "work_unit": "H-002 derived fix: pipeline.py shell injection via state['min_bytes'] f-string interpolation",
+  "situation": "audit-2026-07-06-022 finding H-002 (high severity). pipeline.py:222 cmd = f\"WECHAT_MIN_BYTES={state['min_bytes']} {cmd}\" interpolates state JSON value directly into shell command prefix. State file (_load at line 64) trusts arbitrary JSON without schema validation (M-010). Agent-loop executes STEP.cmd via bash (SKILL.md line 40), so attacker-controllable state value can trigger command substitution ($(...) or backticks). _run_gate (line 87-110) already correctly uses env dict — line 222 is a redundant dangerous parallel path.",
+  "action": "Route-fix: removed f-string shell prefix from pipeline.py cmd_next; added STEP.env dict output with int-cast + default fallback for malformed state. Updated SKILL.md agent-loop contract to pass WECHAT_MIN_BYTES via env dict instead of relying on cmd prefix. Both changes committed in single worktree branch.",
+  "files_changed": [
+    "scripts/pipeline.py",
+    ".claude/skills/wechat-pipeline/SKILL.md"
+  ],
+  "worktree": "opt-wechat-main-1783130541",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit abc517d on auto/opt-wechat-main-1783130541 (2 files changed, 12 insertions, 4 deletions). Pushed to origin. pipeline.py no longer interpolates state['min_bytes'] into shell cmd; outputs STEP.env.WECHAT_MIN_BYTES as sanitized int string. SKILL.md agent-loop updated to use env dict.",
+  "next_suggestion": [
+    "Dispatch H-003 (bing_search SSRF) as next high-severity derived fix from audit-2026-07-06-022",
+    "After H-003..H-005 dispatched, batch medium-severity M-001..M-017 by file grouping (qq_push.py has 4 findings — combine into single worktree)"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "scripts/pipeline.py",
+      "line": 222,
+      "severity": "high",
+      "finding": "Shell injection via f-string interpolation of state['min_bytes'] into bash cmd prefix. State JSON unvalidated (M-010); agent-loop executes STEP.cmd via bash → command substitution possible if state poisoned.",
+      "remediation": "Pass WECHAT_MIN_BYTES via subprocess env dict (as _run_gate already does). Int-cast + default fallback for malformed state. Output STEP.env for agent-loop consumption.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-022",
+  "audit_depth": "shallow"
+}

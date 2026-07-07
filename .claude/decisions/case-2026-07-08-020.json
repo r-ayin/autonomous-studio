@@ -1,0 +1,35 @@
+{
+  "case_id": "case-2026-07-08-020",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-08T22:15:00+08:00",
+  "project": "sunset-prediction",
+  "work_unit": "SP-SCR-M-005: xhs_keepalive.py HEALTH_LOG non-atomic read-append-write race condition",
+  "situation": "save_health() in scripts/xhs_keepalive.py reads .xhs_health.json, appends a record, then writes back via Path.write_text(). Under concurrent cron invocations, two processes can read the same state simultaneously, each append independently, and the last writer wins — silently dropping entries. Additionally, write_text() is not atomic: a crash or kill mid-write leaves a truncated/corrupt JSON file that subsequent reads fail to parse (caught by JSONDecodeError handler, but data is lost). This mirrors SP-SCR-H-002 (.env non-atomic rewrite) which was already fixed in this worktree with tempfile+os.replace.",
+  "action": "Replaced the single HEALTH_LOG.write_text() call with the same tempfile+fsync+os.replace pattern already used by update_env_cookie() in the same file (SP-SCR-H-002 fix). Write payload to tempfile in same directory, fsync for durability, os.replace for POSIX atomic rename. Cleanup tmp file on any failure including KeyboardInterrupt. Also rejected SP-SCR-M-004 (social-scraper.js require('fs')) as false positive — file is pure ESM with no require() calls anywhere.",
+  "files_changed": [
+    "scripts/xhs_keepalive.py"
+  ],
+  "worktree": "opt-scripts-1783396445",
+  "direction": "scripts:xhs-health-atomic",
+  "outcome": "succeeded",
+  "outcome_evidence": "git commit 7eb0c64 on auto/opt-scripts-1783396445; pushed to origin (eb5c0d7..7eb0c64); python3 -c ast.parse confirms syntax valid; diff shows +20/-2 lines replacing write_text with tempfile+os.replace pattern",
+  "next_suggestion": [
+    "SP-SCR-M-006: publish-xhs.js fetch API calls have no timeout (next pending route-fix from audit-2026-07-08-046)",
+    "SP-SCR-M-009: post_xhs_browseruse.py post record file non-atomic write",
+    "SP-SCR-L-002: wanxia-mail-push.sh MAIL_TO unbound variable under set -u"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "scripts/xhs_keepalive.py",
+      "line": 96,
+      "severity": "medium",
+      "finding": "HEALTH_LOG.write_text() is non-atomic read-append-write. Concurrent cron invocations race: last writer wins, silently dropping health records. Crash mid-write corrupts JSON.",
+      "remediation": "Write to tempfile in same dir + fsync + os.replace for POSIX atomic rename. Pattern already proven in update_env_cookie() (SP-SCR-H-002).",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-08-046",
+  "audit_depth": "shallow",
+  "_derived_fix_note": "SP-SCR-M-005 → merged (this case). SP-SCR-M-004 → rejected (false positive: social-scraper.js has no require('fs'), file is pure ESM)."
+}

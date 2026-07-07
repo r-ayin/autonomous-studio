@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-08-011",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-08T09:59:29+08:00",
+  "project": "autonomous-engine",
+  "work_unit": "protocol-check subprocess env whitelist (AE-L-001)",
+  "situation": "audit-2026-07-08-043 finding AE-L-001: protocol-check.py:72 subprocess.run inherits full parent os.environ (including ANTHROPIC_API_KEY, GITHUB_TOKEN, etc.) when invoking bootstrap.py. Partial fix 09374bb added --project-dir flag but never narrowed env. Design invites future secret leak if bootstrap.py or any transitive import reads os.environ.",
+  "action": "Replace {**os.environ, 'CLAUDE_PROJECT_DIR': WORKSPACE_ROOT} with explicit whitelist (PATH, PYTHONPATH, HOME, TMPDIR, TEMP, TMP, LANG, LC_ALL) + CLAUDE_PROJECT_DIR. Whitelist covers standard subprocess needs without exposing secrets.",
+  "files_changed": [".claude/hooks/protocol-check.py"],
+  "worktree": "opt-protocol-check-1783389515",
+  "direction": "protocol-check:env-whitelist",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 0e0a58a on auto/opt-protocol-check-1783389515 branch; worktree at /home/admin/workspace/.opt-worktrees/autonomous-engine/opt-protocol-check-1783389515 contains whitelisted env dict at lines 68-77 replacing prior os.environ spread.",
+  "next_suggestion": "Dispatch AE-L-002 (notify-phone.py ntfy body unbounded truncation). After both merged, set audit-cycle-state.status=cycle-complete to trigger next full audit.",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": ".claude/hooks/protocol-check.py",
+      "line": 72,
+      "severity": "low",
+      "finding": "subprocess.run env={**os.environ, ...} inherits full parent environment including secrets (ANTHROPIC_API_KEY, GITHUB_TOKEN, SSH_AUTH_SOCK, etc.). Current bootstrap.py path doesn't exist so risk is latent, but design invites future leak if bootstrap script is installed or subprocess target changes.",
+      "remediation": "Whitelist only necessary env vars (PATH/PYTHONPATH/HOME/TMP*/LANG/LC_ALL) plus CLAUDE_PROJECT_DIR.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-08-043",
+  "audit_depth": "shallow"
+}

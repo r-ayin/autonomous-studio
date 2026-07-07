@@ -1,0 +1,33 @@
+{
+  "case_id": "case-2026-07-06-084",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-06T14:50:43Z",
+  "project": "wechat-main",
+  "work_unit": "hot-scanner --output atomic merge + schema validation (M-017)",
+  "situation": "audit-2026-07-06-022 派生 fix M-017：topic-pool/hot-scanner.py:738-748 的 --output merge 逻辑有三重缺陷：①TOCTOU（exists→read→write 非原子，并发调用丢数据）；②直接 json.loads 不校验结构，损坏/恶意 JSON 静默污染 merge；③非原子 write_text，崩溃时文件半写。这是 audit-2026-07-06-022 最后一个 pending finding，merge 后 cycle 进入 cycle-complete。",
+  "action": "在 main worktree 编辑 hot-scanner.py：加 import os/tempfile/fcntl；重写 args.output 块为 LOCK_EX 持锁 read+validate+atomic-write 三段式——①fcntl.flock(LOCK_EX) 跨进程互斥覆盖全程；②json.loads 后校验 list[dict] + 必要字段 title，非法顶层类型拒绝 merge、缺 title 条目过滤并 WARN stderr；③tempfile.mkstemp + os.fsync + os.replace 原子写，异常 unlink tmp。opt-worktree.sh commit 复用 opt-wechat-main-1783130541（route-fix，未触公共接口）。commit a3459a9 pushed to origin/auto/opt-wechat-main-1783130541。",
+  "files_changed": [
+    "topic-pool/hot-scanner.py"
+  ],
+  "worktree": "opt-wechat-main-1783130541",
+  "direction": "wechat-main:hot-scanner-atomic",
+  "outcome": "succeeded",
+  "outcome_evidence": "python3 -c ast.parse OK; opt-worktree.sh commit 输出 '✓ 提交到 opt-wechat-main-1783130541' + '[push] 4b0073b..a3459a9 HEAD -> auto/opt-wechat-main-1783130541'; main worktree 改动已还原（cp-guard 流程）",
+  "next_suggestion": [
+    "audit-cycle-state 所有 derived_fixes 已 merged → 下轮触发新一轮全量审计；挑一个未深度审过的项目（看 .claude/audits/ 避开 wechat-main/personal-assistant/sunset-prediction/FinanceTracker/oneday-auto-fix/x-tool/autonomous-studio/kaoqin/open-design/shizi/quanzhan/1BfrYn9G/browser-use/stagehand-analysis/huiyis/agent-dashboard/pc_agent/fa_agent/fusion-server/agentfw/dingtalk-auto/autonomous-studio-aone）",
+    "personal-assistant 仍有 15 待合并 worktree（scout 显示），可考虑批量 merge/reject 清理积压"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "topic-pool/hot-scanner.py",
+      "line": 738,
+      "severity": "medium",
+      "finding": "--output merge TOCTOU + no schema validation + non-atomic write. exists()→read_text()→write_text() 三步非原子，并发调用间可丢数据；json.loads 不校验顶层类型与必要字段，损坏/恶意输入静默污染选题池；write_text 非原子，进程崩溃留半写文件致下次启动解析失败。",
+      "remediation": "fcntl.flock(LOCK_EX) 持锁覆盖 read+merge+write 全程；校验 list[dict] + title 字段，非法则拒绝/过滤；tempfile.mkstemp + os.fsync + os.replace 原子替换。已在本 case 实施。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-022",
+  "audit_depth": "shallow"
+}

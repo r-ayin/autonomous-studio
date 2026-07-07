@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-07-098",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-07T23:18:00+08:00",
+  "project": "autonomous-studio (meta-engine)",
+  "work_unit": "Materialize phantom SD-016/SD-017 entries in structural-debt.md",
+  "situation": "audit-2026-07-07-033 M-META-001: audit-cycle-state.json references _debt_id='SD-016+SD-017' but structural-debt.md ends at SD-015. These debt IDs are phantom — audit-2026-07-07-030 note says 'SD-016/SD-017 deferred to structural-debt queue' but the append was never executed. Cross-file consistency broken.",
+  "action": "PENDING DISPATCH — next fix-in-progress round will append SD-016 (no frontend auth / FE-H-001 SSRF via user-controlled LLM base_url persisted to localStorage) and SD-017 (AI trust boundary redesign / FE-H-002 prompt injection bypasses medium-risk tool confirm) to structural-debt.md using data from audit-2026-07-07-030. Single-file edit on structural-debt.md, no public interface change → route-fix.",
+  "files_changed": [],
+  "worktree": null,
+  "direction": "route-fix",
+  "outcome": "pending",
+  "outcome_evidence": "Case created as derived fix from audit-2026-07-07-033. Dispatch deferred to next fix-in-progress round per constraints A.",
+  "next_suggestion": "After case-097 lands, dispatch case-098. Verify structural-debt.md grep for SD-016/SD-017 returns matches post-merge.",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": ".claude/audit-cycle-state.json",
+      "line": 28,
+      "severity": "medium",
+      "finding": "_debt_id 'SD-016+SD-017' references non-existent entries in structural-debt.md — phantom cross-file reference",
+      "remediation": "Append SD-016 + SD-017 entries to structural-debt.md using audit-2026-07-07-030 FE-H-001/FE-H-002 data",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-033",
+  "audit_depth": "deep"
+}

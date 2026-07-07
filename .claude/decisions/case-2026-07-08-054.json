@@ -1,0 +1,32 @@
+{
+  "case_id": "case-2026-07-08-054",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-07T16:50:00+08:00",
+  "project": "shizi",
+  "work_unit": "SZ-SH-M-003: enable sourcemaps in esbuild minification",
+  "situation": "Derived fix from audit-2026-07-07-047 finding SZ-SH-M-003. All three esbuild calls (sidepanel, popup, background) in build.mjs had minify:true without sourcemap option, making production debugging impossible. opt-shared-1783413612 already had diverged build.mjs from prior SZ-SH-M-002 CSP fix, so used case-104 escape hatch to edit and commit directly in worktree.",
+  "action": "Added sourcemap:true to all three esbuild build calls (sidepanel.js, popup.js, background.js). This emits .js.map files alongside minified bundles, enabling source-level debugging in Chrome DevTools for production extension builds.",
+  "files_changed": ["build.mjs"],
+  "worktree": "opt-shared-1783413612",
+  "direction": "shared:sourcemaps",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 0dffc33 on auto/opt-shared-1783413612, pushed to origin. git diff shows +3 lines (sourcemap:true added to 3 esbuild configs).",
+  "next_suggestion": [
+    "SZ-SH-M-005: preprocessForVL tests only cover passthrough path; compression branch untested",
+    "SZ-SH-M-006: @crxjs/vite-plugin beta dependency unused in actual build pipeline",
+    "SZ-BG-L-001: IndexedDB connection opened per-operation but never closed"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "build.mjs",
+      "line": "55,68,84",
+      "severity": "medium",
+      "finding": "esbuild minification without sourcemaps makes production debugging impossible",
+      "remediation": "Add sourcemap:true to all esbuild build configurations",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-047",
+  "audit_depth": "shallow"
+}

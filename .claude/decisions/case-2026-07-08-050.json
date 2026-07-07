@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-08-050",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-08T16:30:00+08:00",
+  "project": "shizi",
+  "work_unit": "popup:debounce-flush",
+  "situation": "SZ-PP-M-005 from audit-2026-07-07-047: Auto-save debounce timer (300ms) in SettingsPage.tsx only cleared on unmount, not flushed. User closes popup within debounce window → last settings edit silently lost.",
+  "action": "Modified useEffect cleanup in SettingsPage.tsx: when saveTimerRef.current is set (timer pending), clearTimeout + immediately fire chrome.runtime.sendMessage saveSettings with latestSettingsRef.current (fire-and-forget, no setState after unmount). Added .catch for error logging. cp-guard triggered (SettingsPage.tsx diverged from main due to prior SZ-PP-M-004/M-001/M-002/M-003 fixes), used case-104 direct wt commit escape hatch.",
+  "files_changed": ["src/popup/SettingsPage.tsx"],
+  "worktree": "opt-popup-1783215325",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 1cda116 on auto/opt-popup-1783215325 pushed to origin. Diff: +11/-1 lines in SettingsPage.tsx cleanup function. Prior commit 0f915ec (SZ-PP-M-004) intact.",
+  "next_suggestion": "Next pending fix: SZ-PP-M-006 (All chrome.runtime.sendMessage calls lack timeout) — add AbortController or Promise.race timeout wrapper to sendMessage calls in popup.",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "src/popup/SettingsPage.tsx",
+      "line": 60,
+      "severity": "medium",
+      "finding": "useEffect cleanup only clearTimeout without flushing pending save — last edit lost if popup closed within 300ms debounce window",
+      "remediation": "Flush pending save on unmount: clearTimeout + immediate saveSettings with latestSettingsRef.current (fire-and-forget)",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-047",
+  "audit_depth": "shallow"
+}

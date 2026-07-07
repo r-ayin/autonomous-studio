@@ -1,0 +1,33 @@
+{
+  "case_id": "case-2026-07-06-077",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-06T13:57:19Z",
+  "project": "wechat-main",
+  "work_unit": "M-006 brave_search.py:92 unbounded resp.read cap at 5MB",
+  "situation": "audit-2026-07-06-022 derived_fixes pending. M-005 (bocha_search) already fixed in opt-wechat-main-1783130541 commit 1924fc5 (audit-2026-07-05-001) — marked merged without new dispatch. M-006 (brave_search) not yet fixed; main HEAD and wt HEAD identical so cp-guard passes; straight-edit wt escape hatch used.",
+  "action": "Stream-read brave_search.py urlopen response with _MAX_RESPONSE_BYTES=5MB hard cap. Pre-check Content-Length header for cheap reject. Raise RuntimeError on oversized payload so caller logs + skips query instead of OOM.",
+  "files_changed": ["scripts/brave_search.py"],
+  "worktree": "opt-wechat-main-1783130541",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit ea32ec1 on auto/opt-wechat-main-1783130541 pushed to origin (afc2fce..ea32ec1); python3 -c ast.parse validated syntax; 25 insertions / 1 deletion",
+  "next_suggestion": [
+    "Next pending: M-007 deepseek_refine.py:101 unbounded resp.read cap at 1MB (same pattern, different file)",
+    "M-005 was duplicate-dispatched across audits 07-05-001 and 07-06-022 — consider dedup check when registering derived_fixes"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "scripts/brave_search.py",
+      "line": 92,
+      "severity": "medium",
+      "finding": "urllib.response.read() unbounded — malicious/misconfigured Brave endpoint can return GB-scale payload causing OOM before json.loads ever runs",
+      "remediation": "Stream-read with 5MB hard cap; pre-check Content-Length; raise RuntimeError on overflow",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-022",
+  "audit_depth": "shallow",
+  "_derived_finding_id": "M-006",
+  "_note_m005_already_fixed": "M-005 (bocha_search cap) was already fixed in commit 1924fc5 (audit-2026-07-05-001). Marked merged in audit-cycle-state without new dispatch to avoid duplicate work."
+}

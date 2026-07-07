@@ -1,0 +1,36 @@
+{
+  "case_id": "case-2026-07-07-137",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-07T14:43:58+08:00",
+  "project": "shizi",
+  "work_unit": "SZ-BG-M-003: O(n²) base64 string concat in compressFallback + preprocessForVL",
+  "situation": "audit-2026-07-07-047 derived fix. vision-adapter.ts compressFallback (line 345-347) and preprocessForVL (line 320-322) both use `let binary=''; for(...) binary+=String.fromCharCode(bytes[i])` to build base64 from Uint8Array — O(n²) string concatenation identical to already-fixed SZ-BG-H-002 blobToBase64 pattern. For large compressed JPEG outputs (~500KB+), this causes severe perf degradation in service worker.",
+  "action": "Added uint8ArrayToBase64() helper using chunked String.fromCharCode.apply (8192-byte chunks) + btoa, replacing both O(n²) loops. Same approach as SZ-BG-H-002 fix. Tests pass (6/6 preprocess.test.ts). Type-check clean (no new errors in vision-adapter.ts).",
+  "files_changed": ["src/background/vision-adapter.ts"],
+  "worktree": "opt-background-1783213292",
+  "direction": "background:vision-base64-perf",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit d553eb1 on auto/opt-background-1783213292 pushed to origin. vitest tests/preprocess.test.ts 6/6 passed. tsc --noEmit shows no new errors in vision-adapter.ts (pre-existing storage.ts:93 error unrelated).",
+  "next_suggestion": "Next pending fix: SZ-BG-M-005 (mergeMultiSourceResults lacks skipFuzzy perf guard — O(n²) editDistance). Then SZ-BG-M-006 (extractJson may extract wrong JSON substring).",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "src/background/vision-adapter.ts",
+      "line": 320,
+      "severity": "medium",
+      "finding": "preprocessForVL uses O(n²) string concatenation loop to build base64 from Uint8Array after canvas convertToBlob",
+      "remediation": "Replace with chunked uint8ArrayToBase64 helper using String.fromCharCode.apply in 8192-byte chunks",
+      "kind": "route-fix"
+    },
+    {
+      "file": "src/background/vision-adapter.ts",
+      "line": 345,
+      "severity": "medium",
+      "finding": "compressFallback uses identical O(n²) string concatenation loop for base64 encoding",
+      "remediation": "Same uint8ArrayToBase64 helper replacement",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-047",
+  "audit_depth": "shallow"
+}

@@ -1,0 +1,31 @@
+{
+  "case_id": "case-2026-07-07-128",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-07T20:15:00+08:00",
+  "project": "sunset-prediction",
+  "work_unit": "calibration-math NaN guard (SP-ENG-M-001)",
+  "situation": "audit-2026-07-08-046 derived fix: calibration-math.js computeWeightsFromPairs divides by rawSum without guarding zero. When all dimErrors are Infinity (corrupted/extreme outlier data), every rawWeight = 1/(1+Inf) = 0 → rawSum = 0 → normalized[k] = 0/0 = NaN. NaN propagates through EMA blend, clamp, and final renormalization, producing all-NaN weights that silently corrupt downstream predictions.",
+  "action": "Add explicit guard in computeWeightsFromPairs: when rawSum === 0 or !Number.isFinite(rawSum), fall back to uniform weights (1/N per dimension) so downstream EMA/clamp remain well-defined. Pure-function change, no DB/side-effect impact. Existing 6-test suite passes unchanged.",
+  "files_changed": ["src/calibration-math.js"],
+  "worktree": "opt-calibration-1783395468",
+  "direction": "calibration:math-nan-guard",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit sha 6827f69 on auto/opt-calibration-1783395468; pushed to origin. test/calibration.test.js 6/6 pass after edit. Route-fix reused existing calibration wt (no new worktree created).",
+  "next_suggestion": [
+    "Next pending: SP-ENG-M-005 prediction-engine.js gaussian sigma=0 division by zero (same project, same area — may reuse opt-prediction-engine-1783395732 wt)",
+    "After M-005: SP-SCR-M-001 mail_push.py SMTP_PORT int conversion crash"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "src/calibration-math.js",
+      "line": 50,
+      "severity": "medium",
+      "finding": "computeWeightsFromPairs normalized[k] = rawWeights[k] / rawSum produces NaN when all dimErrors are Infinity (rawSum collapses to 0). NaN propagates through EMA blend → clamp → final weight renormalization, yielding all-NaN weights that silently corrupt downstream prediction scores.",
+      "remediation": "Guard rawSum === 0 || !Number.isFinite(rawSum): fall back to uniform weights (1/DIM_KEYS.length) so downstream stages remain well-defined.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-08-046",
+  "audit_depth": "shallow"
+}

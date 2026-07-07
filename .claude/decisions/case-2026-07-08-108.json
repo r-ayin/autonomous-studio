@@ -1,0 +1,51 @@
+{
+  "case_id": "case-2026-07-08-108",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-08T02:30:00+08:00",
+  "project": "autonomous-studio",
+  "work_unit": "全量深度 meta-audit: derived_fixes terminal-status integrity + SD materialization gap + FE-fixes phantom merge reversal",
+  "situation": "audit-cycle-state.status=cycle-complete → triggered new full deep audit. All 14 workspace git projects audited ≥1×, no unaudited targets remain. Meta-audit focused on state-file integrity: (1) Do derived_fixes status='merged' entries correspond to actual main-branch commits? (2) Are structural debts claimed in history actually materialized in structural-debt.md? (3) Is case-2026-07-08-001 batch-mark accurate?",
+  "action": "Deep meta-audit reading audit-cycle-state.json, structural-debt.md, audit reports, case files, and performing git log/worktree/branch verification against main. Found H-META-040-001 (SD materialization commits de47ec1/eb0a30e/93872a4/4948ff1 only on worktree branches, never merged to main; structural-debt.md still has only SD-001..SD-005 despite 10 phantom SDs claimed materialized). Found M-META-040-002 (case-001 batch-marked 9 FE-* fixes as merged but opt-frontend-1783366395 worktree+branch+remote all gone, commits never on main). Retroactively reclassified prior audit-039 derived_fixes as rejected. Wrote audit report audit-2026-07-08-040.md. Updated audit-cycle-state.json: status→fix-in-progress, pending_count=2, new derived_fixes array with H-META-040-001 + M-META-040-002 both pending.",
+  "files_changed": [
+    ".claude/audits/audit-2026-07-08-040.md",
+    ".claude/audit-cycle-state.json"
+  ],
+  "worktree": null,
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "git branch -a --contains de47ec1 returns only auto/opt-autonomous-1783381217 (not main); git log main --oneline | grep -c 'de47ec1|eb0a30e|93872a4|4948ff1' = 0; git show main:.claude/structural-debt.md | grep '^## SD-' returns only SD-001..SD-005; git worktree list | grep frontend = empty; git ls-remote origin auto/opt-frontend-1783366395 = empty. Audit report written at .claude/audits/audit-2026-07-08-040.md. audit-cycle-state.json updated: status=fix-in-progress, pending_count=2, 2 new derived_fixes with status=pending.",
+  "next_suggestion": [
+    "Next round: dispatch H-META-040-001 route-fix — re-materialize 10 phantom SDs to structural-debt.md via new opt-worktree commit + merge to main (read content from existing worktree branches de47ec1/eb0a30e before they're cleaned)",
+    "Following round: dispatch M-META-040-002 route-fix — update audit-030 history entry with explicit derived_fixes array marking 9 FE-* as rejected; optionally re-dispatch FE-H-001/H-002 if user authorizes",
+    "After both fixes merged: update memory/audit-cycle-merged-means-dispatched.md to clarify 'merged' = verified on main via git log, not just dispatched+pushed"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": ".claude/audit-cycle-state.json",
+      "line": "derived_fixes[0,1]",
+      "severity": "high",
+      "finding": "H-META-040-001: derived_fixes status=merged but SD materialization commits (de47ec1/eb0a30e/93872a4/4948ff1) only on worktree branches, never merged to main. structural-debt.md missing SD-007,SD-009..SD-017.",
+      "remediation": "Re-dispatch SD materialization: read worktree branch content → new opt-worktree commit → merge to main. Fix derived_fixes status to pending first.",
+      "kind": "route-fix"
+    },
+    {
+      "file": ".claude/decisions/case-2026-07-08-001.json",
+      "line": "outcome/situation",
+      "severity": "medium",
+      "finding": "M-META-040-002: case-001 batch-marked 9 FE-* fixes as merged but opt-frontend-1783366395 worktree+branch+remote all gone. Commits never on main. FE-H-001/H-002 HIGH severity never dispatched.",
+      "remediation": "Update audit-030 history entry with explicit derived_fixes array (9 FE-* status=rejected). Optionally re-dispatch FE-H-001/H-002 via new direction-shift worktree.",
+      "kind": "route-fix"
+    },
+    {
+      "file": ".claude/audit-cycle-state.json",
+      "line": "history[*].derived_structural_debts",
+      "severity": "info",
+      "finding": "I-META-040-003: 28 audits claim structural debts (~60+ total), only 5 materialized in structural-debt.md. Most implicitly rejected via drift-repair but lack explicit documentation.",
+      "remediation": "Informational — no fix needed. Consider adding 'SDs implicitly rejected via drift-repair' notes to relevant history entries for traceability.",
+      "kind": "informational"
+    }
+  ],
+  "audit_id": "audit-2026-07-08-040",
+  "audit_depth": "deep"
+}

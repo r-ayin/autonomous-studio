@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-07-07-077",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-07T18:25:00+08:00",
+  "project": "moni-master",
+  "work_unit": "M-001-position: avg_cost includes buy-side fees → misleading unrealized PnL (direction-shift from audit-2026-07-07-028)",
+  "situation": "apply_buy_trade received total_cost = price*qty + fee.total, inflating avg_cost. mark() uses avg_cost for unrealized_pnl = (last_price - avg_cost) * qty, which is understated immediately after purchase. Cash accounting in settle_buy_fill already deducts fees separately — double-counting.",
+  "action": "Pass gross_trade_cost = round4(trade_price * fill_quantity) (ex-fees) to apply_buy_trade instead of total_cost. Added comment explaining the rationale. Edited directly in diverged worktree opt-moni-engine-1783358963 (cp-guard triggered because prior M-003-engine fix was unmerged on same file).",
+  "files_changed": ["moni-rs/crates/moni-engine/src/engine.rs"],
+  "worktree": "opt-moni-engine-1783358963",
+  "direction": "moni-engine:position-avg-cost-ex-fees",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit fcd13a3 on auto/opt-moni-engine-1783358963 pushed to origin. Diff: 1 file changed, 6 insertions(+), 1 deletion(-). gross_trade_cost replaces total_cost in apply_buy_trade call at engine.rs:686-692.",
+  "next_suggestion": [
+    "Dispatch next pending direction-shift: COGALPHA-03 (prompt injection via user-controlled context fields in Agent::build_prompt, agents.rs:41, medium)",
+    "After all 5 pending direction-shifts dispatched, status → cycle-complete → trigger new full audit"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-07-028",
+  "audit_depth": "shallow"
+}

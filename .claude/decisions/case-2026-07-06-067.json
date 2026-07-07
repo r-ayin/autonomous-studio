@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-06-067",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-06T22:45:00+08:00",
+  "project": "personal-assistant",
+  "work_unit": "fix(config): robust .env parser for values with = and mixed quotes (audit M-004)",
+  "situation": "audit-2026-07-06-021 finding M-004 pending. load_env() used chained strip('\"').strip(\"'\") which corrupted base64 keys (trailing '=' stripped), mixed-quote secrets (residual quote chars like \"it's\"), and inline-commented values ('# comment' kept as data). Route-fix kind, minimal single-file change.",
+  "action": "Edited personal_assistant/config.py in worktree opt-personal-assistant-1783341897 (case-104 escape hatch: direct edit + wt-internal commit since cp-guard would skip clean file). New logic: only strip matching outer quotes; handle ' #'/tab+# inline comments; preserve '#' mid-value; skip empty keys. Zero-dependency, backward compatible. Committed + pushed to origin.",
+  "files_changed": ["personal_assistant/config.py"],
+  "worktree": "opt-personal-assistant-1783341897",
+  "direction": "personal-assistant:config-env-parser",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 2e29b6f on auto/opt-personal-assistant-1783341897; pushed to origin (new branch); git diff shows 21 insertions / 2 deletions in load_env(); function signature/exports unchanged — drop-in compatible.",
+  "next_suggestion": "Next pending finding: M-005 relay_bridge.py:107 Origin validation bypass when Origin header absent. After M-005 merged/rejected, audit-cycle-state.status → cycle-complete → next full audit.",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "personal_assistant/config.py",
+      "line": 22,
+      "severity": "medium",
+      "finding": "load_env() v.strip().strip('\"').strip(\"'\") corrupts base64/mixed-quote/inline-comment values",
+      "remediation": "Only strip matching outer quotes; parse inline comments; skip empty keys",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-021",
+  "audit_depth": "shallow"
+}

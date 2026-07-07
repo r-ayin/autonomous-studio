@@ -1,0 +1,31 @@
+{
+  "case_id": "case-2026-07-06-052",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-06T10:33:48Z",
+  "project": "FinanceTracker",
+  "work_unit": "drift-repair: archive 8 phantom derived_fixes from audit-2026-07-06-019 (project missing from workspace, case IDs point to unrelated prod-deploy/personal-assistant cases)",
+  "situation": "audit-cycle-state.status=fix-in-progress with 8 pending derived_fixes referencing FinanceTracker files. Scout-scan confirms FinanceTracker does not exist in /home/admin/workspace/. Case ID cross-check shows case-2026-07-06-010..017 on disk belong to prod-deploy and personal-assistant audits, not FinanceTracker. Derived fixes were never dispatched to real case files; state file contains phantom references. Pattern matches prior drift-repair archives (audit-013 kaoqin, audit-018 oneday-auto-fix).",
+  "action": "Archive all 8 derived_fixes as rejected-archive due to project-not-found + case-id-mismatch. Update audit-cycle-state.json status to cycle-complete. No opt-worktree commit (no source code to modify). Write this drift-repair case for audit trail.",
+  "files_changed": [],
+  "worktree": null,
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "find /home/admin/workspace -iname '*financetracker*' returns empty; ls case-2026-07-06-{010..017}.json shows projects 'prod-deploy skill' and 'personal-assistant', none reference FinanceTracker or audit-2026-07-06-019. All 8 derived_fixes have no dispatchable target.",
+  "next_suggestion": [
+    "Trigger new full audit (cycle-complete). Next unaudited candidate: pick project from workspace not yet in .claude/audits/ history — e.g., wechat-main, sunset-prediction, or moni-master (all present in workspace, none deep-audited recently).",
+    "Investigate why audit-2026-07-06-019 was written against a non-existent project — possible auditor hallucination or project was deleted between audit and dispatch. Add guard to future audit cycles: verify project path exists before writing derived_fixes."
+  ],
+  "audit_type": "none",
+  "audit_findings": [
+    {
+      "file": ".claude/audit-cycle-state.json",
+      "line": 9,
+      "severity": "medium",
+      "finding": "derived_fixes[].fix_case_id references (case-010..017) do not correspond to FinanceTracker cases on disk; they point to prod-deploy/personal-assistant cases from earlier audits. State file drifted from reality.",
+      "remediation": "Add pre-dispatch validation: before writing derived_fix entry, verify (a) target project exists in workspace, (b) fix_case_id is freshly allocated and unique. Reject dispatch if either check fails.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-019",
+  "audit_depth": "shallow"
+}

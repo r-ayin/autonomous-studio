@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-08-060",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-08T11:02:00+08:00",
+  "project": "shizi",
+  "work_unit": "SZ-PP-L-001: Base64 prefix strip regex rejects valid MIME subtypes with special characters",
+  "situation": "ImageUploader.tsx line 78 uses /^data:image\\/\\w+;base64,/ to strip data URI prefix. \\w+ matches only [a-zA-Z0-9_], rejecting valid MIME subtypes containing + or - (e.g., image/svg+xml, image/x-icon). Users uploading SVG or ICO images would get the full data URI passed as base64, causing downstream parsing failures.",
+  "action": "Changed regex from /^data:image\\/\\w+;base64,/ to /^data:image\\/[^;]+;base64,/ which matches any characters up to the semicolon delimiter, correctly handling all valid MIME subtype formats.",
+  "files_changed": ["src/popup/ImageUploader.tsx"],
+  "worktree": "opt-popup-1783215325",
+  "direction": "popup:base64-regex",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit a9aedb0 on auto/opt-popup-1783215325 pushed to origin. Regex now matches svg+xml, x-icon, and all other valid MIME subtypes. cp-guard divergence handled via case-104 direct-edit-in-wt channel.",
+  "next_suggestion": "SZ-PP-L-002 (testVisionConnection no timeout) or SZ-PP-L-003 (partial storage data handling)",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "src/popup/ImageUploader.tsx",
+      "line": 78,
+      "severity": "low",
+      "finding": "Base64 prefix strip regex \\w+ rejects valid MIME subtypes with special characters (+, -)",
+      "remediation": "Replace \\w+ with [^;]+ to match any chars up to semicolon delimiter",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-047",
+  "audit_depth": "shallow"
+}

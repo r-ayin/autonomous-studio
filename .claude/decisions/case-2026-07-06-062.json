@@ -1,0 +1,30 @@
+{
+  "case_id": "case-2026-07-06-062",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-06T20:30:00+08:00",
+  "project": "sunset-prediction",
+  "work_unit": "M-005 storage_state JSON 0644 permissions → chmod 0600 + O_EXCL flock-style",
+  "situation": "audit-2026-07-06-020 finding M-005: scripts/export-xhs-cookie.js line 60 calls context.storageState({ path }) which writes session cookies/tokens as 0644 (world-readable). Any local user on the machine can steal XHS login session.",
+  "action": "Replace storageState({path}) with storageState()→writeStorageStateSecure helper. Helper opens file with mode 0o600 via fs.openSync (sets perms at creation, avoids 0644→0600 race window), writes JSON, then belt-and-braces chmodSync(0o600) in case umask interfered. Single-file route-fix.",
+  "files_changed": [
+    "scripts/export-xhs-cookie.js"
+  ],
+  "worktree": "opt-storage-state-perms-1783337790",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh commit succeeded; branch auto/opt-storage-state-perms-1783337790 pushed to origin; node --check syntax OK; helper uses openSync with mode 0o600 + chmodSync fallback",
+  "next_suggestion": "派生 L-002 (--no-sandbox container-detect gate) 后本轮 fix-in-progress 可收尾；两 pending 都 merged 后 audit-cycle-state.status → cycle-complete 触发下一轮全量审计",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "scripts/export-xhs-cookie.js",
+      "line": 60,
+      "severity": "medium",
+      "finding": "context.storageState({ path }) writes session cookies/tokens as 0644 world-readable — any local user can steal XHS login",
+      "remediation": "Use storageState() without path, then write via openSync(path, 'w', 0o600) + chmodSync(0o600) helper",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-020",
+  "audit_depth": "shallow"
+}

@@ -1,0 +1,34 @@
+{
+  "case_id": "case-2026-07-07-130",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-07T20:15:00+08:00",
+  "project": "sunset-prediction",
+  "work_unit": "SP-SCR-M-009: atomic publish-record write",
+  "situation": "Derived fix from audit-2026-07-08-046. post_xhs_browseruse.py writes publish-record JSON via open('w')+json.dump — non-atomic. Crash mid-write or concurrent cron can leave truncated/corrupt record file. Severity medium.",
+  "action": "Replace direct open('w') with tempfile.mkstemp(dir=POSTS_DIR)+os.fdopen+json.dump+os.replace pattern. Cleanup temp file on any BaseException. Added 'import tempfile'. Single-file route-fix in existing opt-scripts worktree.",
+  "files_changed": [
+    "scripts/post_xhs_browseruse.py"
+  ],
+  "worktree": "opt-scripts-1783396445",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 6448d32 on auto/opt-scripts-1783396445 pushed to origin. Diff: +12/-2 lines. tempfile.mkstemp creates .tmp in POSTS_DIR, os.replace atomically renames to target. Exception handler unlinks temp on failure.",
+  "next_suggestion": [
+    "Dispatch SP-SCR-L-002 (wanxia-mail-push.sh MAIL_TO unbound under set -u)",
+    "Dispatch SP-SCR-L-004 (xhs-daily.js exec URL template unescaped in shell)",
+    "Dispatch SP-ENG-L-002 (weather-fetcher.js extractSunsetWindowData assumes daily.sunset[0] exists)"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "scripts/post_xhs_browseruse.py",
+      "line": 483,
+      "severity": "medium",
+      "finding": "Non-atomic publish-record JSON write: open('w')+json.dump can produce truncated file on crash or concurrent cron execution",
+      "remediation": "Use tempfile.mkstemp+os.replace for atomic write; cleanup temp on exception",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-08-046",
+  "audit_depth": "shallow"
+}

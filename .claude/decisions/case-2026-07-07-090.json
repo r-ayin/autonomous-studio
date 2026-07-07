@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-07-07-090",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-07T19:50:00+08:00",
+  "project": "moni-master",
+  "work_unit": "FE-M-002 CSP header fix (audit-2026-07-07-030 derived)",
+  "situation": "moni-master frontend lacks Content-Security-Policy header in both dev server and production build. Without CSP, XSS via injected external script/style is unmitigated. Audit finding FE-M-002 (medium severity) pending dispatch since audit-2026-07-07-030 completed.",
+  "action": "Added CSP + X-Content-Type-Options + Referrer-Policy headers to vite.config.ts (dev server via server.headers) and index.html <meta> tags (production builds). Dev policy allows 'unsafe-inline' for Vite HMR bootstrap; prod policy stricter (no unsafe-inline in script-src). connect-src whitelists ws/http 127.0.0.1:8000 for backend proxy.",
+  "files_changed": [
+    "frontend/vite.config.ts",
+    "frontend/index.html"
+  ],
+  "worktree": "opt-frontend-1783366395",
+  "direction": "frontend:csp-header",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 3cf67e8 on auto/opt-frontend-1783366395 pushed to origin; git diff shows +11 lines vite.config.ts (headers block), +7 lines index.html (3 meta tags); TypeScript compiles clean (no syntax error in defineConfig).",
+  "next_suggestion": "派生下一条 pending finding FE-M-003 (localStorage plaintext API key storage); or if batched, FE-L-001 route splat 404 feedback.",
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-07-030",
+  "audit_depth": "shallow"
+}

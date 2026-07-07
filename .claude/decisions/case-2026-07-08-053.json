@@ -1,0 +1,23 @@
+{
+  "case_id": "case-2026-07-08-053",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-07T08:40:21Z",
+  "project": "shizi",
+  "work_unit": "SZ-SH-M-002: Source manifest lacks CSP; build.mjs adds wasm-unsafe-eval — dev/prod divergence",
+  "situation": "Source manifest.json had no content_security_policy field. build.mjs Step 7 hardcoded entire dist manifest including CSP, causing dev (vite/npm run dev) and prod (node build.mjs) manifests to diverge. Dev mode would load extension without CSP, prod with CSP+wasm-unsafe-eval.",
+  "action": "Added content_security_policy to source manifest.json. Rewrote build.mjs Step 7 to read source manifest and transform paths programmatically instead of hardcoding the entire object. This ensures CSP, permissions, name, description, version all stay in sync between source and dist.",
+  "files_changed": ["manifest.json", "build.mjs"],
+  "worktree": "opt-shared-1783413612",
+  "direction": "shared:build-csp-sync",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit on auto/opt-shared-1783413612 pushed to origin. git diff shows manifest.json gains CSP field, build.mjs Step 7 reads+transforms source manifest instead of hardcoding. Pre-existing build failure (storage.ts export syntax) is unrelated — confirmed by reproducing on clean main.",
+  "next_suggestion": [
+    "SZ-SH-M-003: esbuild minification without sourcemaps makes production debugging impossible",
+    "SZ-SH-M-005: preprocessForVL tests only cover passthrough path; compression branch untested",
+    "SZ-SH-M-006: @crxjs/vite-plugin beta dependency unused in actual build pipeline"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-07-047",
+  "audit_depth": "shallow"
+}

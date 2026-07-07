@@ -1,0 +1,34 @@
+{
+  "case_id": "case-2026-07-07-112",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-07T23:15:00+08:00",
+  "project": "moni-master",
+  "work_unit": "frontend/vite.config.ts FE-M-001 host binding hardening",
+  "situation": "audit-2026-07-07-030 derived_fixes pending dispatch. FE-M-001: Vite dev server bound to 0.0.0.0 exposes trading API proxy to LAN. Worktree opt-frontend-1783366395 already contains prior FE-H-001/H-002/L-001/L-002/L-003 fixes (unmerged); cp-guard blocks re-copy from main, so direct wt edit + wt-internal commit per case-104 escape hatch.",
+  "action": "Changed server.host from '0.0.0.0' to '127.0.0.1' in frontend/vite.config.ts. Updated inline comment to explain loopback binding closes both network-layer and Host-header attack vectors when combined with existing allowedHosts defense-in-depth. Committed directly in worktree (cp-guard diverged-wt escape hatch) and pushed to origin.",
+  "files_changed": [
+    "frontend/vite.config.ts"
+  ],
+  "worktree": "opt-frontend-1783366395",
+  "direction": "frontend:fe-m-001-host-binding",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 6a6d809 on auto/opt-frontend-1783366395 pushed to origin (a0332f4..6a6d809). git diff shows host changed from '0.0.0.0' to '127.0.0.1' with updated comment. Code review URL: https://code.alibaba-inc.com/xtool/moni/codereview/new?from=master&to=auto/opt-frontend-1783366395",
+  "next_suggestion": [
+    "Dispatch FE-M-002 (CSP meta tag in index.html) — but note worktree already has CSP headers in vite.config.ts; verify if index.html meta is still needed or if M-002 is substantively addressed",
+    "Dispatch FE-M-003 (remove localApiKey from persist partialize in aiStore.ts)",
+    "After all 7 FE-* fixes merged/rejected, set audit-cycle-state.status=cycle-complete to trigger next full audit"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "frontend/vite.config.ts",
+      "line": 14,
+      "severity": "medium",
+      "finding": "FE-M-001: Vite dev server binds 0.0.0.0 without host check. LAN devices can reach dev server + proxied FastAPI trading endpoints via IP.",
+      "remediation": "Bind to 127.0.0.1; keep allowedHosts as defense-in-depth. For remote debugging use SSH tunnel or explicit allowedHosts allowlist.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-030",
+  "audit_depth": "shallow"
+}

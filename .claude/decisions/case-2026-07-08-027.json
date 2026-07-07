@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-07-08-027",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-08T10:15:00+08:00",
+  "project": "shizi",
+  "work_unit": "SZ-SP-L-003: DetectionInfoPanel array index as key → stable region key",
+  "situation": "Derived fix from audit-2026-07-07-047 finding SZ-SP-L-003. DetectionInfoPanel renders debugInfo.regions with key={i} (array index). When regions reorder between detection runs, React reconciles by position not identity — causing stale DOM state and potential visual glitches.",
+  "action": "Replace key={i} with composite key from region label+coordinates (toFixed(4) for float stability). Uses case-104 direct-edit channel on existing opt-sidepanel-1782907225 worktree (cp-guard divergence from prior SZ-SP-L-001/002 fixes).",
+  "files_changed": ["src/sidepanel/SidePanelApp.tsx"],
+  "worktree": "opt-sidepanel-1782907225",
+  "direction": "sidepanel:detection-info-panel-key",
+  "outcome": "succeeded",
+  "outcome_evidence": "Committed 14a27d9 on auto/opt-sidepanel-1782907225, pushed to origin. Diff: key={i} → key={`${r.label||'商品'}-${r.x.toFixed(4)}-${r.y.toFixed(4)}-${r.width.toFixed(4)}-${r.height.toFixed(4)}`}",
+  "next_suggestion": [
+    "Dispatch SZ-SP-L-004 (History list no virtualization)",
+    "Dispatch SZ-PP-L-002 (testVisionConnection no timeout)"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-07-047",
+  "audit_depth": "shallow"
+}

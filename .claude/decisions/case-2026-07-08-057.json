@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-08-057",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-07T17:52:00+08:00",
+  "project": "shizi",
+  "work_unit": "SZ-BG-L-007: maskToBoundingBox inconsistent bbox normalization",
+  "situation": "Local segmentation path (maskToBoundingBox in segmentation.ts) discards oversized bboxes entirely (return null) when area > areaThreshold, while VL path (shrinkToThreshold in vision-adapter.ts) shrinks them to center. This asymmetry causes valid large product detections to be silently dropped when using local segmentation fallback.",
+  "action": "Replace discard-with-null with shrink-to-center logic matching VL path's shrinkToThreshold: compute shrinkRatio = sqrt((areaThreshold * 0.9) / area), scale width/height, recenter x/y. Applied via case-104 direct-edit channel due to cp-guard (segmentation.ts already diverged in worktree from prior unmerged fixes).",
+  "files_changed": ["src/background/segmentation.ts"],
+  "worktree": "auto/opt-background-1783213292",
+  "direction": "background:bbox-shrink-consistency",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit fcfb280 on auto/opt-background-1783213292 pushed to origin. maskToBoundingBox now shrinks oversized bboxes to center instead of returning null, matching shrinkToThreshold behavior in vision-adapter.ts:399-411.",
+  "next_suggestion": "Continue dispatching pending SZ-BG-L-008 (pipelineProgress sendMessage fire-and-forget swallows errors) or SZ-SP-L-001 (deletedStack stale closure). 22 route-fixes remaining from audit-2026-07-07-047.",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "src/background/segmentation.ts",
+      "line": 185,
+      "severity": "low",
+      "finding": "maskToBoundingBox discards large bboxes (return null) while VL path shrinkToThreshold preserves them by shrinking to center — behavioral inconsistency causes silent detection loss in local segmentation fallback",
+      "remediation": "Replace return null with shrink-to-center: shrinkRatio = sqrt((areaThreshold*0.9)/area), scale w/h, recenter x/y",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-047",
+  "audit_depth": "shallow"
+}

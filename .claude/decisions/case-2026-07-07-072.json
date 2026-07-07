@@ -1,0 +1,30 @@
+{
+  "case_id": "case-2026-07-07-072",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-06T17:13:27Z",
+  "project": "moni-master",
+  "work_unit": "cogalpha:deepseek-timeout — COGALPHA-01 derived fix from audit-2026-07-07-028",
+  "situation": "DeepSeek HTTP client (llm.rs:108) uses reqwest::Client::new() with no timeout. A single stalled API call blocks the async runtime task indefinitely — DoS vector when LLM endpoint is unresponsive or network partitions. Audit finding COGALPHA-01 (high severity, route-fix).",
+  "action": "Replace reqwest::Client::new() with ClientBuilder configured with 30s request timeout + 10s connect timeout. Builder fallback to Client::new() on build failure (defensive, logged via tracing::warn). Constants named DEEPSEEK_REQUEST_TIMEOUT / DEEPSEEK_CONNECT_TIMEOUT for visibility.",
+  "files_changed": [
+    "moni-rs/crates/moni-cogalpha/src/llm.rs"
+  ],
+  "worktree": "opt-cogalpha-1783357989",
+  "direction": "cogalpha:deepseek-timeout",
+  "outcome": "succeeded",
+  "outcome_evidence": "cargo check -p moni-cogalpha passed (Finished dev profile in 3.97s). opt-worktree.sh commit succeeded, branch auto/opt-cogalpha-1783357989 pushed to origin. Diff adds 2 const declarations + replaces Client::new() with ClientBuilder.timeout(30s).connect_timeout(10s).build() in DeepSeekLlmClient::new().",
+  "next_suggestion": "派生下一个 pending fix: MONI-API-001 (H, Monte Carlo n_sims unbounded CPU DoS, routes.rs:317) — 同 audit-2026-07-07-028 第二高优先级 route-fix",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "moni-rs/crates/moni-cogalpha/src/llm.rs",
+      "line": 108,
+      "severity": "high",
+      "finding": "reqwest::Client::new() has no timeout — indefinite hang on unresponsive DeepSeek API",
+      "remediation": "Use ClientBuilder with explicit request + connect timeouts",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-028",
+  "audit_depth": "shallow"
+}

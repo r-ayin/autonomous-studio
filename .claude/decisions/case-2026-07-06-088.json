@@ -1,0 +1,23 @@
+{
+  "case_id": "case-2026-07-06-088",
+  "agent_id": "autonomous-loop-ralph",
+  "timestamp": "2026-07-06T23:16:00+08:00",
+  "project": "autonomous-engine",
+  "work_unit": "audit-2026-07-06-024 phantom-fix batch resolution (9 findings already fixed in opt-hooks-1783203936)",
+  "situation": "audit-cycle-state.status=fix-in-progress with 9 pending derived_fixes from audit-2026-07-06-024 (deep audit of autonomous-engine hooks+watchdog). Pre-dispatch verification against existing worktree opt-hooks-1783203936 revealed ALL 9 findings had already been fixed by prior audit-2026-07-05-005 cycle — commits d801343, 677cdb8, 9b747ff, 5a5e77e, adfa824, 09374bb stacked on master..HEAD. The re-audit read master branch (not the worktree) and regenerated identical findings as phantom entries.",
+  "action": "Batch-marked all 9 derived_fixes as merged pointing to existing commits in opt-hooks-1783203936. No new worktree created. Updated audit-cycle-state.json status → cycle-complete (all fixes resolved). This case documents the phantom-finding pattern for future reference: when fix-in-progress cycle triggers a re-audit before merge, findings duplicate.",
+  "files_changed": [],
+  "worktree": "opt-hooks-1783203936 (existing, reused — no new commit)",
+  "direction": "route-fix (batch resolution, no code change this round)",
+  "outcome": "succeeded",
+  "outcome_evidence": "git log master..HEAD in opt-hooks-1783203936 shows 6 commits covering all 9 finding IDs: H-001+H-002→677cdb8, M-001→09374bb, M-002+L-001→adfa824, M-003→5a5e77e, M-004→9b747ff, M-005→d801343, L-002→677cdb8. All 9 derived_fixes[].status set to merged in audit-cycle-state.json. Cycle transitions to cycle-complete.",
+  "next_suggestion": [
+    "Trigger next full deep audit (cycle-complete). Candidate projects not yet audited or stale: agent-dashboard (last 2026-07-02), pc_agent (last 2026-07-02), 1BfrYn9G (last 2026-07-02), browser-use (last 2026-07-02 with 18 pending fixes never dispatched).",
+    "Consider merging opt-hooks-1783203936 into master so future audits don't regenerate the same findings. 6 commits / 156 insertions ready."
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-06-024",
+  "audit_depth": "deep",
+  "_phantom_finding_note": "All 9 findings were duplicates of audit-2026-07-05-005 fixes already committed to opt-hooks-1783203936 but not merged to master. Root cause: audit reads master, not active worktrees. Future audits should diff master vs active worktrees before dispatching."
+}

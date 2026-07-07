@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-07-143",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-07T18:15:00+08:00",
+  "project": "shizi",
+  "work_unit": "sidepanel:deleted-stack-stale-closure",
+  "situation": "SZ-SP-L-001 (audit-2026-07-07-047): handleRegionsChange useCallback captures deletedStack in closure. When user deletes a text then adjusts region within same React render cycle, the async refilter callback reads stale deletedStack=[] → deleted text reappears. Prior SH-M-005 fix changed key strategy to VerifiedText.id but did not address the underlying stale-closure race.",
+  "action": "Add useRef mirror (deletedStackRef) synced via useEffect. handleRegionsChange reads deletedStackRef.current instead of closure-captured deletedStack; remove deletedStack from useCallback deps to prevent callback recreation on every delete (which would also re-render ImageWithOverlay). Direct-edit in worktree via case-104 escape hatch because cp-guard detected divergence (prior unmerged SZ-SP-M-* commits on opt-sidepanel-1782907225).",
+  "files_changed": ["src/sidepanel/SidePanelApp.tsx"],
+  "worktree": "auto/opt-sidepanel-1782907225",
+  "direction": "sidepanel:deleted-stack-stale-closure",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 3aaa4a6 on auto/opt-sidepanel-1782907225 pushed to origin. tsc --noEmit shows no errors in SidePanelApp.tsx (pre-existing TS2339 in background/index.ts:75 unrelated — from prior SZ-SP-M-004 requestId addition). diff: +15/-3 lines adding deletedStackRef declaration, sync useEffect, and 3 read-site replacements inside handleRegionsChange.",
+  "next_suggestion": "Next pending route-fix: SZ-SP-L-002 (handleDeleteText stale closure — rapid deletes undo each other, same root cause pattern as SZ-SP-L-001). After that SZ-PP-L-002 (testVisionConnection no timeout).",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "src/sidepanel/SidePanelApp.tsx",
+      "line": 142,
+      "severity": "low",
+      "finding": "SZ-SP-L-001: handleRegionsChange captures deletedStack state in useCallback closure. Async chrome.runtime.sendMessage('refilter') awaits response; if user triggers delete+region-adjust within same render tick, callback reads pre-delete deletedStack snapshot → reapplies filter without the just-deleted item → deleted text reappears.",
+      "remediation": "Mirror deletedStack into useRef; read ref.current inside callback; remove deletedStack from deps array.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-047",
+  "audit_depth": "shallow"
+}

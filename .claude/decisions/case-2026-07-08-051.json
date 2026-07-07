@@ -1,0 +1,56 @@
+{
+  "case_id": "case-2026-07-08-051",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-08T16:35:00+08:00",
+  "project": "shizi",
+  "work_unit": "SZ-PP-M-006: add timeout to all chrome.runtime.sendMessage calls in popup",
+  "situation": "All 3 chrome.runtime.sendMessage calls in popup/SettingsPage.tsx (getSettings, saveSettings, testVisionConnection) had no timeout. If background script is unresponsive or disconnected, popup hangs indefinitely — loading spinner never clears, test button stays disabled forever, debounce flush blocks unmount.",
+  "action": "Added sendMessageWithTimeout<T>(message, timeoutMs) helper that wraps chrome.runtime.sendMessage in a Promise.race with setTimeout. Applied: getSettings=5s, saveSettings=5s (both debounced and flush-on-unmount paths), testVisionConnection=15s (Vision API can be slow). Also wrapped testVisionConnection in try/catch/finally so testing state always resets even on timeout/error.",
+  "files_changed": ["src/popup/SettingsPage.tsx"],
+  "worktree": "opt-popup-1783215325",
+  "direction": "popup:timeout-guard",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit f1d639a on auto/opt-popup-1783215325. 1 file changed, 32 insertions(+), 6 deletions(-). Pushed to origin. cp-guard triggered (SettingsPage.tsx diverged from main due to prior unmerged SZ-PP fixes), used case-104 direct wt commit escape hatch.",
+  "next_suggestion": [
+    "SZ-SH-M-001: No storage quota handling for HistoryItem thumbnails (medium)",
+    "SZ-SH-M-002: Source manifest lacks CSP; build.mjs adds wasm-unsafe-eval (medium)",
+    "SZ-SH-M-003: esbuild minification without sourcemaps (medium)"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "src/popup/SettingsPage.tsx",
+      "line": 25,
+      "severity": "medium",
+      "finding": "chrome.runtime.sendMessage({ action: 'getSettings' }) had no timeout — popup loading state permanent if background unresponsive",
+      "remediation": "Wrapped with sendMessageWithTimeout(msg, 5000)",
+      "kind": "route-fix"
+    },
+    {
+      "file": "src/popup/SettingsPage.tsx",
+      "line": 51,
+      "severity": "medium",
+      "finding": "chrome.runtime.sendMessage({ action: 'saveSettings' }) in debounce callback had no timeout",
+      "remediation": "Wrapped with sendMessageWithTimeout(msg, 5000)",
+      "kind": "route-fix"
+    },
+    {
+      "file": "src/popup/SettingsPage.tsx",
+      "line": 65,
+      "severity": "medium",
+      "finding": "Flush-on-unmount saveSettings also had no timeout",
+      "remediation": "Wrapped with sendMessageWithTimeout(msg, 5000)",
+      "kind": "route-fix"
+    },
+    {
+      "file": "src/popup/SettingsPage.tsx",
+      "line": 76,
+      "severity": "medium",
+      "finding": "testVisionConnection await with no timeout — button disabled forever on hang; also no error handling (setTesting(false) only on success path)",
+      "remediation": "Wrapped with sendMessageWithTimeout(msg, 15000) + try/catch/finally",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-047",
+  "audit_depth": "shallow"
+}

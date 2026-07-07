@@ -1,0 +1,40 @@
+{
+  "case_id": "case-2026-07-08-021",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-08T04:45:00+08:00",
+  "project": "sunset-prediction",
+  "work_unit": "scripts:publish-xhs-timeout",
+  "situation": "audit-2026-07-08-046 finding SP-SCR-M-006: publish-xhs.js L37/L46 fetch() calls have no timeout; localhost service hang causes script permanent block. Contrast: social-scraper.js has timedFetch with AbortController+9s.",
+  "action": "Add timedFetch(url, opts, timeoutMs=30000) wrapper using AbortController+setTimeout, replace both bare fetch() calls at L37 and L46. Mirrors social-scraper.js pattern. Route-fix (no public interface change).",
+  "files_changed": ["scripts/publish-xhs.js"],
+  "worktree": "opt-scripts-1783396445",
+  "direction": "scripts:publish-xhs-timeout",
+  "outcome": "merged",
+  "outcome_evidence": "Commit sha 116c6a5 on auto/opt-scripts-1783396445 pushed to origin. node --check passes syntax validation. Reuses existing scripts area worktree (route-fix判定).",
+  "next_suggestion": [
+    "派生下一个 pending fix: SP-SCR-M-009 (post_xhs_browseruse.py post record file non-atomic write)",
+    "或 SP-SCR-L-002 (wanxia-mail-push.sh MAIL_TO unbound variable under set -u)",
+    "剩余 pending: SP-SCR-M-009, SP-SCR-L-002, SP-SCR-L-004, SP-ENG-L-002"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "scripts/publish-xhs.js",
+      "line": 37,
+      "severity": "medium",
+      "finding": "fetch API call to /api/predictions has no timeout; localhost service hang → script permanent block",
+      "remediation": "AbortController + setTimeout(30s) via timedFetch wrapper",
+      "kind": "route-fix"
+    },
+    {
+      "file": "scripts/publish-xhs.js",
+      "line": 46,
+      "severity": "medium",
+      "finding": "fetch API call to /api/predictions?date= has no timeout; same risk as L37",
+      "remediation": "Same timedFetch wrapper applied",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-08-046",
+  "audit_depth": "shallow"
+}

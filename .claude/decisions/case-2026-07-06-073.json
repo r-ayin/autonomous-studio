@@ -1,0 +1,31 @@
+{
+  "case_id": "case-2026-07-06-073",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-06T21:27:00+08:00",
+  "project": "wechat-main",
+  "work_unit": "H-004 fact_checker empty-search auto-FALSIFIED → UNVERIFIABLE (search-poisoning DoS mitigation)",
+  "situation": "audit-2026-07-06-022 H-004 finding: script-verifier/fact_checker.py:330-334 returned verdict=FALSIFIED when search_result empty AND claim.risk=='high'. Attack surface: adversary crafts high-risk claims whose keywords guarantee empty search results → all auto-labeled FALSIFIED → report credibility artificially tanked. Equivalent to search-poisoning DoS against the QA verifier pipeline.",
+  "action": "Changed high-risk empty-search branch from FALSIFIED to UNVERIFIABLE + confidence=0.0 + needs_claude_review=True, aligning with the existing ERROR: branch at line 313-319. Added explanatory comment referencing H-004 + audit id. Committed directly in diverged worktree opt-wechat-main-1783130541 via case-104 escape hatch (cp-guard skipped due to prior WM-FC-01/02/03 fact_checker fixes already stacked in that WT). Pushed to origin.",
+  "files_changed": ["script-verifier/fact_checker.py"],
+  "worktree": "opt-wechat-main-1783130541",
+  "direction": "wechat-main:fact-checker-empty-search",
+  "outcome": "succeeded",
+  "outcome_evidence": "git commit e70c5cd on auto/opt-wechat-main-1783130541; pushed cb4ca49..e70c5cd to origin/qunbu/wechat; diff: 1 file changed, 8 insertions(+), 3 deletions(-) at line 329-340 replacing FALSIFIED return with UNVERIFIABLE+needs_claude_review",
+  "next_suggestion": [
+    "Dispatch H-005 qq_push.py:42 hardcoded /opt/wanxia/.env no permission check — stat mode verify (next highest-severity pending fix from audit-2026-07-06-022)",
+    "After H-005, batch M-001..M-004 qq_push.py unbounded read/token leak fixes into one worktree since same file"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "script-verifier/fact_checker.py",
+      "line": 330,
+      "severity": "high",
+      "finding": "Empty search result + risk=high auto-returns FALSIFIED without human review, enabling search-poisoning DoS against QA verifier",
+      "remediation": "Return UNVERIFIABLE + needs_claude_review=True instead, consistent with ERROR: branch semantics",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-022",
+  "audit_depth": "shallow"
+}

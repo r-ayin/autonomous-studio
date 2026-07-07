@@ -1,0 +1,83 @@
+{
+  "case_id": "case-2026-07-08-110",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-08T10:30:00+08:00",
+  "project": "autonomous-engine",
+  "work_unit": "full deep audit of standalone autonomous-engine repo (hooks + watchdog + SKILL.md firmware)",
+  "situation": "audit-cycle-state was cycle-complete after audit-042. All workspace git projects audited ≥1× except autonomous-engine standalone repo (distinct from autonomous-studio/.claude/hooks/ audited in audit-024). Triggered new full audit cycle targeting this unaudited repo.",
+  "action": "Deep-read all 8 source files (6 Python hooks, watchdog.sh, SKILL.md). Identified 8 findings (2H/3M/2L/1I) covering shell injection surfaces, non-atomic writes, TOCTOU races, hardcoded Windows paths, env leakage, and unbounded message bodies. Wrote audit report audit-2026-07-08-043.md. Updated audit-cycle-state.json with 7 pending derived_fixes. No fix dispatched this round (audit-only per protocol).",
+  "files_changed": [
+    ".claude/audits/audit-2026-07-08-043.md",
+    ".claude/audit-cycle-state.json"
+  ],
+  "worktree": null,
+  "direction": "audit",
+  "outcome": "succeeded",
+  "outcome_evidence": "audit-2026-07-08-043.md written with 8 findings across 8 source files; audit-cycle-state.json updated to status=fix-in-progress with 7 pending derived_fixes (AE-H-001, AE-H-002, AE-M-001..M-003, AE-L-001, AE-L-002); history entry appended.",
+  "next_suggestion": [
+    "Dispatch AE-H-001 fix: save-checkpoint.py run() → list-form subprocess (no shell=True)",
+    "Dispatch AE-H-002 fix: watchdog.sh python3 -c → env var path passing",
+    "After H-fixes merged, dispatch M-fixes (atomic write, TOCTOU, Windows paths)"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": ".claude/hooks/save-checkpoint.py",
+      "line": 33,
+      "severity": "high",
+      "finding": "run() uses shell=True subprocess — all current callers pass hardcoded strings but design invites future command injection",
+      "remediation": "Convert to list-form subprocess.check_output(['git', 'branch', '--show-current'], ...) without shell=True; remove Windows % escape logic",
+      "kind": "route-fix"
+    },
+    {
+      "file": ".claude/watchdog.sh",
+      "line": 36,
+      "severity": "high",
+      "finding": "f-string embeds $LATEST bash variable into python3 -c source code — path with quotes/special chars breaks Python parser or enables code injection",
+      "remediation": "Pass path via environment variable: LATEST_FILE=\"$LATEST\" python3 -c \"...os.environ['LATEST_FILE']...\"",
+      "kind": "route-fix"
+    },
+    {
+      "file": ".claude/hooks/save-checkpoint.py",
+      "line": 182,
+      "severity": "medium",
+      "finding": "write_checkpoint() uses direct open('w')+json.dump — non-atomic; crash leaves corrupt JSON. incremental-save.py already has correct tempfile+fsync+os.replace pattern",
+      "remediation": "Reuse incremental-save.py atomic write pattern: tempfile.mkstemp → write → fsync → os.replace",
+      "kind": "route-fix"
+    },
+    {
+      "file": ".claude/hooks/decision-observer.py",
+      "line": 172,
+      "severity": "medium",
+      "finding": "write_session_context() read-modify-write without lock — concurrent Stop hooks can lose session updates (TOCTOU race)",
+      "remediation": "Use fcntl.flock for advisory locking, or tempfile+rename for atomic replace",
+      "kind": "route-fix"
+    },
+    {
+      "file": ".claude/hooks/resume-checkpoint.py",
+      "line": 122,
+      "severity": "medium",
+      "finding": "build_engine_firmware() hardcodes E:/x-tool/ Windows paths on lines 122,124 — engine recovery instructions point to nonexistent paths on Linux deployment",
+      "remediation": "Replace hardcoded E:/x-tool/ with {PROJECT_DIR} f-string interpolation (partially done elsewhere in same function)",
+      "kind": "route-fix"
+    },
+    {
+      "file": ".claude/hooks/protocol-check.py",
+      "line": 72,
+      "severity": "low",
+      "finding": "subprocess inherits full parent os.environ including potential API keys/tokens — bootstrap.py is trusted local script but best practice is env whitelist",
+      "remediation": "Pass only necessary env vars: PATH, PYTHONPATH, CLAUDE_PROJECT_DIR",
+      "kind": "route-fix"
+    },
+    {
+      "file": ".claude/hooks/notify-phone.py",
+      "line": 96,
+      "severity": "low",
+      "finding": "ntfy.sh curl message body has no length cap — free tier 4KB limit silently truncates without error feedback",
+      "remediation": "Truncate message[:2000] before sending",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-08-043",
+  "audit_depth": "deep"
+}

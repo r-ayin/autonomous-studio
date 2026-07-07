@@ -1,0 +1,49 @@
+{
+  "case_id": "case-2026-07-07-119",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-08T11:00:00+08:00",
+  "project": "autonomous-engine",
+  "work_unit": "AE-H-002/M-001/M-003 phantom-fix batch resolution (audit-2026-07-08-043 derived_fixes)",
+  "situation": "audit-2026-07-08-043 deep audit of autonomous-engine standalone repo produced 7 route-fix findings (AE-H-001..AE-L-002). AE-H-001 already merged via case-2026-07-08-009. This round targeted next pending AE-H-002 (watchdog.sh f-string injection). On inspection, worktree opt-hooks-1783203936 (from prior audit-2026-07-05-005 cycle) already contains substantive fixes for AE-H-002 (commit 9b747ff: sys.argv[1] replaces f-string), AE-M-001 (commit 677cdb8: atomic_write_json), and AE-M-003 (commit d801343: sys.platform conditional). These commits exist on the worktree branch auto/opt-hooks-1783203936 but are NOT yet merged to master — causing audit-043 to re-read stale main code and regenerate duplicate findings (phantom-fix pattern identical to audit-2026-07-06-024).",
+  "action": "Batch-marked 3 phantom duplicates as merged (pointing to existing worktree commits). Left AE-M-002 (TOCTOU), AE-L-001 (env whitelist partial), AE-L-002 (ntfy truncate) as pending — these are genuinely unfixed in the worktree and require new dispatch next round. No new opt-worktree commit this round (no code change needed; only state reconciliation).",
+  "files_changed": [],
+  "worktree": "opt-hooks-1783203936 (existing, not modified this round)",
+  "direction": "hooks:phantom-fix-resolution",
+  "outcome": "succeeded",
+  "outcome_evidence": "Verified via grep on worktree HEAD: watchdog.sh:42 uses sys.argv[1] (not f-string); save-checkpoint.py:187 defines atomic_write_json with tempfile+fsync+os.replace; resume-checkpoint.py:18,114 use sys.platform conditionals. All 3 commits (9b747ff, 677cdb8, d801343) present on auto/opt-hooks-1783203936 branch per git log HEAD ^master. Master still has old code — worktree awaits human merge.",
+  "next_suggestion": [
+    "Next fix-in-progress round: dispatch AE-M-002 (decision-observer.py write_session_context TOCTOU — add fcntl.flock or FileLock) to opt-hooks-1783203936 (stack on existing unmerged worktree per case-104 escape hatch)",
+    "After AE-M-002: dispatch AE-L-002 (notify-phone.py ntfy body truncate to 4KB)",
+    "AE-L-001 env whitelist is partially addressed by 09374bb (--project-dir flag) but subprocess still inherits full os.environ — decide if worth a separate fix or accept-as-partial-mitigation",
+    "Human review reminder: opt-hooks-1783203936 has 6 unmerged commits covering most of audit-043 findings — merging this worktree would clear 4/7 pending derived_fixes in one action"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": ".claude/watchdog.sh",
+      "line": 39,
+      "severity": "high",
+      "finding": "AE-H-002 PHANTOM: f-string $LATEST interpolation already fixed in opt-hooks-1783203936 commit 9b747ff (sys.argv[1]). Audit-043 read stale main and regenerated duplicate finding.",
+      "remediation": "Batch-mark merged; no new code change. Human merge of opt-hooks-1783203936 will land the fix on master.",
+      "kind": "route-fix"
+    },
+    {
+      "file": ".claude/hooks/save-checkpoint.py",
+      "line": 182,
+      "severity": "medium",
+      "finding": "AE-M-001 PHANTOM: non-atomic write already fixed in opt-hooks-1783203936 commit 677cdb8 (atomic_write_json with tempfile+fsync+os.replace).",
+      "remediation": "Batch-mark merged; no new code change.",
+      "kind": "route-fix"
+    },
+    {
+      "file": ".claude/hooks/resume-checkpoint.py",
+      "line": 122,
+      "severity": "medium",
+      "finding": "AE-M-003 PHANTOM: hardcoded E:/x-tool Windows paths already fixed in opt-hooks-1783203936 commit d801343 (sys.platform conditional).",
+      "remediation": "Batch-mark merged; no new code change.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-08-043",
+  "audit_depth": "shallow"
+}

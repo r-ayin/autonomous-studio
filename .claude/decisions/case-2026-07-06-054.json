@@ -1,0 +1,31 @@
+{
+  "case_id": "case-2026-07-06-054",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-06T10:46:34Z",
+  "project": "sunset-prediction",
+  "work_unit": "H-001 shell injection fix (audit-2026-07-06-020 derived)",
+  "situation": "Deep audit audit-2026-07-06-020 found H-001: server.js L84-87 used execAsync with template-literal interpolation of BROWSER_USE_POST_LIMIT env var into shell command string. Attacker-controlled env value could inject arbitrary shell commands. Two other execAsync call sites (L72, L130) used static strings but shared the same unsafe pattern.",
+  "action": "Replaced all 3 execAsync calls with execFileAsync (no shell parsing). Top-level import changed from exec→execFile; dynamic import in keepalive cron also switched. limit param passed as separate argv element via String(limit). Syntax-checked with node --check before commit.",
+  "files_changed": ["server.js"],
+  "worktree": "opt-sunset-prediction-1783334794",
+  "direction": "sunset-prediction:shell-injection",
+  "outcome": "succeeded",
+  "outcome_evidence": "node --check exit=0; opt-worktree.sh commit succeeded; branch auto/opt-sunset-prediction-1783334794 pushed to origin (xtool/wanxia); worktree exists at /home/admin/workspace/.opt-worktrees/sunset-prediction/opt-sunset-prediction-1783334794",
+  "next_suggestion": [
+    "Dispatch H-002+L-003 fix: xhs_keepalive.py .env non-atomic write + SMTP creds hardening",
+    "After all 10 pending fixes dispatched or rejected, set audit-cycle-state.status=cycle-complete to trigger next deep audit"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "server.js",
+      "line": 85,
+      "severity": "high",
+      "finding": "Shell injection via template-literal interpolation of env var BROWSER_USE_POST_LIMIT into execAsync command string",
+      "remediation": "Replaced execAsync with execFileAsync; limit passed as separate argv element",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-020",
+  "audit_depth": "shallow"
+}

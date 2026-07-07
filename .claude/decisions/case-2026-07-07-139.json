@@ -1,0 +1,31 @@
+{
+  "case_id": "case-2026-07-07-139",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-08T20:45:00+08:00",
+  "project": "shizi",
+  "work_unit": "SZ-BG-L-001: IndexedDB connection leak per-operation",
+  "situation": "audit-2026-07-07-047 derived fix. segmentation.ts loadFromIDB/saveToIDB each call openDB() but never db.close(). In background service worker, every OCR detection opens new IndexedDB connections without releasing them, causing resource leak over long sessions.",
+  "action": "Replace per-operation openDB() with module-level singleton getDB() that caches IDBDatabase instance. Added onversionchange handler for graceful close on external upgrade. Stacked on existing opt-background-1783213292 worktree via case-104 direct-edit escape hatch (cp-guard triggered due to prior unmerged SZ-BG-M-* commits on same file).",
+  "files_changed": ["src/background/segmentation.ts"],
+  "worktree": "auto/opt-background-1783213292",
+  "direction": "background:idb-connection-leak",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit f3b8dd3 pushed origin auto/opt-background-1783213292; replaces openDB() (line 234-243) with getDB() singleton + _dbInstance/_dbOpenPromise caching + onversionchange cleanup; loadFromIDB and saveToIDB now reuse cached connection",
+  "next_suggestion": [
+    "SZ-BG-L-002: Anthropic API call hardcodes media_type as image/png regardless of actual format",
+    "SZ-BG-L-003: setPanelBehavior called twice — redundant top-level call"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "src/background/segmentation.ts",
+      "line": 234,
+      "severity": "low",
+      "finding": "openDB() creates new IDBDatabase connection per call; loadFromIDB/saveToIDB never close returned connection. Service worker long-lived → connection accumulation.",
+      "remediation": "Module-level singleton getDB() with cached IDBDatabase instance + onversionchange handler for graceful invalidation.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-047",
+  "audit_depth": "shallow"
+}

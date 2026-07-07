@@ -1,0 +1,34 @@
+{
+  "case_id": "case-2026-07-07-085",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-07T19:05:00+08:00",
+  "project": "moni-master",
+  "work_unit": "MONI-PY-002 backtest frames DoS guard (derived from audit-2026-07-07-029)",
+  "situation": "audit-2026-07-07-029 found M-severity unbounded List[BacktestFramePayload] in /backtest/run payload model (api.py:127). Attacker can POST millions of frames to exhaust server memory. Pydantic accepts Field(max_length=N) on List fields to reject oversized payloads at parse time with 422.",
+  "action": "Added Field(max_length=5000) constraint to BacktestPayload.frames in worktree opt-local_simulator-1783352870 (reused from MONI-PY-001 SSRF fix). 5000 frames ≈ 20 years daily bars — ample for legitimate use, blocks DoS. cp-guard tripped because worktree already diverged from main HEAD (prior merged commits); used case-104 escape hatch: edited worktree directly + git commit inside wt. Pushed auto/opt-local_simulator-1783352870 to origin (d4fc660).",
+  "files_changed": [
+    "local_simulator/api.py"
+  ],
+  "worktree": "opt-local_simulator-1783352870",
+  "direction": "local_simulator:backtest-dos-guard",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit d4fc660 on auto/opt-local_simulator-1783352870; push 'Everything up-to-date' confirms origin has it; git log shows 3 sequential MONI-PY fixes (005→001→002) on same branch.",
+  "next_suggestion": [
+    "派生 MONI-PY-003 (M, sync WFO blocking async loop) → 同 worktree 复用或新 area",
+    "派生 MONI-PY-004 (M, agent action whitelist bypass kwargs injection)",
+    "待 3 pending route-fixes 全部 merged/rejected 后 cycle-complete → 触发下一轮全量审计"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "local_simulator/api.py",
+      "line": 127,
+      "severity": "medium",
+      "finding": "Unbounded List[BacktestFramePayload] allows memory-exhaustion DoS via /backtest/run",
+      "remediation": "Field(max_length=5000) on frames",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-029",
+  "audit_depth": "shallow"
+}

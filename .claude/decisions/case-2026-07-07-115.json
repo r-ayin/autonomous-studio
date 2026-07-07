@@ -1,0 +1,39 @@
+{
+  "case_id": "case-2026-07-07-115",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-07T00:48:00+08:00",
+  "project": "personal-assistant",
+  "work_unit": "fix(asr): PA-AUD-H-001 restore scan_once/run_loop to IngestionPipeline + PA-AUD-M-004 cap StubTranscriber txt read at 1MB",
+  "situation": "audit-2026-07-08-042 derived_fixes PA-AUD-H-001 (high) + PA-AUD-M-004 (medium) pending. asr.py:186 scan_once and :199 run_loop orphaned outside IngestionPipeline class at module scope — any call via pipeline.scan_once() raises AttributeError, making ingestion main loop unreachable. StubTranscriber.transcribe unbounded read_text on inbox .txt files risks OOM on large/malicious input.",
+  "action": "Moved scan_once + run_loop back into IngestionPipeline class body (after _analytics, before query_habits). Added 1MB cap on StubTranscriber .txt reads with truncation warning. Verified via python import that both methods are now in IngestionPipeline.__dict__. Committed via opt-worktree.sh to new worktree opt-asr-fix-1783385302 (route-fix, new area asr-fix). Branch pushed to origin/auto/opt-asr-fix-1783385302.",
+  "files_changed": ["personal_assistant/asr.py"],
+  "worktree": "opt-asr-fix-1783385302",
+  "direction": "asr-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "python3 -c 'from personal_assistant.asr import IngestionPipeline; print(\"scan_once\" in IngestionPipeline.__dict__, \"run_loop\" in IngestionPipeline.__dict__)' returned True True. git push origin auto/opt-asr-fix-1783385302 succeeded (new branch created on remote).",
+  "next_suggestion": [
+    "派生 PA-AUD-H-002 (xiaozhi_server.py wav size guard DoS) — high severity, 独立文件不冲突",
+    "PA-AUD-M-001 (audio_params unsanitized) 可与 H-002 同批修 xiaozhi_server.py"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "personal_assistant/asr.py",
+      "line": 186,
+      "severity": "high",
+      "finding": "scan_once defined at module scope after query_habits(), uses self but not inside any class — AttributeError on pipeline.scan_once()",
+      "remediation": "Move scan_once + run_loop into IngestionPipeline class body",
+      "kind": "route-fix"
+    },
+    {
+      "file": "personal_assistant/asr.py",
+      "line": 52,
+      "severity": "medium",
+      "finding": "StubTranscriber.transcribe calls p.read_text() with no size limit — OOM risk on large inbox .txt",
+      "remediation": "Cap read at 1MB via f.read(MAX_TXT_BYTES) with truncation warning",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-08-042",
+  "audit_depth": "shallow"
+}

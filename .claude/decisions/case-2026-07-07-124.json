@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-07-07-124",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-07T19:15:00+08:00",
+  "project": "personal-assistant",
+  "work_unit": "distill.py atomic profile update (PA-B2-M-005)",
+  "situation": "audit-2026-07-08-045 finding PA-B2-M-005: distill.py run() calls save_persona_version then kv_set as two separate transactions. Crash between them leaves persona version saved but last_distill_at stale → next run re-distills same memories, producing duplicate/conflicting persona updates.",
+  "action": "Added storage.kv_set_tx(conn, key, value) and storage._save_persona_version_tx(conn, ...) helpers that operate on an existing connection without auto-commit. Updated distill.py run() to wrap both operations in a single `with storage.connect() as conn:` block with explicit conn.commit(). File write (profile.json) still happens inside the txn but after DB writes — acceptable since file write is idempotent and DB is the source of truth.",
+  "files_changed": [
+    "personal_assistant/storage.py",
+    "personal_assistant/distill.py"
+  ],
+  "worktree": "opt-distill-1783392512",
+  "direction": "distill:atomic-profile-update",
+  "outcome": "succeeded",
+  "outcome_evidence": "Committed to opt-distill-1783392512, pushed to origin/auto/opt-distill-1783392512. Two new transactional helpers added (kv_set_tx, _save_persona_version_tx); distill.py run() now uses single connect() context with explicit commit.",
+  "next_suggestion": "Dispatch next pending route-fix: PA-B2-M-006 (calendar.py LLM-fallback time range without ISO validation). After all 4 pending fixes dispatched, check merge status and transition to cycle-complete if all terminal.",
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-08-045",
+  "audit_depth": "shallow"
+}

@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-06-060",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-06T12:15:00Z",
+  "project": "sunset-prediction",
+  "work_unit": "routes:social-fetch-abort (M-003 derived fix)",
+  "situation": "audit-2026-07-06-020 M-003: SSE /social/fetch endpoint does not abort upstream fetchAndStoreSocialData when client disconnects. Browser tab close leaves Playwright sessions + mobile API calls running through all remaining cities, wasting resources.",
+  "action": "Added AbortController in route handler, wired req.on('close') to ac.abort(), passed ac.signal as 4th arg to fetchAndStoreSocialData. Scraper loop checks signal?.aborted before each city fetch and breaks early. Optional signal param preserves backward compat with cron + social-calibrate.js callers. Also guarded res.end() with !res.destroyed check.",
+  "files_changed": ["src/routes.js", "src/social-scraper.js"],
+  "worktree": "opt-routes-1783141439",
+  "direction": "routes:social-fetch-abort",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 65f52cb on auto/opt-routes-1783141439 pushed to origin. 2 files changed, 12 insertions, 3 deletions. Case-104 direct-wt-commit escape hatch used due to cp-guard divergence (prior unmerged commits on same files).",
+  "next_suggestion": "Continue audit-2026-07-06-020 derived fixes: M-004 (cache.js no eviction), M-005 (storage_state chmod 0600), L-002 (Playwright --no-sandbox gate). After all 4 pending cleared, cycle-complete triggers next full audit.",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "src/routes.js",
+      "line": 396,
+      "severity": "medium",
+      "finding": "SSE /social/fetch no abort on client disconnect — fetchAndStoreSocialData runs to completion even after browser closes",
+      "remediation": "AbortController + signal passthrough; break loop on signal.aborted",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-020",
+  "audit_depth": "shallow"
+}

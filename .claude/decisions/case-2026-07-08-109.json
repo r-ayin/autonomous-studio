@@ -1,0 +1,30 @@
+{
+  "case_id": "case-2026-07-08-109",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-08T01:15:00+08:00",
+  "project": "personal-assistant",
+  "work_unit": "xiaozhi_server audio_params sample_rate/channels/frame_duration clamp (PA-AUD-M-001)",
+  "situation": "audit-2026-07-08-042 derived_fixes PA-AUD-M-001 pending. xiaozhi_server.py:88 _on_hello accepts device-supplied sample_rate without range validation. Malicious device can send sample_rate=999999999 → frame_size=int(999999999*0.06)=59999999 at line 128 opus decode → ~120MB allocation per frame → memory-exhaustion DoS. Legit xiaozhi firmware uses 16kHz mono 60ms.",
+  "action": "Clamp audio_params in _on_hello to sane ranges: sample_rate 8000-48000 Hz, channels 1-2, frame_duration 10-120ms. Log warning when clamped. Try/except around int() conversion to handle non-numeric input gracefully. Direct-edit escape hatch used (cp-guard triggered because opt-xiaozhi-1783385638 already has unmerged H-002 fix diverging from main).",
+  "files_changed": [
+    "personal_assistant/xiaozhi_server.py"
+  ],
+  "worktree": "opt-xiaozhi-1783385638",
+  "direction": "xiaozhi:audio-params-clamp",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit db77f15 on auto/opt-xiaozhi-1783385638 pushed to origin. git diff shows +21/-3 lines adding clamp logic with try/except and log.warning. Branch HEAD=db77f15 stacked on prior H-002 fix 1a158ad.",
+  "next_suggestion": "Next derived_fix: PA-AUD-M-002 (xiaozhi_server.py:141 utterance discard threshold uses module SAMPLE_RATE not session self.sample_rate — wrong discard at non-16k rates). After that M-003 proactive log injection, then L-001/L-002.",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "personal_assistant/xiaozhi_server.py",
+      "line": 88,
+      "severity": "medium",
+      "finding": "PA-AUD-M-001: audio_params sample_rate accepted without range validation → DoS via excessive opus frame_size allocation",
+      "remediation": "Clamp sample_rate to 8000-48000, channels to 1-2, frame_duration to 10-120; log warning on clamp",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-08-042",
+  "audit_depth": "shallow"
+}

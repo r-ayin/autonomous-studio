@@ -1,0 +1,38 @@
+{
+  "case_id": "case-2026-07-08-056",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-07T09:23:08Z",
+  "project": "shizi",
+  "work_unit": "background:vision-api-mime (SZ-BG-L-002)",
+  "situation": "audit-2026-07-07-047 derived fix dispatch. Finding SZ-BG-L-002 (low): callAnthropicApi and callOpenAiApi both hardcode media_type as image/png, but upstream callers pass data URIs with actual MIME prefixes (e.g. data:image/jpeg;base64,...). JPEG/WebP images sent to Vision API as PNG causing decode failures or wrong recognition results.",
+  "action": "Added extractMimeType() helper that parses the data URI prefix; fallback to image/png when no prefix present (back-compat). Strip prefix before sending to Anthropic (API expects raw base64); keep it in OpenAI data URL (now with correct MIME). Stacked on opt-background-1783213292 via case-104 direct-edit escape hatch (cp-guard triggered: worktree diverged from main due to prior unmerged SZ-BG-M-006/M-007/M-003 fixes).",
+  "files_changed": [
+    "src/background/vision-adapter.ts"
+  ],
+  "worktree": "opt-background-1783213292",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit e1228b8 on auto/opt-background-1783213292 pushed to origin (f3b8dd3..e1228b8). Diff: +15/-3 lines. precommit guard passed (no collateral revert).",
+  "next_suggestion": "Continue audit-2026-07-07-047 derived fix dispatch. Next pending: SZ-BG-L-003 (setPanelBehavior called twice — redundant top-level call). 27 route-fixes remaining after this.",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "src/background/vision-adapter.ts",
+      "line": 114,
+      "severity": "low",
+      "finding": "callAnthropicApi hardcodes media_type as image/png regardless of actual image format. Upstream passes data URIs with real MIME prefix (parseImageSize/preprocessForVL strip same regex, proving prefix exists). JPEG/WebP sent as PNG → API decode failure or wrong recognition.",
+      "remediation": "Extract MIME from data URI prefix via regex; fallback image/png for back-compat. Strip prefix before Anthropic call (expects raw base64); preserve in OpenAI data URL with correct MIME.",
+      "kind": "route-fix"
+    },
+    {
+      "file": "src/background/vision-adapter.ts",
+      "line": 161,
+      "severity": "low",
+      "finding": "callOpenAiApi also hardcodes data:image/png;base64, in image_url. Same root cause as Anthropic path.",
+      "remediation": "Same extractMimeType() helper; construct data URL with real MIME.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-047",
+  "audit_depth": "shallow"
+}

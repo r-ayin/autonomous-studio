@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-06-070",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-06T21:05:00+08:00",
+  "project": "wechat-main",
+  "work_unit": "H-001 research_cache slug path traversal fix",
+  "situation": "audit-2026-07-06-022 H-001: research_cache.py uses user-supplied slug directly in f-string path construction (_CACHE_DIR / f'{slug}.json') at lines 115, 165, 184. A slug like '../../etc/passwd' enables arbitrary file read/write outside the cache directory.",
+  "action": "Added _SLUG_RE = re.compile(r'^[a-z0-9_-]+$') and _validate_slug() gate function. Called at entry of cmd_get, cmd_put, cmd_diff before any path construction. Invalid slugs print error to stderr and exit 0 (per tool script convention). Verified: traversal slug rejected, valid slug works.",
+  "files_changed": ["scripts/research_cache.py"],
+  "worktree": "opt-research-cache-1783343255",
+  "direction": "research-cache:slug-validation",
+  "outcome": "succeeded",
+  "outcome_evidence": "python3 scripts/research_cache.py get '../../etc/passwd' → stderr '错误：slug 仅允许 [a-z0-9_-]'; python3 scripts/research_cache.py get 'valid-slug_01' → stdout '{\"cached\": false}'; commit pushed to origin/auto/opt-research-cache-1783343255",
+  "next_suggestion": "Dispatch H-002 pipeline.py:222 shell injection via state['min_bytes'] f-string — pass via env dict",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "scripts/research_cache.py",
+      "line": 115,
+      "severity": "high",
+      "finding": "slug used unsanitized in f-string path construction enabling path traversal",
+      "remediation": "Validate slug against ^[a-z0-9_-]+$ regex before path use",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-022",
+  "audit_depth": "shallow"
+}

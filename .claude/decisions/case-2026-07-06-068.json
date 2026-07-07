@@ -1,0 +1,31 @@
+{
+  "case_id": "case-2026-07-06-068",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-06T12:51:51Z",
+  "project": "personal-assistant",
+  "work_unit": "relay_bridge Origin validation bypass (audit M-005)",
+  "situation": "audit-2026-07-06-021 derived_fixes last pending item. relay_bridge.py:107 returned True when Origin header absent, letting attackers skip CSWSH allowlist by omitting the header. Token is primary defense but defense-in-depth requires both gates.",
+  "action": "Added _is_browser_client() heuristic (Sec-WebSocket-Key or Mozilla UA) and tightened _origin_ok() to reject browser clients that omit Origin while continuing to allow non-browser clients (tunnel_client.py, native apps) without Origin. Logged browser_missing_origin for fail2ban.",
+  "files_changed": ["scripts/ecs_relay/relay_bridge.py"],
+  "worktree": "opt-relay-bridge-1783342228",
+  "direction": "relay-bridge:origin-validation",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 0d97179 on auto/opt-relay-bridge-1783342228 pushed to origin; git log shows opt(relay-bridge) commit atop d6f650b main base. Code review URL emitted by push remote.",
+  "next_suggestion": [
+    "All audit-2026-07-06-021 derived_fixes now merged/rejected — cycle-complete. Next round triggers new full deep-audit on an un-audited project (candidates not yet in history: wechat-main, moni-master).",
+    "DRIFT ALERT (carried): H-001 worktree opt-ws-auth-1783338961 has fix commit 48555aa but not merged to main >12h — needs user decision before next audit starts."
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "scripts/ecs_relay/relay_bridge.py",
+      "line": 107,
+      "severity": "medium",
+      "finding": "Origin validation bypassed when Origin header absent — attacker can omit header to skip ALLOWED_ORIGINS check entirely",
+      "remediation": "Detect browser clients via Sec-WebSocket-Key / Mozilla UA; require Origin only for browsers, continue allowing non-browser clients without Origin (token gate still applies)",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-021",
+  "audit_depth": "shallow"
+}

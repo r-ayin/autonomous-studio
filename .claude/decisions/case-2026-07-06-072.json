@@ -1,0 +1,31 @@
+{
+  "case_id": "case-2026-07-06-072",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-06T22:15:00+08:00",
+  "project": "wechat-main",
+  "work_unit": "H-003 SSRF hardening in bing_search._fetch_page_text",
+  "situation": "audit-2026-07-06-022 H-003 finding: _fetch_page_text(url) at line 197 calls urllib.request.urlopen directly on untrusted URL from Bing SERP results with no scheme/IP/redirect validation. Attacker-controlled search result URLs could trigger SSRF to file://, gopher://, internal IPs (169.254.169.254 metadata, RFC1918), or localhost services.",
+  "action": "Added _validate_fetch_url() helper that checks: (1) scheme must be http/https, (2) hostname resolves to non-private/non-loopback/non-link-local IP via socket.getaddrinfo + ipaddress module, (3) known metadata hostnames blocked. Added _NoPrivateRedirectHandler subclass of HTTPRedirectHandler that blocks post-redirect SSRF by validating redirect targets. Replaced bare urlopen with _opener.open using the safe handler. All SSRF vectors tested and rejected; legitimate public URLs pass.",
+  "files_changed": ["scripts/bing_search.py"],
+  "worktree": "opt-wechat-main-1783130541",
+  "direction": "wechat-main:ssrf-hardening",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit cb4ca49 pushed to origin/auto/opt-wechat-main-1783130541. Python syntax check passed. SSRF validation unit tests passed: file://, gopher://, 127.0.0.1, 169.254.169.254, 10.x, 192.168.x all rejected; https://www.example.com and http://news.sina.com.cn accepted.",
+  "next_suggestion": [
+    "Dispatch H-004: fact_checker.py:322 empty search auto-FALSIFIED → change to UNVERIFIABLE + manual review",
+    "Dispatch H-005: qq_push.py:42 hardcoded /opt/wanxia/.env no permission check → stat mode verify"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "scripts/bing_search.py",
+      "line": 197,
+      "severity": "high",
+      "finding": "SSRF via _fetch_page_text — urllib.request.urlopen called on untrusted URL without scheme/IP/redirect validation",
+      "remediation": "Add _validate_fetch_url (scheme whitelist + DNS resolve + private IP block) + _NoPrivateRedirectHandler for post-redirect check; use safe opener instead of bare urlopen",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-022",
+  "audit_depth": "shallow"
+}

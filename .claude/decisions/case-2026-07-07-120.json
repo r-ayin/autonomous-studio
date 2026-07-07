@@ -1,0 +1,77 @@
+{
+  "case_id": "case-2026-07-07-120",
+  "agent_id": "ralph-wiggum-cycle",
+  "timestamp": "2026-07-07T10:12:19+08:00",
+  "project": "personal-assistant",
+  "work_unit": "deep audit post-audit-042 verification (web/android/relay + new surface scan)",
+  "situation": "audit-cycle-state=cycle-complete after audit-043 all 7 fixes merged. User committed 4 post-audit fixes on main (d6f650b fetch timeout, af5c873 playwright 5 bug fixes, f665031 android ASCII token, 91a4c01 relay hardening). personal-assistant has 21 worktree backlog (highest in workspace). Triggered new full audit cycle targeting post-fix quality verification + residual risk scan.",
+  "action": "Deep audit via sonnet sub-agent (20 tool calls, ~128s). Verified all 4 commits effective. Found 6 findings: PA-POST-M-001 android api() no timeout (= existing SD-008 duplicate), PA-POST-M-002 liveBus no heartbeat (new SD-020), PA-POST-L-001 RELAY_TOKEN empty bypass (route-fix dispatch), PA-POST-L-002 origin bypass (SD-021 structural), PA-POST-L-003 xiaozhi accept-before-auth (SD-022 structural), PA-POST-I-001 bootstrap race not cancelling (deferred, SD-019 covers same class). Wrote audit report audit-2026-07-08-044.md.",
+  "files_changed": [
+    ".claude/audits/audit-2026-07-08-044.md",
+    ".claude/audit-cycle-state.json",
+    ".claude/structural-debt.md",
+    ".claude/memory/autonomous-state.md"
+  ],
+  "worktree": null,
+  "direction": "deep-audit-only",
+  "outcome": "succeeded",
+  "outcome_evidence": "audit-2026-07-08-044.md written with 6 findings (0H/2M/3L/1I). All 4 verified commits marked effective with code-level evidence. 1 route-fix (PA-POST-L-001) ready for next-round dispatch. 3 new structural debts queued (SD-020/021/022). PA-POST-M-001 identified as SD-008 duplicate — no double-dispatch. audit-cycle-state.status transitioned cycle-complete → fix-in-progress.",
+  "next_suggestion": [
+    "Next round: dispatch PA-POST-L-001 (relay_bridge token-empty guard) as route-fix via opt-worktree",
+    "After L-001 merged/rejected: consider triaging personal-assistant 21-worktree backlog before new dispatches",
+    "User authorization needed for SD-020 (liveBus heartbeat), SD-021 (origin bypass strict mode), SD-022 (xiaozhi ws auth refactor)"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "android/index.html",
+      "line": 584,
+      "severity": "medium",
+      "finding": "android api() fetch no AbortController timeout, asymmetric with web/api.js d6f650b fix",
+      "remediation": "Duplicate of existing SD-008. Add AbortController + 8s timeout to android api(), whitelist slow endpoints like /wiki/build.",
+      "kind": "structural"
+    },
+    {
+      "file": "android/index.html",
+      "line": 596,
+      "severity": "medium",
+      "finding": "liveBus WebSocket no ping/pong heartbeat, NAT silent disconnect leaves status stuck 'on'",
+      "remediation": "Add 30s client-side ping + 60s idle timeout; server pong handler. New SD-020.",
+      "kind": "structural"
+    },
+    {
+      "file": "scripts/ecs_relay/relay_bridge.py",
+      "line": 86,
+      "severity": "low",
+      "finding": "RELAY_TOKEN empty makes _check_token always return True, 403 path bypassed",
+      "remediation": "main() startup: if host!=127.0.0.1 and not RELAY_TOKEN, refuse to start. Route-fix dispatch next round.",
+      "kind": "route-fix"
+    },
+    {
+      "file": "scripts/ecs_relay/relay_bridge.py",
+      "line": 106,
+      "severity": "low",
+      "finding": "_origin_ok returns True when Origin header absent, CSWSH protection ineffective for non-browser clients",
+      "remediation": "Acceptable (token is primary defense). Optional: enforce Origin whitelist for /ws/tunnel only. SD-021.",
+      "kind": "structural"
+    },
+    {
+      "file": "personal_assistant/xiaozhi_server.py",
+      "line": 221,
+      "severity": "low",
+      "finding": "/ws/xiaozhi accepts WS handshake before token validation, unauthenticated connections consume resources",
+      "remediation": "Refactor to validate token in middleware/validator before accept, fail with HTTP 403. SD-022.",
+      "kind": "structural"
+    },
+    {
+      "file": "web/index.html",
+      "line": 187,
+      "severity": "info",
+      "finding": "bootstrap 5s Promise.race timeout does not cancel in-flight fetches; losers continue mutating state",
+      "remediation": "Deferred. Existing SD-019 covers same class. Each get already has 8s AbortController self-limiting.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-08-044",
+  "audit_depth": "deep"
+}

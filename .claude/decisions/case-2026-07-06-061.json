@@ -1,0 +1,32 @@
+{
+  "case_id": "case-2026-07-06-061",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-06T19:31:00+08:00",
+  "project": "sunset-prediction",
+  "work_unit": "cache:eviction (M-004 derived fix)",
+  "situation": "Derived fix from audit-2026-07-06-020 finding M-004: TTLCache.store in src/cache.js was a Map with set-only semantics — get() returned stale marker but never deleted expired entries. Long-running server leaked ~33 cities × (prediction + grid + contour) entries per day with no max-size cap. Memory monotonically grows until OOM or restart.",
+  "action": "Added three defenses to TTLCache: (1) periodic sweep() every 5 min via setInterval with unref() so it doesn't keep process alive; (2) maxEntries constructor param (default 5000) enforced in set() — triggers sweep then drops oldest-by-insertion-order if still at cap; (3) destroy() method for graceful shutdown/tests. Backward-compatible: existing callers (routes.js cache.set/get/setLoading/clearLoading) unchanged. Single-file route-fix per opt-worktree reuse rule.",
+  "files_changed": ["src/cache.js"],
+  "worktree": "opt-cache-1783337411",
+  "direction": "cache:eviction",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit d969b03 on auto/opt-cache-1783337411, pushed to origin/auto/opt-cache-1783337411. Diff: +39/-1 lines in src/cache.js. Worktree file verified contains sweep/maxEntries/destroy additions. No API surface change (constructor second arg optional with default).",
+  "next_suggestion": [
+    "派生 fix M-005 (storage_state JSON 0644 → chmod 0600 + flock) — 同 audit-2026-07-06-020，scripts/post_xhs_browseruse.py 单文件 route-fix",
+    "派生 fix L-002 (Playwright --no-sandbox unconditional → container-detect gate) — scripts/post_xhs_browseruse.py 或 playwright launch wrapper",
+    "M-004 worktree 待人工审：bash scripts/opt-worktree.sh /home/admin/workspace/sunset-prediction merge opt-cache-1783337411"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "src/cache.js",
+      "line": 16,
+      "severity": "medium",
+      "finding": "TTLCache.set() only appends to Map, never evicts. get() returns stale:true but leaves entry in store. No max-size bound. Long-running Express server accumulates ~33 cities × 3 data types × N days of stale entries → unbounded memory growth.",
+      "remediation": "Add periodic sweep (setInterval with unref) + maxEntries cap with oldest-key eviction on overflow. Implemented in this case.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-020",
+  "audit_depth": "shallow"
+}

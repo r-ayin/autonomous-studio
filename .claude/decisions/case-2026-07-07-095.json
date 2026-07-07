@@ -1,0 +1,56 @@
+{
+  "case_id": "case-2026-07-07-095",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-07T22:45:00+08:00",
+  "project": "autonomous-studio",
+  "work_unit": "Post-audit incremental audit: runner-exec/ + prod-deploy dual-copy verification after commit 860b8fb",
+  "situation": "audit-cycle-state was cycle-complete with workspace saturated. Commit 860b8fb landed 11h ago with security-relevant fixes (creds.js execSync→execFileSync, prod-deploy copy sync). Triggered incremental deep audit to verify fix quality and check for residual gaps.",
+  "action": "Deep-read 6 runner-exec scripts (creds.js, exec.js, session.js, push.js, write-file.js, batch-write.js). Diffed prod-deploy dual copies (skills/ vs .claude/skills/) across all 7 script files. Verified 860b8fb claims against actual file state. Checked structural-debt.md for SD-016/SD-017 presence.",
+  "files_changed": [],
+  "worktree": null,
+  "direction": "audit-only",
+  "outcome": "succeeded",
+  "outcome_evidence": "Produced audit-2026-07-07-032.md with 5 findings (1H/2M/1L/1I). H-POST-001 confirmed: diff shows LIVE report-event.js missing 22-line safeJsonParseCli + 2 audit-log sites + 3 unsafe JSON.parse call sites. poll-pre-check.js missing 10-line M-002 cache fix. resume-next-batch.js missing 5-line M-004 warning. M-POST-002 confirmed: creds.js:20 pgrep output interpolated into /proc path without numeric regex check. M-POST-001 confirmed: grep SD-016|SD-017 structural-debt.md returns 0 matches. 860b8fb execFileSync fix verified correct (line 5 import + line 20 usage with args array). No opt-worktree commit this round — audit-only per protocol.",
+  "next_suggestion": [
+    "P0: Dispatch H-POST-001 route-fix — sync 4 prod-deploy LIVE scripts from dev copy via opt-worktree",
+    "P1: Dispatch M-POST-002 route-fix — add PID numeric validation regex in creds.js:21",
+    "P2: User authorization needed for M-POST-001 — append SD-016/SD-017 to structural-debt.md"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": ".claude/skills/prod-deploy/scripts/report-event.js",
+      "line": 146,
+      "severity": "high",
+      "finding": "LIVE copy uses raw JSON.parse on CLI-supplied strings; dev copy has safeJsonParseCli wrapper preventing crash on malformed input. Also missing writeAuditLog import and 2 audit-log emission sites (pipeline-triggered, batch-deploy-start). poll-pre-check.js missing M-002 cache fix. resume-next-batch.js missing M-004 warning.",
+      "remediation": "Sync report-event.js, poll-pre-check.js, resume-next-batch.js, complete-task.js from skills/ to .claude/skills/ (dev → LIVE)",
+      "kind": "route-fix"
+    },
+    {
+      "file": ".claude/structural-debt.md",
+      "line": 0,
+      "severity": "medium",
+      "finding": "SD-016 (moni-master frontend no-auth) and SD-017 (AI trust boundary redesign) marked deferred-to-debt-queue in audit-cycle-state but never appended to structural-debt.md. Process gap from audit-030 wrap-up.",
+      "remediation": "Append SD-016 + SD-017 entries following existing schema. Requires user authorization.",
+      "kind": "structural"
+    },
+    {
+      "file": "runner-exec/scripts/creds.js",
+      "line": 20,
+      "severity": "medium",
+      "finding": "pgrep output interpolated into /proc/${pid}/environ path without numeric validation. Empty or non-numeric pid produces invalid path (caught by catch, but fragile pattern).",
+      "remediation": "Add if (!/^\\d+$/.test(pid)) throw before readFileSync",
+      "kind": "route-fix"
+    },
+    {
+      "file": "runner-exec/scripts/exec.js",
+      "line": 16,
+      "severity": "low",
+      "finding": "WebSocket auth token passed as URL query parameter (?token=...). Captured by proxy logs, network monitors. Mitigated by localhost binding.",
+      "remediation": "Move token to WS subprotocol or first-message auth handshake. Requires server coordination.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-032",
+  "audit_depth": "deep"
+}

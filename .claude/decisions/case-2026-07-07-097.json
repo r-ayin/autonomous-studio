@@ -1,0 +1,36 @@
+{
+  "case_id": "case-2026-07-07-097",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-07T23:18:00+08:00",
+  "project": "autonomous-studio (meta-engine)",
+  "work_unit": "Normalize derived_fixes non-terminal status values to enum-conformant rejected + metadata",
+  "situation": "audit-2026-07-07-033 H-META-001: M-POST-001 uses status='deferred-to-debt-queue' and L-POST-001 uses status='deferred-low-priority', both outside the documented {pending, merged, rejected} terminal-state enum in constraints §A line 54. This violates the cycle-complete state-machine invariant — future automation checking derived_fixes.every(f => ['merged','rejected'].includes(f.status)) would return false despite cycle being declared complete.",
+  "action": "PENDING DISPATCH — next fix-in-progress round will edit audit-cycle-state.json to normalize M-POST-001 status to 'rejected' with _deferred_to_debt_id metadata, and L-POST-001 status to 'rejected' with _deferral_reason metadata. Single-file edit, no public interface change → route-fix via opt-worktree reuse.",
+  "files_changed": [],
+  "worktree": null,
+  "direction": "route-fix",
+  "outcome": "pending",
+  "outcome_evidence": "Case created as derived fix from audit-2026-07-07-033. Dispatch deferred to next fix-in-progress round per constraints A (audit round does not also dispatch fixes).",
+  "next_suggestion": "Next round: dispatch case-097 (this case) via opt-worktree.sh commit on audit-cycle-state.json. Then dispatch case-098 (SD-016/SD-017 materialization). After both merge/reject, cycle returns to cycle-complete.",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": ".claude/audit-cycle-state.json",
+      "line": 27,
+      "severity": "high",
+      "finding": "derived_fixes[].status uses 'deferred-to-debt-queue' outside {pending,merged,rejected} enum — state-machine invariant violation",
+      "remediation": "Normalize to 'rejected' + add _deferred_to_debt_id metadata field for traceability",
+      "kind": "route-fix"
+    },
+    {
+      "file": ".claude/audit-cycle-state.json",
+      "line": 46,
+      "severity": "info",
+      "finding": "L-POST-001 uses 'deferred-low-priority' outside enum — same pattern, lower impact (null fix_case_id)",
+      "remediation": "Normalize to 'rejected' + add _deferral_reason metadata",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-033",
+  "audit_depth": "deep"
+}

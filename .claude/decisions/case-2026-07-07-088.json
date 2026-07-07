@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-07-07-088",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-07T21:15:00+08:00",
+  "project": "moni-master",
+  "work_unit": "frontend/aiStore — default allowMediumWithoutConfirm=false (FE-H-002)",
+  "situation": "audit-2026-07-07-030 finding FE-H-002: prompt injection → unrestricted medium-risk tool execution. DEFAULT_PERMISSIONS.allowMediumWithoutConfirm=true bypasses confirm modal for 16+ side-effect tools (upsert_factor_registry, create_strategy_session, run_cogalpha, run_wfo, place_order via risk-table misclassification, etc.). chatLoop.ts:159 only gates on !allowMediumWithoutConfirm.",
+  "action": "Changed DEFAULT_PERMISSIONS.allowMediumWithoutConfirm from true to false in aiStore.ts:83. Medium-risk tools now require explicit user confirmation by default. Existing users who opted-in retain their preference via zustand persist; new sessions/installations get safe default.",
+  "files_changed": [
+    "frontend/src/stores/aiStore.ts"
+  ],
+  "worktree": "opt-frontend-1783366395",
+  "direction": "frontend:ai-medium-confirm-default",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 41956b1 on auto/opt-frontend-1783366395 pushed to origin. Diff: single-line change at line 83, allowMediumWithoutConfirm: true → false. Worktree reuses existing opt-frontend-1783366395 (route-fix, same area as FE-H-001 case-087).",
+  "next_suggestion": "Next pending fix: FE-M-001 (Vite dev server 0.0.0.0 binding without allowedHosts) or FE-M-002 (no CSP header). Both are route-fixes in frontend/ vite.config.ts.",
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-07-030",
+  "audit_depth": "shallow"
+}

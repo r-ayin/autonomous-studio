@@ -1,0 +1,32 @@
+{
+  "case_id": "case-2026-07-07-136",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-07T21:30:00+08:00",
+  "project": "shizi",
+  "work_unit": "background:detect-failed-parallel (SZ-BG-M-002)",
+  "situation": "audit-2026-07-07-047 derived fix dispatch. In orchestrator.ts runPipeline(), the parallel detection path (method==='parallel') has two .catch() handlers that silently swallow errors and return empty arrays, but neither sets detectFailed=true. When both VL detection and local segmentation fail in parallel mode, productRegions resolves to [] with detectFailed still false → no warning shown to user, debugInfo.error is undefined, pipeline continues silently with zero regions producing incorrect counts.",
+  "action": "Added detectFailed=true alongside existing parallelErrors.push() in both .catch() handlers of the parallel branch. This ensures the downstream warning at line 262 fires and debugInfo.error is populated when parallel detection fails.",
+  "files_changed": ["src/background/orchestrator.ts"],
+  "worktree": "auto/opt-background-1783213292",
+  "direction": "background:detect-failed-parallel",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit b282103 on auto/opt-background-1783213292. Added 2 lines (detectFailed=true in each catch handler). Pushed to origin. Main working tree reverted clean.",
+  "next_suggestion": [
+    "Dispatch SZ-BG-M-003 (compressFallback/preprocessForVL O(n²) base64 concat — same pattern as SZ-BG-H-002 which was merged)",
+    "Dispatch SZ-BG-M-005 (mergeMultiSourceResults lacks skipFuzzy perf guard)",
+    "After high-severity pending fixes exhausted, consider SZ-SH-H-001 (excess host_permissions) which needs architectural decision"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "src/background/orchestrator.ts",
+      "line": 203,
+      "severity": "medium",
+      "finding": "parallel detection path .catch() handlers never set detectFailed flag — silent failure with zero regions when both VL and local segmentation fail",
+      "remediation": "Add detectFailed=true in each .catch() handler alongside existing parallelErrors.push()",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-047",
+  "audit_depth": "shallow"
+}

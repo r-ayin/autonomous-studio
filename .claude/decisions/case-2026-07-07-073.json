@@ -1,0 +1,30 @@
+{
+  "case_id": "case-2026-07-07-073",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-07T17:25:00+08:00",
+  "project": "moni-master",
+  "work_unit": "MONI-API-001: cap Monte Carlo n_sims + spawn_blocking",
+  "situation": "Derived fix from audit-2026-07-07-028 finding MONI-API-001 (HIGH). run_wfo_monte_carlo accepted unbounded n_sims and ran synchronous CPU loop on async runtime → DoS vector.",
+  "action": "Capped n_sims at 10,000, added daily_returns length validation (max 100k), wrapped moni_wfo::run_monte_carlo in tokio::task::spawn_blocking. cargo check passed.",
+  "files_changed": [
+    "moni-rs/crates/moni-api/src/routes.rs"
+  ],
+  "worktree": "opt-wfo-monte-carlo-dos-1783358633",
+  "direction": "wfo-monte-carlo-dos",
+  "outcome": "succeeded",
+  "outcome_evidence": "cargo check -p moni-api: Finished dev profile. Branch auto/opt-wfo-monte-carlo-dos-1783358633 pushed to origin. Commit contains MAX_MONTE_CARLO_SIMS=10_000 constant, MAX_MONTE_CARLO_RETURNS=100_000 constant, spawn_blocking wrapper.",
+  "next_suggestion": "Dispatch M-003-engine (update_quotes stale cloned orders double-fill) — next highest severity pending route-fix from audit-2026-07-07-028",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "moni-rs/crates/moni-api/src/routes.rs",
+      "line": 327,
+      "severity": "high",
+      "finding": "Unbounded Monte Carlo n_sims + synchronous CPU work on async runtime → DoS",
+      "remediation": "Cap n_sims at 10k, validate daily_returns len ≤ 100k, wrap in spawn_blocking",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-028",
+  "audit_depth": "shallow"
+}

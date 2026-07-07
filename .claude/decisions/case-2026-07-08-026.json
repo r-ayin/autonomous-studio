@@ -1,0 +1,35 @@
+{
+  "case_id": "case-2026-07-08-026",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-07T17:48:00+08:00",
+  "project": "shizi",
+  "work_unit": "SZ-BG-L-006 filterByRegion expandRatio calibration bias",
+  "situation": "audit-2026-07-07-047 finding SZ-BG-L-006 (low): filterByRegion uses fixed 2% expandRatio regardless of region size. Small regions (<5% area) have higher relative detection error → 2% buffer insufficient, boundary text falsely filtered. Large regions (>30% area) already cover most of image → 2% expansion overextends, letting in-product text leak through.",
+  "action": "Made expandRatio dynamic by region area: small regions (<5%) get max(expandRatio, 0.06) for wider buffer; large regions (>30%) get min(expandRatio, 0.01) to tighten. Updated test copy in filter-region.test.ts to match source + added 2 new test cases covering both branches. All 16 tests pass.",
+  "files_changed": [
+    "src/background/orchestrator.ts",
+    "tests/filter-region.test.ts"
+  ],
+  "worktree": "auto/opt-background-1783213292",
+  "direction": "background:expand-ratio-calibration",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 546f652 on auto/opt-background-1783213292 (amended into existing SZ-BG-L-006 commit). vitest run tests/filter-region.test.ts: 16/16 passed including 2 new SZ-BG-L-006 cases. Pushed to origin.",
+  "next_suggestion": [
+    "SZ-BG-L-007: maskToBoundingBox discards large detections while VL shrinks them — inconsistent bbox normalization",
+    "SZ-BG-L-008: pipelineProgress sendMessage fire-and-forget swallows all errors",
+    "SZ-SP-L-001: deletedStack stale closure in handleRegionsChange"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "src/background/orchestrator.ts",
+      "line": 58,
+      "severity": "low",
+      "finding": "filterByRegion used fixed expandRatio=0.02 for all region sizes. Small regions (<5% area) had insufficient buffer causing boundary text false-filter; large regions (>30%) over-expanded letting in-product text leak.",
+      "remediation": "Dynamic expandRatio: max(ratio, 0.06) for area<0.05, min(ratio, 0.01) for area>0.30. Applied and tested.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-047",
+  "audit_depth": "shallow"
+}

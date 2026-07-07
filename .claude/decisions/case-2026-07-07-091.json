@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-07-091",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-07T20:55:00+08:00",
+  "project": "moni-master",
+  "work_unit": "frontend/aiStore — FE-M-003 localStorage plaintext API key redaction",
+  "situation": "audit-2026-07-07-030 derived_fix FE-M-003 (medium): zustand persist partialize wrote entire AiClientConfig (incl. localApiKey) to localStorage in plaintext. Any XSS or same-origin script could read the key via localStorage.getItem('moni-ai-store'). fix-in-progress cycle, highest-severity pending route-fix.",
+  "action": "Direct-edit worktree (case-104 escape hatch: opt-worktree cp-guard tripped on main-dirty-vs-wt-HEAD divergence despite wt file being unmodified). Redacted sensitive fields in partialize (localApiKey/localBaseUrl → empty string); preserved non-sensitive fields (provider/localModel/systemPrompt) so users don't re-enter after refresh. Added resetSensitiveConfig() action for explicit logout/reset hook.",
+  "files_changed": [
+    "frontend/src/stores/aiStore.ts"
+  ],
+  "worktree": "opt-frontend-1783366395",
+  "direction": "frontend:ai-store-sensitive-config",
+  "direction_kind": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 14f743d on auto/opt-frontend-1783366395; pushed to origin (3cf67e8..14f743d). partialize now writes config.localApiKey='' and config.localBaseUrl='' instead of user-supplied values. New resetSensitiveConfig() exported on store interface.",
+  "next_suggestion": [
+    "FE-M-004: DataConfig.tsx runtime JSON editor lacks schema validation/diff/undo — next pending route-fix from audit-2026-07-07-030",
+    "FE-L-002: ws.ts WebSocket reconnect infinite 30s loop needs max retry cap",
+    "After all 5 pending fixes dispatched, verify each merge/reject before marking cycle-complete"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-07-030",
+  "audit_depth": "shallow",
+  "_derived_from_finding": "FE-M-003",
+  "_cp_guard_note": "opt-worktree.sh cp-guard blocked normal commit path because main working tree was dirty (aiStore.ts modified during this round's initial attempt). Worktree HEAD version confirmed unmodified via git show; applied case-104 direct-edit escape hatch."
+}

@@ -1,0 +1,30 @@
+{
+  "case_id": "case-2026-07-07-123",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-07T10:35:51+08:00",
+  "project": "personal-assistant",
+  "work_unit": "reminders:recurrence-id-collision (PA-B2-H-003 + PA-B2-M-001)",
+  "situation": "audit-2026-07-08-045 found two bugs in ReminderScheduler.check_due: (H-003) recurring reminder ID built by appending '-next' to prior ID each fire, producing unbounded growth (foo → foo-next → foo-next-next...) and eventual storage/index bloat; (M-001) notify() called before mark_reminder_fired(), so crash between those steps leaves the reminder unfired AND a -next sibling already added — next cycle both fire, producing duplicate notification.",
+  "action": "Single-file fix in personal_assistant/reminders.py check_due(): (1) swap order so mark_reminder_fired runs BEFORE notify/add-next — crash-safe at cost of losing one recurrence on crash (acceptable tradeoff vs dup notify); (2) derive next ID from stable base via r['id'].split('-next')[0] + '-next', preventing unbounded suffix growth. Route-fix per audit finding kind.",
+  "files_changed": [
+    "personal_assistant/reminders.py"
+  ],
+  "worktree": "opt-reminders-1783391714",
+  "direction": "reminders:recurrence-id-collision",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh committed to auto/opt-reminders-1783391714 and pushed to origin (branch created, CR link emitted). Fix is 1 file, 1 function, ~10 lines changed. No test harness in PA project to run; manual inspection confirms: base_id = r['id'].split('-next')[0] strips any existing -next* suffix then appends single -next (stable); mark_reminder_fired precedes notify (crash between can't dup-fire).",
+  "next_suggestion": "Next pending fix from audit-2026-07-08-045: PA-B2-M-002 temporal.py _cn_to_int silently returns 0 for malformed input (medium severity route-fix). After all 7 pending route-fixes merged/rejected, audit-cycle-state flips to cycle-complete and triggers next full deep audit on a fresh project.",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "personal_assistant/reminders.py",
+      "line": 101,
+      "severity": "high",
+      "finding": "Recurring reminder ID built as r['id'] + '-next' grows unboundedly with each fire cycle; also duplicate-fire race with mark_reminder_fired called after add_reminder.",
+      "remediation": "Strip existing -next suffix before appending; mark fired before notify/add. Applied in this case.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-08-045",
+  "audit_depth": "shallow"
+}

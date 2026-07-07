@@ -1,0 +1,33 @@
+{
+  "case_id": "case-2026-07-07-114",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-07T23:45:00+08:00",
+  "project": "autonomous-studio/skills/dataworks-dev-assistant",
+  "work_unit": "DW-CORE-M-001 residual: _write_session_state non-atomic write fix",
+  "situation": "audit-2026-07-08-038 derived_fixes 中 DW-CORE-H-001/DW-SQL-M-001 已在 dev copy 由 audit-2026-07-06-005 (HTTPAU-04/AUDITT-04/SQLEXE-01) 修复；唯 DW-CORE-M-001 残留：runtime.py _write_session_state (line 464) 仍用 open(w)+json.dump 非原子写 session_state.json，与同文件 bootstrap_context/save_tool_result 已采用的 tmp+os.replace 模式不一致。并发/崩溃可致截断 JSON → 下次 load 返回 {} 静默丢状态。",
+  "action": "扩展 _atomic_write_json helper 加可选 default= 参数（保留原 save_tool_result/bootstrap_context caller 兼容），将 _write_session_state 迁移到 _atomic_write_json(state_path, old, default=str)。default=str 保留原序列化语义（state 含 datetime）。",
+  "files_changed": [
+    "skills/dataworks-dev-assistant/core/runtime.py"
+  ],
+  "worktree": "opt-skills-1783380367",
+  "direction": "skills:dataworks-runtime-atomic",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh commit 成功；push origin/auto/opt-skills-1783380367 完成；diff: _atomic_write_json signature +9/-3 lines, _write_session_state body +2/-5 lines；无其他 caller 受影响（save_tool_result line 356/368 调用时不传 default，行为不变）。",
+  "next_suggestion": [
+    "派生 DW-CORE-H-001/DW-SQL-M-001 标 merged（dev 已由 audit-2026-07-06-005 修）→ audit-cycle-state.derived_fixes 全部 resolved → status=cycle-complete → 下轮触发新全量审计",
+    "live copy (~/.claude/skills/dataworks-dev-assistant/) 落后 dev copy（已知 dual-copy drift），需用户/sync 流程同步本轮 fix + 之前 HTTPAU-04/SQLEXE-01"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "skills/dataworks-dev-assistant/core/runtime.py",
+      "line": 464,
+      "severity": "medium",
+      "finding": "_write_session_state used non-atomic open(w)+json.dump while sibling writers (bootstrap_context, save_tool_result) already adopted tmp+os.replace; crash/concurrent write could truncate session_state.json",
+      "remediation": "Migrate to _atomic_write_json with default=str to preserve datetime serialization semantics",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-08-038",
+  "audit_depth": "shallow"
+}

@@ -1,0 +1,31 @@
+{
+  "case_id": "case-2026-07-06-080",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-06T22:15:00+08:00",
+  "project": "wechat-main",
+  "work_unit": "pipeline-schema-validation",
+  "situation": "audit-2026-07-06-022 finding M-010: pipeline.py:64 _load() parses JSON and returns dict without any field validation. Downstream code (cmd_next, cmd_mark, cmd_status) assumes state['slug'], state['date'], state['steps'] (list of dicts with id/status/phase), state['mode'] exist. Corrupt or tampered state files cause silent KeyError or wrong phase routing. Companion fix: _save() non-atomic write risks torn state on crash.",
+  "action": "Add _validate_state() that checks required fields (slug/date/mode as str, steps as list of dicts each with id/status/phase str). Call it in _load() before returning. Refactor _save() to atomic tempfile + os.replace pattern mirroring M-009 fix. Fail fast with clear SystemExit message directing operator to re-init.",
+  "files_changed": ["scripts/pipeline.py"],
+  "worktree": "opt-pipeline-schema-1783347192",
+  "direction": "pipeline-schema",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit succeeded in worktree opt-pipeline-schema-1783347192; branch pushed to origin/auto/opt-pipeline-schema-1783347192. Code review URL: https://code.alibaba-inc.com/qunbu/wechat/codereview/new?from=main&to=auto/opt-pipeline-schema-1783347192. Main checkout unchanged (hook restored linter-clean copy).",
+  "next_suggestion": [
+    "派生 M-011: pipeline-gate.sh:46 TOPIC unsanitized in find -name glob — reject metacharacters",
+    "若 M-011..M-017 全派完无人 merge，等 3 轮后走 drift-repair archive"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "scripts/pipeline.py",
+      "line": 64,
+      "severity": "medium",
+      "finding": "_load() json.loads result returned without schema validation; corrupt state causes downstream KeyError/silent misrouting",
+      "remediation": "Add _validate_state() gating required fields (slug/date/mode str, steps list of {id,status,phase} dicts); fail fast with SystemExit directing re-init. Also atomic-write _save via tempfile+os.replace.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-022",
+  "audit_depth": "shallow"
+}

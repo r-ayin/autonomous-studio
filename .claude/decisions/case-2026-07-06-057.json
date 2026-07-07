@@ -1,0 +1,23 @@
+{
+  "case_id": "case-2026-07-06-057",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-06T11:04:15Z",
+  "project": "sunset-prediction",
+  "work_unit": "H-004 API auth + bind 127.0.0.1 (派生自 audit-2026-07-06-020)",
+  "situation": "audit-2026-07-06-020 H-004 finding: server.js app.listen(PORT) 无 host 参数(默认 0.0.0.0), 无任何 auth middleware, 无 rate limit。任意 LAN/公网 IP 可直调 /api/* 端点触发 cron-equivalent 操作(social fetch/publish/calibration)。高优先级安全问题。",
+  "action": "最小单位 route-fix: (1) 添加 bearer token auth middleware 从 SUNSET_API_TOKEN env 读, 未设时 warn 但允许本地免密(向后兼容 dev); (2) app.listen 绑定 127.0.0.1 防外部直连; (3) rate limit 拆下一 fix unit(需 express-rate-limit 新依赖)。不触及公共接口 → opt-worktree.sh judge_direction_kind=route-fix 复用/开同 area worktree。",
+  "files_changed": ["server.js"],
+  "worktree": "opt-server-1783335841",
+  "direction": "server:api-auth",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit aa80d41 in auto/opt-server-1783335841 (pushed origin). git show HEAD:server.js line 47-65 adds API_TOKEN const + /api auth middleware; line 159-162 changes listen to 127.0.0.1 with token-status log. Main restored clean.",
+  "next_suggestion": [
+    "派生 M-001 (social-scraper.js unnecessary WEIBO_COOKIE forwarding) — 下一个 FIFO pending fix",
+    "派生 M-002 (console.error secret leakage redaction wrapper)",
+    "H-004 follow-up: 添加 express-rate-limit 防 DoS(需新依赖, 单独 fix unit)"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-06-020",
+  "audit_depth": "shallow"
+}
