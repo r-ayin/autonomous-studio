@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-07-08-016",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-07T03:50:00+08:00",
+  "project": "sunset-prediction",
+  "work_unit": "SP-SCR-H-001: post_xhs_browseruse.py cookie storage_state umask fix",
+  "situation": "audit-2026-07-08-046 derived fix dispatch. SP-SCR-H-001 (high): save_storage_state() writes cookie JSON with default open() → umask 0644 → group/other readable session tokens. Sister file export-xhs-cookie.js already fixed in same worktree (4dec8e1); Python counterpart missed.",
+  "action": "Reused existing opt-storage-state-perms-1783337790 worktree (same area). Replaced open(STORAGE_STATE, 'w') with os.open(O_CREAT|O_WRONLY|O_TRUNC, 0o600) + try/finally close. Validated syntax via ast.parse. Committed and pushed.",
+  "files_changed": ["scripts/post_xhs_browseruse.py"],
+  "worktree": "opt-storage-state-perms-1783337790",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit sha 300499c on auto/opt-storage-state-perms-1783337790; pushed to origin; python3 -c 'import ast; ast.parse(...)' returned SYNTAX_OK; git diff shows 14 insertions / 4 deletions in save_storage_state function only.",
+  "next_suggestion": [
+    "Next pending fix: SP-SCR-H-002 (xhs_keepalive.py non-atomic .env rewrite truncation risk)",
+    "Then SP-SRV-M-002 (routes.js cache thundering herd → promise sharing)"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-08-046",
+  "audit_depth": "shallow"
+}
