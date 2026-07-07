@@ -224,7 +224,15 @@ async function handleDeployBatch(taskId, args) {
     strict: false,
   });
 
+  // PD-BATCH-01: parseInt('--batch-index') returns NaN when the flag is missing or
+  // non-numeric. NaN serializes to null and NaN !== NaN, so findBatchEvent never
+  // matches → a fresh deploy_batch event is created every tick → duplicate events
+  // and lost status updates on the real batch. Guard explicitly and fail fast.
   const batchIndex = parseInt(values['batch-index'], 10);
+  if (!Number.isInteger(batchIndex) || batchIndex < 0) {
+    console.error(`[report-event] deploy_batch requires a non-negative integer --batch-index, got: ${JSON.stringify(values['batch-index'])}`);
+    process.exit(1);
+  }
   const batchTotal = values['batch-total'] ? parseInt(values['batch-total'], 10) : null;
   const instances = values['instances'] ? parseInt(values['instances'], 10) : null;
   const extraPayload = values.payload ? safeJsonParseCli(values.payload, null, `deploy_batch:payload:${values['batch-index'] || '?'}`) : null;
@@ -251,8 +259,13 @@ async function handleDeployBatch(taskId, args) {
       metadata: { tags: ['prod-deploy', 'deploy-batch', `batch-${batchIndex}`] },
     });
     if (values.status) {
-      const fields = values['error-message'] ? { error_message: values['error-message'] } : null;
-      return updateEvent(event, values.status, fields);
+      const fields = {};
+      if (values['error-message']) fields.error_message = values['error-message'];
+      // PD-TIME-01: stamp success_at when the batch transitions to SUCCESS so the
+      // observation time-gate measures from real success, not updated_at (which
+      // report-observation bumps every tick). Readers fall back to updated_at for in-flight batches.
+      if (values.status === 'SUCCESS') fields.success_at = Date.now();
+      return updateEvent(event, values.status, Object.keys(fields).length > 0 ? fields : null);
     }
     return event;
   }
@@ -264,6 +277,10 @@ async function handleDeployBatch(taskId, args) {
   if (values.status) {
     const fields = {};
     if (values['error-message']) fields.error_message = values['error-message'];
+    // PD-TIME-01: stamp success_at on SUCCESS transition (existing.status is non-terminal here
+    // per the TERMINAL_STATUSES guard above, so this is a fresh success). extraPayload may
+    // override if the caller supplies an explicit success_at.
+    if (values.status === 'SUCCESS') fields.success_at = Date.now();
     if (extraPayload) Object.assign(fields, extraPayload);
     return updateEvent(existing, values.status, Object.keys(fields).length > 0 ? fields : null);
   }
