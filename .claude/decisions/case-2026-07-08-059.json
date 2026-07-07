@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-08-059",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-08T11:15:00+08:00",
+  "project": "shizi",
+  "work_unit": "SZ-SP-L-005: Tab buttons lack ARIA attributes and keyboard navigation",
+  "situation": "SidePanelApp tab navigation uses plain <button> elements without ARIA roles, making the tab interface invisible to screen readers. No keyboard arrow-key navigation between tabs. Tab content panels lack role=tabpanel association.",
+  "action": "Added complete WAI-ARIA tab pattern: role=tablist on container with aria-label, role=tab + id + aria-selected + aria-controls + tabIndex on each button, onKeyDown handler for ArrowLeft/Right/Home/End with programmatic focus via tabRefs, role=tabpanel + id + aria-labelledby + tabIndex on each content panel. Direct-edit in worktree (case-104 escape hatch) because cp-guard detected divergent SidePanelApp.tsx from prior SZ-SP-L-001/L-002 fixes.",
+  "files_changed": ["src/sidepanel/SidePanelApp.tsx"],
+  "worktree": "auto/opt-sidepanel-1782907225",
+  "direction": "sidepanel:tab-aria",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit bdf610b on auto/opt-sidepanel-1782907225, pushed to origin. 1 file changed, 49 insertions(+), 5 deletions(-). TypeScript compiles (no type errors in JSX ARIA attributes). Keyboard nav covers ArrowLeft/Right/Home/End per WAI-ARIA Authoring Practices.",
+  "next_suggestion": "SZ-SP-L-006 (Delete button uses x as only label — ambiguous for screen readers) or SZ-PP-L-002 (testVisionConnection has no timeout). Both are low-severity route-fixes in shizi sidepanel/popup.",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "src/sidepanel/SidePanelApp.tsx",
+      "line": 251,
+      "severity": "low",
+      "finding": "Tab navigation buttons lacked role=tab, aria-selected, aria-controls, tabIndex, and keyboard arrow-key navigation. Container lacked role=tablist. Content panels lacked role=tabpanel.",
+      "remediation": "Added full WAI-ARIA tab pattern with keyboard navigation (ArrowLeft/Right/Home/End) and programmatic focus management.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-047",
+  "audit_depth": "shallow"
+}
