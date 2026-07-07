@@ -1,0 +1,30 @@
+{
+  "case_id": "case-2026-07-08-009",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-08T08:27:40+08:00",
+  "project": "wechat-main",
+  "work_unit": "research_cache.py atomic write fix (WC-EXT-L-001)",
+  "situation": "audit-2026-07-08-041 derived_fixes WC-EXT-L-001 pending: research_cache.py:166 non-atomic cache write — crash mid-write leaves corrupted JSON. Low severity route-fix.",
+  "action": "在 opt-wechat-main-1783130541 worktree 内直编 scripts/research_cache.py：添加 import os + 将 cache_path.write_text() 改为 tmp_path.write_text() + os.replace(tmp_path, cache_path) 原子替换模式。cp-guard 触发（worktree 已有前轮未合并改动），走 case-104 escape hatch 直编 wt + wt 内 commit。",
+  "files_changed": [
+    "scripts/research_cache.py"
+  ],
+  "worktree": "opt-wechat-main-1783130541",
+  "direction": "wechat-main:research-cache-atomic",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 12c2b56 on auto/opt-wechat-main-1783130541 pushed to origin (f1ebed8..12c2b56). python3 -c ast.parse syntax check passed. Diff: +import os, +tmp_path write + os.replace (6 insertions, 1 deletion).",
+  "next_suggestion": "派生 WC-EXT-L-002 persona_drift.py:90 unbounded markdown read size guard（最后一个 pending fix from audit-041）。完成后 audit-cycle-state.status → cycle-complete，触发下一轮全量审计。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "scripts/research_cache.py",
+      "line": 166,
+      "severity": "low",
+      "finding": "Non-atomic cache write: cache_path.write_text() directly writes target file. Crash mid-write leaves partial/corrupted JSON that subsequent reads will fail to parse.",
+      "remediation": "Write to .json.tmp then os.replace() for atomic rename-on-same-filesystem. Applied in this case.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-08-041",
+  "audit_depth": "shallow"
+}
