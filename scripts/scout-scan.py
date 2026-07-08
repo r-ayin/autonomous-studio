@@ -650,8 +650,9 @@ def write_projects_md(workspace, projects):
              "metadata:", "  type: reference", "---", "", "# Projects", "",
              "| 项目 | 有git | 有Studio | 路径 |", "|---|---|---|---|"]
     for p in projects:
-        lines.append(f"| {p['name']} | {'✓' if p['has_git'] else ' '} | "
-                     f"{'✓' if p['has_studio'] else ' '} | `{p['path']}` |")
+        git_mark = '[x]' if p['has_git'] else '[ ]'
+        studio_mark = '[x]' if p['has_studio'] else '[ ]'
+        lines.append(f"| {p['name']} | {git_mark} | {studio_mark} | `{p['path']}` |")
     with open(md, "w", encoding="utf-8") as f:
         f.write("\n".join(lines) + "\n")
     return md
@@ -700,9 +701,9 @@ def main():
             print(f"  最近提交: {lc['relative'] if lc else '?'} — {lc['subject'][:50] if lc else ''}")
             ps = r["progress_stale_days"]
             pend_p = r.get("progress_pending_wts", [])
-            prog = "缺失" if ps is None else f"{ps}天" + (" ⚠️stale" if ps > STALE_DAYS else "")
+            prog = "缺失" if ps is None else f"{ps}天" + (" [STALE]" if ps > STALE_DAYS else "")
             if ps is None and pend_p:
-                prog += f" ⏳待合并({','.join(pend_p)})"
+                prog += f" [PENDING]({','.join(pend_p)})"
             print(f"  PROGRESS.md: {prog}")
             gp = r.get("gates_pending_wts", [])
             gates = "有" if r["gates_exists"] else ("无" + (f" ⏳待合并({','.join(gp)})" if gp else ""))
