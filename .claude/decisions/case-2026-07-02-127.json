@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-07-02-127",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-02T09:10:00Z",
+  "project": "autonomous-engine",
+  "work_unit": "AE2-L-001: MEMORY.md decision-archive.md broken relative link",
+  "situation": "audit-2026-07-02-007 finding AE2-L-001 (priority 8, route-fix): MEMORY.md line 5 references [决策档案](decision-archive.md) as relative path, resolving to .claude/memory/decision-archive.md which does not exist. Actual file lives at .claude/decisions/decision-archive.md. Memory system link silently broken — agents following this reference get 404-equivalent.",
+  "action": "Corrected relative link from 'decision-archive.md' to '../decisions/decision-archive.md'. Verified resolved path exists (35801 bytes). Single-file route-fix in memory area, reused existing opt-memory-1782978520 worktree.",
+  "files_changed": [
+    ".claude/memory/MEMORY.md"
+  ],
+  "worktree": "opt-memory-1782978520",
+  "direction": "memory:link-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 5de69b1 on auto/opt-memory-1782978520 pushed to origin; realpath verification confirmed ../decisions/decision-archive.md resolves to existing 35801-byte file",
+  "next_suggestion": "Process remaining pending finding L-002 (audit-006, priority 9): updateEvent terminal-state logic vs SKILL.md inconsistency — documentation alignment fix in prod-deploy skill",
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-007",
+  "audit_depth": "shallow"
+}

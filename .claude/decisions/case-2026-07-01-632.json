@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-01-632",
+  "agent_id": "autonomous-loop-rw",
+  "timestamp": "2026-07-01T13:12:14Z",
+  "project": "autonomous-studio",
+  "work_unit": "AS-H-001 fix: autonomous-loop.sh while 循环体 subshell 隔离",
+  "situation": "audit-2026-07-01-007 finding AS-H-001 [HIGH]：scripts/autonomous-loop.sh L124 cd \"$ENGINE_DIR\" 在 while 循环体内直接执行，run_round 内的 claude -p 或后续命令若改 cwd（如 cd 到子项目），下一轮 STOP_MARKER/case 路径基于错误 cwd 计算→引擎静默写入错误位置或找不到停止标记。priority=1，本轮派生 fix。",
+  "action": "把 while 循环体（L118-L161）包进 ( ... ) subshell，cd 仅在子进程生效；父 shell cwd 永驻启动目录。保留 ITER/STOP_MARKER 检查在 subshell 外（ITER 经 $((ITER+1)) 写回父 shell；STOP_MARKER 读文件不依赖 cwd）。bash -n 语法校验通过。opt-worktree.sh 检测 scripts/autonomous-loop.sh 在 .claude/public-interfaces.txt → direction-shift，开新 worktree opt-autonomous-loop-shift-1782911523。",
+  "files_changed": ["scripts/autonomous-loop.sh"],
+  "worktree": "opt-autonomous-loop-shift-1782911523",
+  "direction": "autonomous-loop:as-h-001-subshell-isolation",
+  "outcome": "succeeded",
+  "outcome_evidence": "bash -n 通过；opt-worktree.sh commit 输出 '✓ 提交到 opt-autonomous-loop-shift-1782911523'；git push origin auto/opt-autonomous-loop-shift-1782911523 成功；worktree 方向=autonomous-loop:as-h-001-subshell-isolation。",
+  "next_suggestion": "下轮继续派生 audit-2026-07-01-007 pending fix：AS-M-002 (priority 3, distill-patterns.py LLM 超时/拒答区分) 或 AS-M-003 (priority 4, scout-scan.py git diff E2BIG)。按优先级 AS-M-002 优先。",
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-01-007",
+  "audit_depth": "shallow"
+}

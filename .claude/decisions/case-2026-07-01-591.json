@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-07-01-591",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-01T10:42:00Z",
+  "project": "wechat-main",
+  "work_unit": "scripts/qq_push.py HTTPError RuntimeError 响应体脱敏 (WM-L-003)",
+  "situation": "audit-2026-07-01-004 finding WM-L-003 (priority=22, kind=route-fix) 派生 fix。qq_push.py 三处 HTTPError except 块把 e.read() 响应体截断后塞进 RuntimeError message — QQ Bot token/error body 可能含 access_token、openid、clientSecret 等敏感字段，cron stderr / 日志会泄露。本地 JSON 解析失败(无 access_token/无 file_uuid)不涉及外部响应体，保留便于排查字段缺失。",
+  "action": "修改 qq_push.py 三处 HTTPError RuntimeError（_get_token line 64, _api line 82, _upload_file line 111）为仅记 status code（raise RuntimeError(f'... HTTP {e.code}') from None），移除 e.read().decode(...) 响应体拼接。两处本地 JSON 解析失败 RuntimeError（line 67 无 access_token, line 114 无 file_uuid）保留 {d} 不变。",
+  "files_changed": [
+    "scripts/qq_push.py"
+  ],
+  "worktree": "auto/opt-scripts-1782899218",
+  "direction": "scripts:qq-push-error-sanitize",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 119827c pushed to origin/auto/opt-scripts-1782899218; python3 -c 'import ast; ast.parse(...)' SYNTAX OK; grep 确认 5 处 RuntimeError 中 3 处已脱敏(HTTP {e.code})、2 处本地解析保留({d}); git merge-tree exit 0 clean vs main.",
+  "next_suggestion": "[1] audit-cycle-state pending_count=20 (WM-L-003 已派生)，剩余 derived_fixes 全 pending 待人工 sanctioned-merge；下轮继续瞭望 + 提醒用户 review auto/opt-scripts-1782899218 (含 WM-H-002..WM-L-003 共 10 commits)。[2] scout #1 1BfrYW9R 有 1 个待合并 worktree 可人工审。",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-01-004",
+  "audit_depth": "shallow"
+}

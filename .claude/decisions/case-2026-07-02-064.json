@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-02-064",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-02T03:45:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "AS-EC-017 fix: autonomous-loop.sh --bg mode process group leak",
+  "situation": "audit-2026-07-02-002 finding AS-EC-017 (priority 17, pending): autonomous-loop.sh line-26 trap uses `kill 0` which signals the entire process group. In --bg mode, nohup child inherits parent shell's process group (nohup does not create a new session), so Ctrl-C/SIGINT kills the user's terminal session along with the loop. Even in foreground mode, run_round's claude -p is a grandchild process not in the shell's direct child list; kill 0 behavior depends on job control being enabled.",
+  "action": "Replaced broadcast kill 0 with pidfile-tracked claude PID cleanup: (1) mktemp pidfile at startup, cleanup_claude() reads it and TERM+KILL only that PID; (2) set -m enables job control so background jobs enter independent process groups; (3) run_round backgrounds claude -p, writes PID to pidfile, waits, clears pidfile on completion; (4) --bg mode wraps nohup with setsid to create a new session detached from controlling terminal, preventing SIGHUP/INT crosstalk to user shell. EXIT trap ensures pidfile cleanup on normal exit.",
+  "files_changed": ["scripts/autonomous-loop.sh"],
+  "worktree": "opt-engine-shift-1782939628",
+  "direction": "engine:loop-signal",
+  "outcome": "succeeded",
+  "outcome_evidence": "bash -n syntax check passed; setsid available at /usr/bin/setsid; opt-worktree.sh commit succeeded creating worktree opt-engine-shift-1782939628 with direction engine:loop-signal; branch auto/opt-engine-shift-1782939628 pushed to origin. Fix addresses all three leak vectors: (a) kill 0 → targeted PID cleanup, (b) nohup alone → setsid+nohup for bg isolation, (c) synchronous claude -p → backgrounded with pidfile tracking.",
+  "next_suggestion": "派生 AS-EC-018 (priority 18, pending): opt-worktree.sh realpath -m resolves symlinks causing path rejection — 定位 realpath -m 调用点，评估是否改用 realpath -s 或手动 canonicalize 保留 symlink 语义。修复轮小单位 1-2 文件。",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-002",
+  "audit_depth": "shallow"
+}

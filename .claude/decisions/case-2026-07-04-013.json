@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-04-013",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-03T17:51:54Z",
+  "project": "autonomous-studio",
+  "work_unit": "ES-M002 E4 git diff unavailable default score fix",
+  "situation": "audit-2026-07-04-001 finding ES-M002 (priority 5, route-fix): route-health-scorer.py L184-208 score_e4_cumulative_deviation except block returns score=2 (full marks) when git diff fails. This silently inflates route health when data is missing, masking real deviation signals.",
+  "action": "Changed except/non-zero-return paths to return score=1 + unavailable:true instead of score=2. Updated score_all to compute dynamic max_score excluding unavailable dimensions' full-mark contribution, preventing both silent inflation and artificial deflation. Single-file change to scripts/route-health-scorer.py; direction-shift auto-detected by opt-worktree.sh (file in public-interfaces.txt).",
+  "files_changed": ["scripts/route-health-scorer.py"],
+  "worktree": "opt-route-health-shift-1783101096",
+  "direction": "route-health:e4-unavailable-score",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit pushed to origin/auto/opt-route-health-shift-1783101096. Worktree created as direction-shift (public interface file touched). Diff: except block now returns {score:1, unavailable:true, detail with exception type}; non-zero returncode path added before stdout parse; score_all computes max_score dynamically from dimension_maxes minus unavailable dims.",
+  "next_suggestion": "派生 fix ES-M003 (priority 6): triage.py L88-96 --done archive filename sequence number race condition → use timestamp prefix. 或继续消化 audit-2026-07-04-001 剩余 pending findings (ES-M004 structural → backfill structural-debt.md; ES-L001/L002/L003 route-fix).",
+  "audit_type": "deep-audit",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-04-001",
+  "audit_depth": "deep"
+}

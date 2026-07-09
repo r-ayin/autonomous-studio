@@ -1,0 +1,23 @@
+{
+  "case_id": "case-2026-07-02-006",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-02T01:05:32+08:00",
+  "project": "workspace-wide",
+  "work_unit": "scout-scan + pending-fix merge reminder",
+  "situation": "audit-cycle-state.status=fix-in-progress；derived_fixes[0] (case-2026-07-02-001, opt-security-1782920360, commit f0d11a3) 仍 NOT_MERGED_TO_ONEAYBOT_DEV。scout-scan #1/#2 推荐均为等合并 PROGRESS.md（已在 worktree，不可重复操作）；#3 为 1BfrYW9R review worktree（需人工审 diff）。本轮无可自动执行的新工作单位。",
+  "action": "仅跑 scout-scan 瞭望快照 + git merge-base 验证 pending fix 状态；写本 case 记录阻塞；更新 audit-cycle-state._status_note 与 autonomous-state.md NEXT_SUGGESTION 提醒用户 merge。",
+  "files_changed": [],
+  "worktree": null,
+  "direction": null,
+  "outcome": "succeeded",
+  "outcome_evidence": "git merge-base --is-ancestor f0d11a3 onedaybot-dev → NOT_MERGED_TO_ONEAYBOT_DEV；scout-scan 完成，返回 3 条推荐均非引擎可自动处理；无文件改动，无新 worktree。",
+  "next_suggestion": [
+    "用户手动 merge opt-security-1782920360 (f0d11a3+ed9edd4) 到 1BfrYW9R/onedaybot-dev → derived_fixes[0].status→merged、pending_count→0、status→cycle-complete → 下轮触发新全量审计",
+    "用户手动 merge opt-docs-1782904059 到 skills/master 与 opt-docs-1782903439 到 autonomous-engine/main，解除 scout #1/#2 阻塞",
+    "若用户长时间未 merge，引擎可在后续瞭望轮继续提醒；同错误连续 3 次无进展则跳到下个项目（当前未达阈值）"
+  ],
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": null,
+  "audit_depth": "shallow"
+}

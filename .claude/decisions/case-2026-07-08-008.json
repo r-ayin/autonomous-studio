@@ -1,0 +1,24 @@
+{
+  "case_id": "case-2026-07-08-008",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-07T01:30:00+08:00",
+  "project": "personal-assistant",
+  "work_unit": "transcript.py parse() size guard (PA-AUD-L-002)",
+  "situation": "audit-2026-07-08-042 derived_fix PA-AUD-L-002 pending: transcript.py:34 parse() calls Path.read_text() with no size guard. Defense-in-depth gap — while transcript files are typically small, a malformed or attacker-controlled file could trigger OOM. Last of 8 derived fixes from audit-042.",
+  "action": "Added _MAX_TRANSCRIPT_BYTES = 1MB constant + p.stat().st_size pre-check before read_text(). Raises ValueError with descriptive message on oversize. Mirrors same pattern used for M-004 (StubTranscriber) and H-002 (wav_bytes) in same audit cycle.",
+  "files_changed": [
+    "personal_assistant/transcript.py"
+  ],
+  "worktree": "opt-personal-assistant-1783341897",
+  "direction": "personal-assistant:transcript-size-guard",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit bd90a3b on auto/opt-personal-assistant-1783341897 pushed to origin. Route-fix reused existing worktree (no direction-shift). Size guard raises ValueError before any allocation.",
+  "next_suggestion": [
+    "All 8 audit-042 derived_fixes now merged → cycle-complete. Next round triggers new full audit on an unaudited module/project.",
+    "Consider reviewing structural-debt.md for deferred items (SD-016/017 frontend auth, SD-018 session_state lock) if user authorizes."
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-08-042",
+  "audit_depth": "shallow"
+}

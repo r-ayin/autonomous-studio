@@ -1,0 +1,47 @@
+{
+  "case_id": "case-2026-07-05-107",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-05T16:53:00+08:00",
+  "project": "x-tool (pdd监测)",
+  "work_unit": "派生 audit-2026-07-05-012 PDD-AUTH-01 (MEDIUM, 优先级2)：pdd_web_automation.py 账密登录路径加 RuntimeError 守卫，禁用 login_pdd_web 的 send_keys(password) 凭证处理与 main_web_automation 的 input('密码:') 明文读取，引导改用 chrome_debug_setup 9222 调试端口 + pdd_connect_existing_browser 会话复用路径",
+  "situation": "audit-cycle-state.status=fix-in-progress (audit-012 deep audit 完成, 5 route-fix derived_fixes 中 PDD-LEAK-01 已派 case-106 待人工 merge, 余 4 pending)。本轮按优先级派 PDD-AUTH-01 (优先级2, MED)。CLAUDE.md 规则2 明确'依赖已登录会话：不处理登录/验证码，直接复用浏览器现有 cookie，切勿在代码中硬编码账号密码'，但 pdd_web_automation.py:35 login_pdd_web 把 username/password 用 send_keys 敲进页面字段，:159 main_web_automation 用 input('密码:') 明文回显读取密码 (Python input 不掩码，密码留终端历史)。虽非硬编码但建立'代码可处理账密'先例，易被后续改成硬编码。pre-check: x-tool 既有 opt-pdd-1783240875 worktree 存在 (3-commit stack b09970e+4c16e26+e5ae071, FF-clean on master 85bd9e1, PDD-AUTH-01 fix_case_id=null 未派生, 遵 [[fix-already-committed-check]]); grep 确认 login_pdd_web/main_web_automation 仅本文件内引用无外部调用方 (pdd_connect_existing_browser 是独立 9222 路径), 加守卫不破跨模块; x-tool 无 .claude/public-interfaces.txt, pdd_web_automation.py 非公共接口 → route-fix 非 direction-shift。",
+  "action": "派生 fix 走 opt-worktree route-fix, 同 area 'pdd' 复用 opt-pdd-1783240875 worktree (第 3 commit 堆叠)。两处编辑 pdd_web_automation.py (200 行 → 138 行, 净 -62/+23):\n1) login_pdd_web (原 :35-73): 删除整个 try/except 账密登录体 (driver.get(login_url)+username_field.send_keys+password_field.send_keys+login_button.click+current_url 判定), 替换为 docstring (说明禁用原因+引导 9222 会话复用) + raise RuntimeError(\"本项目不处理登录，请用 chrome_debug_setup 启动调试 Chrome 后复用会话；账密登录路径已禁用（CLAUDE.md 规则2）\")。函数签名保留 (username/password 参数留为 vestigial, 避免破坏潜在 import)。\n2) main_web_automation (原 :154-178 try 体): 删除 input('账号:')/input('密码:') 明文提示 + login_pdd_web 调用 + time.sleep(5) + collect_web_data + json.dump 保存 + time.sleep(10) 整段 (collect_web_data 依赖登录后 driver, 登录既禁用此 entry-point 流程不再可达), 替换为注释说明禁用+引导 + raise RuntimeError(同上消息)。保留 try/except/finally 框架 (except 打印 RuntimeError 消息, finally driver.quit() 清理 Chrome 进程)。collect_web_data/setup_chrome_driver 纯采集/启动函数保留不变。\n绝对路径调 opt-worktree.sh /home/admin/workspace/x-tool commit 'pdd:auth-guard' '<msg>' /home/admin/workspace/x-tool/pdd监测/pdd_web_automation.py (遵 [[opt-worktree-absolute-file-path]]) → 复用 opt-pdd-1783240875 (cur_area=engine 无 .opt-direction, new_area=pdd, ls opt-pdd-* 命中复用), 提交 e5ae071, main 工作副本 restore 至 HEAD (原状, 干净)。python3 -m py_compile 通过。git push origin HEAD → 403 (x-tool 外部 fork ghp-ro.alibaba-inc.com→github.com/r-ayin/x-tool, 同 audit-008/010/011/PDD-LEAK-01 precedent)。",
+  "files_changed": [
+    "x-tool/pdd监测/pdd_web_automation.py (worktree opt-pdd-1783240875 提交 e5ae071; login_pdd_web :35-53 删账密登录体改 RuntimeError 守卫; main_web_automation :145-183 try 体删 input('密码:')+login 调用+collect+save 改 RuntimeError 守卫, 保留 try/except/finally+driver.quit; collect_web_data/setup_chrome_driver 保留; main 已 restore 干净)"
+  ],
+  "worktree": "opt-pdd-1783240875 (path: /home/admin/workspace/.opt-worktrees/x-tool/opt-pdd-1783240875, branch: auto/opt-pdd-1783240875, base: 85bd9e1=master, HEAD: e5ae071, 3-commit stack: b09970e .gitignore 规则 + 4c16e26 git rm --cached 4 JSON + e5ae071 PDD-AUTH-01 auth guard, FF-clean)",
+  "direction": "pdd:auth-guard (route-fix; pdd_web_automation.py 不在 public-interfaces.txt → 非 direction-shift, opt-worktree judge_direction_kind 自动判定 route-fix 复用同 area opt-pdd-1783240875)",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "git -C opt-pdd-1783240875 log --oneline -4: e5ae071 (PDD-AUTH-01 auth guard) → 4c16e26 (git rm --cached) → b09970e (.gitignore 规则) → 85bd9e1 (master base), 3-commit stack FF-clean",
+    "git -C opt-pdd-1783240875 status -s: 空 (clean) — 守卫提交已落, 无连带 revert",
+    "git -C opt-pdd-1783240875 show --stat HEAD: 'pdd监测/pdd_web_automation.py | 85 ++++--- 1 file changed, 23 insertions(+), 62 deletions(-)' — 仅目标 1 文件, 无 scope 蔓延",
+    "grep -nE 'send_keys\\(password\\)|input\\(\"密码' worktree/pdd_web_automation.py: 仅 :131 注释行匹配 (说明原实现被禁用原因), 无 live 凭证处理代码",
+    "grep -n 'raise RuntimeError' worktree/pdd_web_automation.py: :45 (login_pdd_web) + :136 (main_web_automation) — 两处守卫就位",
+    "python3 -m py_compile worktree/pdd_web_automation.py: SYNTAX_OK (无语法错误, 守卫不破编译)",
+    "git push origin HEAD: 'remote: git push is not allowed' + 403 — x-tool 外部 fork push 被拒 (同 audit-008/010/011/PDD-LEAK-01 precedent 'x-tool origin push 403 外部 fork'); worktree+3-commit stack 完整保留 disk 待人工 merge to master",
+    "opt-worktree.sh 复用提示: '→ 复用同 area worktree (route-fix): opt-pdd-1783240875' + '✓ 提交到 opt-pdd-1783240875 方向=pdd:auth-guard' — 未开新 wt, 正确堆叠",
+    "pre-check grep: login_pdd_web/main_web_automation 仅 pdd_web_automation.py 内 (:35 def / :145 def / :161 call / :201 call) 引用, 无外部 import — 守卫不破跨模块"
+  ],
+  "next_suggestion": [
+    "下轮 status 仍 fix-in-progress: 派生 PDD-SANDBOX-01 (优先级3, MED, pdd_advanced_collector.py launch_new_browser fallback --no-sandbox+--profile-directory=Default 与隔离 profile 设计冲突, 会驱动用户真实 Default profile)。同 area 'pdd' → opt-worktree 复用 opt-pdd-1783240875, 第 4 commit 堆叠",
+    "之后逐个派生 PDD-PSH-01 (chrome_debug_setup.py winreg 返回值 os.path.exists 校验, 同步 chrome_setup/ 副本) → PDD-DUMP-01 (pdd_monitor.py dump 改 tempfile/.debug/ + .gitignore 规则), 全堆叠 opt-pdd-1783240875",
+    "5 fix 全派生后走 3 连续 wait 轮 (同 audit-008/010/011 deadlock precedent, x-tool origin push 403 外部 fork 常态) → 预期全 rejected-archive, worktree+commit stack 保留 disk 待人工 merge. cycle-complete 后触发下一轮全量审计 (候选: x-tool/聚合ai客服开发 子模块 2987 py 太大需分段; 或其他未深审项目)",
+    "提醒用户: opt-pdd-1783240875 现堆 3 commit (b09970e+4c16e26+e5ae071) FF-clean on master 85bd9e1, 可一次性 git merge --ff-only auto/opt-pdd-1783240875 落地 PDD-LEAK-01+PDD-AUTH-01 两 finding。x-tool master 历史仍含 4 个 pdd_*.json 商家数据 (PDD-LEAK-01 只 untrack 不清历史), 若仓库曾 push 远端则历史泄露已成, 需 git filter-repo 清历史 (需人工授权)"
+  ],
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-05-012",
+  "audit_depth": "shallow",
+  "_derived_fix_dispatch": {
+    "finding_id": "PDD-AUTH-01",
+    "audit_id": "audit-2026-07-05-012",
+    "kind": "route-fix",
+    "worktree": "opt-pdd-1783240875",
+    "branch": "auto/opt-pdd-1783240875",
+    "commits": ["e5ae071"],
+    "base": "4c16e26 (PDD-LEAK-01 stack top)",
+    "push_status": "403 (x-tool 外部 fork, 同 audit-008/010/011/PDD-LEAK-01 precedent)",
+    "awaiting_human_merge": true
+  }
+}

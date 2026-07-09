@@ -18,13 +18,13 @@ fi
 
 # 2. calibration 冷却检查
 if [ -f "$CAL_FILE" ]; then
-  CONSECUTIVE=$("$PY" -c "
-import json, sys
+  CONSECUTIVE=$(CAL_FILE="$CAL_FILE" "$PY" -c "
+import json, os, sys
 try:
-    d = json.load(open('$CAL_FILE'))
+    d = json.load(open(os.environ['CAL_FILE']))
     print(d.get('cooldown', {}).get('current_consecutive', 0))
-except: print(0)
-" 2>/dev/null)
+except (ValueError, KeyError, TypeError): print(0)
+" "$CAL_FILE" 2>/dev/null)
   if [ "${CONSECUTIVE:-0}" -ge 3 ]; then
     echo "skip:cooldown"
     exit 0
@@ -42,13 +42,13 @@ fi
 
 # 4. autoAdvance 开关
 if [ -f "$STATUS_FILE" ]; then
-  AUTO=$("$PY" -c "
-import json, sys
+  AUTO=$(STATUS_FILE="$STATUS_FILE" "$PY" -c "
+import json, os, sys
 try:
-    d = json.load(open('$STATUS_FILE'))
+    d = json.load(open(os.environ['STATUS_FILE']))
     print(str(d.get('autoAdvance', True)).lower())
-except: print('true')
-" 2>/dev/null)
+except (ValueError, KeyError, TypeError): print('true')
+" "$STATUS_FILE" 2>/dev/null)
   if [ "$AUTO" = "false" ]; then
     echo "skip:auto-advance-off"
     exit 0

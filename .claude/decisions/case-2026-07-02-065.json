@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-07-02-065",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-02T03:45:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "AS-EC-017 fix: autonomous-loop.sh --bg process group leak",
+  "situation": "audit-2026-07-02-002 finding AS-EC-017 (priority 17, pending): autonomous-loop.sh line 26 trap uses `kill 0` which signals the entire process group. In --bg mode, nohup child inherits parent's process group; when user Ctrl-C/kill triggers the trap, `kill 0` can hit unrelated processes in the same group (e.g., the launching terminal session). Additionally, run_round runs claude -p synchronously with no PID tracking, so the trap has no precise target.",
+  "action": "Three-part fix: (1) Replace global `trap 'kill 0' INT TERM` with named `_cleanup` function that only kills ACTIVE_ROUND_PID (the current claude -p child). (2) Add `setsid` before nohup in --bg branch so backgrounded loop becomes a new session leader, fully detached from launcher's process group. (3) Refactor run_round to background claude -p, capture PID into ACTIVE_ROUND_PID, then `wait`; clear PID after shred cleanup. Syntax-checked with bash -n. Committed via opt-worktree.sh (direction-shift auto-detected due to public-interface-adjacent engine script change).",
+  "files_changed": [
+    "scripts/autonomous-loop.sh"
+  ],
+  "worktree": "opt-engine-shift-1782939897",
+  "direction": "engine:loop-bg-pgroup",
+  "outcome": "succeeded",
+  "outcome_evidence": "bash -n syntax check passed; opt-worktree.sh committed and pushed auto/opt-engine-shift-1782939897 to origin; worktree diff shows 3 hunks applied correctly (_cleanup function, setsid nohup, run_round PID tracking); main untouched (restore confirmed by system-reminder post-commit).",
+  "next_suggestion": "派生 AS-EC-018 fix (opt-worktree.sh realpath -m resolves symlinks causing path rejection) — last remaining pending finding from audit-2026-07-02-002. After that, all derived_fixes will be merged/rejected → set audit-cycle-state.status=cycle-complete to trigger next full audit.",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-002",
+  "audit_depth": "shallow"
+}

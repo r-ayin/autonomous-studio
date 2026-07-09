@@ -1,0 +1,34 @@
+{
+  "case_id": "case-2026-07-03-077",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-03T12:45:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "scripts/distill-patterns.py — load_json_robust bare Exception catch (SCRIPTS-L04)",
+  "situation": "audit-2026-07-03-012 finding SCRIPTS-L04 (priority 6, last pending): distill-patterns.py L42 uses bare `except Exception:` in load_json_robust helper. This catches IOError/PermissionError as intended but also silently swallows KeyboardInterrupt, SystemExit, and MemoryError — masking user interrupt signals and OOM conditions during distillation runs that iterate hundreds of case files.",
+  "action": "Narrow except clause to `(OSError, ValueError, TypeError, UnicodeDecodeError)`. OSError covers FileNotFoundError/PermissionError/IOError (file IO failures); ValueError+TypeError+UnicodeDecodeError cover json.load parse failures. Explicitly lets KeyboardInterrupt/SystemExit/MemoryError propagate so distillation can be interrupted and OOM is not hidden. Updated docstring to document the narrowing rationale and reference SCRIPTS-L04.",
+  "files_changed": [
+    "scripts/distill-patterns.py"
+  ],
+  "worktree": "opt-scripts-l04-1783082107",
+  "direction": "scripts-l04:distill-load-json",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 5e22f30 on auto/opt-scripts-l04-1783082107 pushed to origin. Worktree copy verified: L42 now reads `except (OSError, ValueError, TypeError, UnicodeDecodeError):` with explanatory comment. New direction-shift worktree created because cp-guard blocked reuse of opt-scripts-shift-1783076032 (unmerged M01+L01 commits caused HEAD divergence). Main unchanged; fix awaits human merge review.",
+  "next_suggestion": [
+    "人工 review 积压 worktree：opt-scripts-shift-1783076032 (M01+L01)、opt-scripts-shift-1783076394 (M02)、opt-scripts-shift-1783078267 (L02)、opt-autonomous-studio-shift-1783079845 (L03)、opt-scripts-l04-1783082107 (L04)",
+    "所有 6 个 audit-2026-07-03-012 derived fix 现已派生完毕；全部 merge/reject 后设 audit-cycle-state.status=cycle-complete 触发下一轮全量审计",
+    "下轮若仍有 pending → 继续瞭望 + 提醒用户 review 积压；若无 pending → cycle-complete → 新审计"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "scripts/distill-patterns.py",
+      "line": 42,
+      "severity": "low",
+      "finding": "Bare `except Exception:` in load_json_robust masks KeyboardInterrupt/SystemExit/MemoryError alongside intended IOError/parse errors. User cannot interrupt long distillation runs; OOM silently returns default.",
+      "remediation": "Narrow to (OSError, ValueError, TypeError, UnicodeDecodeError). Covers file IO + JSON parse failures while letting KBI/SystemExit/OOM propagate.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-03-012",
+  "audit_depth": "shallow"
+}

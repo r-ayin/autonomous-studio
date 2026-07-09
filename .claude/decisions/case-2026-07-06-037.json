@@ -1,0 +1,35 @@
+{
+  "case_id": "case-2026-07-06-037",
+  "agent_id": "ralph-autonomous-engine",
+  "timestamp": "2026-07-06T21:05:00+08:00",
+  "project": "x-tool/一件重启脚本/remote_control",
+  "work_unit": "RC-CFG-01 派生 fix: /update_config base_url SSRF 防护 (audit-2026-07-06-004 finding #5, priority 5, medium)",
+  "situation": "audit-2026-07-06-004 deep audit 第 5 优先级 pending finding. /update_config POST handler 接受任意 base_url 无 scheme/host 校验 (server.py do_POST→update_config, 原 line ~510-525, 文件已 stack 4 commit 后行号漂移至 ~574-586). 攻击者拿下 PIN (RC-SEC-03 已修) 后改 base_url=https://evil.com/claude, bot 下次调 LLM 把 Authorization: Bearer <apiKey> 发到攻击者主机 → 凭证盗取. audit 定性为 SSRF 类凭证盗取, remediation=validate_base_url: scheme 必须 https (本地 ollama 例外 http+localhost), 拒私网/环回/云元数据主机. status=fix-in-progress, 本轮派生该 pending finding.",
+  "action": "在 server.py 加 (1) import ipaddress; (2) 模块级 _BLOCKED_IP_NETWORKS 常量 + validate_base_url(url) 函数 (返回 (is_ok, reason)); (3) do_POST 的 /update_config 分支在提取 new_base_url 后、写 config['providers'][p]['baseUrl'] 前调用 validate_base_url, 不通过返 400 {success:false, message:reason} 并 return. 判定逻辑: scheme 必须 http/https; host 缺失拒; http 仅放行 loopback(127/::1/localhost) 本地 Ollama, 公网须 https; 字面 IP 命中 127.0.0.0/8|10/8|172.16/12|192.168/16|169.254/16(含云元数据 169.254.169.254)|100.64/10(CGNAT/Tailscale)|::1|fc00::/7|fe80::/10 拒(loopback 在 http 已放行, 不重复拒); 不做 DNS 解析(避免 TOCTOU/rebinding). 仅改 1 文件 server.py, stack 在既有 opt-remote-control-1783283520 worktree (HEAD=3299f27→d9bf64d, base=master=85bd9e1 FF-clean).",
+  "files_changed": ["一件重启脚本/remote_control/server.py"],
+  "worktree": "opt-remote-control-1783283520",
+  "direction": "remote-control:sec (route-fix, 复用同 area worktree, 非公共接口文件 → 不触发 direction-shift)",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "git commit d9bf64d: 'opt(remote-control:sec): RC-CFG-01 (audit-2026-07-06-004)...' 1 file changed, 61 insertions(+), 2 deletions(-)",
+    "git log --oneline -3: d9bf64d (RC-CFG-01) → 3299f27 (RC-XSS-01+RC-ATOMIC-02, case-036) → 163f202 (RC-SEC-03+..., case-035); 单 wt 5-commit stack",
+    "git merge-base --is-ancestor 85bd9e1(master) HEAD(d9bf64d) → 0 exit → FF-clean, 可 fast-forward 合入 master",
+    "python3 -m py_compile server.py → OK (SyntaxWarning [?line 743 'E:\\openclaw' \\o 转义为 pre-existing 既存行非本 commit 改动, 不属本 finding 范围, 留待 SD-RC-01 跨文件路径重构)",
+    "validator 行为测试 13 case ALL_PASS: https://yunyi.cfd/claude→ok; http://localhost:11434→ok; http://127.0.0.1:11434→ok; http://192.168.1.5→拒(http 仅 localhost); https://192.168.1.5→拒(私网); https://169.254.169.254→拒(云元数据); http://100.82.91.58→拒(CGNAT); ftp://evil.com→拒(scheme); https://evil.com→ok; ''→拒(空); 'not a url'→拒(scheme); http://[::1]:11434→ok; https://[fe80::1]→拒(link-local)",
+    "git push origin auto/opt-remote-control-1783283520 → 403 'git push is not allowed' (x-tool origin=外部 fork r-ayin/x-tool, [[x-tool-external-fork-push-403]] precedent, 预期); local-ref + disk 完整保留待人工 merge"
+  ],
+  "next_suggestion": "下轮继续 audit-2026-07-06-004 pending route-fix 派生: 剩余 6 pending (RC-BUG-01 MED str(e,sort_keys=True) error-path 自崩真 bug / RC-LEAK-02 MED startup-enhanced.bat gateway token 硬编码 / RC-PIN-01 MED PIN query→body / RC-ATOMIC-01 MED save_config 原子写 / RC-ROBUST-01 LOW try 外 json.loads / RC-ROBUST-01 LOW HTTPS_PROXY 残留). 按 audit plan step 5 优先 RC-BUG-01 (真逻辑 bug, 命中自指 churn 例外) 与 RC-ATOMIC-01/RC-ROBUST-01 同 server.py 可 stack 同 wt. 全部 pending 派完后 status→cycle-complete 触发下一轮全量审计. 同时 owner 须: (1) 轮换 presets.json 2 个 yunyi.cfd key (RC-SEC-01, 引擎不可代劳); (2) set REMOTE_CONTROL_PIN env (RC-SEC-03); (3) 人工 merge opt-remote-control-1783283520 5-commit stack 入 master (origin push 不可达).",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "一件重启脚本/remote_control/server.py",
+      "line": "574-586 (do_POST /update_config, new_base_url 写入 baseUrl 前)",
+      "severity": "medium",
+      "finding": "RC-CFG-01: /update_config 接受任意 base_url 无 scheme/host 校验, 攻击者拿下 PIN 后改 baseUrl 把 Bearer apiKey 导向自身 (SSRF 类凭证盗取). 原 evidence: new_base_url = data.get('base_url') 直接写 config['models']['providers'][provider_name]['baseUrl'].",
+      "remediation": "新增 validate_base_url(url) 模块级函数 + _BLOCKED_IP_NETWORKS 常量; do_POST /update_config 在写 baseUrl 前校验, 不通过返 400. scheme 必须 http/https; http 仅放行 loopback(Ollama); 字面 IP 命中私网/环回/链路本地/云元数据/CGNAT 段拒. 已实施, commit d9bf64d, 13-case 行为测试 ALL_PASS.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-004",
+  "audit_depth": "deep"
+}

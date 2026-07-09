@@ -1,0 +1,56 @@
+{
+  "case_id": "case-2026-07-05-005",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-05T01:41:02Z",
+  "project": "wechat-main",
+  "work_unit": "bocha_search 加固：合并 WM-BOCHA-01（非原子输出写）+ WM-BOCHA-02（响应体无大小上限 + base_url 允许 http）+ B 节 audit-log 埋点（外部 HTTP 出站敏感路径）",
+  "situation": "audit-2026-07-05-001 对 wechat-main 深审产出 16 findings，已派生 case-002/003/004（5 findings，全 pushed-awaiting-human-merge 堆在 opt-wechat-main-1783130541）。剩余 11 个 fix_case_id=null 的 pending finding 中，WM-BOCHA-01（MEDIUM，scripts/bocha_search.py:219 非原子 write_text）与 WM-BOCHA-02（LOW，:92 urlopen 全量 resp.read() 无上限 + :237 --base-url 不强制 https）同属 bocha_search.py 单文件、同'外部 HTTP 出站 + 持久化'主题，且该文件未被前 3 个 stacked commit 触及（git diff main..auto/opt-wechat-main-1783130541 仅含 pipeline.py/pipeline-gate.sh/fact_checker.py/verifier.py）→ 无 stack 冲突风险，适合合并为单 case 派生。B 节评估：WM-BOCHA-02 触及 HTTP 出站敏感路径，须同步补 audit-log 埋点。",
+  "action": "单文件 scripts/bocha_search.py 改造（route-fix，复用 opt-wechat-main-1783130541 worktree，stack 第 4 commit）：(1) 新增 _read_capped(resp) 流式读取 helper——Content-Length 预检 + 65536 分块累计，超 _MAX_RESPONSE_BYTES=5MB 立即返回错误，json 解析收入 helper 内（移除原 except json.JSONDecodeError，因形状异常现已归一为 read_err 不重试）；(2) 新增 _atomic_write_text(path,text) helper——tmp+flush+fsync+os.replace，三处 write_text（主输出 + 两处空 {} fallback）全替换；(3) run() 入口加 https 强制——args.base_url 非 https:// → 打 stderr + audit_log(result=denied) + return 2（cron 可据此告警，不走静默 fallback）；(4) 新增 _audit_log(action,resource,result,details) helper——append-only 写 .audit/audit-<UTC date>.jsonl，字段对齐 audit-log.schema.json（id/timestamp/userId=autonomous-engine/userRole=engine/action/resource/result/ip=local/sensitive=true/sensitiveLevel=medium/details），自身异常吞掉不影响主流程；run() 末尾按 ok>0 记 success/failure batch 事件。验证：python3 -m py_compile 通过；http base_url → exit 2 + 拒绝信息；https+无 key → 原子写 {}；_audit_log 直调产生合规 JSONL 条目（tail -1 实测字段全对）。",
+  "files_changed": ["scripts/bocha_search.py"],
+  "worktree": "opt-wechat-main-1783130541",
+  "direction": "wechat-main:bocha-hardening",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 1924fc5 落于 auto/opt-wechat-main-1783130541（git log --oneline -1 实测 HEAD=1924fc5）；git show --stat 1924fc5 实测 'scripts/bocha_search.py | 117 +++--- 1 file changed, 106 insertions(+), 11 deletions(-)'；git show 1924fc5:scripts/bocha_search.py grep 实测含 _read_capped/_atomic_write_text/_audit_log/_MAX_RESPONSE_BYTES='5 * 1024 * 1024'/https:// 强制分支；push 成功 '3b77d0a..1924fc5 HEAD -> auto/opt-wechat-main-1783130541'（origin 已同步，CR 链接已生成）；主 checkout git status --porcelain scripts/bocha_search.py 空（cmd_commit revert 守卫已清理 main 工作区）；运行时验证：python3 scripts/bocha_search.py --base-url http://... → exit 2 + 拒绝信息打印；--base-url https://... 无 key → exit 0 + /tmp 输出文件内容为 '{}'；.audit/audit-2026-07-04.jsonl（UTC 日期，本地 01:40=UTC 17:40 仍属 07-04）新增条目 tail -1 经 python3 -m json.tool 实测含 id/timestamp/userId/userRole/action=external_call/resource.result=denied/ip=local/sensitive=true 全字段。",
+  "next_suggestion": "下轮仍 fix-in-progress，继续派生 pending finding（10 个剩余：WM-PIP-02/WM-QQ-01/WM-GATE-02/WM-FC-02/WM-FC-03/WM-MAIL-01/WM-PIP-03/WM-VER-03 route-fix + WM-QQ-02 direction-shift）。建议优先 WM-PIP-02+WM-BOCHA-01 已派（BOCHA-01 本轮已修）；下个单文件无 stack 冲突的候选：WM-MAIL-01（mail_push.py SMTP 异常脱敏，未触 stacked commit，敏感路径需 audit-log）或 WM-FC-02+WM-FC-03 合并（fact_checker.py 已被 case-003 触过，stack 同文件不同函数需 cp-guard 直编 worktree）。⚠ opt-wechat-main-1783130541 现 4 commits 积压待人工 merge，drift 风险上升，NEXT_SUGGESTION 应提示用户优先 merge。",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "scripts/bocha_search.py",
+      "line": 219,
+      "severity": "medium",
+      "finding": "WM-BOCHA-01: out.write_text(json.dumps(results)...) 非原子写。崩溃半写 → hot-scanner consume 读到残缺 JSON，json.load 抛或得空 dict，cron 静默 fallback 到空结果。",
+      "remediation": "已修：_atomic_write_text helper（tmp+flush+fsync+os.replace）替换三处 write_text（主输出 + 两处 {} fallback）。",
+      "kind": "route-fix"
+    },
+    {
+      "file": "scripts/bocha_search.py",
+      "line": 92,
+      "severity": "low",
+      "finding": "WM-BOCHA-02a: urllib.request.urlopen(req, timeout=30) 后 resp.read() 全量读，无响应体大小上限。Content-Length 缺失/虚报时 OOM 或慢速耗尽。",
+      "remediation": "已修：_read_capped(resp) 流式读取，Content-Length 预检 + 65536 分块累计，超 5MB 立即返回错误（非重试，因大小不会因重试变）。",
+      "kind": "route-fix"
+    },
+    {
+      "file": "scripts/bocha_search.py",
+      "line": 237,
+      "severity": "low",
+      "finding": "WM-BOCHA-02b: --base-url 接受任意 scheme，传 http:// 则 Bearer token 明文上链。默认 https 但无强制。",
+      "remediation": "已修：run() 入口 args.base_url.startswith('https://') 强制校验，非 https → audit_log(denied) + return 2。",
+      "kind": "route-fix"
+    },
+    {
+      "file": "scripts/bocha_search.py",
+      "line": 76,
+      "severity": "info",
+      "finding": "B 节义务：bocha API 为外部 HTTP 出站敏感路径，原代码无 audit-log 埋点。",
+      "remediation": "已补：_audit_log helper append-only 写 .audit/audit-<UTC>.jsonl；run() 末尾记 success/failure batch 事件 + https 拒绝记 denied 事件，字段对齐 audit-log.schema.json。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-001",
+  "audit_depth": "deep",
+  "fix_kind": "route-fix",
+  "parent_finding_ids": ["WM-BOCHA-01", "WM-BOCHA-02"],
+  "stacked_on_commits": ["4ba2fc6", "1092685", "3b77d0a"],
+  "merge_state": "pushed-awaiting-human-merge"
+}

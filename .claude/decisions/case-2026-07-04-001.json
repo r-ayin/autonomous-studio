@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-07-04-001",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-04T00:15:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "prod-deploy:observation-strict-mode (PD-M003 derived fix)",
+  "situation": "audit-2026-07-03-013 finding PD-M003: resume-next-batch.js observation gate silently skipped when observation_result absent (report-observation.js never ran). Agent could approve batch on stale/missing health data. Priority 9 route-fix.",
+  "action": "Added --strict-observation CLI flag + RESUME_REQUIRE_OBSERVATION=1 env var. When enabled: (1) observation_result missing → approved:false + clear error message; (2) observation_result.skipped → approved:false + skip_reason surfaced. Default off for backward-compat. Also added explicit WARNING log in non-strict mode when observation_result absent (previously silent).",
+  "files_changed": [
+    "skills/prod-deploy/scripts/resume-next-batch.js"
+  ],
+  "worktree": "opt-prod-deploy-1782970212",
+  "direction": "prod-deploy:observation-strict-mode",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 3699da1 in auto/opt-prod-deploy-1782970212 branch. node --check passed. Diff: +36/-2 lines, adds parseArgs option, env var check, two new conditional branches (skipped+strict, missing+strict), one new warning branch (missing+non-strict).",
+  "next_suggestion": "派生 fix PD-M004 (priority 10, sunfire-client.js L105-114 JSON/network error differentiation) — 同 worktree 复用",
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-03-013",
+  "audit_depth": "shallow"
+}

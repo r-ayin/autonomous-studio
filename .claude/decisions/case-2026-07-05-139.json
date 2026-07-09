@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-05-139",
+  "agent_id": "ralph-autonomous-engine",
+  "timestamp": "2026-07-05T23:58:00+08:00",
+  "project": "x-tool/api额度监测",
+  "work_unit": "APIMON-RACE-01 derived route-fix: 后台线程 update_data_thread 迭代 live config['keys'] list 与主线程 process_command append/pop 同 list 竞态",
+  "situation": "audit-2026-07-05-015 (x-tool/api额度监测 monitor.py TUI) 第 5 条 pending finding。monitor.py:131 keys = config.get('keys', []) 返回 live list 引用，line 133 for key in keys: 在后台线程迭代；同时主线程 process_command line 332 keys.pop(idx) / line 352 keys.append(cmd) 改同一 list → Python RuntimeError: list changed size during iteration。实测触发路径: 用户在仪表盘运行中粘贴新 key 或 del 序号时，正好撞上后台轮询每 60s 一次的 for 循环 → 崩溃。属真并发 bug，命中 autonomous-constraints.md 自指 churn 例外（真逻辑 bug，file:line + 证据已写明）。",
+  "action": "line 131 改 keys = list(config.get('keys', [])) 快照拷贝，后台线程迭代副本，对主线程 append/pop 免疫。1 文件 1 行（+注释 3 行）。py_compile OK。未动 line 149 make_dashboard / line 322 process_command 的 keys 引用——两者均在主线程，单线程 UI 无竞态；且 process_command 的 append/pop 必须作用于 live list 才能持久化到 config（快照会破坏语义）。monitor.py 已被 c02abf5 (APIMON-SSRF-01) 在 opt-api-monitor-1783256389 worktree 改过 → 沿用 direct-worktree-commit precedent（opt-worktree.sh cp-from-main 流程 M-002 拒绝 .. 路径，文件本就在 worktree 内）。",
+  "files_changed": ["api额度监测/monitor.py"],
+  "worktree": "opt-api-monitor-1783256389 (branch auto/opt-api-monitor-1783256389, base=85bd9e1=master, 6-commit stack 3ed7fb7+2030a4a+0691bb9+e410417+c02abf5+d07166c, FF-clean)",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit d07166c 1 file changed 4 insertions 2 deletions on auto/opt-api-monitor-1783256389 (stacked on c02abf5 APIMON-SSRF-01, 6-commit stack FF-clean base=85bd9e1=master). py_compile OK. grep 'keys = list(config' monitor.py:133 命中. push origin auto/opt-api-monitor-1783256389 → 403 external fork (ghp-ro.alibaba-inc.com/r-ayin/x-tool.git, 同 audit-005/006/007/008/010/011 x-tool precedent), worktree+branch+6-commit stack 完整保留 disk+local-ref 待人工 merge to master.",
+  "next_suggestion": "下轮派 APIMON-KEYLEN-01 (line 350 len(cmd)>10 当 key 无格式校验, 改 KEY_RE 正则; monitor.py 已被 d07166c 改 → direct-worktree-commit 同 precedent). 之后 2 structural (NOAUDITLOG-01/WINDOWS-01) 不派 fix 写 structural-debt. 全 8 dispatched 后 3 连续 wait round 0 merged → deadlock-archive precedent → cycle-complete → 触发下次全量审计 (候选未深审: xia 499 / personal-assistant re-audit).",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "api额度监测/monitor.py",
+      "line": 131,
+      "severity": "low",
+      "finding": "APIMON-RACE-01: update_data_thread 后台线程 keys = config.get('keys', []) 取 live list 引用后 for key in keys: 迭代；主线程 process_command 同 list append(line 352)/pop(line 332) → RuntimeError: list changed size during iteration",
+      "remediation": "keys = list(config.get('keys', [])) 快照拷贝迭代副本，主线程 mutation 不影响后台迭代",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-015",
+  "audit_depth": "deep"
+}

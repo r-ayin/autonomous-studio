@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-07-04-026",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-04T21:45:00Z",
+  "project": "moni-master",
+  "work_unit": "MM-M001: StrategyRegistry Mutex poisoning recovery",
+  "situation": "audit-2026-07-04-002 finding MM-M001 (priority 5, route-fix): strategy.rs L61-68 list_definitions uses .lock().unwrap() on std::sync::Mutex. If any holder panics while holding the lock, the mutex becomes poisoned and every subsequent .lock().unwrap() call also panics, causing cascade failure across all StrategyRegistry callers.",
+  "action": "Replaced .lock().unwrap() with .lock().unwrap_or_else(|poisoned| { eprintln!(...); poisoned.into_inner() }) to recover inner data and log warning instead of propagating panic. Single-file fix in moni-rs/crates/moni-strategy/src/strategy.rs. Committed to existing opt-moni-strategy-1782942749 worktree (route-fix reuse, no public interface touched). Pushed to origin.",
+  "files_changed": [
+    "moni-rs/crates/moni-strategy/src/strategy.rs"
+  ],
+  "worktree": "opt-moni-strategy-1782942749",
+  "direction": "moni-strategy:mm-m001-mutex-poisoning",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 985aad9 in auto/opt-moni-strategy-1782942749; git push confirmed new branch on origin; diff: +10/-6 lines in strategy.rs replacing unwrap with unwrap_or_else recovery pattern",
+  "next_suggestion": "派生 MM-M003 (sessions.rs SessionStore Mutex poisoning, same pattern) 或 MM-M004 (memory.rs RwLock poisoning)。两者都是 route-fix 可独立提交。",
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-04-002",
+  "audit_depth": "shallow"
+}

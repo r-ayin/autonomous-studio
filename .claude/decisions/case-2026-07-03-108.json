@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-03-108",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-03T15:55:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "fix AS-PERSIST-H01: distill-patterns.py outcome vocabulary mismatch",
+  "situation": "audit-2026-07-03-007 finding H01: SUCCESS_OUTCOMES/FAILURE_OUTCOMES used legacy values (success/failure/partial_success/user_rejected/aborted) that completely mismatched the actual case schema enum (succeeded/failed/rolled_back/superseded/blocked). All 323 cases were classified as indeterminate, making every pattern accuracy value unreliable (all zeros or inferred-only). Startup self-check added to prevent silent recurrence.",
+  "action": "Updated SUCCESS_OUTCOMES to {succeeded}, FAILURE_OUTCOMES to {failed, rolled_back, superseded}, added BLOCKED_OUTCOMES = {blocked} excluded from success/failure tallies. Added startup self-check in main() that samples up to 50 cases and reports recognition rate + observed outcome values when rate < 50%. Dry-run verified: recognition rate jumped from ~0% to 100% (50/50 sample, all explicit).",
+  "files_changed": ["scripts/distill-patterns.py"],
+  "worktree": "opt-distill-1783093564",
+  "direction": "distill:outcome-vocab-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "Dry-run output: '[self-check] 样本 50 case: 识别率=1.00 (50/50), 显式 outcome=1.00 (50/50)' — previously all cases were indeterminate. Worktree pushed to origin/auto/opt-distill-1783093564. Code review URL: https://code.alibaba-inc.com/qunbu/autonomous-studio/codereview/new?from=main&to=auto/opt-distill-1783093564",
+  "next_suggestion": "派生 fix #2: AS-PERSIST-H02 (ESE-L02 missing from structural-debt.md, add as SD-003). Route-fix, priority 2.",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-03-007",
+  "audit_depth": "shallow"
+}

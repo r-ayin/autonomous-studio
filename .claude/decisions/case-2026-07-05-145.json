@@ -1,0 +1,40 @@
+{
+  "case_id": "case-2026-07-05-145",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-05T22:21:24+08:00",
+  "project": "x-tool/wanxia",
+  "work_unit": "WX-AUTH-01 派生 fix: server.js 默认 bind 0.0.0.0 → 127.0.0.1 loopback，闭合凭证暴露写端点 (/api/social/fetch|/calibrate|/status) 的网络可达性",
+  "situation": "audit-cycle-state.status=fix-in-progress, audit-2026-07-05-016 派生 7 findings 全 pending。WX-AUTH-01 [HIGH] 最高优先（凭证暴露在网）：server.js:95 app.listen(PORT) 未传 host → Node http 默认 bind 0.0.0.0（所有网卡）；routes.js 的 /social/fetch (L369) / /social/calibrate (L399) / /social/status (L353) 三端点均无 auth 中间件，分别驱动 WEIBO_COOKIE/XIAOHONGSHU_COOKIE 凭证的大规模自动抓取、昂贵 DB 重算、cookie 配置状态披露。任一可达 8080 端口的网络访客可触发受害者账号被风控/封禁 + 凭证配置侦察。x-tool/wanxia 路由不属 .claude/public-interfaces.txt 公共接口 → route-fix 复用 worktree。",
+  "action": "采 audit 推荐的 (a) 最小零依赖方案：server.js:95 app.listen(PORT, () => ...) → app.listen(PORT, HOST, () => ...)，HOST = process.env.WANXIA_HOST || '127.0.0.1'。secure-by-default（loopback）+ 显式 env override 供反代/远程场景。cron 路径不受影响（cron 直接调 fetchAndStoreSocialData 函数，不经 HTTP）。未加 (b) 共享密钥中间件——因 (a) 已闭合 HIGH 网络暴露（audit 原文: '若仅本机/反代消费，这一行即闭合'），(b) 仅 '若需远程访问' 才必要，且 fail-closed 会破坏未设 WANXIA_API_KEY 用户的本地 HTTP 工作流，留作 direction-shift 候选。1 文件 8 增 2 删，含解释注释。node --check 通过。opt-worktree.sh route-fix 复用既有 security:* area worktree opt-security-1783235416（不触及公共接口 → 不开新 wt）。",
+  "files_changed": [
+    "x-tool/wanxia/server.js"
+  ],
+  "worktree": "opt-security-1783235416 (auto/opt-security-1783235416, base=85bd9e1=master, FF-clean, HEAD=eb00793)",
+  "direction": "security:auth-bind (route-fix, 复用既有 security area worktree)",
+  "commit": "eb00793",
+  "push_status": "403 external fork (r-ayin/x-tool.git, push not allowed) — x-tool 既定 precedent (audit-008/010 同)。worktree + branch + commit 完整保留 local disk + local-ref 待人工 merge to master。",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "node --check server.js → PARSE_OK",
+    "opt-worktree.sh 输出 '→ 复用同 area worktree (route-fix): opt-security-1783235416' + '✓ 提交到 opt-security-1783235416 方向=security:auth-bind'",
+    "git show --stat HEAD: commit eb00793, 'wanxia/server.js | 10 ++++++++--, 1 file changed, 8 insertions(+), 2 deletions(-)'",
+    "worktree wanxia/server.js:95-101 验证含 'const HOST = process.env.WANXIA_HOST || \\x27127.0.0.1\\x27' + 'app.listen(PORT, HOST, () => ...)'",
+    "git merge-base --is-ancestor 85bd9e1 HEAD → FF-clean from master 85bd9e1",
+    "git push origin auto/opt-security-1783235416 → 403 (external fork, 预期)"
+  ],
+  "next_suggestion": "下轮派生 WX-HEALTH-01 [HIGH] (health-check.py:6 SRC_DIR='/mnt/e/x-tool/wanxia' 硬编码 WSL 路径 → Linux 部署 ensure_deployed→shutil.copytree 抛 FileNotFoundError → restart 永久失效)。最小 fix: SRC_DIR = os.environ.get('WANXIA_SRC_DIR', os.path.dirname(os.path.abspath(__file__)))。1 文件 1 行，route-fix。之后按 audit 派发顺序: WX-ENV-01 → WX-TIMEOUT-01+WX-CACHE-01 → WX-SILENT-01 → WX-XHS-REUSE-01。全 7 merged|rejected 后 cycle-complete → 触发下一轮全量审计。",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "x-tool/wanxia/server.js",
+      "line": "95-97",
+      "severity": "high",
+      "finding": "WX-AUTH-01: app.listen(PORT) 未传 host → 默认 bind 0.0.0.0；叠加 routes.js 全量路由无 auth → /social/fetch|/calibrate|/status 凭证写端点对任一网络访客开放",
+      "remediation": "app.listen(PORT, HOST, ...) HOST=process.env.WANXIA_HOST||'127.0.0.1'，secure-by-default loopback + env override。已实施 (commit eb00793)",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-016",
+  "audit_depth": "deep",
+  "derived_fix_status": "merged-to-worktree (eb00793 @ auto/opt-security-1783235416, FF-clean, 待人工 merge to master; push 403 external fork)"
+}

@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-07-04-033",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-04T20:45:00Z",
+  "project": "moni-master",
+  "work_unit": "MM-M008 supersession verify (llm.rs silent mock fallback)",
+  "situation": "audit-2026-07-04-002 finding MM-M008 flagged llm.rs L164-179 silent fallback to MockLlmClient when DeepSeek key missing, producing fake factor outputs. Dispatched as fix-in-progress derived fix. On inspection, existing worktree opt-cogalpha-1782944225 commit 09d224d (MR-H05) already implements RejectingLlmClient + MONI_ALLOW_MOCK_LLM guard that refuses silent mock fallback when env flag unset. Main branch is behind worktree; no new code change needed.",
+  "action": "Verified existing fix covers MM-M008 semantics: (1) get_llm_client_named returns RejectingLlmClient wrapping LlmError::MockNotAllowed when deepseek requested but key missing AND MONI_ALLOW_MOCK_LLM not set; (2) RejectingLlmClient.complete() always returns Err(LlmError::Api(...)) so callers see hard failure instead of bogus factors; (3) cargo check -p moni-cogalpha passes in worktree. Marked superseded.",
+  "files_changed": [],
+  "worktree": "opt-cogalpha-1782944225",
+  "direction": "route-fix",
+  "outcome": "superseded",
+  "outcome_evidence": "git log --oneline opt-cogalpha-1782944225 shows commit 09d224d 'opt(cogalpha:mock-llm-guard): Require MONI_ALLOW_MOCK_LLM flag before using MockLlmClient; reject silent fallback with clear error (MR-H05)'. Read of worktree llm.rs L175-217 confirms deepseek-missing branch returns Arc::new(RejectingLlmClient::new(LlmError::MockNotAllowed)) when !mock_llm_allowed(). cargo check -p moni-cogalpha finished successfully in 12.95s.",
+  "next_suggestion": [
+    "Next derived fix: MM-M010 (priority 13) — api.py L1328-1341 /agent/state/full leaks raw config including api_keys. Route-fix, likely 1-2 files in local_simulator/api.py.",
+    "After all moni-master audit-2026-07-04-002 pending fixes resolved, trigger next full audit cycle on least-recently-audited project (likely shizi or sunset-prediction)."
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-04-002",
+  "audit_depth": "shallow"
+}

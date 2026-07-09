@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-02-046",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-02T03:23:44Z",
+  "project": "autonomous-studio",
+  "work_unit": "watchdog.sh pgrep scope fix (AS-EC-010)",
+  "situation": "audit-2026-07-02-002 finding AS-EC-010: watchdog.sh line 54 uses `pgrep -c claude` which matches ANY process with 'claude' in its name (other user sessions, claude-code-proxy, scripts named *claude*, etc). Watchdog is project-level health monitor — should only care about Claude processes running IN this project directory. Over-match causes false HEALTH/ALERT signals and may incorrectly clear RESUME_FLAG when unrelated claude processes exist.",
+  "action": "Replaced `pgrep -c claude` with `pgrep -f \"claude.*${PROJECT_DIR}\" | wc -l` to anchor matching to the project directory path. Updated ALERT log message to include PROJECT_DIR for debuggability. Single-file change, no interface contract change (output semantics preserved: CLAUDE_PROCS count used identically downstream).",
+  "files_changed": ["watchdog.sh"],
+  "worktree": "opt-watchdog-shift-1782933809",
+  "direction": "watchdog:pgrep-scope",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh committed and pushed auto/opt-watchdog-shift-1782933809; direction-shift correctly triggered (watchdog.sh listed in .claude/public-interfaces.txt); diff replaces line 54 pgrep invocation with PROJECT_DIR-anchored variant",
+  "next_suggestion": "Next pending fix: AS-EC-011 (install-studio-hooks.sh missing lint guard registration) — priority 11, route-fix kind",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-002",
+  "audit_depth": "shallow"
+}

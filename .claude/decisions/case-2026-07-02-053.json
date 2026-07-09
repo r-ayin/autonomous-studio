@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-07-02-053",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-01T20:07:13Z",
+  "project": "autonomous-studio",
+  "work_unit": "AS-EC-015: studio-progress-check.sh one-way stage advancement with blocked tasks",
+  "situation": "audit-2026-07-02-002 finding AS-EC-015 (priority 13, route-fix). Hook auto-advances status.json from development→verification when `done_p0 >= total_p0 - blocked_p0`. With no rollback mechanism, a P0 task becoming unblocked after auto-advance leaves the project stuck in verification with incomplete P0 work. Worktree opt-hooks-1782936187 already had fix commit 39acbf9 from prior context but case was never registered and audit-cycle-state.derived_fixes[AS-EC-015].fix_case_id remained null.",
+  "action": "Verified existing fix commit 39acbf9 correctness: changed condition to `blocked_p0 == 0 and done_p0 >= total_p0`, fully blocking auto-advance while any P0 is blocked. Registered this case, updated audit-cycle-state to mark AS-EC-015 pending→merged-equivalent (fix committed, awaiting human merge of the worktree). No new code changes needed.",
+  "files_changed": [
+    "hooks/studio-progress-check.sh"
+  ],
+  "worktree": "opt-hooks-1782936187",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 39acbf9 exists on auto/opt-hooks-1782936187 branch; diff shows line 73 changed from `if total_p0 > 0 and done_p0 >= total_p0 - blocked_p0:` to `if total_p0 > 0 and blocked_p0 == 0 and done_p0 >= total_p0:`; comment updated to cite AS-EC-015 rationale.",
+  "next_suggestion": "继续派生 AS-EC-016 (opt-worktree.sh cmd_list local stat shadows stat command); 或人工审合并 opt-hooks-1782936187 + opt-scripts-shift-1782935637 (AS-EC-013/014) 释放更多 pending",
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-002",
+  "audit_depth": "shallow"
+}

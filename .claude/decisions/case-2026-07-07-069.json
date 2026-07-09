@@ -1,0 +1,56 @@
+{
+  "case_id": "case-2026-07-07-069",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-07T00:44:48+08:00",
+  "project": "personal-assistant",
+  "work_unit": "audit-2026-07-07-027 derived fix dispatch attempt (M-004 route-fix + M-001/M-002/M-003 structural debt registration)",
+  "situation": "fix-in-progress cycle with 4 pending findings from audit-2026-07-07-027 re-audit. M-004 (unbounded reminder input) is sole route-fix candidate; M-001/M-002/M-003 are cross-cutting timeout architecture issues (structural). Attempted to dispatch M-004 via opt-worktree.sh commit on existing opt-api-1783193708 worktree.",
+  "action": "1. Ran scout-scan.py — personal-assistant has 16 stale worktrees, recent commit d6f650b fixed web fetch timeout but did not address M-004. 2. Verified M-004 still valid: api.py:399-419 ReminderIn.what has no max_length. 3. Attempted opt-worktree.sh commit → cp-guard triggered because opt-api wt deleted ReminderIn class entirely (diverged from main). 4. Registered M-001/M-002/M-003 as SD-006/SD-007/SD-008 in structural-debt.md. 5. M-004 remains pending-blocked awaiting opt-api merge or manual intervention.",
+  "files_changed": [".claude/structural-debt.md"],
+  "worktree": null,
+  "direction": "route-fix-attempted-blocked",
+  "outcome": "blocked",
+  "outcome_evidence": "opt-worktree.sh output: 'cp-guard: personal_assistant/api.py 在 worktree 与 main HEAD 不同（前轮未合并改动），跳过以避免覆盖' + '无文件被实际迁移...中止'. M-004 fix not applied. SD-006/007/008 appended to structural-debt.md (verified by Edit tool success).",
+  "next_suggestion": [
+    "Merge or reject opt-api-1783193708 worktree to unblock M-004 dispatch (16 stale worktrees accumulating)",
+    "After opt-api resolved, re-dispatch M-004 (ReminderIn.what max_length=500)",
+    "User authorization needed for SD-006/007/008 unified timeout strategy redesign"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "personal_assistant/api.py",
+      "line": 399,
+      "severity": "medium",
+      "finding": "ReminderIn.what field accepts unbounded string length — no Pydantic max_length validator. Enables resource exhaustion (SQLite storage bloat) and UI DoS (long text rendering).",
+      "remediation": "Add max_length=500 to what: str field in ReminderIn BaseModel",
+      "kind": "route-fix"
+    },
+    {
+      "file": "web/api.js",
+      "line": 55,
+      "severity": "medium",
+      "finding": "clearTimeout(tid) placed after fetch resolve but before r.json() — body-read phase has no timeout protection",
+      "remediation": "Propagate AbortController signal through body consumption or wrap entire response pipeline in Promise.race",
+      "kind": "structural"
+    },
+    {
+      "file": "web/index.html",
+      "line": 187,
+      "severity": "medium",
+      "finding": "Bootstrap Promise.race 5s timeout does not cancel in-flight fetches — orphan requests mutate MockData after render",
+      "remediation": "Trigger AbortController.cancel() on timeout branch; inject cancellation token into initApp",
+      "kind": "structural"
+    },
+    {
+      "file": "android/index.html",
+      "line": 581,
+      "severity": "medium",
+      "finding": "Android api() function has no timeout/AbortController — any fetch can hang forever blocking UI",
+      "remediation": "Unify timeout strategy with web/api.js AbortController pattern",
+      "kind": "structural"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-027",
+  "audit_depth": "shallow"
+}

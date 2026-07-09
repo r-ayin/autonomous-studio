@@ -1,0 +1,23 @@
+{
+  "case_id": "case-2026-07-03-025",
+  "agent_id": "ralph-wiggum-cycle-86",
+  "timestamp": "2026-07-03T21:05:00Z",
+  "project": "wechat-main",
+  "work_unit": "topic-pool/hot-scanner.py persona_fit 大小写一致化 (MV-003)",
+  "situation": "audit-2026-07-03-011 MV-003 派生 fix：calc_persona_fit 用 .lower() 归一化 text，但 SOUL_CONCEPTS/COOL_TONE_WORDS/WARM_TONE_WORDS 词表全是中文（.lower() 对中文无作用），title/angle 含 'AI'/'ADHD' 等大写英文 token 时与词表失配；且与 _match_pillar L318 的显式 t.lower() in text 风格不一致，维护者易踩坑。",
+  "action": "route-fix：保留 .lower() 并在 SOUL_CONCEPTS 补 'ai'/'adhd' 小写形式；在 calc_persona_fit 内加注释说明 .lower() 的真实用途（英文 token 归一化），与 _match_pillar 风格对齐。",
+  "files_changed": ["topic-pool/hot-scanner.py"],
+  "worktree": "opt-wechat-1783021994",
+  "direction": "wechat:persona-fit-case-normalization",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit f4b9ee8 on auto/opt-wechat-1783021994 (pushed to origin); diff +7/-2 lines; only SOUL_CONCEPTS dict + calc_persona_fit comment touched; no behavioral change for Chinese-only input, fixes English-token mismatch.",
+  "next_suggestion": [
+    "派生 MV-004 (verifier.py judge_and_report remediation search_query 按 claim type 分发)",
+    "派生 MV-005 (fact_checker.py max_queries 截断告警)",
+    "派生 MV-006 (hot-scanner.py consume 回退路径补字段)"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-03-011",
+  "audit_depth": "shallow"
+}

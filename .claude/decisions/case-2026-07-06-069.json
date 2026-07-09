@@ -1,0 +1,42 @@
+{
+  "case_id": "case-2026-07-06-069",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-06T23:48:00+08:00",
+  "project": "moni-master",
+  "work_unit": "local_simulator/post_close_pipeline.py ensure_service resource-leak fix (M-002 from audit-2026-07-06-025)",
+  "situation": "audit-2026-07-06-025 M-002 finding: PostClosePipeline.ensure_service spawns subprocess.Popen with stdout/stderr file handles passed inline via .open() (no variable holds reference) → fd leak on any exception path. Additionally, when the health-check loop times out, the child process is never terminate'd/kill'd → zombie accumulation if service fails to start. Derived fix dispatched per audit-cycle-state protocol.",
+  "action": "Refactored ensure_service to: (1) bind stdout_fh/stderr_fh to explicit variables before Popen so they can be closed in finally; (2) wrap Popen + poll loop in try/finally that always closes both handles; (3) on timeout, call process.terminate(), wait(3), then kill()+wait(1) as fallback before raising RuntimeError. Single-file route-fix; no public-interface touch → opt-worktree.sh reused existing local_simulator area worktree.",
+  "files_changed": [
+    "local_simulator/post_close_pipeline.py"
+  ],
+  "worktree": "opt-local_simulator-1783352870",
+  "direction": "local_simulator:post-close-pipeline-resource-leak",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit landed on auto/opt-local_simulator-1783352870 (new branch pushed to origin). opt-worktree.sh reported '✓ 提交到 opt-local_simulator-1783352870' and '✓ 已 push auto/opt-local_simulator-1783352870 → origin/auto/opt-local_simulator-1783352870'. Code review link: https://code.alibaba-inc.com/xtool/moni/codereview/new?from=master&to=auto/opt-local_simulator-1783352870",
+  "next_suggestion": [
+    "Mark audit-cycle-state.derived_fixes[M-002] status=merged next round after human CR merge confirmation",
+    "Next round also mark L-001 superseded/rejected (substantively addressed by H-001 validate_strategy_source rewrite per audit note)",
+    "Once M-002 merged + L-001 rejected → audit-cycle-state.status=cycle-complete → triggers new full audit next cycle"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "local_simulator/post_close_pipeline.py",
+      "line": 164,
+      "severity": "medium",
+      "finding": "stdout_path.open('a', encoding='utf-8') passed inline to Popen without binding to variable — file handle unreachable on exception/timeout paths → fd leak",
+      "remediation": "Bind to stdout_fh/stderr_fh variables before Popen; close in try/finally",
+      "kind": "route-fix"
+    },
+    {
+      "file": "local_simulator/post_close_pipeline.py",
+      "line": 184,
+      "severity": "medium",
+      "finding": "Timeout path raises RuntimeError without terminate/kill on child Popen → zombie process accumulates across repeated pipeline failures",
+      "remediation": "On timeout: process.terminate(); wait(timeout=3); on TimeoutExpired: process.kill(); wait(timeout=1)",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-025",
+  "audit_depth": "shallow"
+}

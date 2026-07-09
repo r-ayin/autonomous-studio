@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-02-134",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-02T18:45:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "AS-CP-H01 phantom public-interface entry state-sync",
+  "situation": "audit-cycle-state.json derived_fixes[0] (AS-CP-H01) had fix_case_id=null despite worktree opt-claude-control-plane-1782986531 already holding the identical fix (commit bb44036). cp-guard correctly blocked duplicate edit on main. State drift between audit-cycle-state and actual worktree.",
+  "action": "Reverted redundant local edit on main (git checkout -- .claude/public-interfaces.txt). Confirmed existing worktree holds correct fix. Wrote this case to record the state-sync gap. Will update audit-cycle-state.derived_fixes[0].fix_case_id to point at this case as bookkeeping anchor (worktree commit bb44036 is the real fix).",
+  "files_changed": [],
+  "worktree": "opt-claude-control-plane-1782986531",
+  "direction": "claude-control-plane:prune-phantom-interface",
+  "outcome": "succeeded",
+  "outcome_evidence": "worktree opt-claude-control-plane-1782986531 commit bb44036 diff shows exact line removal of 'autonomous-studio:.claude/hooks/__init__.py' from .claude/public-interfaces.txt; main reverted to clean (git status shows nothing to commit); cp-guard prevented duplicate mutation",
+  "next_suggestion": "Merge opt-claude-control-plane-1782986531 after human review, then mark AS-CP-H01 status=merged in audit-cycle-state. Next pending fix: AS-CP-M01 (priority 2) — fix_case_id cross-reference cleanup in PA-WA-H02.",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-006",
+  "audit_depth": "shallow"
+}

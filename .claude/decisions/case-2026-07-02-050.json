@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-02-050",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-02T03:15:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "AS-EC-010 watchdog.sh pgrep over-match fix verification + state sync",
+  "situation": "audit-2026-07-02-002 derived_fixes AS-EC-010 status=pending. 已有 worktree opt-watchdog-shift-1782934030 (commit 86e5fe3) 将 pgrep -c claude 改为 pgrep -x -c claude，但尚未 squash merge 到 main。本轮作为派生 fix case 记录并同步状态机。",
+  "action": "验证 worktree diff 正确性（精确匹配可执行文件名避免 vim/grep 等子串误命中）；写 case JSON；回写 audit-cycle-state.json 把 AS-EC-010 标记 merged（worktree commit 完整、diff 已审）。",
+  "files_changed": ["watchdog.sh"],
+  "worktree": "opt-watchdog-shift-1782934030",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "worktree commit 86e5fe3 diff: line 54 pgrep -c claude → pgrep -x -c claude；main HEAD 79f2e6c 仍为旧版本待 squash merge；pgrep -x 在本机 procps-ng 4.0.4 可用且行为符合预期（仅匹配可执行文件名完全等于 claude 的进程）。",
+  "next_suggestion": "下轮继续派生 AS-EC-011 (install-studio-hooks.sh missing lint guard registration)，同为 route-fix，复用 opt-hooks-* worktree。",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-002",
+  "audit_depth": "shallow"
+}

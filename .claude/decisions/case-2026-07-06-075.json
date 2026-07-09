@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-06-075",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-06T21:37:00+08:00",
+  "project": "wechat-main",
+  "work_unit": "mail_push.py M-001 HTML attachment unbounded read cap at 10MB",
+  "situation": "audit-2026-07-06-022 finding M-001: scripts/mail_push.py:99 html_path.read_bytes() loads entire HTML into memory with no size bound. Malicious/corrupt oversized report could OOM the push process or saturate SMTP buffer.",
+  "action": "Add 10MB pre-read stat check before read_bytes(); deny + audit-log + return 1 when exceeded. Reuses existing _audit_log helper already present in worktree version (WM-MAIL-01 instrumentation from prior round).",
+  "files_changed": ["scripts/mail_push.py"],
+  "worktree": "opt-wechat-main-1783130541",
+  "direction": "wechat-main:mail-push-size-cap",
+  "outcome": "succeeded",
+  "outcome_evidence": "git commit 1119d3c on auto/opt-wechat-main-1783130541; pushed to origin e70c5cd..1119d3c; diff adds 15 lines (size guard + denied audit log); cp-guard diverged escape hatch used per [[opt-worktree-stack-diverged-escape-hatch]] since worktree HEAD already ahead of main with prior H-001..H-005 fixes.",
+  "next_suggestion": "Next derived fix: M-002 qq_push.py:94 upload file unbounded read + multipart in memory — cap at 20MB (same pattern, different file). After all 17 pending cleared, cycle-complete triggers next full audit.",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "scripts/mail_push.py",
+      "line": 99,
+      "severity": "medium",
+      "finding": "html_path.read_bytes() unbounded — oversized HTML report causes OOM or SMTP buffer saturation",
+      "remediation": "stat().st_size pre-check against 10MB cap; deny with audit-log entry when exceeded",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-022",
+  "audit_depth": "shallow"
+}

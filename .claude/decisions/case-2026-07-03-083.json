@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-07-03-083",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-03T13:15:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "scripts:studio-precheck-hardening",
+  "situation": "audit-2026-07-03-012 SCRIPTS-L02 finding: studio-precheck.sh L22/L46 interpolate $CAL_FILE/$STATUS_FILE inside python -c single quotes (shell pre-expands → Python syntax injection when path contains quotes/backslashes); L24/L48 bare except: swallows KeyboardInterrupt/SystemExit/MemoryError.",
+  "action": "Narrowed except clauses to (ValueError, KeyError, TypeError, OSError); passed paths via sys.argv[1] instead of f-string interpolation. Behavioral tests T1-T6 pass including special-char path regression (path=\"weird'path\\\"here\").",
+  "files_changed": ["scripts/studio-precheck.sh"],
+  "worktree": "opt-scripts-shift-1783084267",
+  "direction": "direction-shift",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 01b9040 on auto/opt-scripts-shift-1783084267 pushed to origin; bash -n syntax check passed; behavioral tests T1(proceed) T2(skip:cooldown) T3(malformed-cal→proceed) T4(autoAdvance=false→skip) T5(malformed-status→proceed) T6(special-char-path→proceed) all pass.",
+  "next_suggestion": [
+    "派生 SCRIPTS-L03 fix: autonomous-loop.sh PROMPT single-quote fragility → heredoc conversion (pending in audit-cycle-state)",
+    "派生 SCRIPTS-L04 fix: distill-patterns.py load_json_robust bare Exception catch narrowing (pending)"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-03-012",
+  "audit_depth": "shallow"
+}

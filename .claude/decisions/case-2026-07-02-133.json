@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-02-133",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-02T10:05:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "claude-control-plane:prune-phantom-interface (audit AS-CP-H01 derived fix #1/8)",
+  "situation": "audit-2026-07-02-006 finding AS-CP-H01 (priority 1, route-fix): public-interfaces.txt line 25 lists autonomous-studio:.claude/hooks/__init__.py but file does not exist on disk. Stale entry pollutes direction-shift detection — any future edit to that phantom path would be misclassified.",
+  "action": "Removed the phantom line from .claude/public-interfaces.txt in new opt-worktree (route-fix; file itself is not listed in the manifest so no direction-shift triggered). Committed and pushed via opt-worktree.sh commit with explicit file arg to avoid sweeping WIP.",
+  "files_changed": [".claude/public-interfaces.txt"],
+  "worktree": "opt-claude-control-plane-1782986531",
+  "direction": "claude-control-plane:prune-phantom-interface",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh output: '✓ 提交到 opt-claude-control-plane-1782986531'; push created origin/auto/opt-claude-control-plane-1782986531 branch; ls confirmed .claude/hooks/__init__.py absent on disk pre-edit.",
+  "next_suggestion": "派生 audit-2026-07-02-006 下一个 pending fix (AS-CP-M01 priority 2): case-2026-07-02-121 fix_case_id points to unrelated SH-M06; set fix_case_id=null or create rejection record. Then continue through remaining 6 pending fixes before cycle-complete triggers next full audit.",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-006",
+  "audit_depth": "shallow"
+}

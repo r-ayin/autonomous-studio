@@ -1,0 +1,29 @@
+{
+  "case_id": "case-2026-07-05-132",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-05T24:00:00+08:00",
+  "project": "wanxia-edit",
+  "work_unit": "派生 fix WANXIA-ENV-01: env.js .env 路径解析统一（父目录硬编码 → WANXIA_ENV_PATH override + 有序候选 [本目录, 父目录]）",
+  "situation": "audit-2026-07-05-014 派生 route-fix WANXIA-ENV-01（low）。原 env.js 硬编码 join(__dirname,'..','.env')（父目录），server.js:6 顶层读当前目录 .env，两个加载器各读各的、必有一个静默 fallback 到真实环境变量 → social-scraper 捕获空 cookie（env.js 注释自述此坑）。.env 路径不一致在 server.js 跑起来后会致 cookie/token 在两模块看到不同值。当前无 .env 文件存在（/home/admin/workspace/.env 与 wanxia-edit/.env 均不存在），但 fix 仍正确：一旦 owner 部署 .env，env.js 能从任一层命中。",
+  "action": "改 env.js 单文件：1) import 合并 { readFileSync, existsSync } from 'fs'；2) 删原硬编码 join(__dirname,'..','.env')；3) 新增解析：优先 process.env.WANXIA_ENV_PATH，否则按 [join(__dirname,'.env'), join(__dirname,'..','.env')] 顺序 existsSync 找第一个存在的；4) 找到则读+解析（保留原 # 注释过滤与 key=value 切分逻辑），无候选命中则静默跳过沿用真实环境变量（保留原 catch 语义）。不碰 server.js（其二次加载属 WANXIA-DEAD-01 structural，等 owner 澄清布局后一并决策，本 finding 不越界）。",
+  "files_changed": ["/home/admin/workspace/wanxia-edit/env.js"],
+  "worktree": "none (wanxia-edit non-git, SD-WANXIA-01 — 直接落 live 文件，等价 merged；同 case-130 WANXIA-SSRF-01 / case-131 WANXIA-SMTP-01 precedent)",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "1) node --input-type module import('/home/admin/workspace/wanxia-edit/env.js') → 'PASS: env.js module evaluated without error'（语法/求值无错）。2) 候选搜索实测 candidates [/wanxia-edit/.env -> false, /workspace/.env -> false] 两处均无 .env 时静默跳过不 throw（对齐原 catch 语义）。3) override 路径解析实测：写临时 .env 含 FOO=bar/#comment/BAZ=qux，设 WANXIA_ENV_PATH 指向它，复跑解析逻辑 → process.env.FOO=bar BAZ=qux（# 注释行被过滤、key=value 切分正确）。4) 静态：未碰 server.js（DEAD-01 边界守住），未碰 social-scraper.js。5) 文件 diff: 原硬编码 join(__dirname,'..','.env') 单行 → 替换为 override+候选+existsSync 分支，行数 31→~38，逻辑等价于原解析但路径来源可配置可降级。",
+  "next_suggestion": "下轮派生 WANXIA-XHS-NO-SANDBOX-01（route-fix, social-scraper.js:26-33 chromium --no-sandbox, low）——同为 pending route-fix，可同样直接落 live 文件。之后 WANXIA-DEAD-01/02（structural）需 owner 澄清 wanxia-edit 正式布局（src/ monolith vs 4 脚本松散集合）后才派生，当前挂 structural-debt.md SD-WANXIA-01。全 pending 落定后 audit-cycle-state.status→cycle-complete，触发下次全量审计（候选未深审: xia 499 / personal-assistant re-audit / wechat-main re-audit）。",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "/home/admin/workspace/wanxia-edit/env.js",
+      "line": "17",
+      "severity": "low",
+      "finding": "WANXIA-ENV-01: env.js 硬编码 join(__dirname,'..','.env') 读父目录 .env，与 server.js:6 当前目录 .env 路径不一致；两加载器各读各的，必有一个静默 fallback 到真实环境变量，致 social-scraper 捕获空 cookie",
+      "remediation": "统一解析：WANXIA_ENV_PATH override 优先 + [本目录, 父目录] existsSync 候选搜索；server.js 二次加载属 DEAD-01 structural 单独处理",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-014",
+  "audit_depth": "deep",
+  "parent_finding_id": "WANXIA-ENV-01"
+}

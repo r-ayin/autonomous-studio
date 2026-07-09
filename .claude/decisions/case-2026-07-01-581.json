@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-01-581",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-01T09:47:06Z",
+  "project": "wechat-main",
+  "work_unit": "scripts/pipeline.py cmd_tool injection guard (audit WM-H-001)",
+  "situation": "audit-2026-07-01-004 H-001: cmd_tool args.name 未校验拼入路径可 ../ 遍历；args.rest 透传任意参数给 subprocess.run，存在命令注入风险。derived_fixes priority=12 status=pending。",
+  "action": "新增 _ALLOWED_TOOLS 白名单（22 个已知工具），cmd_tool 入口拒 .. / \\ 字符 + 非白名单 name；rest 过滤含 ; | & $( ` && || 的可疑参数并 stderr 警告。python -c ast.parse 验证语法 OK。",
+  "files_changed": ["scripts/pipeline.py"],
+  "worktree": "auto/opt-scripts-1782899218",
+  "direction": "scripts:cmd-tool-injection-guard",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit in auto/opt-scripts-1782899218 pushed to origin; merge-tree clean vs main; python3 ast.parse OK; whitelist covers all 22 scripts/*.py basenames observed at fix time.",
+  "next_suggestion": "派生 WM-H-002 (qq_push _load_env 引号剥离) — priority=13，同 area route-fix 复用 opt-scripts-1782899218",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-01-004",
+  "audit_depth": "shallow"
+}

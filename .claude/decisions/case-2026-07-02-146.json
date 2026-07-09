@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-02-146",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-02T11:19:44Z",
+  "project": "personal-assistant",
+  "work_unit": "fix recurring reminder ID unbounded -next suffix growth (audit L-004)",
+  "situation": "ReminderScheduler.check_due() appends '-next' to reminder ID on each recurrence cycle, producing IDs like rm-X-next-next-next... that grow without bound. Each firing also inserts a new row (old row only marked fired=1, never deleted), causing unbounded table growth. For a daily reminder over 1 year: ID ~1825 chars, 365 dead rows.",
+  "action": "Strip existing -next chain from ID via re.sub(r'(-next)+$', '', id) to recover stable base_id. Use base_id for next occurrence so INSERT OR REPLACE updates the same row in-place with fired=0 and new when_dt. Only mark_fired the old row if base_id != current id (i.e., cleaning up legacy -next rows). Non-recurring reminders unchanged.",
+  "files_changed": ["personal_assistant/reminders.py"],
+  "worktree": "opt-personal-assistant-1782909325",
+  "direction": "personal-assistant:reminders",
+  "outcome": "succeeded",
+  "outcome_evidence": "Committed to opt-personal-assistant-1782909325. re.sub strips -next chain → stable base_id. add_reminder with fired=0 + same base_id triggers INSERT OR REPLACE in storage.py L253-261. Legacy -next rows cleaned via conditional mark_reminder_fired. No behavioral change for non-recurring reminders (else branch preserved).",
+  "next_suggestion": "L-005 (add_chat_log bare Exception catch → sqlite3.OperationalError specific) is last pending fix for audit-2026-07-02-008. After that, cycle-complete triggers next full audit.",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-008",
+  "audit_depth": "shallow"
+}

@@ -1,0 +1,43 @@
+{
+  "case_id": "case-2026-07-01-658",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-01T15:00:07Z",
+  "project": "moni-master",
+  "work_unit": "MH-001 route-fix: CLAUDE.md 跨平台路径与命令文档化",
+  "situation": "audit-2026-07-01-010 deep audit 发现 moni-master CLAUDE.md 使用 Windows 绝对路径 (E:\\x-tool\\moni, F:\\stock-backtest\\data\\...) 和 PowerShell-only 命令，Linux 部署无法按文档执行。派生 fix priority #1。",
+  "action": "改写 CLAUDE.md：(1) data 层路径改为 $MONI_DATA_DIR env var 引用并保留 Windows 默认值注释；(2) 新增『环境准备（跨平台）』章节给出 Linux/macOS export + Windows PowerShell 等价写法；(3) 快速命令 cd 改为 <repo-root> 占位符；(4) 项目规则数据层条目同步改 env var 引用。",
+  "files_changed": [
+    "/home/admin/workspace/moni-master/CLAUDE.md"
+  ],
+  "worktree": "opt-docs-1782917996",
+  "direction": "docs:cross-platform-docs",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh commit 输出 '✓ 提交到 opt-docs-1782917996'；git push 成功新建 origin/auto/opt-docs-1782917996 分支；diff stat = 1 file changed, 15 insertions(+), 4 deletions(-)",
+  "next_suggestion": [
+    "派生 MM-001 (priority 3): engine.rs:467 attempt_match 错误传播 + tracing::warn + match_error event — route-fix",
+    "派生 MM-003 (priority 5): config.rs:339 canonicalize 错误传播 + is_file 校验 — route-fix",
+    "派生 MM-004 (priority 6): engine.rs:298 删除恒等 map_err — route-fix",
+    "MH-002/MM-002 structural findings 已记入 structural-debt.md（若尚未写入，下轮补写）"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "/home/admin/workspace/moni-master/CLAUDE.md",
+      "line": 32,
+      "severity": "high",
+      "finding": "data 层路径硬编码 Windows F:\\stock-backtest\\data\\，Linux 部署失效",
+      "remediation": "改为 $MONI_DATA_DIR env var 引用，保留 Windows 默认值作注释",
+      "kind": "route-fix"
+    },
+    {
+      "file": "/home/admin/workspace/moni-master/CLAUDE.md",
+      "line": 37,
+      "severity": "high",
+      "finding": "快速命令 cd E:\\x-tool\\moni 为 Windows 绝对路径",
+      "remediation": "改为 <repo-root> 占位符 + 环境准备章节给跨平台示例",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-01-010",
+  "audit_depth": "deep"
+}

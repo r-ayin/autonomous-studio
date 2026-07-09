@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-01-648",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-01T14:30:00Z",
+  "project": "x-tool",
+  "work_unit": "watchdog.sh PROJECT_DIR 硬编码 /mnt/e/x-tool → Linux 原生部署下 L6 监控完全失效 (XT-M-004)",
+  "situation": "audit-2026-07-01-008 finding XT-M-004: watchdog.sh 第15行硬编码 WSL 路径 /mnt/e/x-tool，Linux 原生部署时 PROJECT_DIR 指向不存在目录，所有 checkpoint/heartbeat/stale-marker 操作静默失败，L6 外部监控层完全死代码。同文件在 .claude/watchdog.sh 和 .claude/watchdog/watchdog.sh 两处存在相同问题。",
+  "action": "将硬编码 PROJECT_DIR 替换为基于 BASH_SOURCE[0] 的自推导逻辑：检测脚本所在目录名是否为 'watchdog'（嵌套目录场景），相应上溯两级或一级到 project root。兼容 WSL (/mnt/e/x-tool) 和 Linux 原生 (/home/admin/workspace/x-tool) 两种部署。bash -n 语法校验通过，自推导路径验证正确。",
+  "files_changed": [".claude/watchdog.sh", ".claude/watchdog/watchdog.sh"],
+  "worktree": "opt-watchdog-1782915374",
+  "direction": "watchdog:linux-path",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 892e4a0 in opt-watchdog-1782915374; bash -n syntax OK; self-derivation test: both scripts resolve to /home/admin/workspace/x-tool on Linux native",
+  "next_suggestion": "派生 fix XT-M-002 (protocol-check.py bootstrap dummy 路径脆弱耦合)，audit-cycle-state 最后一条 pending；完成后 status→cycle-complete 触发下一轮全量审计",
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-01-008",
+  "audit_depth": "shallow"
+}

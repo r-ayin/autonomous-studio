@@ -1,0 +1,26 @@
+{
+  "case_id": "case-2026-07-05-069",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-05T23:32:00+08:00",
+  "project": "x-tool",
+  "work_unit": "ota_workflow: OTA-M-003 monitor_state.py _save_json 非原子 write_text → 原子写 (tempfile.mkstemp + os.replace), 全覆盖 save_state/save_routes/write_review(json+md)/write_last_run",
+  "situation": "audit-2026-07-05-008 derived fix #6 (priority 6, severity medium, kind=route-fix). monitor_state.py:39-40 _save_json 直接 `path.write_text(json.dumps(...))` 非原子: 写入中途崩溃/掉电/磁盘满 → state.json 被截断为半截 JSON → 下一轮 _load_json 捕获 JSONDecodeError 返 default 空状态 → state.events 全丢 → _should_send_event 全部返 True → 所有告警去重丢失 (恢复告警一次性逻辑 + repeat_alert_minutes 冷却全失效, 告警风暴). 同类波及 save_state (告警去重) / save_routes (task 路由丢失) / write_review (评审 JSON 截断) / write_last_run (最后运行态丢失). 同类 finding OTA-L-004 (storage.py:27 FileTaskStore.save) 不同文件独立 commit. 与 autonomous-engine AE-NEW-001/004 同一非原子写 bug 模式.",
+  "action": "在 MonitorStateStore 新增 _atomic_write_text(path, text) 私有方法: ensure_dir(path.parent) → tempfile.mkstemp(dir=path.parent, prefix='.{name}.', suffix='.tmp') 建 tmp (同目录保证同卷, os.replace 原子) → os.fdopen(tmp_fd, 'w', encoding='utf-8') 写入 → os.replace(tmp_name, path) 原子替换 → except BaseException 时 os.unlink 清理 tmp 再 raise (防 tmp 残留). _save_json 改调 _atomic_write_text(path, json.dumps(payload, ensure_ascii=False, indent=2)). write_review 的 markdown 写入由 md_path.write_text 改调 _atomic_write_text(md_path, markdown) 同样原子化 (覆盖 write_review 全路径). 顶部加 import os, import tempfile. 单文件改动, route-fix → 复用 opt-ota_workflow-1783171357 worktree (stacked on 1ed036b = OTA-M-002+OTA-L-002).",
+  "files_changed": [
+    "/home/admin/workspace/x-tool/ota美团运营/ota_workflow/monitor_state.py"
+  ],
+  "worktree": "opt-ota_workflow-1783171357",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh reported '→ 复用同 area worktree (route-fix): opt-ota_workflow-1783171357' and '✓ 提交到 opt-ota_workflow-1783171357 方向=ota_workflow:m003-atomic-state'. git -C opt-ota_workflow-1783171357 log --oneline shows new HEAD 42c4a30 stacked directly on 1ed036b (OTA-M-002+OTA-L-002) on 124853a (OTA-M-001+OTA-L-003) on 9bfff05 (OTA-H-001c+M-004) on 9424759 (OTA-H-001b) on 0ca59a6 (OTA-H-001a). grep on worktree monitor_state.py confirms: line 5 `import os`, line 6 `import tempfile`, line 42 `_atomic_write_text(`, line 46 `def _atomic_write_text(self, path: Path, text: str) -> None:`, line 140 `_atomic_write_text(md_path, markdown)`. Main checkout restored to pre-edit baseline by opt-worktree cp/restore (expected; fix lives on branch auto/opt-ota_workflow-1783171357 HEAD=42c4a30, pushed to origin automatically by cmd_commit).",
+  "next_suggestion": "下轮派生 OTA-L-004 (priority 12, storage.py:27 FileTaskStore.save 非原子 write_text — confirm_task:169 最终 save 崩溃即 task 文件截断 → 任务状态丢失/已生效改价无记录/可能重试; 同类 OTA-M-003 模式, fix: temp + os.replace). 同 area route-fix 复用 opt-ota_workflow-1783171357 stack (HEAD=42c4a30), 独立 commit. 之后 OTA-M-005 (priority 8, meituan.py:70-99 verify 阶段不校验 verify_result.ok, post-save 读脚本失败仍 success=True → 失败改价报成功) / OTA-L-001 (priority 9, hermes_runtime.py:13,39 DEFAULT_HERMES_ENV_PATH 硬编码 WSL 路径). pending_count 4→3 后此轮. 全部 12 derived merged|rejected 后 audit-cycle-state.status→cycle-complete 触发下一轮全量审计.",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-05-008",
+  "audit_depth": "shallow",
+  "_derived_fix_ids": ["OTA-M-003"],
+  "_derived_fix_status_transition": "OTA-M-003 pending → merged (dispatched to worktree stack commit 42c4a30)",
+  "_parent_audit_kind": "route-fix",
+  "_stacked_on_commit": "1ed036b",
+  "_new_head_commit": "42c4a30"
+}

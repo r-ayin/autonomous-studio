@@ -1,0 +1,36 @@
+{
+  "case_id": "case-2026-07-05-146",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-05T22:32:18+08:00",
+  "project": "x-tool/wanxia",
+  "work_unit": "派生 fix #2 of 7 from audit-2026-07-05-016: WX-HEALTH-01 [HIGH] health-check.py 硬编码 WSL 路径 /mnt/e/x-tool/wanxia → Linux 原生部署 ensure_deployed() shutil.copytree 抛 FileNotFoundError → restart() 崩溃 → 自愈机制本身失效（服务真挂时拉不起来）",
+  "situation": "audit-cycle-state.status=fix-in-progress, audit-016 (x-tool/wanxia 全栈 deep audit, 12 files/~3700 loc, first standalone) 派生 7 route-fix findings. 上轮 case-145 派发 #1 WX-AUTH-01 [HIGH] (server.js bind 127.0.0.1, commit eb00793, merged-to-worktree). 本轮按优先级派发 #2 WX-HEALTH-01 [HIGH] — 唯一另一条 HIGH. health-check.py:6 SRC_DIR='/mnt/e/x-tool/wanxia' 是 WSL 路径污染（同 audit-2026-07-02-007 autonomous-engine latest.json 含 /mnt/e/x-tool、audit-2026-07-05-008 build_engine_firmware 硬编码 E:/x-tool/... 类）. 本仓库 Linux 原生部署在 /home/admin/workspace/x-tool/wanxia, /mnt/e/x-tool/wanxia 不存在 → check() 返 200 时不走 restart 分支问题潜伏, 服务真挂时 ensure_deployed→copytree 抛→restart 异常未捕→health-check 进程崩→restart 路径死掉. 比一般 bug 隐蔽（自愈失效平时无信号）.",
+  "action": "最小 1 文件 1 逻辑改: health-check.py:6 SRC_DIR 由硬编码 WSL 字面量改为 `os.environ.get('WANXIA_SRC_DIR', os.path.dirname(os.path.abspath(__file__)))` — 默认指向脚本所在目录（Linux 原生部署即 /home/admin/workspace/x-tool/wanxia, 正确 out-of-the-box）, 留 WANXIA_SRC_DIR env 覆盖口子供非共置源码场景. os 已在 L3 import. 附 5 行注释说明 WSL 路径污染根因 + audit-016 WX-HEALTH-01 追溯. 走 opt-worktree.sh route-fix: health-check.py 非 x-tool public-interfaces.txt 公共接口（x-tool 无 public-interfaces.txt → judge_direction_kind 默认 route-fix）, area=security 复用既有 opt-security-1783235416 worktree（WX-AUTH-01 同 worktree, 同 wanxia security area, 减少 worktree 翻倍 sprawl）. commit d4960bd 堆叠在 eb00793(WX-AUTH-01) 之上, FF-clean base=85bd9e1=master.",
+  "files_changed": ["wanxia/health-check.py"],
+  "worktree": "opt-security-1783235416 (auto/opt-security-1783235416, route-fix 复用 security area, base=85bd9e1=master, HEAD=d4960bd, FF-clean 2-commit stack: eb00793 WX-AUTH-01 → d4960bd WX-HEALTH-01, 待人工 merge to master)",
+  "direction": "security:healthcheck-src-path (route-fix, 复用 opt-security-1783235416)",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "git -C .opt-worktrees/x-tool/opt-security-1783235416 log --oneline -3 → d4960bd (WX-HEALTH-01) stacked on eb00793 (WX-AUTH-01) on opt-security-1783235416 branch",
+    "git show HEAD --stat → wanxia/health-check.py | 7 ++++++-, 1 file changed 6 insertions 1 deletion",
+    "worktree 内 sed -n '5,12p' wanxia/health-check.py → SRC_DIR = os.environ.get('WANXIA_SRC_DIR', os.path.dirname(os.path.abspath(__file__))) (硬编码 /mnt/e 已消除)",
+    "python3 -c ast.parse(health-check.py) → PARSE_OK (语法合法)",
+    "python3 模拟默认值: os.path.dirname(os.path.abspath('/home/admin/workspace/x-tool/wanxia/health-check.py')) = /home/admin/workspace/x-tool/wanxia, isdir=True, 含 server.js → 默认路径正确可达",
+    "opt-worktree.sh 输出: → 复用同 area worktree (route-fix): opt-security-1783235416 / ✓ 提交到 opt-security-1783235416 方向=security:healthcheck-src-path",
+    "git push origin auto/opt-security-1783235416 → 403 (r-ayin/x-tool 外部 fork, precedent audit-008/010/016 WX-AUTH-01) → worktree+branch+commit 完整保留 local disk+local-ref 待人工 merge (本地可 scripts/opt-worktree.sh x-tool merge opt-security-1783235416 squash 合并不依赖 push)"
+  ],
+  "next_suggestion": "[下轮=fix-in-progress 派生路径] audit-cycle-state.derived_fixes 余 5 条 pending. 按优先级派生 #3 WX-ENV-01 [MEDIUM] (server.js:5-13 .env readFileSync 无 try/catch→缺 .env 启动即死 + L10 value 不剥引号→WEIBO_COOKIE=\"...\" 字面量含引号致 Weibo 视无效 cookie 误报 expired; 最小 fix: L5 包 try/catch + L10 v.replace(/^[\"']|[\"']$/g,'')) ]. 之后 WX-TIMEOUT-01+WX-CACHE-01 (weather/grid fetchJSON 加 AbortController 复用 social-scraper.js:81-91 timedFetch 范式 + cache.js loading Set→Map<key,Promise> 去重消 wait-then-fallthrough stampede, 2 文件建议合并一个 fetch-cache worktree) → WX-SILENT-01 (routes.js+social-scraper.js 空 catch 加 console.warn) → WX-XHS-REUSE-01 (social-scraper.js 浏览器单例竞态). 全 7 merged|rejected 后 status→cycle-complete→触发下一轮全量审计. ⚠ 待人工 merge 积压: opt-security-1783235416 现含 2 commit (WX-AUTH-01+WX-HEALTH-01) 全 FF-clean 保留 disk, x-tool 外部 fork push 403, 本地可 `scripts/opt-worktree.sh x-tool merge opt-security-1783235416` squash 合并.",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "wanxia/health-check.py",
+      "line": 6,
+      "severity": "high",
+      "finding": "WX-HEALTH-01: SRC_DIR = '/mnt/e/x-tool/wanxia' 硬编码 WSL 路径. Linux 原生部署下 /mnt/e/x-tool/wanxia 不存在 → ensure_deployed() L20 shutil.copytree(SRC_DIR, WORK_DIR) 抛 FileNotFoundError → restart() L27 异常未捕获 → health-check 进程崩溃, restart 路径死掉, 服务挂了拉不起来. 自愈机制本身失效, 比一般 bug 隐蔽（check() 返 200 时不走 restart, 问题潜伏到服务真挂）. 同 audit-2026-07-02-007/audit-2026-07-05-008 WSL 路径污染类.",
+      "remediation": "SRC_DIR = os.environ.get('WANXIA_SRC_DIR', os.path.dirname(os.path.abspath(__file__))) — 默认指向脚本所在目录（Linux 原生部署正确 out-of-the-box）+ env 覆盖口子. 已实施 commit d4960bd.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-016",
+  "audit_depth": "deep"
+}

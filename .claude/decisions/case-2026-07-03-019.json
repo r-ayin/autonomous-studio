@@ -1,0 +1,39 @@
+{
+  "case_id": "case-2026-07-03-019",
+  "agent_id": "ralph-wiggum-cycle-80",
+  "timestamp": "2026-07-03T20:15:00Z",
+  "project": "wechat-main",
+  "work_unit": "全量深度审计: script-verifier/ (verifier+fact_checker+claim_extractor) + topic-pool/hot-scanner.py",
+  "situation": "audit-cycle-state.status=cycle-complete (engine-skills-extracted 派生 fix 全部 merged|rejected) → 触发新一轮全量审计。选 wechat-main web/backend 因 scripts+pipeline 已在 audit-2026-07-01-004 审过但 script-verifier/topic-pool 从未深审；hotspot-entry 仅 SKILL.md 跳过。",
+  "action": "深读 4 个核心文件 (~2500 LOC)，grep 跨模块调用、敏感路径、测试覆盖；追数据流 extract→plan→judge→report→retry；产出独立审计报告 audit-2026-07-03-011.md；登记 derived_fixes 到 audit-cycle-state；HV-004 (零测试) 写入 structural-debt.md SD-013。",
+  "files_changed": [
+    ".claude/audits/audit-2026-07-03-011.md",
+    ".claude/audit-cycle-state.json",
+    ".claude/structural-debt.md"
+  ],
+  "worktree": null,
+  "direction": "deep-audit-only-no-code-change",
+  "outcome": "succeeded",
+  "outcome_evidence": "审计 report 落 .claude/audits/audit-2026-07-03-011.md (17 findings: 4H/6M/4L/3I)；audit-cycle-state.json status→fix-in-progress，derived_fixes 登记 9 条 pending route-fix (HV-001/HV-002/HV-003/MV-001~MV-006)；structural-debt.md 追加 SD-013 (HV-004 零测试)。无代码改动，纯审计产出。",
+  "next_suggestion": [
+    "派生 HV-001 fix (verifier.py merge_retry_report 历史丢失，单文件 route-fix)",
+    "派生 HV-002 fix (fact_checker.py data_year 时区混用，单文件 route-fix)",
+    "派生 HV-003 fix (hot-scanner.py event-scan 覆盖写，单文件 route-fix)",
+    "待 3 个 HIGH route-fix 落定后继续 MV-001~MV-006"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {"file": "script-verifier/verifier.py", "line": 445, "severity": "high", "finding": "merge_retry_report([report]) 传单元素列表丢失历史 retry_history；与 _retry_history 字段名不一致", "remediation": "把累积 history 完整传给 merge 或改签名；统一字段名", "kind": "route-fix"},
+    {"file": "script-verifier/fact_checker.py", "line": 379, "severity": "high", "finding": "data_year 时效检测用 date.today() 本地时区，与全文 UTC 时间戳不一致", "remediation": "改用 datetime.now(timezone.utc).date().year 或注入 today_fn", "kind": "route-fix"},
+    {"file": "topic-pool/hot-scanner.py", "line": 866, "severity": "high", "finding": "event-scan --output 直接覆盖目标文件，scan/consume 有 merge-and-dedupe 但 event-scan 缺失", "remediation": "event-scan 复用 scan/consume 的安全写入模板", "kind": "route-fix"},
+    {"file": "script-verifier/", "line": null, "severity": "high", "finding": "script-verifier 三模块 + hot-scanner.py ~2500 LOC 零测试覆盖；AHV/QAH/HS 多次修 bug 无回归测试", "remediation": "专项测试补建工程 (4 test 文件 ≥50 用例)，写入 structural-debt SD-013", "kind": "structural"},
+    {"file": "script-verifier/claim_extractor.py", "line": 27, "severity": "medium", "finding": "_SURNAMES 百家姓缺复姓(尉迟/诸葛/欧阳)及低频单姓(闫/仝/弋)，PERSON_NAME_RE 召回损失", "remediation": "扩充 _SURNAMES 追加 ~30 缺失姓", "kind": "route-fix"},
+    {"file": "script-verifier/fact_checker.py", "line": 465, "severity": "medium", "finding": "_check_corroboration 关键实体正则过宽：[\\d,]+\\.?\\d* 匹配噪声数字；[A-Z一-鿿]{2,6} 匹配 '我们'/'但是'", "remediation": "过滤 ≤2 CJK entity；数字要求 ≥3 位或带千分位/小数；加停用词", "kind": "route-fix"},
+    {"file": "topic-pool/hot-scanner.py", "line": 129, "severity": "medium", "finding": "calc_persona_fit .lower() 对中文无效；与 _match_pillar L318 大小写处理风格不一致", "remediation": "统一约定并在词表补 ai/adhd 小写形式", "kind": "route-fix"},
+    {"file": "script-verifier/verifier.py", "line": 182, "severity": "medium", "finding": "remediation_hints search_query 硬编码 '真实 X 数据 来源' 模板，对 PERSON/EVENT/QUOTE 不适用", "remediation": "按 claim type 分发模板", "kind": "route-fix"},
+    {"file": "script-verifier/fact_checker.py", "line": 64, "severity": "medium", "finding": "generate_search_queries max_queries 截断静默丢弃 low priority 查询无告警", "remediation": "截断时 stderr warning + truncated_count 字段透传 summary", "kind": "route-fix"},
+    {"file": "topic-pool/hot-scanner.py", "line": 780, "severity": "medium", "finding": "consume parse_search_result=None 回退路径丢 has_event/has_controversy/has_data 检测且 angle 未走 _extract_angle", "remediation": "回退路径也调 _extract_angle 并基于 summary 简单检测三个 flag", "kind": "route-fix"}
+  ],
+  "audit_id": "audit-2026-07-03-011",
+  "audit_depth": "deep"
+}

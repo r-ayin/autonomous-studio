@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-08-009",
+  "agent_id": "autonomous-loop",
+  "timestamp": "2026-07-07T01:40:18Z",
+  "project": "autonomous-engine",
+  "work_unit": "AE-H-001 save-checkpoint.py run() shell=True injection surface elimination",
+  "situation": "audit-2026-07-08-043 finding AE-H-001 (high): save-checkpoint.py:27 run() uses subprocess.check_output(shell=True). Current 3 call sites are hardcoded git literals so no live exploit, but API design invites future vuln if any caller concatenates external input.",
+  "action": "Refactored run() to accept list[str] and call subprocess with shell=False. Windows path wrapped via ['cmd','/c',...] to preserve %VAR% expansion for git format strings. Updated all 3 internal call sites (git branch/status/log) to list form. Syntax-checked. Committed + pushed on isolated worktree branch auto/opt-hooks-1783388352.",
+  "files_changed": [".claude/hooks/save-checkpoint.py"],
+  "worktree": "/home/admin/workspace/.opt-worktrees/autonomous-engine/opt-hooks-1783388352",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 088f7ef on auto/opt-hooks-1783388352; pushed to origin https://code.alibaba-inc.com/xtool/autonomous-engine.git; python3 -c ast.parse OK; diff shows shell=True removed, 3 call sites converted to list literals.",
+  "next_suggestion": "Next round dispatch AE-H-002 (watchdog.sh f-string path injection) — same project, same audit cycle. After that AE-M-001 non-atomic checkpoint write.",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": ".claude/hooks/save-checkpoint.py",
+      "line": 27,
+      "severity": "high",
+      "finding": "run() helper uses subprocess.check_output(shell=True); design-level injection surface even though current callers are safe literals",
+      "remediation": "Switch to shell=False + list-mode argv; wrap Windows calls via ['cmd','/c',...]",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-08-043",
+  "audit_depth": "shallow"
+}

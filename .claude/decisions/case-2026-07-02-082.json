@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-02-082",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-02T05:08:41Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "audit-cycle-stale-fixes-detection",
+  "situation": "audit-cycle-state status=fix-in-progress, pending_count=9 derived fixes from audit-2026-07-01-002. All 9 fix cases outcome=succeeded but worktrees (opt-security-shift-*, opt-scripts-shift-*, opt-engine-shift-*) no longer exist on disk (.opt-worktrees/autonomous-studio-aone/ missing). Fixes cannot be merged; cycle permanently BLOCKED.",
+  "action": "Ran scout-scan (snapshot only). Verified all 9 derived fix worktrees absent via find. Confirmed BLOCKED state is permanent without user intervention (re-create fixes or manually clear). Documented stale state in audit-cycle-state.json _status_note. No new fix dispatched (would compound stale queue).",
+  "files_changed": [],
+  "worktree": null,
+  "direction": null,
+  "outcome": "succeeded",
+  "outcome_evidence": "find /home/admin/workspace/.opt-worktrees -name opt-security-shift-1782878468 returned empty; ls .opt-worktrees/ shows no autonomous-studio-aone dir; all 9 case JSONs have outcome=succeeded but worktree paths invalid",
+  "next_suggestion": "User action required: either (a) manually reject all 9 stale derived fixes in audit-cycle-state.json to trigger cycle-complete and next full audit, or (b) re-dispatch fixes from audit-2026-07-01-002 findings with fresh worktrees. Engine cannot auto-recover from lost worktrees.",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": null,
+  "audit_depth": "shallow"
+}

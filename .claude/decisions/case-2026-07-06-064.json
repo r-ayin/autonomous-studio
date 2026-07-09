@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-06-064",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-06T19:53:00+08:00",
+  "project": "personal-assistant",
+  "work_unit": "H-001 /ws/xiaozhi WebSocket endpoint missing token authentication",
+  "situation": "audit-2026-07-06-021 deep audit found /ws/xiaozhi endpoint (api.py:194) calls xiaozhi_server.xiaozhi_endpoint(ws) directly without any auth check, while sibling endpoints /ws/live and /ws/audio both call auth.verify_ws_token(ws) and close(1008) on failure. Unauthenticated clients can connect to the xiaozhi device relay, inject audio/commands, and exfiltrate ASR/TTS data.",
+  "action": "Added verify_ws_token guard at top of ws_xiaozhi handler, matching pattern used by ws_live and ws_audio. When PA_API_TOKEN is configured, unauthenticated connections are rejected with WebSocket close code 1008. When no token is configured (dev mode), verify_ws_token returns True per existing is_auth_enabled() semantics — preserving localhost dev workflow.",
+  "files_changed": ["personal_assistant/api.py"],
+  "worktree": "opt-ws-auth-1783338961",
+  "direction": "ws-auth:xiaozhi-h001",
+  "outcome": "succeeded",
+  "outcome_evidence": "git log opt-ws-auth-1783338961 shows commit 48555aa with the verify_ws_token guard added; branch pushed to origin/auto/opt-ws-auth-1783338961; main checkout clean (no residual diff). Pattern identical to ws_live (line 131) and ws_audio (line 175).",
+  "next_suggestion": "派生 H-002 (CORS wildcard + dev-mode auth bypass) fix，同样 route-fix，area=ws-auth 或 api:cors-hardening（已有 worktree opt-api-1783193708 含 CORS 重构但方向分歧大，可能需新 wt）",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "personal_assistant/api.py",
+      "line": 199,
+      "severity": "high",
+      "finding": "/ws/xiaozhi endpoint has no authentication check — any network client can connect and interact with the xiaozhi device relay (ASR/TTS/command injection)",
+      "remediation": "Add auth.verify_ws_token(ws) guard before xiaozhi_endpoint call, close(1008) on failure",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-021",
+  "audit_depth": "shallow"
+}

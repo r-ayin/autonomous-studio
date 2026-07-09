@@ -1,0 +1,33 @@
+{
+  "case_id": "case-2026-07-03-063",
+  "agent_id": "ralph-wiggum-loop",
+  "timestamp": "2026-07-03T08:35:00Z",
+  "project": "autonomous-engine",
+  "work_unit": "deep-audit: decision-logic + docs-consistency + data-flow",
+  "situation": "audit-cycle-state was cycle-complete when context started (per initial read), triggering full audit. State file was concurrently updated to fix-in-progress by another context. Audit completed independently on autonomous-engine decision logic layer (not covered by audit-2026-07-01-009 which only did hooks+watchdog+firmware hardcoded paths).",
+  "action": "Deep audit of autonomous-engine focusing on: (1) confidence threshold consistency across 4 docs, (2) SKILL.md↔decision-agent-prompt.md data flow alignment, (3) checkpoint write competition, (4) SETUP.md path accuracy, (5) missing PROJECTS.md reference. Read 10 files including all hooks, SKILL.md, decision-agent-prompt.md, ARCHITECTURE.md, README.md, SETUP.md, autonomous-state.md.",
+  "files_changed": [],
+  "worktree": null,
+  "direction": "audit-only",
+  "outcome": "succeeded",
+  "outcome_evidence": "Audit report written to .claude/audits/audit-2026-07-03-004.md with 9 findings (high=2, medium=4, low=2, info=1). All findings verified against live source code via Read tool. Cross-referenced with audit-2026-07-01-009 to confirm zero overlap in new findings.",
+  "next_suggestion": [
+    "Derive route-fix for AE2-H-001 (confidence threshold alignment across README.md + ARCHITECTURE.md + SKILL.md — 3 files, highest priority)",
+    "Derive route-fix for AE2-H-002 (save-checkpoint.py Path import — 1 file)",
+    "Resolve MV-006 pending fix from audit-2026-07-03-011 before starting new fix derivation cycle"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {"file": "SKILL.md+decision-agent-prompt.md+README.md+ARCHITECTURE.md", "line": "multiple", "severity": "high", "finding": "AE2-H-001: Confidence thresholds differ across 4 core documents (OBSERVE: 0-30 vs <40 vs 0-10; SUGGEST: 31-59 vs 40-59 vs 11-30; etc). v2.2 operation-type tiering only updated in decision-agent-prompt.md.", "remediation": "Align all docs to decision-agent-prompt.md §⑤ as authoritative source", "kind": "route-fix"},
+    {"file": ".claude/hooks/save-checkpoint.py", "line": 137, "severity": "high", "finding": "AE2-H-002: find_task_files() uses Path() but import is inside __main__ block at L215. Latent NameError if module imported rather than run as script.", "remediation": "Move 'from pathlib import Path' to top-level imports", "kind": "route-fix"},
+    {"file": ".claude/skills/autonomous-engine/SKILL.md", "line": 118, "severity": "medium", "finding": "AE2-M-001: SKILL.md Step 4 references consecutive_no_delta field not declared in calibration.json schema or HARD_CONSTRAINTS", "remediation": "Declare l3_auto_degrade fields in schema.md or HARD_CONSTRAINTS", "kind": "route-fix"},
+    {"file": ".claude/skills/autonomous-engine/decision-agent-prompt.md", "line": 59, "severity": "medium", "finding": "AE2-M-002: §0.2 and §⑥ give conflicting checkpoint protection steps. 'git stash && git stash apply' is a no-op roundtrip.", "remediation": "Unify to single authoritative checkpoint flow; remove stash+apply combo", "kind": "route-fix"},
+    {"file": ".claude/hooks/incremental-save.py", "line": 47, "severity": "medium", "finding": "AE2-M-003: incremental-save.py calls save-checkpoint.py via subprocess while both may trigger on Stop event. Concurrent writes to latest.json without locking.", "remediation": "Add flock or PID-based dedup; or remove redundant subprocess call", "kind": "route-fix"},
+    {"file": "SETUP.md", "line": 27, "severity": "medium", "finding": "AE2-M-004: SETUP.md references non-existent top-level dirs (skills/, hooks/, engine/, watchdog/) instead of actual .claude/ paths", "remediation": "Align paths to actual repo structure per README.md L119-130", "kind": "route-fix"},
+    {"file": ".claude/skills/autonomous-engine/decision-agent-prompt.md", "line": 349, "severity": "low", "finding": "AE2-L-001: §1.5 references PROJECTS.md which does not exist in repo", "remediation": "Reference .claude/memory/project-index.md or dynamic discovery", "kind": "route-fix"},
+    {"file": ".claude/hooks/decision-observer.py", "line": 319, "severity": "low", "finding": "AE2-L-002: handle_stop overwrites entire autonomous-state.md with 6-line template, destroying user-added content", "remediation": "Merge-update specific fields instead of full overwrite", "kind": "route-fix"},
+    {"file": "ARCHITECTURE.md", "line": 33, "severity": "info", "finding": "AE2-I-001: Mermaid diagram labels watchdog as L5/L6 hybrid; README says L6; matrix table has no level number", "remediation": "Standardize to L6 across all docs", "kind": "route-fix"}
+  ],
+  "audit_id": "audit-2026-07-03-004",
+  "audit_depth": "deep"
+}

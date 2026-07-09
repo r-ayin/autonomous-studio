@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-07-125",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-07T10:57:00+08:00",
+  "project": "personal-assistant",
+  "work_unit": "temporal:_parse_hm partial parse warning (PA-B2-L-003)",
+  "situation": "audit-2026-07-08-045 finding PA-B2-L-003: _parse_hm regex partially parses compound time expressions like '三点半十分' → matches '三点半' (3:30) and silently drops '十分'. User gets wrong time with no indication of data loss.",
+  "action": "Added logging import + module logger. After successful regex match in _parse_hm, inspect tail of input string past match span. If tail contains time-related tokens (NUM+分/秒 or 半+NUM), emit logger.warning with matched text, full input, and dropped tail. Non-breaking: still returns parsed result, just warns.",
+  "files_changed": ["personal_assistant/temporal.py"],
+  "worktree": "opt-temporal-1783392187",
+  "direction": "temporal:parse-hm-partial-warn",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit da722fe on auto/opt-temporal-1783392187 pushed to origin. Adds 7 lines (import logging, logger init, 4-line tail check with warning). cp-guard triggered due to diverged worktree (M-002 fix already present); edited directly in worktree per escape hatch protocol.",
+  "next_suggestion": "Dispatch remaining pending fix PA-B2-L-002 (reminders.py notify log non-atomic append). After both L-002 and L-003 are merged/rejected, mark audit-cycle-state status=cycle-complete to trigger next full audit.",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "personal_assistant/temporal.py",
+      "line": 48,
+      "severity": "low",
+      "finding": "_parse_hm regex partially parses compound time expressions without warning — trailing time tokens silently dropped",
+      "remediation": "Added post-match tail inspection + logger.warning for dropped time content",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-08-045",
+  "audit_depth": "shallow"
+}

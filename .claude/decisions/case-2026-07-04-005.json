@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-04-005",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-04T03:15:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "PD-L003: tighten extractIdFromLine regex in poll-pre-check.js",
+  "situation": "Derived fix from audit-2026-07-03-013 finding PD-L003 (priority 11, route-fix). extractIdFromLine used \\d{4,} which matches timestamps (2026-07-04), version numbers (1.2.3456), and other incidental numerics → wrong stage/job/task IDs silently propagated through drill-down chain.",
+  "action": "Tightened regex with 3-tier priority: (1) explicit ID labels (id=, taskId:, stage_id=), (2) word-boundary ≥6-digit sequences avoiding dates/versions, (3) original \\d{4,} fallback only if no better match — with audit-log entry (precheck-poll action, result=partial, details.reason=regex-fallback) for observability. All 3 call sites updated to pass context label.",
+  "files_changed": ["skills/prod-deploy/scripts/poll-pre-check.js"],
+  "worktree": "opt-prod-deploy-1782970212",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 597c77f in auto/opt-prod-deploy-1782970212; node --check passed; pushed to origin. Regex now prefers labeled IDs and ≥6-digit bounded matches; fallback logs via writeAuditLog for regression detection.",
+  "next_suggestion": "PD-L003 was last pending fix for audit-2026-07-03-013 cycle. After this merge → cycle-complete → trigger new full audit on next unreviewed project (candidates: sunset-prediction src-core re-audit, or shizi full-stack first deep audit).",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "skills/prod-deploy/scripts/poll-pre-check.js",
+      "line": "65-68",
+      "severity": "low",
+      "finding": "extractIdFromLine \\d{4,} regex matches timestamps/version numbers causing silent wrong-ID propagation",
+      "remediation": "3-tier regex: labeled ID > bounded ≥6-digit > logged fallback",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-03-013",
+  "audit_depth": "shallow"
+}

@@ -1,0 +1,31 @@
+{
+  "case_id": "case-2026-07-07-122",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-07T02:35:00+08:00",
+  "project": "personal-assistant",
+  "work_unit": "PA-B2-H-001: cli.py default bind 0.0.0.0 → 127.0.0.1 + unauth warning",
+  "situation": "Deep audit audit-2026-07-08-045 found cli.py serve subcommand defaults to --host 0.0.0.0. When PA_API_TOKEN is unset (dev mode), auth middleware bypasses all endpoints. Binding to all interfaces exposes every API endpoint to the local network without authentication.",
+  "action": "Changed argparse default from '0.0.0.0' to '127.0.0.1'. Added startup warning in cmd_serve when host != loopback and PA_API_TOKEN is unset, printing to stderr. Minimal 1-file fix.",
+  "files_changed": ["personal_assistant/cli.py"],
+  "worktree": "opt-cli-1783391471",
+  "direction": "cli:bind-default",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh committed + pushed auto/opt-cli-1783391471 to origin. Diff: line 190 default='127.0.0.1', lines 130-140 added non-loopback unauth warning.",
+  "next_suggestion": [
+    "派生下一个 pending route-fix: PA-B2-H-003 (reminders recurring ID collision)",
+    "或 PA-B2-M-001 (reminders notify-before-mark race) — 可与 H-003 合并修"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "personal_assistant/cli.py",
+      "line": 190,
+      "severity": "high",
+      "finding": "Default --host 0.0.0.0 exposes all endpoints to network when PA_API_TOKEN unset (dev mode bypasses auth)",
+      "remediation": "Change default to 127.0.0.1; add startup warning for non-loopback without token",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-08-045",
+  "audit_depth": "shallow"
+}

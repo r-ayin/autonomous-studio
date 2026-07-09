@@ -1,0 +1,23 @@
+{
+  "case_id": "case-2026-07-08-002",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-08T02:15:00+08:00",
+  "project": "shizi",
+  "work_unit": "SH-VIS-M-001 phantom-merge correction — revert status to pending (no commit on main)",
+  "situation": "audit-cycle-state listed SH-VIS-M-001 as status=merged with fix_case_id=case-2026-07-08-002. But: (1) this case file never existed; (2) git log main has no commit referencing VIS-M-001 or binary string accumulation fix; (3) src/background/vision-adapter.ts lines 320-322 and 346-348 still contain the O(n²) pattern: `let binary=''; for(let i=0;i<bytes.length;i++) binary+=String.fromCharCode(bytes[i]); return btoa(binary);`. The 'merged' status was phantom.",
+  "action": "State-only correction: reverting SH-VIS-M-001 derived_fix status from merged back to pending in audit-cycle-state.json. No code changes this round — real fix to be dispatched next round (route-fix, vision-adapter.ts only).",
+  "files_changed": [
+    ".claude/audit-cycle-state.json"
+  ],
+  "worktree": null,
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "grep -n 'binary +=' src/background/vision-adapter.ts returns lines 321,347 on main HEAD 58c71ec. No commit in git log main matches VIS-M-001 or binary-string fix. State corrected to pending.",
+  "next_suggestion": [
+    "Next round: dispatch real fix for SH-VIS-M-001 — replace binary string accumulation with FileReader.readAsDataURL or chunked base64 in vision-adapter.ts compressFallback + preprocessForVL."
+  ],
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-08-037",
+  "audit_depth": "shallow"
+}

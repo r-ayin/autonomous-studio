@@ -1,0 +1,37 @@
+{
+  "case_id": "case-2026-07-05-019",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-05T23:55:00Z",
+  "project": "personal-assistant",
+  "work_unit": "派生 fix PA-API-03：personal_assistant/api.py + llm.py — /settings/llm base_url scheme/host 校验，堵 SSRF+PII+凭证外泄主入口（http 仅 loopback，https 任意 host，拒 file/ftp；构造器防御深度）",
+  "situation": "audit-cycle-state.status=fix-in-progress（audit-2026-07-05-002 personal-assistant 全量审计产出 10 findings，6 route-fix pending，pending_count=6）。上轮 case-018 已派生 priority#1 PA-API-02（CORS 去 *，opt-api-1783193708 HEAD 6a91312 pushed，待人工 merge）。本轮取 priority#2 PA-API-03：POST /settings/llm 的 LLMSettingsIn.base_url（api.py:56）零 scheme/host 校验，config.set_override 直接落运行态（api.py:275）。此后 get_llm() 构造 OpenAICompatLLM/AnthropicProxyLLM(base_url=...)，_post_json(f\"{base_url}/chat/completions\", headers={Authorization:Bearer api_key|x-api-key}, body={system+user prompt})（llm.py:421,453）发到该 base_url。body 含转录 PII（memory.py:28 user=转录 JSON）、人格档案+记忆（chat.py:29 system）、全部新记忆（distill.py:90 user）。攻击者经 PA-API-01/02 一次 POST 设 base_url=attacker.com → SSRF + PII 外泄 + 凭证（api_key 作 Bearer/x-api-key）外泄。证据：api.py:262-265 对 backend 枚举校验但 base_url/api_key 零校验；llm.py:399 base_url.rstrip('/') 无 scheme 校验，允许 http:// 凭证明文上链。",
+  "action": "2 文件 route-fix（api.py + llm.py；api.py/llm.py 不在 .claude/public-interfaces.txt → route-fix 复用同 area worktree；测试 fixture 改动 tests/test_llm_config.py 为第 3 文件，1-3 文件预算内）。\n\nllm.py 改动：(1) 加 `import urllib.parse`；(2) 新增 `_validate_base_url(base_url)` 函数——scheme 必须 http/https（拒 file:///ftp:///data: 等任意 scheme）；http:// 仅允许 loopback（127.0.0.1/localhost/::1）防 Authorization Bearer/x-api-key 明文上链到任意 host；https:// 允许任意 host（真实 provider open.bigmodel.cn/api.openai.com 走 https+TLS）；可选 config.llm.allowed_hosts 非空时 https host 须命中 allowlist（收紧用，默认空=任意 https host）；(3) OpenAICompatLLM.__init__/AnthropicProxyLLM.__init__/OpenAICompatEmbedder.__init__ 调 _validate_base_url（GLMAnthropicLLM/OllamaLLM 继承覆盖）——构造器防御深度，挡未来旁路入口。\n\napi.py 改动：llm_settings_update 的 for-field 循环里，field=='base_url' 时调 llm._validate_base_url(val)，ValueError → HTTPException(400, f'invalid base_url: {e}')——攻击者经 /settings/llm 入参即刻被拒，不待下游 LLM 调用。原 set_override 逻辑不变。\n\ntests/test_llm_config.py 改动：fixture _new_openai/_new_anthropic 的 base_url 'http://x/v1'/'http://x' → 'https://x/v1'/'https://x'（构造器现在校验，http+non-loopback 被拒；fixture 纯测 thinking-budget 逻辑无网络调用，https://x 合法通过）。\n\n提交方式：case-104 escape hatch（直编 opt-wt 版本后 wt 内提交）。原因：opt-api-1783193708 已含未合并的 PA-API-02（HEAD 6a91312），cmd_commit 的 cp-guard 检测到 target 文件 vs main HEAD 不同会跳过（防抹掉前轮未合并改动），无法 cp-stack。故直编 worktree 内文件 + worktree 内 git commit（auto/opt-api-1783193708 分支，非 main/master——commit-gate 不拦）+ git push origin（reference-transaction hook 仅拦 main/master，auto/opt-* 放行）。\n\n埋点：本 finding 触及'外部调用（HTTP 出站）'+'凭证（api_key 经 base_url 发出）'敏感路径类别，但修复是入参校验 gate（拒绝非法 base_url），不新增出站调用、不写 audit logger——校验拒绝本身由 HTTPException(400) 同步返回调用方，无副作用可埋。llm.py 无既有 audit logger 复用点。故不强埋 audit-log JSONL。",
+  "files_changed": [
+    "personal_assistant/llm.py (加 import urllib.parse；新增 _validate_base_url() 函数 ~25 行；OpenAICompatLLM/AnthropicProxyLLM/OpenAICompatEmbedder __init__ 各加一行 _validate_base_url 调用)",
+    "personal_assistant/api.py (llm_settings_update for-field 循环加 field=='base_url' 分支调 _validate_base_url + HTTPException(400)，~10 行)",
+    "tests/test_llm_config.py (_new_openai/_new_anthropic fixture base_url http://x → https://x，2 行)"
+  ],
+  "worktree": "opt-api-1783193708 (branch auto/opt-api-1783193708；route-fix 复用——上轮 PA-API-02 已建此 wt，本轮 case-104 直编+wt 内提交 stack 于其上；HEAD 23c8651；已 push origin/auto/opt-api-1783193708 6a91312..23c8651)",
+  "direction": "api:llm-base-url-validation (route-fix; judge_direction_kind 判定：api.py/llm.py 不在 public-interfaces.txt → route-fix，非 direction-shift；同 area 'api' 复用 opt-api-1783193708)",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "worktree 直编后 python3 -c ast.parse(llm.py/api.py) 双 OK syntax",
+    "validator 行为表测：PASS https://api.openai.com / https://open.bigmodel.cn/api/anthropic / http://127.0.0.1:11434 / http://localhost:8080；REJECT http://attacker.com（http 非 loopback）/ file:///etc/passwd（scheme）/ ftp://x/y（scheme）/ https://（missing host）/ http://169.254.169.254（AWS metadata SSRF 被拒）/ ''（空）",
+    "pytest tests/test_llm_config.py tests/test_pluggable.py → 51 passed（fixture 改 https://x 后全绿）",
+    "pytest tests/ 全量 → 99 passed in 4.33s（零回归）",
+    "worktree git commit → [auto/opt-api-1783193708 23c8651] 'opt(api:llm-base-url-validation): fix(api,llm): PA-API-03 /settings/llm base_url scheme/host 校验...' 3 files changed 42 insertions 2 deletions",
+    "git push origin auto/opt-api-1783193708 → '6a91312..23c8651 auto/opt-api-1783193708 -> auto/opt-api-1783193708'（remote Code Review 链接已生成）",
+    "config 默认值验证：llm.openai_compat.base_url=https://open.bigmodel.cn/api/paas/v4（https pass）、llm.ollama.base_url=http://localhost:11434/v1（http+loopback pass）、backend=stub（不构造 base_url LLM）——零配置变更，现有部署不破"
+  ],
+  "next_suggestion": [
+    "下轮 status 仍 fix-in-progress（pending_count=6 不变——PA-API-03 已 dispatched 待人工 merge，未 terminal）→ 派生 priority#3 PA-LLM-01（llm.py _post_json resp.read() 无字节 cap + base_url 允许 http:// → OOM+凭证明文；加 MAX_BYTES 流式截断 + https 强制；1 文件 route-fix llm.py）",
+    "随后 PA-UPL-01（api.py /inbox/upload body size cap 返 413）/ PA-STOR-01（storage.py save_persona_version 原子写 file-then-DB）/ PA-WEB-01（web.py _fetch/_generic size cap+scheme）逐个派生",
+    "提醒：opt-api-1783193708 现含 2 个未合并 commit（6a91312 PA-API-02 + 23c8651 PA-API-03），opt-storage-1782988687 / opt-web-1782977902 亦待合并；personal-assistant 待合并 worktree 积压，需人工 merge 落 main 后 derived_fixes PA-API-02/PA-API-03 status pending→merged",
+    "注意 PA-API-03 与 PA-LLM-01 都改 llm.py：若 opt-api-1783193708 未合并时派生 PA-LLM-01，需继续 case-104 直编+wt 内提交 stack（cp-guard 仍会跳过 llm.py）；或等 PA-API-03 merge 后再派生 PA-LLM-01 走 cmd_commit 常规路径",
+    "2 structural debt（SD-PA-01 零认证框架 / SD-PA-02 prompt 注入防御）需用户授权更大单位后再动；全部 6 route-fix 落定后 audit-cycle-state.status=cycle-complete → 下一次全量审计候选 sunset-prediction（42 文件未审）/ autonomous-engine（7 文件未审）"
+  ],
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-05-002",
+  "audit_depth": "shallow"
+}

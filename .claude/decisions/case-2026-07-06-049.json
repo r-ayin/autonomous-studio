@@ -1,0 +1,39 @@
+{
+  "case_id": "case-2026-07-06-049",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-06T23:55:00+08:00",
+  "project": "dataworks-dev-assistant",
+  "work_unit": "派生 fix: WRITEO-02 (audit-2026-07-06-005) — manage_node_deps add_dep/remove_dep 绕过 _do_request chokepoint 致无审计无两阶段确认，补 audit_log.record 埋点 + --confirm 门禁",
+  "situation": "audit-cycle-state.status=fix-in-progress，audit-2026-07-06-005 派生 21 条 route-fix。优先级排序中 HIGH SQLEXE-01 / MEDIUM DATAAN-01+06 / MEDIUM AUDITT-01 已 merged（case-046/047/048），下一条 pending = MEDIUM WRITEO-02（manage_node_deps.py:91-138 add_dep/remove_dep 用 requests.put/requests.delete 直发 /ide/addNodeDependencies、/ide/removeNodeDependencies，绕过 _do_request → 无 audit_log.record、无两阶段确认；依赖增删是节点 DAG 拓扑变更）。本轮派生 WRITEO-02。",
+  "action": "1 个文件最小改动（route-fix，复用 dataworks area worktree opt-dataworks-1783293099）：(1) manage_node_deps.py add_dep/remove_dep 的 requests.put/requests.delete 后补 _audit_write() 调用——_audit_write 封装 audit_log.record（与 bff_client._do_request 同源 record 函数），落 <work_dir>/.dataworks/.audit/audit-YYYY-MM-DD.jsonl，字段 bypass=False（--confirm sanctioned）+ correlation_id（每操作 uuid4）+ attempt=0 + user_id（_cached_base_id/DW_USER_BASE_ID/unknown 三级 fallback，与 chokepoint 同）；审计在 code!=200 失败检查之前落盘，故失败也如实记 result=failure。(2) 新增 --confirm flag + main() 两阶段门禁：不带 --confirm 时（Phase 1）打印计划改动预览（add/remove targets + 当前节点 uuid/project_id/dep_type）后 telemetry_end(awaiting_confirm) return，零写；带 --confirm（Phase 2）才进 add_dep/remove_dep 执行循环。(3) docstring 注意节加两阶段说明，成功 result 加 confirmed=True。**不修 _do_request 的决策依据**：addNodeDependencies 实际请求形是 query-params(uuid,projectId) + json-body(dependencies) 混合；removeNodeDependencies 是 DELETE + query-params；bff_client._do_request 的单 params_type 模型（params|data|json_body 三选一）无法表达该混合形，强转 params_type=json 会把 uuid/projectId 塞进 body 改变请求形状，有破坏工作 API 的风险。且 addNodeDependencies 虽在 api-index.json 注册但缺 is_write_operation 标记、removeNodeDependencies 完全未注册，走 write()/confirm_write() 需改 2 万行 reference JSON。故选保留原 requests 直发形 + 补同源 audit_log.record——等价达成审计埋点生效的安全目标，零 API 形状风险。注：该文件主路径触及敏感操作（外部 HTTP 写 + 节点拓扑变更），DO B 已满足（audit_log.record 即埋点）。",
+  "files_changed": [
+    "skills/dataworks-dev-assistant/modules/node-management/scripts/manage_node_deps.py"
+  ],
+  "worktree": "opt-dataworks-1783293099",
+  "direction": "dataworks:manage-node-deps-audit (route-fix, 复用 dataworks area wt，stack 于 7100503 AUDITT-01 / dfca487 DATAAN-01+06 之上)",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "opt-worktree.sh 输出: ✓ 提交到 opt-dataworks-1783293099 方向=dataworks:manage-node-deps-audit；[push] 7100503..3a26ec7 HEAD -> auto/opt-dataworks-1783293099（origin 远端已同步）",
+    "wt HEAD=3a26ec7eb610ebe751303a20b17fbb0266d33bf2，分支 auto/opt-dataworks-1783293099",
+    "wt 内 grep audit_log/_audit_write/--confirm 命中 13 处（fix 内容确实落 wt）",
+    "py_compile 通过",
+    "Phase 1 功能验证（mock BFFClient，--add 123 --remove 456 不带 --confirm）：打印 '⚠️ 待确认写操作（节点拓扑变更）' 预览 + 'Phase 1 预览，未执行任何写操作'，captured HTTP writes = 0 put / 0 delete（零写达成）",
+    "Phase 2 功能验证（mock requests.put/delete/get，--add 999 --remove 456 --confirm）：captured = 1 PUT(http://x/ide/addNodeDependencies) + 1 DELETE(http://x/ide/removeNodeDependencies)；审计日志落 2 条：action=update / resource.identifier=addNodeDependencies+removeNodeDependencies / result=success / bypassed_two_phase_confirm=False / userId=B123 / correlationId 每操作唯一(794b2348/15aa4fa7) / params_summary 含 uuid/projectId/output/targetUuid/type（脱敏，无 PII）"
+  ],
+  "next_suggestion": "audit-cycle-state 派生 fix 队列剩 17 条 pending（全 LOW）。建议下轮继续逐个派生：优先 HTTPAU 批量（bff_client.py endpoints.json http:// + BFF_ENDPOINT 无 URL 校验 + .env 无权限检查 + _log 无脱敏，4 条可考虑合 1 wt 同文件）或 AUDITT-03（telemetry_upload rotate_local 非原子）+ AUDITT-06（workspace_memory _save_yaml 非原子）这类「非原子写」族。全 pending 派发完 → status cycle-complete → 下轮触发新全量审计（候选 fbi-dev-assistant 19k loc / xia 499 nodes，均未深审）。另：副本漂移未解——live ~/.claude/skills/dataworks-dev-assistant/ 缺 core/audit_log.py，本 fix import audit_log 在 live 会 ImportError（与 bff_client 既有 import 同症），需重新发布 dist 同步 dev→live，否则 audit 埋点在用户实际环境仍未生效。",
+  "audit_type": "audit-log-instrumentation",
+  "audit_findings": [
+    {
+      "file": "skills/dataworks-dev-assistant/modules/node-management/scripts/manage_node_deps.py",
+      "line": "106-114 (add_dep) / 130-138 (remove_dep)",
+      "severity": "medium",
+      "finding": "WRITEO-02 (parent audit-2026-07-06-005): add_dep/remove_dep 用 requests.put/requests.delete 直发 /ide/addNodeDependencies、/ide/removeNodeDependencies，绕过 bff_client._do_request chokepoint → 无 audit_log.record 审计记录、无两阶段确认。依赖增删是节点 DAG 拓扑变更（敏感写）。本 fix 已修：补 _audit_write（同源 audit_log.record）+ --confirm 两阶段门禁。",
+      "remediation": "保留原 requests 请求形（query-params+json-body / DELETE+query-params，_do_request 单 params_type 无法表达），补 audit_log.record 埋点（bypass=False + correlationId + attempt + user_id）+ --confirm Phase1/Phase2 门禁。不修 _do_request。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-005",
+  "audit_depth": "shallow",
+  "_derived_fixes_updated": "audit-cycle-state.derived_fixes[WRITEO-02] status pending→merged, fix_case_id=null→case-2026-07-06-049, merged_worktree=opt-dataworks-1783293099, merged_commit=3a26ec7, merged_at=2026-07-06T23:55:00+08:00; pending_count 18→17",
+  "_design_rationale": "_do_request 单 params_type 模型无法表达 addNodeDependencies(query-params+json-body) / removeNodeDependencies(DELETE+query-params) 混合请求形；强转会破坏工作 API 形状。故选同源 audit_log.record 直补 + --confirm 门禁，等价达成审计埋点生效 + 两阶段确认安全目标，零 API 风险。live 副本缺 audit_log.py 的发布漂移问题不属代码 fix，记 next_suggestion。"
+}

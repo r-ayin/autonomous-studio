@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-01-582",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-01T11:05:00Z",
+  "project": "wechat-main",
+  "work_unit": "qq_push _load_env .env 引号剥离 (audit WM-H-002)",
+  "situation": "audit-2026-07-01-004 finding WM-H-002：scripts/qq_push.py _load_env 仅 v.strip()，不剥 KEY=\"value\" 成对引号；.env 惯例允许引号包裹，未剥则 token/secret 字面含 \" 致 QQ Bot API 鉴权失败。priority=13，kind=route-fix。",
+  "action": "在 _load_env partition 后追加：v=v.strip()；若 len>=2 且首尾成对双引号或单引号则 v=v[1:-1]。注释说明 .env 惯例与避免误伤值内含引号。smoke test 覆盖 5 种形态（双引号/单引号/无引号/unmatched/空引号）全通过。复用现有 opt-scripts-1782899218 worktree（同 area=scripts route-fix）。commit bd8c882 pushed origin。",
+  "files_changed": ["scripts/qq_push.py"],
+  "worktree": "auto/opt-scripts-1782899218",
+  "direction": "scripts:qq-push-env-quote-strip",
+  "outcome": "succeeded",
+  "outcome_evidence": "smoke test 5 assertions passed; commit bd8c882 in auto/opt-scripts-1782899218 pushed to origin; merge-tree clean vs main (opt-worktree 内置判定)。",
+  "next_suggestion": "派生 WM-H-003 (cron/daily-hotspot.sh DEEPSEEK_API_KEY 解析改用 source 或 sed+printf %q) priority=14，同 area scripts route-fix 可继续复用 opt-scripts-1782899218。",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-01-004",
+  "audit_depth": "shallow"
+}

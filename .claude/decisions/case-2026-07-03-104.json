@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-03-104",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-03T22:25:00+08:00",
+  "project": "autonomous-studio",
+  "work_unit": "ESE-M02: autonomous-loop.sh comment/code contradiction re --max-iterations + missing per-round timeout/max-turns knobs",
+  "situation": "audit-2026-07-03-006 finding ESE-M02 (status=pending): live main scripts/autonomous-loop.sh header comment incorrectly claimed 'cloudcli claude 不支持 --max-iterations' (wrong flag name; actual flag is --max-turns) and provided no per-round timeout mechanism. Archive copy already contained fix but live had not received it. Prior merged worktrees brought H-005/L-003/AS-EC-007 into live but ESE-M02 was missed.",
+  "action": "Applied minimal ESE-M02 fix to live scripts/autonomous-loop.sh: (1) corrected header comment to reference --max-turns, (2) added AUTONOMOUS_MAX_TURNS/AUTONOMOUS_ROUND_TIMEOUT env var declarations, (3) updated run_round() to conditionally pass --max-turns and wrap with timeout, (4) fixed stale while-loop body comment. Preserved existing H-005 mktemp/shred pattern. Default behavior unchanged (both vars empty = no limit).",
+  "files_changed": ["scripts/autonomous-loop.sh"],
+  "worktree": "opt-autonomous-loop-shift-1783091217",
+  "direction": "direction-shift",
+  "outcome": "succeeded",
+  "outcome_evidence": "bash -n syntax check passed; grep confirms ESE-M02/MAX_TURNS/ROUND_TIMEOUT present at lines 14-20,113-115,126-133,164; opt-worktree.sh committed and pushed to origin/auto/opt-autonomous-loop-shift-1783091217; git diff shows +23/-3 lines in single file.",
+  "next_suggestion": "All derived_fixes from audit-2026-07-03-006 now resolved (ESE-H01 merged, ESE-H02 merged, ESE-M01 merged, ESE-M02 merged via this case). Set audit-cycle-state.status=cycle-complete next round to trigger new full audit on least-recently-audited project.",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-03-006",
+  "audit_depth": "shallow"
+}

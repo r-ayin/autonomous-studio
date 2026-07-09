@@ -1,0 +1,88 @@
+# quanzhan — 用户口输入（去重后，3 条 / 原始 3 条）
+# 由 distill-user-style.py Step1 生成，供 BUSINESS-INTENT 提炼 + 引擎阶段①CONTEXTUALIZE 读
+
+[2026-06-19] 使用1d平台开发适配技能，进行全量的代码深度审计
+[2026-06-19] Base directory for this skill: /home/admin/.claude/skills/1d-platform-dev
+
+# OneDay / 1d 平台全栈开发指南
+
+> **如何使用本 skill**：本文件是索引，详细内容在子文件中。
+> 遇到具体问题时，用 Read 工具读取对应子文件获取完整代码和排查步骤。
+
+## 平台速查
+
+**入口**：`https://1d.alibaba-inc.com/` | 预发：`https://pre-1d.alibaba-inc.com/`
+
+**五种应用类型**
+
+| 类型 | 特点 | 适用场景 |
+|------|------|---------|
+| 聊天助手 | 多轮对话，上下文持续保存 | 客服、知识问答 |
+| Chatflow | 节点编排对话流，多轮记忆+流式输出 | 复杂多轮对话 |
+| Workflow | 自动化批处理，无 Memory，有结束节点 | 数据管线、定时任务 |
+| Agent | 任务分解→工具调用→迭代执行 | 报表分析、规划 |
+| 文本生成型 | 表单+结果，上下文仅当次有效 | 翻译、文本分类 |
+
+**四大核心能力模块**
+
+| 模块 | 说明 |
+|------|------|
+| **创作** | 自然语言 → 完整可运行应用，内置数据库+AI 工作流，关联 Git |
+| **规划** | 自然语言 → 长网页/PPT，联网查询数据 |
+| **Make** | 无限画布，AI 图像海报生成 |
+| **工作流** | 接入 MCP/HTTP/ODPS/钉钉等工具，自动化流程 |
+
+## WebContainer 核心约束（最高频踩坑）
+
+```
+OneDay = webpack 5 + webpack-dev-server 4.x + HashRouter + allowedHosts all + historyApiFallback + anpm
+双层架构 = webpack-dev-server:3019 → proxy /api → Express:3020
+Express启动 = predev 钩子后台拉起，禁止在 webpack 钩子中 require()
+永远不要用 Vite / esbuild / rollup / BrowserRouter / http.createServer()
+```
+
+**OneDay Cloud 核心约束**
+
+```
+必须用 @ali/oneday-frontend-sdk，禁止直接用 @supabase/supabase-js
+externals 必须用 var 前缀格式（不是 commonjs）
+项目设置 → 数据库 → 开启 OneDay Cloud（否则 token=undefined → 403）
+```
+
+## 文件目录
+
+需要详细内容时，Read 对应文件：
+
+| 子文件 | 内容 | 何时读取 |
+|--------|------|---------|
+| `webcontainer.md` | webpack配置、Express启动、代理、externals、路由、/_p/前缀修复、常见问题速查表 | 项目跑不起来、白屏、API失败、发布后白屏、API返回HTML |
+| `oneday-cloud.md` | SDK初始化（含容错）、CRUD、Storage、Realtime、Migration DDL、Cloud连接修复指南 | 数据库连不上、RLS报错、SDK初始化失败 |
+| `workflow.md` | 节点全景、系统变量、并行限制、异常处理、错误类型、调试功能、结构化输出、LLM/代码执行/迭代/变量赋值详解、配置大模型、Webhook/调度、嵌入前端、附加功能 | 编排 Workflow/Chatflow、节点报错、配置模型 |
+| `agent-tools-auth.md` | Agent版本/模式/MCP、Skill Agent配置、ClawHub技能平台、Connector连接器、25+内置工具、ODPS/Holo/SLS数据源、钉钉集成/MCP表格、MetaQ消息、事件触发器、用户认证(JWKS/BUC)、知识库(RAG)、Browser Use | Agent开发、工具接入、鉴权、知识库、浏览器自动化 |
+| `import-guide.md` | 从 Bolt/v0/Claude Code 等平台迁移：五层根因、自检命令、三种迁移路径 | 外部项目导入后白屏/加载失败 |
+| `reference.md` | 平台限制速查表、五种应用类型、四大模块、废弃功能、云函数、HTML导入、导入已有项目、管理协作、版本管理、OneDay Note/Design/Task、数据取回、API扩展、快捷键、参考链接 | 查限制数值、废弃替代、云函数问题、管理功能、参考链接 |
+| `cloud-preview.md` | Cloud CLI 容器预览服务：端口映射API、正确启动流程、常见报错排查 | 云端容器中启动HTTP服务预览 |
+
+## 常见问题 → 对应文件
+
+| 问题现象 | 读哪个文件 |
+|---------|-----------|
+| 预览空白 / 卡在90% / Cannot GET / 发布后白屏 | `webcontainer.md` |
+| API 返回 HTML 而非 JSON / /_p/ 前缀问题 | `webcontainer.md` |
+| 外部项目导入后加载失败 | `import-guide.md` |
+| Cloud连不上 / Bearer undefined / RLS 403 | `oneday-cloud.md` |
+| Workflow节点报错 / 并行异常 / 结构化输出失败 | `workflow.md` |
+| 配置大模型 / 免费额度用完 / API-KEY申请 | `workflow.md` |
+| ODPS查询失败 / 鉴权报错 / 钉钉集成 | `agent-tools-auth.md` |
+| Agent开发 / Skill Agent / ClawHub / Connector | `agent-tools-auth.md` |
+| 知识库配置 / RAG / 元数据 / 数据导入 | `agent-tools-auth.md` |
+| Browser Use / 浏览器自动化 | `agent-tools-auth.md` |
+| 查限制数值 / 废弃功能 / 云函数CI失败 | `reference.md` |
+| 应用类型选择 / 版本管理 / 团队权限 | `reference.md` |
+| OneDay Note / Design / Task | `reference.md` |
+| 导入已有项目 / HTML导入 / Studio模式 | `reference.md` |
+| Cloud CLI 容器 localhost 不通 / 端口映射 | `cloud-preview.md` |
+
+
+ARGUMENTS: 对 quanzhan 项目进行全量代码深度审计，检查所有文件是否符合1d平台WebContainer约束
+[2026-06-19] https://code.alibaba-inc.com/OneDayAI-RPUKYRO/1BfrYlP3/tree/onedaybot-dev推送到这里，我就发布1d项目了

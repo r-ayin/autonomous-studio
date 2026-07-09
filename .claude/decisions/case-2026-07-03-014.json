@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-03-014",
+  "agent_id": "ralph-wiggum-cycle-75",
+  "timestamp": "2026-07-03T20:15:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "AC-F005 fix: auto-commit.py is_excluded 扩展敏感文件后缀/文件名排除",
+  "situation": "audit-2026-07-03-010 finding AC-F005 (MED): EXCLUDED_PREFIXES 不覆盖 .env/*.pem/*.key 等敏感文件。AC-F002 filtered-stage fix 已在 case-396 修过，但 is_excluded 本身仍只检查前缀，不检查后缀/文件名——若未来代码回归 git add -A 或 stage_paths 构造有 bug，敏感文件仍可泄露。纵深防御要求 is_excluded 自身也拦截敏感模式。",
+  "action": "在 autonomous-studio/.claude/hooks/auto-commit.py 增加 SENSITIVE_SUFFIXES (.env/.pem/.key/.p12/.pfx/.jks/.keystore/.secret/.secrets/.credentials/.token/.aws/.npmrc/.pypirc/.dockercfg) 和 SENSITIVE_BASENAMES (.env/.env.local/id_rsa/id_dsa/id_ecdsa/id_ed25519/google-services.json/credentials.json/service-account.json/client_secret.json/.htpasswd/shadow/passwd) 两个常量；is_excluded() 在原有前缀检查后追加后缀+文件名匹配。同步修改 live 部署版 /home/admin/workspace/.claude/hooks/auto-commit.py。",
+  "files_changed": [".claude/hooks/auto-commit.py"],
+  "worktree": "opt-hooks-1783018753",
+  "direction": "hooks:auto-commit-sensitive-exclusions",
+  "outcome": "succeeded",
+  "outcome_evidence": "python3 -m py_compile 通过；opt-worktree.sh commit 成功创建 opt-hooks-1783018753 并 push 到 origin/auto/opt-hooks-1783018753；diff 确认新增 SENSITIVE_SUFFIXES(14项)+SENSITIVE_BASENAMES(14项)+is_excluded 扩展逻辑",
+  "next_suggestion": "[1] 派生 AC-F003 fix: auto-commit.py TOCTOU race (自主模式检测与 commit 之间加 fcntl lock)。[2] 派生 PEL-001 fix: post-edit-lint.py path traversal guard。[3] MBP-F001~F005 sync-from-live 打包修5个bypass。[4] merge/reject opt-hooks-1783018753 after human review。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": ".claude/hooks/auto-commit.py",
+      "line": 40,
+      "severity": "medium",
+      "finding": "AC-F005: EXCLUDED_PREFIXES only checks path prefixes, missing sensitive file suffixes (.env, .pem, .key) and basenames (id_rsa, credentials.json). Defense-in-depth requires is_excluded itself to block these patterns regardless of staging mechanism.",
+      "remediation": "Add SENSITIVE_SUFFIXES and SENSITIVE_BASENAMES constants; extend is_excluded() with suffix and basename matching after prefix check.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-03-010",
+  "audit_depth": "shallow"
+}

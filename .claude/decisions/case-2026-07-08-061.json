@@ -1,0 +1,31 @@
+{
+  "case_id": "case-2026-07-08-061",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-08T19:30:00+08:00",
+  "project": "shizi",
+  "work_unit": "SZ-PP-L-005: handleOpen sidePanel API availability check",
+  "situation": "Popup App.tsx handleOpen calls chrome.sidePanel.open without checking API availability. On browsers lacking sidePanel (Firefox, older Chrome), user sees generic '打开失败: TypeError' instead of actionable unsupported-browser message.",
+  "action": "Add typeof guard before chrome.sidePanel.open call. If API missing, show specific '当前浏览器不支持侧边栏' message with browser version hint.",
+  "files_changed": ["src/popup/App.tsx"],
+  "worktree": "auto/opt-popup-1783215325",
+  "direction": "popup:sidepanel-api-check",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 746f181 on auto/opt-popup-1783215325. Pushed to origin. 4 lines added: typeof chrome.sidePanel?.open !== 'function' guard with early return and localized error message.",
+  "next_suggestion": [
+    "SZ-PP-L-006: ProgressBar fallback label uses unsanitized progress.message — XSS vector in popup UI",
+    "SZ-SH-L-001: deepMergeSettings fragile for future nested fields — add recursive merge or schema validation"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "src/popup/App.tsx",
+      "line": 21,
+      "severity": "low",
+      "finding": "chrome.sidePanel.open called without availability check — TypeError on unsupported browsers caught by generic catch, user sees unhelpful error",
+      "remediation": "Add typeof chrome.sidePanel?.open !== 'function' guard before call with specific unsupported-browser message",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-047",
+  "audit_depth": "shallow"
+}

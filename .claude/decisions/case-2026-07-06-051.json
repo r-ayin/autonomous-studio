@@ -1,0 +1,51 @@
+{
+  "case_id": "case-2026-07-06-051",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-06T23:58:00Z",
+  "project": "dataworks-dev-assistant",
+  "work_unit": "派生 audit-2026-07-06-005 的 RUNTIM-03+RUNTIM-06 两条 LOW route-fix：core/runtime.py save_tool_result 非原子写 + 裸 except:pass 静默吞错",
+  "situation": "audit-cycle-state.json status=fix-in-progress, pending_count=11。本轮 step 0 读 cycle-state 见 status=fix-in-progress 且 derived_fixes 有 pending finding → 走派生 fix 路径。cycle-state._status_note 已建议下轮派生『非原子写族（AUDITT-03 + AUDITT-06 + RUNTIM-03/06，按文件聚合 1-2 wt）』。RUNTIM-03 与 RUNTIM-06 同落 core/runtime.py:339-343（save_tool_result 内两处 open(w)+json.dump + 两处 bare except Exception: pass），同文件聚合 1 wt 最经济。audit report 明示『同文件 bootstrap_context 已用 tmp+os.replace，不一致』——存在现成 idiom 可对齐。runtime.py 不在 .claude/public-interfaces.txt → route-fix → 复用 opt-dataworks-1783293099（case-047/048/049/050 stack 其上）。",
+  "action": "1) 读 core/runtime.py save_tool_result (line 322-365) + bootstrap_context (line 178-185) 现有 tmp+os.replace idiom + _write_session_state (line 454-464) 现有 stderr 语义。2) 新增私有 _atomic_write_json(path, obj) helper（tmp+os.replace+os.makedirs，失败 print stderr 不抛，except 收 OSError/TypeError/ValueError），紧贴 save_tool_result 上方。3) save_tool_result 两处写入（result_path + state_path）改走 _atomic_write_json；内联的 session_state 读取改用已有 _read_session_state(work_dir) 消除重复 bare-except 读路径。4) ast.parse + 临时目录行为验证：save_tool_result('trace',{summary:hi,rows:3}) 两文件落盘、无 .tmp 残留、嵌套目录自动建。5) opt-worktree.sh . commit dataworks:runtime-atomic-write 复用 opt-dataworks-1783293099，HEAD 223c6b1→919ecd2，pushed origin/auto/opt-dataworks-1783293099。",
+  "files_changed": [
+    "skills/dataworks-dev-assistant/core/runtime.py"
+  ],
+  "worktree": "opt-dataworks-1783293099",
+  "direction": "dataworks:runtime-atomic-write",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "git log opt-dataworks-1783293099: 919ecd2 opt(dataworks:runtime-atomic-write): fix(runtime): RUNTIM-03+06 ... (stacked on 223c6b1 case-050 / 3a26ec7 case-049 / 7100503 case-048 / dfca487 case-047)",
+    "push: 223c6b1..919ecd2 HEAD -> auto/opt-dataworks-1783293099 (origin 跟踪分支已建)",
+    "worktree runtime.py grep _atomic_write_json: 3 命中（def + 2 调用点 line 322/356/368）+ ⚠️ 写入失败 stderr line 336",
+    "main checkout grep _atomic_write_json: 0（main 干净，改动只在 worktree）",
+    "python3 ast.parse(runtime.py): SYNTAX OK",
+    "行为验证: save_tool_result('trace',{summary:'hi',rows:3}) → trace_result.json _tool=trace summary=hi; session_state.json tool_results.trace={file,timestamp,summary}; 无 .tmp 残留; _atomic_write_json 嵌套目录 sub/x.json 自动创建"
+  ],
+  "next_suggestion": "下轮继续派生 audit-2026-07-06-005 剩余 9 pending LOW finding（pending_count 11→9 后）。优先非原子写族剩余：AUDITT-03 (core/telemetry_upload.py rotate_local 非原子 read→truncate-write) + AUDITT-06 (core/workspace_memory.py _save_yaml 非原子写)——两者不同文件可合 1 wt 或分 2 wt；或 DATAAN-03 (core/duckdb_loader.py _extract_schema f-string 拼 information_schema 应参数化)。全 9 pending 派发完 → cycle-state.status=cycle-complete → 下轮触发新全量审计（候选：fbi-dev-assistant 19k loc never deep-audited / xia 499 nodes never deep-audited）。opt-dataworks-1783293099 现已 5 commit stack（case-047..051），人工可随时 opt-worktree.sh . merge opt-dataworks-1783293099 squash 入 main。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "skills/dataworks-dev-assistant/core/runtime.py",
+      "line": "339-343",
+      "severity": "low",
+      "finding": "RUNTIM-03: save_tool_result 用 open(result_path,'w')+json.dump 非原子写，崩溃截断 {tool}_result.json / session_state.json；同文件 bootstrap_context (line 178-185) 已用 tmp+os.replace，不一致",
+      "remediation": "新增 _atomic_write_json(path,obj) helper（tmp+os.replace+os.makedirs），save_tool_result 两处写入（result_path + state_path）改走它",
+      "kind": "route-fix"
+    },
+    {
+      "file": "skills/dataworks-dev-assistant/core/runtime.py",
+      "line": "339-343",
+      "severity": "low",
+      "finding": "RUNTIM-06: save_tool_result 两处裸 except Exception: pass 静默吞错，写入失败无声；同文件 _write_session_state (line 463-464) 已用 stderr 打印",
+      "remediation": "_atomic_write_json 失败分支 print(f'⚠️ 写入失败 {path}: {e}', file=sys.stderr) 替代 pass；except 收 OSError/TypeError/ValueError",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-005",
+  "audit_depth": "deep",
+  "direction_kind": "route-fix",
+  "reused_worktree": "opt-dataworks-1783293099",
+  "stacked_on": "223c6b1 (case-2026-07-06-050 HTTPAU batch)",
+  "derived_fixes_dispatched": ["RUNTIM-03", "RUNTIM-06"],
+  "pending_count_before": 11,
+  "pending_count_after": 9
+}

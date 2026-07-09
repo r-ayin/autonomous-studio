@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-07-03-027",
+  "agent_id": "ralph-wiggum-cycle-87",
+  "timestamp": "2026-07-02T21:23:04Z",
+  "project": "wechat-main",
+  "work_unit": "MV-004 verifier.py remediation search_query 按 claim type 分发",
+  "situation": "audit-2026-07-03-011 finding MV-004 (MEDIUM/route-fix): judge_and_report 对任何 falsified claim 都套「真实 X 数据 来源」搜索模板，对 PERSON/EVENT/QUOTE 类型产生噪声查询，降低 Claude 修复闭环成功率。派生 fix 队列剩余 pending: MV-004/MV-005/MV-006。本轮派发 MV-004。",
+  "action": "在 opt-wechat-1783021994 worktree 内新增 _build_search_query(claim) helper，按 c['type'] 分发模板：PERSON→'{text} 真实身份 报道'；EVENT→'{text} 官方 通报'；QUOTE→'{text} 全文 原文'；DATA/fallback 保留原模板。judge_and_report L200 改用 helper 替换硬编码 f-string。",
+  "files_changed": ["script-verifier/verifier.py"],
+  "worktree": "opt-wechat-1783021994",
+  "direction": "wechat:script-verifier",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit bf8ef32 on auto/opt-wechat-1783021994; python3 ast.parse OK; push to origin succeeded (f4b9ee8..bf8ef32); cp-guard 触发后改在 worktree 内直接 edit+commit，main 树已 git checkout 还原避免漂移。",
+  "next_suggestion": [
+    "下轮派生 MV-005: fact_checker.py generate_search_queries max_queries 截断时向 stderr 打 warning + 返回 truncated_count 字段透传到 judge summary",
+    "MV-006: hot-scanner.py consume parse_search_result=None 回退路径补 _extract_angle 调用 + has_event/has_controversy/has_data 简单检测"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-03-011",
+  "audit_depth": "shallow"
+}

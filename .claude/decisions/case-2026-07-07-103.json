@@ -1,0 +1,30 @@
+{
+  "case_id": "case-2026-07-07-103",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-07T21:35:00+08:00",
+  "project": "moni-master",
+  "work_unit": "factor-registry Mutex poison recovery (H-COVERAGE-001 partial, crate 1/5)",
+  "situation": "audit-2026-07-08-035 H-COVERAGE-001 identified 17 non-test .lock().unwrap() calls across 5 crates (factor-registry, qlib-adapter, factor-adapter, replay, post-close) — same cascade-panic-on-poison vulnerability class as moni-strategy b877104/2e28a5f fix. Dispatching per-crate route-fixes to keep each commit minimal and reviewable.",
+  "action": "Applied unwrap_or_else poison recovery pattern (matching b877104 template) to all 6 non-test .lock().unwrap() sites in moni-factor-registry/src/lib.rs: upsert/get/get_by_hash/search/dedup_snapshot/stats. cargo check -p moni-factor-registry passed clean. Committed via opt-worktree.sh to existing route-fix worktree opt-moni-master-1783105913 (area match). Pushed to origin/auto/opt-moni-master-1783105913.",
+  "files_changed": [
+    "moni-rs/crates/moni-factor-registry/src/lib.rs"
+  ],
+  "worktree": "opt-moni-master-1783105913",
+  "direction": "moni-master:factor-registry-poison-recovery",
+  "outcome": "succeeded",
+  "outcome_evidence": "cargo check -p moni-factor-registry finished clean; grep confirms 0 remaining non-test .lock().unwrap() in lib.rs; git log opt-moni-master-1783105913 shows cdc2ab6 commit with this fix; pushed to origin successfully.",
+  "next_suggestion": "Continue H-COVERAGE-001 dispatch: next crate is moni-replay (4 sites in src/lib.rs lines 87/91/103/235). Same pattern. After all 5 crates done, mark H-COVERAGE-001 merged in audit-cycle-state and transition status=cycle-complete to trigger next full audit.",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "moni-rs/crates/moni-factor-registry/src/lib.rs",
+      "line": "79,91,96,107,132,138",
+      "severity": "high",
+      "finding": "6 non-test .lock().unwrap() calls in FactorRegistry impl — if any holder panics mid-lock, subsequent callers cascade-panic. Same vulnerability class as moni-strategy sessions.rs fixed in b877104.",
+      "remediation": "Replace each .lock().unwrap() with .lock().unwrap_or_else(|p| { eprintln!(...); p.into_inner() }) matching b877104 template.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-08-035",
+  "audit_depth": "shallow"
+}

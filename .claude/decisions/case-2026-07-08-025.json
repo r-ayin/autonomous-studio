@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-07-08-025",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-07T16:59:00+08:00",
+  "project": "shizi",
+  "work_unit": "tests:preprocess-compression-coverage",
+  "situation": "audit-2026-07-07-047 finding SZ-SH-M-005 (medium): preprocessForVL 测试只覆盖 passthrough 路径（≤1.5MB 原图保留），压缩分支（>1.5MB + 长边>2500px → canvas 缩放 + JPEG q0.9）完全未测。vitest node 环境无 createImageBitmap/OffscreenCanvas，需 vi.stubGlobal mock。GATES IMPORTANT 门禁要求保守压缩策略回归锁，但压缩分支缺失意味着若有人误改 maxDim/quality/threshold 不会被捕获。",
+  "action": "在 tests/preprocess.test.ts 增加 '压缩分支' describe 块（4 个用例）：(1) >1.5MiB+长边3000→缩放到2500、JPEG q0.9、输出为 mock base64；(2) >1.5MiB+长边≤2500→不缩放返回原 pure；(3) 正方形5000x5000→等比2500x2500；(4) 带 data-url 前缀大图→剥离后走压缩。用 vi.stubGlobal 注入 MockImageBitmap/MockOffscreenCanvas，验证 drawImage 尺寸、convertToBlob 参数、bitmap.close() 资源释放。",
+  "files_changed": ["tests/preprocess.test.ts"],
+  "worktree": "auto/opt-tests-1783414700",
+  "direction": "tests:preprocess-compression-coverage",
+  "outcome": "succeeded",
+  "outcome_evidence": "npx vitest run tests/preprocess-compression.test.ts → 10 passed (原 6 passthrough + 新 4 compression)，耗时 1.96s。opt-worktree.sh commit 成功推送 origin/auto/opt-tests-1783414700。",
+  "next_suggestion": [
+    "SZ-SH-M-006 (medium, @crxjs/vite-plugin beta dependency unused in actual build pipeline) — 移除无用依赖或确认 dev-only 用途",
+    "SZ-BG-L-001 (low, IndexedDB connection opened per-operation but never closed) — 加 close() 或连接池"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-07-047",
+  "audit_depth": "shallow"
+}

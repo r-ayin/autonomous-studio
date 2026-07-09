@@ -1,0 +1,32 @@
+{
+  "case_id": "case-2026-07-07-001",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-07T00:05:00+08:00",
+  "project": "1BfrYW9R",
+  "work_unit": "H-001 upstream proxy OOM body cap (audit-2026-07-06-026 derived_fix)",
+  "situation": "audit-2026-07-06-026 H-001 finding: dev-server.js /api/health reverse-proxy accumulates upstream response body with no size cap (line 105-107 `b += c` unbounded). Malicious or faulty upstream returning GB-scale body would OOM the dev-server process. /healthz contract is KB-scale JSON; legitimate responses never exceed a few KB.",
+  "action": "Added MAX_UPSTREAM_BODY = 64KB constant at module scope. In data handler, check b.length + c.length > cap before accumulation; if exceeded, set oversized flag, destroy upstream stream (triggers error → fail() path returning 502 with diagnostic 'upstream response too large'). Existing responded-guard and fail() helper reused — no new response paths introduced. 41/41 tests pass in worktree after fix.",
+  "files_changed": ["dev-server.js"],
+  "worktree": "opt-dev-server-1783353888",
+  "direction": "dev-server:upstream-body-cap",
+  "outcome": "succeeded",
+  "outcome_evidence": "worktree commit 7001a07 on auto/opt-dev-server-1783353888 pushed to origin; npm test in worktree: 41 pass 0 fail (test #37 /api/health proxy still passes, confirming normal <64KB responses unaffected); main working tree restored clean by opt-worktree.sh post-commit.",
+  "next_suggestion": [
+    "派生 M-001 (ONEDAY_DIR arbitrary dir read) — next highest severity pending fix from audit-2026-07-06-026",
+    "派生 M-002 (/api/* static collision) after M-001",
+    "L-001 MIME gaps lowest priority — defer until H/M cleared"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "dev-server.js",
+      "line": 107,
+      "severity": "high",
+      "finding": "Upstream proxy response body accumulated without size cap — OOM DoS vector",
+      "remediation": "Cap at 64KB; destroy stream + 502 on exceed",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-026",
+  "audit_depth": "shallow"
+}

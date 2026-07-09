@@ -1,0 +1,40 @@
+{
+  "case_id": "case-2026-07-03-095",
+  "agent_id": "ralph-wiggum-cycle",
+  "timestamp": "2026-07-03T23:50:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "deep-audit: skills/prod-deploy deployment pipeline (13 JS files + SKILL.md + phases)",
+  "situation": "audit-cycle-state was cycle-complete after audit-2026-07-03-012 fixes all merged. Triggered new full deep audit per DO A. Selected autonomous-studio/skills/prod-deploy as unaudited sensitive deployment path.",
+  "action": "Read 13 JS source files (lib/5 + scripts/7 + extract-url), SKILL.md, phases/00+07 docs. Cross-module data flow analysis: CLI input → parseArgs → event-client/task-client/sunfire-client → HTTP API → side effects (audit-log, state transitions). Identified 14 findings (3H/4M/3L/4I). Wrote audit-2026-07-03-013.md. Populated audit-cycle-state derived_fixes with 11 pending entries (10 route-fix + 1 direction-shift). Appended 2 structural debts to structural-debt.md. Status → fix-in-progress.",
+  "files_changed": [
+    ".claude/audits/audit-2026-07-03-013.md",
+    ".claude/audit-cycle-state.json",
+    ".claude/structural-debt.md",
+    ".claude/memory/autonomous-state.md"
+  ],
+  "worktree": null,
+  "direction": "audit-only (no code changes this round)",
+  "outcome": "succeeded",
+  "outcome_evidence": "audit-2026-07-03-013.md written (14 findings, 11 derived fixes registered); audit-cycle-state.json status=fix-in-progress with pending_count=11; structural-debt.md appended SD-PD-001 and SD-PD-002",
+  "next_suggestion": [
+    "派生 PD-H001 fix (priority 1): resume-next-batch.js time gate clock-skew → use server time or local delta",
+    "派生 PD-H002 fix (priority 2): event-client terminal payload-only update add audit-log",
+    "派生 PD-M002 fix (priority 3): audit-log-helper ACTION_MAP add cli-json-parse-failed"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {"file": "skills/prod-deploy/scripts/resume-next-batch.js", "line": 51, "severity": "high", "finding": "Time gate uses Date.now() vs server updated_at; clock skew can bypass or permanently block observation period", "remediation": "Use server-provided current time or record local_success_time at batch SUCCESS for delta comparison", "kind": "route-fix"},
+    {"file": "skills/prod-deploy/scripts/lib/event-client.js", "line": 172, "severity": "high", "finding": "Terminal-state payload-only update path has no audit-log; observation_result append after deploy-complete is untraceable", "remediation": "Add writeAuditLog call in payload-only branch; add event-payload-append to ACTION_MAP", "kind": "route-fix"},
+    {"file": "skills/prod-deploy/scripts/poll-build.js", "line": 1, "severity": "high", "finding": "poll-build and poll-pre-check spawn a1 CLI and drive deploy decisions with zero audit-log; DO B violation", "remediation": "Add audit-log at main() exit based on isTerminal/done; add pipeline_status_poll and precheck_poll actions to ACTION_MAP", "kind": "direction-shift"},
+    {"file": "skills/prod-deploy/scripts/lib/http-base.js", "line": 28, "severity": "medium", "finding": "Dual credential env (CODE_PRIVATE_TOKEN + DEVOUT_TOKEN) coexistence silent; CODE wins without warning", "remediation": "Emit stderr WARN once when both env vars are set", "kind": "route-fix"},
+    {"file": "skills/prod-deploy/scripts/report-event.js", "line": 30, "severity": "medium", "finding": "safeJsonParseCli calls writeAuditLog with unknown action cli-json-parse-failed; ACTION_MAP miss causes silent drop", "remediation": "Add cli-json-parse-failed to ACTION_MAP as input_validation medium", "kind": "route-fix"},
+    {"file": "skills/prod-deploy/scripts/resume-next-batch.js", "line": 67, "severity": "medium", "finding": "Observation gate silently skipped when observation_result absent; agent may not see stderr WARN", "remediation": "Add --strict-observation flag / RESUME_REQUIRE_OBSERVATION env; when enabled, missing result → approved:false", "kind": "route-fix"},
+    {"file": "skills/prod-deploy/scripts/lib/sunfire-client.js", "line": 105, "severity": "medium", "finding": "JSON parse error and network error homogenized to skipped:true; cannot distinguish API corruption from expected degradation", "remediation": "Differentiate SyntaxError (severity warning) from network error (severity info) in return object", "kind": "route-fix"},
+    {"file": "skills/prod-deploy/scripts/complete-task.js", "line": 43, "severity": "medium", "finding": "createEvent(finish) + updateTask non-atomic; updateTask failure leaves finish event but task still RUNNING", "remediation": "Reorder: updateTask first then createEvent; or add cross-validation in Phase 0 checkpoint recovery", "kind": "route-fix"},
+    {"file": "skills/prod-deploy/scripts/lib/audit-log-helper.js", "line": 84, "severity": "low", "finding": "result||'success' coerces falsy values (empty string, 0) to success; masks real outcomes", "remediation": "Change to result ?? 'success' (nullish coalescing)", "kind": "route-fix"},
+    {"file": "skills/prod-deploy/scripts/report-event.js", "line": 227, "severity": "low", "finding": "parseInt(batch-index) NaN propagates to payload.batch_index; findBatchEvent never matches → duplicate events created", "remediation": "Add isNaN guard: exit(1) with error message on invalid batch-index", "kind": "route-fix"},
+    {"file": "skills/prod-deploy/scripts/poll-pre-check.js", "line": 65, "severity": "low", "finding": "extractIdFromLine regex \\d{4,} matches timestamps/version numbers in a1 output; false ID extraction", "remediation": "Tighten regex to id[=:]\\s*(\\d+) or known column format; add stderr WARN on fallback match", "kind": "route-fix"}
+  ],
+  "audit_id": "audit-2026-07-03-013",
+  "audit_depth": "deep"
+}

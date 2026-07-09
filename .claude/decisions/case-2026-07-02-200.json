@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-07-02-200",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-02T06:03:19Z",
+  "project": "pc_agent",
+  "work_unit": "fix TOCTOU race in episodic store tmp filename (audit-2026-07-02-006 M-001)",
+  "situation": "Derived fix from deep audit audit-2026-07-02-006 finding M-001. _saveEpisodic uses write-to-tmp+rename pattern but tmp filename only includes PID. Concurrent processes sharing PID namespace (worker_threads, rapid fork/exec) could collide on same tmp path, causing silent data loss.",
+  "action": "Added random suffix (${process.pid}-${rand}) to tmp path to eliminate collision risk. Single-file route-fix in server/memory/index.js.",
+  "files_changed": [
+    "/home/admin/workspace/pc_agent/server/memory/index.js"
+  ],
+  "worktree": "opt-pc_agent-1782972172",
+  "direction": "pc_agent:memory-toctou-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit a183a6f on auto/opt-pc_agent-1782972172 pushed to origin. node -e require('./server/memory/index.js') syntax check passed in worktree.",
+  "next_suggestion": "派生下一个 pending fix: M-002 (image content-type magic byte validation in claude-pipeline.js). 之后 M-003 (multipart filename sanitization), L-001 (fail-fast unauthenticated client).",
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-006",
+  "audit_depth": "shallow"
+}

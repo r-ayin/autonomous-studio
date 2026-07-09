@@ -1,0 +1,47 @@
+{
+  "case_id": "case-2026-07-08-022",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-08T15:45:00+08:00",
+  "project": "shizi",
+  "work_unit": "SZ-SP-M-002: getHistory sendMessage lacks .catch — permanent loading state",
+  "situation": "HistoryTab.tsx refresh() calls chrome.runtime.sendMessage({action:'getHistory'}).then(...) with no .catch handler. If background script throws or sender disconnects, setLoading(false) never executes → UI stuck on '加载中...' forever. Same pattern in handleDelete and handleClear (async/await without try/catch).",
+  "action": "Added .catch/.finally to refresh() getHistory call so setLoading(false) always runs. Wrapped handleDelete and handleClear in try/catch blocks to prevent unhandled rejections from propagating.",
+  "files_changed": ["src/sidepanel/HistoryTab.tsx"],
+  "worktree": "opt-sidepanel-1782907225",
+  "direction": "sidepanel:getHistory-catch",
+  "outcome": "succeeded",
+  "outcome_evidence": "Committed bf9842c on auto/opt-sidepanel-1782907225, pushed to origin. File HistoryTab.tsx now has .catch(err => console.error(...)).finally(() => setLoading(false)) on getHistory, and try/catch on deleteHistory/clearHistory handlers.",
+  "next_suggestion": [
+    "SZ-SP-M-003: refresh() stale closure — no mounted check, double-fetch in StrictMode",
+    "SZ-SP-M-004: Progress listener race condition — interleaved events from concurrent analyses"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "src/sidepanel/HistoryTab.tsx",
+      "line": 13,
+      "severity": "medium",
+      "finding": "chrome.runtime.sendMessage getHistory promise chain has .then but no .catch — IPC failure leaves UI in permanent loading state",
+      "remediation": "Add .catch handler + .finally(() => setLoading(false)) to guarantee loading state clears",
+      "kind": "route-fix"
+    },
+    {
+      "file": "src/sidepanel/HistoryTab.tsx",
+      "line": 22,
+      "severity": "medium",
+      "finding": "handleDelete awaits sendMessage without try/catch — rejection propagates unhandled",
+      "remediation": "Wrap in try/catch with console.error",
+      "kind": "route-fix"
+    },
+    {
+      "file": "src/sidepanel/HistoryTab.tsx",
+      "line": 28,
+      "severity": "medium",
+      "finding": "handleClear awaits sendMessage without try/catch — rejection propagates unhandled",
+      "remediation": "Wrap in try/catch with console.error",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-047",
+  "audit_depth": "shallow"
+}

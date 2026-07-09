@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-07-01-626",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-01T12:45:00Z",
+  "project": "personal-assistant",
+  "work_unit": "llm._post_json timeout 统一 + 错误体脱敏 (PA-M-002)",
+  "situation": "audit-2026-07-01-006 发现 PA-M-002：_post_json 默认 timeout=60s，但 AnthropicProxyLLM.chat 硬编码 90s，不一致；HTTPError 分支 e.read()[:200]!r 把上游错误体原文拼入异常，可能泄漏 Authorization/x-api-key/token 等敏感字段到日志/前端。本轮派生 fix（audit-cycle-state.derived_fixes priority=4）。",
+  "action": "改 personal_assistant/llm.py：(1) _post_json timeout 参数默认 None → 读 config.get('llm.request_timeout_s', 60.0)，统一入口；AnthropicProxyLLM.chat 移除 timeout=90 硬编码，让所有后端走同一配置。(2) 新增 _sanitize_error_body：正则剥 authorization/x-api-key/api_key/token/bearer/secret/password 字段值，截断 200 字符；替换 HTTPError/通用 Exception/非 content 响应三处错误拼接点。python -c 导入+脱敏测试通过。opt-worktree.sh commit 触发 route-fix（llm.py 不在 public-interfaces.txt）→ opt-llm-1782909896 已 push。",
+  "files_changed": [
+    "personal_assistant/llm.py"
+  ],
+  "worktree": "opt-llm-1782909896",
+  "direction": "llm:timeout-sanitize",
+  "outcome": "succeeded",
+  "outcome_evidence": "git push origin auto/opt-llm-1782909896 成功；python3 -c 'from personal_assistant import llm; llm._sanitize_error_body(\"Authorization: sk-abc123secret token=bearer_xyz\")' 输出 '<REDACTED> <REDACTED>' 确认脱敏生效；CR 链接 https://code.alibaba-inc.com/qunbu/personal-assistant/codereview/new?from=main&to=auto/opt-llm-1782909896",
+  "next_suggestion": "下轮继续派生 audit-006 下一个 pending finding：PA-M-003（storage.add_memory embedding shape/dtype 校验，priority=5，route-fix）。待 derived_fixes 全 merged/rejected 后 status 切 cycle-complete 触发新审计。",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-01-006",
+  "audit_depth": "shallow"
+}

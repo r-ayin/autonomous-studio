@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-08-004",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-08T03:15:00+08:00",
+  "project": "autonomous-studio",
+  "work_unit": "H-META-040-001: merge 4 phantom SD materialization commits to main",
+  "situation": "audit-2026-07-08-040 found H-META-040-001: derived_fixes from audit-039 claimed status=merged but SD materialization commits (de47ec1/eb0a30e/93872a4/4948ff1) only existed on worktree branches, never merged to main. structural-debt.md on main had only SD-001..SD-005 while 14 entries (SD-006..SD-019) were stranded across 4 parallel worktrees with duplicate SD-IDs.",
+  "action": "Extracted all SD sections from 4 phantom commits, deduplicated (preferring de47ec1 for SD-009..SD-017 as most detailed; resolving SD-007 ID conflict by renaming personal-assistant's version to SD-019), rebuilt clean append of 14 entries. Amended opt-autonomous-1783381217 worktree commit with deduplicated content. Merged to main via opt-worktree.sh squash.",
+  "files_changed": [".claude/structural-debt.md"],
+  "worktree": "opt-autonomous-1783381217",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "main commit 12c59ef contains 19 SD entries (SD-001..SD-019). git log confirms squash merge of opt-autonomous-1783381217. Worktree cleaned up post-merge.",
+  "next_suggestion": "Dispatch M-META-040-002 (FE-fixes phantom merge reversal) — verify if any FE-* route-fixes from audit-030 can be recovered or should be formally rejected.",
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-08-040",
+  "audit_depth": "shallow"
+}

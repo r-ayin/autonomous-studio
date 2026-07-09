@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-02-140",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-02T10:50:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "claude:public-interfaces-cleanup (AS-CP-H01 derived fix)",
+  "situation": "audit-2026-07-02-006 finding AS-CP-H01: public-interfaces.txt line 25 listed phantom entry autonomous-studio:.claude/hooks/__init__.py — file never existed on disk (only __pycache__/ present). Stale entry misleads direction-shift judgment and documents a non-existent interface.",
+  "action": "Derived route-fix from audit-2026-07-02-006 priority-1 finding. Discovered existing worktree opt-claude-control-plane-1782986531 already contained identical fix (same line deletion, same finding reference). Reverted local edit to avoid cp-guard conflict, merged existing worktree via opt-worktree.sh merge (fast-forward squash d82da34). No new worktree created — reused prior art.",
+  "files_changed": [".claude/public-interfaces.txt"],
+  "worktree": "opt-claude-control-plane-1782986531",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "git log -1 shows d82da34 merge commit; git show HEAD:.claude/public-interfaces.txt lines 23-27 confirm phantom line removed; worktree branch auto/opt-claude-control-plane-1782986531 deleted post-merge",
+  "next_suggestion": "派生 AS-CP-M01 (priority 2): PA-WA-H02 fix_case_id points to unrelated case-2026-07-02-121; set fix_case_id=null or create rejection record",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-006",
+  "audit_depth": "shallow"
+}

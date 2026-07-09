@@ -19,19 +19,19 @@ FAIL=0
 
 echo "[verify-pattern] 项目: $P"
 
-# 前置：calibration 必须是合法 JSON
-if ! "$PY" -c "import json,sys; json.load(open('$CAL'))" 2>/dev/null; then
+# 前置：calibration 必须是合法 JSON（路径经 sys.argv 传入，避免 $CAL shell 注入到 python 代码串）
+if ! "$PY" -c "import json,sys; json.load(open(sys.argv[1]))" "$CAL" 2>/dev/null; then
   echo "  ❌ GATE-0: calibration.json 非合法 JSON，先修 distill-patterns.py 的鲁棒加载"
   exit 1
 fi
 echo "  ✓ GATE-0: calibration.json 合法"
 
 # 用 python 跑 4 个 gate（bash 调度，python 判定）
-"$PY" - "$P" "$MIN_SAMPLE" "$ACC_FLOOR" "$CAP" <<'PY' || FAIL=1
+# 路径全部经 sys.argv 传入，heredoc 内不做任何 shell 变量/f-string 派生，避免注入与引号破损
+"$PY" - "$P" "$MIN_SAMPLE" "$ACC_FLOOR" "$CAP" "$CAL" "$MD" <<'PY' || FAIL=1
 import json, os, re, sys
 P, MIN_SAMPLE, ACC_FLOOR, CAP = sys.argv[1], int(sys.argv[2]), float(sys.argv[3]), int(sys.argv[4])
-CAL = f"{P}/.claude/decisions/calibration.json"
-MD = f"{P}/.claude/memory/decision-patterns.md"
+CAL, MD = sys.argv[5], sys.argv[6]
 cal = json.load(open(CAL))
 patterns = cal.get("patterns", {})
 ok = True

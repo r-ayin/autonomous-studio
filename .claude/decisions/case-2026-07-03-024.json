@@ -1,0 +1,30 @@
+{
+  "case_id": "case-2026-07-03-024",
+  "agent_id": "ralph-wiggum-autonomous-cycle",
+  "timestamp": "2026-07-03T20:48:00Z",
+  "project": "wechat-main",
+  "work_unit": "script-verifier/fact_checker.py _check_corroboration 关键实体正则收紧 (MV-002)",
+  "situation": "audit-2026-07-03-011 MV-002 finding: fact_checker.py L465 _check_corroboration 的 key_entities 正则过宽，[\\d,]+\\.?\\d* 匹配 '0'/'1'/年份等噪声，[A-Z一-鿿]{2,6} 把 '我们'/'他们'/'但是' 当关键实体。噪声 entity 在 search_result 高概率命中 → 半数阈值轻易达成 → 虚假 VERIFIED，误放行 hallucinated claims。派生 fix（audit-cycle-state.status=fix-in-progress，pending_count=5）。",
+  "action": "重写 _check_corroboration 正则为三段式：(1) 数字要求 ≥3位或带千分位/小数点；(2) CJK/字母混合要求 >2字符；(3) 显式停用词表过滤高频虚词代词（我们/他们/但是/以及/the/and 等 ~40 词）。保留原 fallback 语义重叠检测与半数阈值逻辑不变。单文件 route-fix，不触及公共接口。",
+  "files_changed": [
+    "script-verifier/fact_checker.py"
+  ],
+  "worktree": "opt-script-verifier-1783024825",
+  "direction": "script-verifier:corroboration-regex",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh commit 输出 '✓ 提交到 opt-script-verifier-1783024825 方向=script-verifier:corroboration-regex'；git push 成功 'auto/opt-script-verifier-1783024825 → origin/auto/opt-script-verifier-1783024825'；Code Review URL https://code.alibaba-inc.com/qunbu/wechat/codereview/new?from=main&to=auto/opt-script-verifier-1783024825",
+  "next_suggestion": "派生 MV-003 (hot-scanner.py persona_fit 大小写一致化)，继续消化 audit-2026-07-03-011 pending fixes。剩余 pending: MV-002(just merged), MV-003, MV-004, MV-005, MV-006。",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "script-verifier/fact_checker.py",
+      "line": 465,
+      "severity": "medium",
+      "finding": "_check_corroboration key_entities regex over-matches noise (short CJK words, small integers, years) causing false VERIFIED verdicts when noise entities coincidentally appear in search results",
+      "remediation": "Tightened regex: digits require ≥3 digits or comma-separated thousands or decimal; CJK/alpha tokens require length >2; explicit stop-word filter for high-frequency function words. Preserved fallback semantic overlap check and half-threshold match logic.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-03-011",
+  "audit_depth": "deep"
+}

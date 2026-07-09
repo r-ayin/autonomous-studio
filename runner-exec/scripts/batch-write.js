@@ -2,7 +2,11 @@
 const fs = require('fs');
 const WebSocket = require('./vendor/ws');
 const { getInternalSecret, getSessionToken, getRunnerID, WS_HOST } = require('./creds');
-const { escapePS } = require('./write-file');
+const { escapePS, escapePSPath } = require('./write-file');
+
+// 16MB cap — batch-write 返回 output 供调用方看进度，但 output += msg.data 无界累积会在
+// Runner 误回放大输出时 OOM (audit-017 RE-EXEC-01)。超 cap 时截断并报 output_overflow。
+const MAX_OUTPUT = 16 * 1024 * 1024;
 
 async function batchWrite(files, timeoutMs = 60000) {
   const secret = getInternalSecret();
@@ -24,9 +28,9 @@ async function batchWrite(files, timeoutMs = 60000) {
       if (msg.type === 'started') {
         const cmds = ['chcp 65001 > $null'];
         for (const f of files) {
-          const parent = f.path.replace(/\\[^\\]+$/, '');
+          const parent = escapePSPath(f.path.replace(/\\[^\\]+$/, ''));
           cmds.push(`New-Item -ItemType Directory -Force -Path '${parent}' > $null`);
-          cmds.push(`Set-Content -Path '${f.path}' -Value "${escapePS(f.content)}" -Encoding UTF8`);
+          cmds.push(`Set-Content -Path '${escapePSPath(f.path)}' -Value "${escapePS(f.content)}" -Encoding UTF8`);
           cmds.push(`echo "  ${f.path.split('\\').pop()} OK"`);
         }
         cmds.push(`echo "${MARKER}"`);
@@ -35,6 +39,7 @@ async function batchWrite(files, timeoutMs = 60000) {
       }
       if (msg.type === 'output') {
         output += msg.data;
+        if (output.length > MAX_OUTPUT) { clearTimeout(timer); ws.close(); resolve({ ok: false, error: 'output_overflow', output: output.slice(0, MAX_OUTPUT) }); return; }
         if (output.includes(MARKER)) { clearTimeout(timer); ws.close(); resolve({ ok: true, output }); }
       }
       if (msg.type === 'exit') { clearTimeout(timer); ws.close(); resolve({ ok: true, output }); }
@@ -52,7 +57,25 @@ if (require.main === module) {
     console.log('manifest 格式: [{"path":"C:\\\\...","content":"..."}]');
     process.exit(0);
   }
-  const files = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+  let files;
+  try {
+    files = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+  } catch (e) {
+    console.error('ERROR: manifest JSON 解析失败:', e.message);
+    process.exit(1);
+  }
+  // RE-MANIFEST-01 (audit-017): manifest 无 schema 校验 → 非数组/非 string path/content
+  // 直达 RE-CMDI-01 注入面或 TypeError 崩溃。强校验 {path,content} 均为非空 string。
+  if (!Array.isArray(files)) {
+    console.error('ERROR: manifest 必须是数组');
+    process.exit(1);
+  }
+  for (const f of files) {
+    if (typeof f.path !== 'string' || typeof f.content !== 'string') {
+      console.error('ERROR: manifest 每项 {path,content} 必须为 string');
+      process.exit(1);
+    }
+  }
   console.log(`批量写入 ${files.length} 个文件...`);
   batchWrite(files).then(r => {
     console.log(r.ok ? `✓ 全部完成` : `✗ ${r.error}`);

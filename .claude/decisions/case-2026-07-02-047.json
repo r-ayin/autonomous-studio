@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-02-047",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-02T03:15:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "watchdog.sh pgrep exact match (AS-EC-010) — DUPLICATE",
+  "situation": "Attempted to fix AS-EC-010 but it was already fixed in prior round (case-2026-07-02-046, opt-watchdog-shift-1782933809). This case is superseded.",
+  "action": "Re-applied same fix (pgrep -x -c claude), committed to opt-watchdog-shift-1782934030. But AS-EC-010 was already marked merged in audit-cycle-state.json by a concurrent/prior round.",
+  "files_changed": ["watchdog.sh"],
+  "worktree": "opt-watchdog-shift-1782934030",
+  "direction": "watchdog:pgrep-exact",
+  "outcome": "superseded",
+  "outcome_evidence": "audit-cycle-state.json shows AS-EC-010 already merged via case-2026-07-02-046 at priority 10. This work duplicates that fix.",
+  "next_suggestion": "Next pending fix: AS-EC-011 install-studio-hooks.sh missing lint guard registration (priority 11)",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-002",
+  "audit_depth": "shallow"
+}

@@ -1,0 +1,31 @@
+{
+  "case_id": "case-2026-07-03-005",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-03T12:45:00Z",
+  "project": "personal-assistant",
+  "work_unit": "fix W-006 inbox upload path traversal (high severity, audit-derived)",
+  "situation": "audit-2026-07-03-009 finding W-006: /inbox/upload endpoint accepted arbitrary filename via query param and joined directly to inbox dir (inbox / filename), enabling ../../etc/cron.d/evil style arbitrary file write. Frontend used encodeURIComponent but backend urllib decodes .. back. High severity security hole.",
+  "action": "Backend: reject filenames containing / \\ or ..; take Path.name for safe basename; verify resolved dest stays inside inbox dir (defense in depth against encoding bypass). Frontend: block upload client-side if filename contains path separators or .., with console.warn + alert. 2 files changed, minimal route-fix scope.",
+  "files_changed": [
+    "personal_assistant/api.py",
+    "web/InboxPage.jsx"
+  ],
+  "worktree": "opt-web-1782977902",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 2c0f878 on auto/opt-web-1782977902 pushed to origin; backend adds 3-layer defense (char filter + Path.name + resolve().relative_to() containment check); frontend adds pre-upload validation with user feedback; 2 files / +20/-2 lines",
+  "next_suggestion": "派生 fix #2: W-007 (InboxPage upload 绕过 api.js 包装, medium) — 同 worktree opt-web-1782977902 可继续复用",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "personal_assistant/api.py",
+      "line": 279,
+      "severity": "high",
+      "finding": "path traversal: inbox / filename accepts ../.. allowing arbitrary file write",
+      "remediation": "reject / \\ .. chars; take Path.name; verify resolve() stays inside inbox dir",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-03-009",
+  "audit_depth": "shallow"
+}

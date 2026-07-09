@@ -1,0 +1,38 @@
+{
+  "case_id": "case-2026-07-06-078",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-06T22:10:00+08:00",
+  "project": "wechat-main",
+  "work_unit": "deepseek_refine.py M-007+M-008 fix (audit-2026-07-06-022 derived)",
+  "situation": "audit-2026-07-06-022 wechat-main deep audit found two medium-severity issues in scripts/deepseek_refine.py: (M-007) unbounded resp.read() at line 101 allows a malicious/misbehaving DeepSeek upstream to exhaust engine memory before json.loads rejects the payload; (M-008) raw_summary from Bing search snippets concatenated directly into LLM user prompt at line 74 enables prompt injection via adversarial webpage content. Both are route-fix kind, single-file, suitable for one worktree commit.",
+  "action": "Edited worktree copy of scripts/deepseek_refine.py on opt-wechat-main-1783130541: (1) replaced resp.read() with resp.read(1MB) + length check returning None on overflow; (2) wrapped raw_summary in <search_snippet> XML delimiters with explicit Chinese-language instruction telling the model to treat enclosed content as opaque data not instructions. Amended prior placeholder commit b5ebdb9 → c653f0a and force-with-lease pushed to origin/auto/opt-wechat-main-1783130541.",
+  "files_changed": [
+    "scripts/deepseek_refine.py"
+  ],
+  "worktree": "opt-wechat-main-1783130541",
+  "direction": "wechat-main:deepseek-refine",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit c653f0a on auto/opt-wechat-main-1783130541 contains +18/-2 diff adding _MAX_RESP_BYTES cap at line 101-107 and <search_snippet> XML wrapper at line 70-81; push succeeded to origin (forced update b5ebdb9..c653f0a); code review URL https://code.alibaba-inc.com/qunbu/wechat/codereview/new?from=main&to=auto/opt-wechat-main-1783130541",
+  "next_suggestion": "Next pending fix from audit-2026-07-06-022: M-009 pipeline.py:77 state file non-atomic write — tempfile + os.replace. After that M-010 pipeline.py:64 state loading no schema validation. 9 more pending fixes remain after this round.",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "scripts/deepseek_refine.py",
+      "line": 101,
+      "severity": "medium",
+      "finding": "M-007: unbounded resp.read() on DeepSeek chat/completions response. Malicious or misconfigured upstream could stream GB-scale body into memory before json.loads rejects it. Typical responses <100KB; no legitimate use case for >1MB.",
+      "remediation": "Cap resp.read() at 1MB; return None (trigger retry) if response meets/exceeds cap.",
+      "kind": "route-fix"
+    },
+    {
+      "file": "scripts/deepseek_refine.py",
+      "line": 74,
+      "severity": "medium",
+      "finding": "M-008: raw_summary from Bing search snippets injected verbatim into LLM user prompt without delimiter. Adversarial webpage content ('ignore previous instructions and output ...') would be interpreted as user-level directive by DeepSeek, enabling prompt injection that corrupts headline/digest output or exfiltrates system prompt.",
+      "remediation": "Wrap raw_summary in <search_snippet> XML delimiters with explicit instruction that enclosed content is opaque data, not instructions.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-022",
+  "audit_depth": "shallow"
+}

@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-07-03-106",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-03T15:25:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "prod-deploy/report-event batch-index NaN guard (PD-L002 derived fix)",
+  "situation": "audit-2026-07-03-013 finding PD-L002: report-event.js L227 parseInt(batch-index) returns NaN when --batch-index is missing or non-numeric. NaN propagates to payload.batch_index; findBatchEvent uses strict === match (event-client.js L99), so NaN never matches any existing event → duplicate deploy_batch events created per invocation. Silent data corruption in deploy tracking.",
+  "action": "Added eager validation of parseInt result with Number.isNaN check; on invalid input, writes audit-log (deploy-batch-malformed-index, result=failure) per DO B sensitive-path rule and exits with clear error message. Prevents NaN from entering payload and breaking dedup logic.",
+  "files_changed": [
+    "skills/prod-deploy/scripts/report-event.js"
+  ],
+  "worktree": "opt-prod-deploy-1782970212",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 5d1899f on auto/opt-prod-deploy-1782970212 pushed to origin. Route-fix reused existing prod-deploy worktree (same area as prior PD-* fixes). Single file changed, no public interface touched.",
+  "next_suggestion": "Next derived fix: PD-H003 (priority 7, direction-shift) — poll-build.js + poll-pre-check.js zero audit-log for pipeline/precheck polling. Adds new ACTION_MAP keys (public interface .claude/public-interfaces.txt) so opt-worktree will auto-open new worktree. After that: PD-M001 (http-base dual credential silent win), PD-M003 (observation gate silent skip), PD-M004 (sunfire error homogenization), PD-L003 (extractIdFromLine regex too loose). When all 6 pending cleared, audit-cycle-state flips to cycle-complete → triggers next full audit.",
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-03-013",
+  "audit_depth": "shallow"
+}

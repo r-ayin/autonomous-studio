@@ -9,6 +9,7 @@ description: >-
   OneDayCloud、oneday-frontend-sdk、Supabase、数据库初始化、
   OneDayCloudEnable、OneDayCloudSearchDocs 时使用此 skill。
 repository: https://code.alibaba-inc.com/qunbu/1d-platform-dev
+version: 1.3.1
 ---
 
 # OneDay / 1d 平台全栈开发指南

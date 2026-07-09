@@ -16,9 +16,15 @@ repository: https://code.alibaba-inc.com/qunbu/devix-automation-skill
 
 ## 基本信息
 
-- **接口地址**：`http://localhost:58596/api/cron-jobs`（无需 Authorization header）
+- **接口地址**：`$CLOUDCLI_API_BASE_URL/api/cron-jobs`（无需 Authorization header）
 - **存储方式**：持久化存储，无 7 天过期限制
 - **通知能力**：支持 DingTalk 群聊/私聊自动通知
+
+> 💡 `CLOUDCLI_API_BASE_URL` 由服务端在会话启动时注入；若未设置，可在脚本/示例中回退到默认值：
+> ```bash
+> CLOUDCLI_API_BASE_URL="${CLOUDCLI_API_BASE_URL:-http://localhost:58596}"
+> ```
+> 下文所有 curl 示例均使用 `$CLOUDCLI_API_BASE_URL`，请确保在执行前已导出该变量或采用上述回退写法。
 
 所有 curl 请求**必须**携带以下 header——服务端依赖此 token 校验请求来源身份，缺失将返回 401：
 
@@ -56,7 +62,7 @@ DINGTALK_CHANNEL_ID="$CLOUDCLI_DINGTALK_CHANNEL_ID"
 
 if [ "$DINGTALK_SOURCE" = "group" ]; then
   BOUND=$(curl -s -H "X-Dingtalk-Source-Token: $CLOUDCLI_DINGTALK_SOURCE_TOKEN" \
-    "http://localhost:58596/api/v1/dingtalk/bindings" | \
+    "$CLOUDCLI_API_BASE_URL/api/v1/dingtalk/bindings" | \
     jq --arg cid "$DINGTALK_CHANNEL_ID" '[.[] | select(.channelId == $cid)] | length > 0')
   if [ "$BOUND" = "true" ]; then
     NOTIFY_TARGET="group"
@@ -83,7 +89,7 @@ fi
 
 ```bash
 curl -s -H "X-Dingtalk-Source-Token: $CLOUDCLI_DINGTALK_SOURCE_TOKEN" \
-  -X POST http://localhost:58596/api/cron-jobs \
+  -X POST $CLOUDCLI_API_BASE_URL/api/cron-jobs \
   -H "Content-Type: application/json" \
   -d "{
     \"title\": \"每日天气播报\",
@@ -101,7 +107,7 @@ curl -s -H "X-Dingtalk-Source-Token: $CLOUDCLI_DINGTALK_SOURCE_TOKEN" \
 
 ```bash
 curl -s -H "X-Dingtalk-Source-Token: $CLOUDCLI_DINGTALK_SOURCE_TOKEN" \
-  -X POST http://localhost:58596/api/cron-jobs \
+  -X POST $CLOUDCLI_API_BASE_URL/api/cron-jobs \
   -H "Content-Type: application/json" \
   -d "{
     \"title\": \"每日天气播报\",
@@ -118,7 +124,7 @@ curl -s -H "X-Dingtalk-Source-Token: $CLOUDCLI_DINGTALK_SOURCE_TOKEN" \
 
 ```bash
 curl -s -H "X-Dingtalk-Source-Token: $CLOUDCLI_DINGTALK_SOURCE_TOKEN" \
-  -X POST http://localhost:58596/api/cron-jobs \
+  -X POST $CLOUDCLI_API_BASE_URL/api/cron-jobs \
   -H "Content-Type: application/json" \
   -d "{
     \"title\": \"每日进度汇报\",
@@ -139,7 +145,7 @@ curl -s -H "X-Dingtalk-Source-Token: $CLOUDCLI_DINGTALK_SOURCE_TOKEN" \
 
 ```bash
 curl -s -H "X-Dingtalk-Source-Token: $CLOUDCLI_DINGTALK_SOURCE_TOKEN" \
-  http://localhost:58596/api/cron-jobs | jq '.[] | select(.title == "任务名称")'
+  $CLOUDCLI_API_BASE_URL/api/cron-jobs | jq '.[] | select(.title == "任务名称")'
 ```
 
 ## 其他操作
@@ -150,7 +156,7 @@ curl -s -H "X-Dingtalk-Source-Token: $CLOUDCLI_DINGTALK_SOURCE_TOKEN" \
 
 ```bash
 curl -s -H "X-Dingtalk-Source-Token: $CLOUDCLI_DINGTALK_SOURCE_TOKEN" \
-  http://localhost:58596/api/cron-jobs | jq .
+  $CLOUDCLI_API_BASE_URL/api/cron-jobs | jq .
 ```
 
 ### 修改任务
@@ -159,7 +165,7 @@ curl -s -H "X-Dingtalk-Source-Token: $CLOUDCLI_DINGTALK_SOURCE_TOKEN" \
 
 ```bash
 curl -s -H "X-Dingtalk-Source-Token: $CLOUDCLI_DINGTALK_SOURCE_TOKEN" \
-  -X PUT http://localhost:58596/api/cron-jobs/<id> \
+  -X PUT $CLOUDCLI_API_BASE_URL/api/cron-jobs/<id> \
   -H "Content-Type: application/json" \
   -d '{"title": "新名称", "cron_expr": "0 10 * * *"}' | jq .
 ```
@@ -168,7 +174,7 @@ curl -s -H "X-Dingtalk-Source-Token: $CLOUDCLI_DINGTALK_SOURCE_TOKEN" \
 
 ```bash
 curl -s -H "X-Dingtalk-Source-Token: $CLOUDCLI_DINGTALK_SOURCE_TOKEN" \
-  -X DELETE http://localhost:58596/api/cron-jobs/<id> | jq .
+  -X DELETE $CLOUDCLI_API_BASE_URL/api/cron-jobs/<id> | jq .
 ```
 
 ### 立即执行一次
@@ -177,7 +183,7 @@ curl -s -H "X-Dingtalk-Source-Token: $CLOUDCLI_DINGTALK_SOURCE_TOKEN" \
 
 ```bash
 curl -s -H "X-Dingtalk-Source-Token: $CLOUDCLI_DINGTALK_SOURCE_TOKEN" \
-  -X POST http://localhost:58596/api/cron-jobs/<id>/run | jq .
+  -X POST $CLOUDCLI_API_BASE_URL/api/cron-jobs/<id>/run | jq .
 ```
 
 ### 暂停 / 恢复任务
@@ -185,13 +191,13 @@ curl -s -H "X-Dingtalk-Source-Token: $CLOUDCLI_DINGTALK_SOURCE_TOKEN" \
 ```bash
 # 暂停
 curl -s -H "X-Dingtalk-Source-Token: $CLOUDCLI_DINGTALK_SOURCE_TOKEN" \
-  -X PATCH http://localhost:58596/api/cron-jobs/<id>/toggle \
+  -X PATCH $CLOUDCLI_API_BASE_URL/api/cron-jobs/<id>/toggle \
   -H "Content-Type: application/json" \
   -d '{"is_active": false}' | jq .
 
 # 恢复
 curl -s -H "X-Dingtalk-Source-Token: $CLOUDCLI_DINGTALK_SOURCE_TOKEN" \
-  -X PATCH http://localhost:58596/api/cron-jobs/<id>/toggle \
+  -X PATCH $CLOUDCLI_API_BASE_URL/api/cron-jobs/<id>/toggle \
   -H "Content-Type: application/json" \
   -d '{"is_active": true}' | jq .
 ```
@@ -200,14 +206,14 @@ curl -s -H "X-Dingtalk-Source-Token: $CLOUDCLI_DINGTALK_SOURCE_TOKEN" \
 
 ```bash
 curl -s -H "X-Dingtalk-Source-Token: $CLOUDCLI_DINGTALK_SOURCE_TOKEN" \
-  http://localhost:58596/api/cron-jobs/<id>/runs | jq .
+  $CLOUDCLI_API_BASE_URL/api/cron-jobs/<id>/runs | jq .
 ```
 
 ### 查看可用模板
 
 ```bash
 curl -s -H "X-Dingtalk-Source-Token: $CLOUDCLI_DINGTALK_SOURCE_TOKEN" \
-  http://localhost:58596/api/cron-jobs/templates | jq .
+  $CLOUDCLI_API_BASE_URL/api/cron-jobs/templates | jq .
 ```
 
 ## 字段参考

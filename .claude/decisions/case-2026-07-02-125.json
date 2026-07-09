@@ -1,0 +1,26 @@
+{
+  "case_id": "case-2026-07-02-125",
+  "agent_id": "ralph-wiggum-loop",
+  "timestamp": "2026-07-02T08:35:00Z",
+  "project": "autonomous-engine",
+  "work_unit": "fix-audit-AE2-M-003-checkpoint-read-permission",
+  "situation": "audit-2026-07-02-007 finding AE2-M-003 (priority 6): decision-agent-prompt.md §3 '绝对不读' list bans checkpoints/*.json entirely, but §0.2 Phase CS-ACT step ③ requires verifying checkpoint creation success (rollback path verification). Sub-agent cannot validate its own checkpoint without reading latest.json — permission asymmetry breaks cold-start safety guarantee.",
+  "action": "Relaxed §3 checkpoint read ban to conditional: checkpoints readable ONLY during CS-ACT verification phase (§0.2 step ③). All other phases still banned to prevent runtime state pollution of decision context. Added explicit cross-reference to §0.2 Phase CS-ACT as the sole authorized read scenario.",
+  "files_changed": [
+    ".claude/skills/autonomous-engine/decision-agent-prompt.md"
+  ],
+  "worktree": "optimization",
+  "direction": "engine:audit-AE2-M-003-checkpoint-read",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 3680fdd in opt-worktree optimization. §3 line 509 changed from '✗ 检查点文件 (checkpoints/*.json)' to '⚠ 检查点文件 (checkpoints/*.json) — 仅在冷启动 CS-ACT 验证阶段可读'. Cross-references §0.2 Phase CS-ACT step ③. No other files modified. Route-fix (decision-agent-prompt.md not in public-interfaces.txt).",
+  "next_suggestion": [
+    "AE2-M-004 (priority 7): autonomous-suggestions.md entries reference Windows workspace projects — archive stale entries",
+    "AE2-L-001 (priority 8): MEMORY.md references non-existent decision-archive.md — create skeleton or remove link",
+    "AE2-L-002 (priority 9): CLAUDE.md cron IDs not cross-verified against scheduled_tasks.json",
+    "L-002 (audit-006 priority 9): updateEvent terminal-state logic vs SKILL.md inconsistency — doc alignment"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-007",
+  "audit_depth": "shallow"
+}

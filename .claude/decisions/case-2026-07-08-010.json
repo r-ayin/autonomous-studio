@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-08-010",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-07T01:55:00+08:00",
+  "project": "autonomous-engine",
+  "work_unit": "decision-observer session context TOCTOU fix (AE-M-002)",
+  "situation": "audit-2026-07-08-043 derived_fix AE-M-002 pending. decision-observer.py:172 write_session_context() does read-modify-write on session JSON without lock. Concurrent Stop hooks (multi-instance Claude Code / hook retry) can lose updates. handle_user_prompt_submit has same pattern at line 207-221 (separate read of input_count then write_session_context re-reads).",
+  "action": "Added fcntl.flock(LOCK_EX) around read-modify-write in write_session_context. Added optional transform callback parameter executed inside locked section to eliminate external pre-read TOCTOU. Refactored handle_user_prompt_submit to use transform=lambda e: {**e, 'input_count': e.get('input_count', 0) + 1} instead of separate read-increment-write. Verified with 10-process concurrent test: counter=10/10 after parallel writes (would be <10 without flock).",
+  "files_changed": [".claude/hooks/decision-observer.py"],
+  "worktree": "opt-hooks-1783388352",
+  "direction": "hooks:decision-observer-toctou",
+  "outcome": "merged",
+  "outcome_evidence": "Commit 06e59d2 on auto/opt-hooks-1783388352. python3 syntax check passed. Cross-process concurrent test: 10 subprocess writes with flock produced counter=10 (no lost updates). cp-guard triggered on opt-hooks-1783203936 (prior phantom-fix divergence); used case-104 escape hatch direct wt commit on opt-hooks-1783388352. Push failed (origin 404 — autonomous-engine repo not found on code.alibaba-inc.com/xtool/); local-only branch per x-tool external fork pattern.",
+  "next_suggestion": "Next pending: AE-L-001 (protocol-check env whitelist partial — 09374bb added --project-dir but os.environ still inherited fully). Then AE-L-002 (notify-phone ntfy 4KB truncate). After all 3 cleared, audit-cycle-state → cycle-complete triggers next full audit.",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": ".claude/hooks/decision-observer.py",
+      "line": 172,
+      "severity": "medium",
+      "finding": "write_session_context read-modify-write without lock — concurrent Stop hooks lose updates (TOCTOU)",
+      "remediation": "fcntl.flock(LOCK_EX) around read-update-write; optional transform callback for pre-read-then-compute patterns",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-08-043",
+  "audit_depth": "shallow"
+}

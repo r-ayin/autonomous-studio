@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-02-090",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-02T10:30:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "scout-scan vendor bundle exclusion",
+  "situation": "scout-scan reported autonomous-studio TODO=3 (actually 33 from _excalidraw_bundle.js vendor bundle), causing AS to falsely dominate triage recommendations every cycle. String literal stripper worked on discovery-gate.py but vendor JS bundles with upstream TODO comments were unhandled.",
+  "action": "Added _bundle.js and .bundle.js to IGNORE_FILES_SUFFIX in scout-scan.py alongside existing .min.js exclusion. Verified TODO count drops from 3 to 0 for AS.",
+  "files_changed": ["scripts/scout-scan.py"],
+  "worktree": "opt-scout-scan-1782961449",
+  "direction": "scout-scan:vendor-bundle-exclusion",
+  "outcome": "succeeded",
+  "outcome_evidence": "post-fix scout-scan shows autonomous-studio TODO=0 FIXME=0 HACK=0; AS no longer appears in triage recommendations; commit e8525e9 on auto/opt-scout-scan-1782961449",
+  "next_suggestion": "await human merge of opt-scout-scan-1782961449; then re-run scout-scan to confirm stable ranking; 3 pending moni-master fixes (MR-L02/L04/L08) still await merge",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": null,
+  "audit_depth": "shallow"
+}

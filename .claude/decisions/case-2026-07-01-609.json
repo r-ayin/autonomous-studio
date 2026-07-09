@@ -1,0 +1,38 @@
+{
+  "case_id": "case-2026-07-01-609",
+  "agent_id": "ralph-wiggum-cycle",
+  "timestamp": "2026-07-01T11:35:00Z",
+  "project": "shizi",
+  "work_unit": "full-deep-audit-shizi-src-fullstack",
+  "situation": "audit-cycle-state.json status=cycle-complete，按 _status_note 指示选 shizi（从未审过、最近活跃5h前）作为新一轮全量审计目标。前序 audit-001~004 已覆盖 autonomous-studio-aone/hooks+scripts、sunset-prediction/server、wechat-main/scripts+pipeline。",
+  "action": "深度审计 shizi/src/ 全栈 14 文件（vision-adapter/orchestrator/ocr-internal/segmentation/counter/storage/types/background-index/SettingsPage/SidePanelApp/build.mjs/vite.config/tsconfig）+ manifest + tests 目录结构 + git history + grep 敏感词/XSS sink。产出 audit-2026-07-01-005.md，识别 14 findings (2H/5M/4L/3I)，派生 9 条 route-fix 进 audit-cycle-state.derived_fixes。",
+  "files_changed": [
+    ".claude/audits/audit-2026-07-01-005.md",
+    ".claude/audit-cycle-state.json",
+    ".claude/memory/autonomous-state.md"
+  ],
+  "worktree": null,
+  "direction": "audit-only",
+  "outcome": "succeeded",
+  "outcome_evidence": "audit-2026-07-01-005.md 写入成功（14 findings 表格完整）；audit-cycle-state.json current_audit_id=audit-2026-07-01-005, status=fix-in-progress, derived_fixes 9 条全部 status=pending, history 数组追加第5项。",
+  "next_suggestion": "下轮派生 SH-H-001 fix case（vision-adapter.ts API error 脱敏），route-fix 复用 opt-shizi worktree。若人工在此之前 merge 了 audit-002/003/004 的任一 pending fix，优先处理该 fix 的状态同步。",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {"file": "src/background/vision-adapter.ts", "line": 125, "severity": "high", "finding": "API error response body thrown verbatim to UI, may leak IdeaLab internal tokens/request-ids", "remediation": "parseApiError 统一截断 body ≤200 chars + 剥内部字段", "kind": "route-fix"},
+    {"file": "src/background/orchestrator.ts", "line": 130, "severity": "high", "finding": "vl_text mode 三路并行 .catch(() => []) 吞错，静默降级为假阳性空结果", "remediation": "收集 errors 数组透传 debugInfo.error", "kind": "route-fix"},
+    {"file": "src/shared/storage.ts", "line": 16, "severity": "medium", "finding": "loadSettings 浅合并导致嵌套对象缺字段时无法 fallback 默认值", "remediation": "三层 nested merge (vision/counter/detectionParams)", "kind": "route-fix"},
+    {"file": "src/background/ocr-internal.ts", "line": 91, "severity": "medium", "finding": "callOcr 无 timeout/retry，内网抖动整条流水线 fail", "remediation": "AbortController 30s timeout + 1次 retry", "kind": "route-fix"},
+    {"file": "src/background/segmentation.ts", "line": 71, "severity": "medium", "finding": "getModelBuffer fetch 无 timeout，GitHub raw 内网阻断卡死 SW", "remediation": "AbortController 30s timeout per URL", "kind": "route-fix"},
+    {"file": "src/background/index.ts", "line": 87, "severity": "medium", "finding": "saveHistoryItem 失败阻塞整个 runPipeline response", "remediation": "try/catch 降级 console.warn", "kind": "route-fix"},
+    {"file": "src/sidepanel/SidePanelApp.tsx", "line": 143, "severity": "medium", "finding": "deletedStack key=text+bbox 碰撞导致同文同框误删", "remediation": "改用 VerifiedText.id 作 key", "kind": "route-fix"},
+    {"file": "src/background/vision-adapter.ts", "line": 291, "severity": "low", "finding": "preprocessForVL 无 size cap，>10MB base64 PNG 解码 OOM", "remediation": "raw length >10MB early reject", "kind": "route-fix"},
+    {"file": "src/background/ocr-internal.ts", "line": 293, "severity": "low", "finding": "nmsDedup O(n²) editDistance，>200 条结果 SW 主线程卡顿", "remediation": ">150 条时跳 editDistance，仅 IoU+exact match", "kind": "route-fix"},
+    {"file": "src/shared/storage.ts", "line": 37, "severity": "low", "finding": "saveHistoryItem 读改写非原子，并发丢条目", "remediation": "promise queue mutex", "kind": "route-fix"},
+    {"file": "build.mjs", "line": 140, "severity": "low", "finding": "manifest.json JS 字符串拼接，无 schema 校验", "remediation": "抽 manifest.template.json", "kind": "structural"},
+    {"file": "tests/", "line": 0, "severity": "info", "finding": "13 debug/badcase/test scratch scripts tracked in tests/", "remediation": "迁移 scripts/ 或 .gitignore", "kind": "structural"},
+    {"file": "PROGRESS.md", "line": 23, "severity": "info", "finding": "VL_KEY 明文写在文档中二次传播风险", "remediation": "改 <REDACTED> + 引用 commit hash", "kind": "structural"},
+    {"file": "src/background/vision-adapter.ts", "line": 67, "severity": "info", "finding": "IDEALAB_OPENAI_MODELS 硬编码 4 模型名", "remediation": "从 settings 或远程配置读取", "kind": "route-fix"}
+  ],
+  "audit_id": "audit-2026-07-01-005",
+  "audit_depth": "deep"
+}

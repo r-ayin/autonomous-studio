@@ -1,0 +1,38 @@
+{
+  "case_id": "case-2026-07-05-091",
+  "agent_id": "autonomous-studio-ralph",
+  "timestamp": "2026-07-05T14:31:30+08:00",
+  "project": "x-tool",
+  "work_unit": "pachong:PA-L-003 — crawler/browser_crawler.py CHROMIUM_STEALTH_ARGS 移除 --disable-web-security（抓 untrusted 公告页时关闭同源策略的浏览器进程暴露面），派生自 audit-2026-07-05-010",
+  "situation": "audit-cycle-state status=fix-in-progress (audit-2026-07-05-010 x-tool pachong-master deep audit). 10 derived route-fix: PA-H-001 rejected(false-positive); PA-H-002/PA-M-001/PA-M-002/PA-M-003/PA-L-001/PA-L-002/PA-I-001 7 个已 case-090 sanctioned squash-merge 进 master (merge_commit 60ee43b, opt-pachong-1783229257 worktree 已清); 剩余 pending = PA-L-003 (priority 8, low) + PA-I-002 (priority 10, info). 本轮按 _status_note 派 PA-L-003. 先查 git worktree list + 已有 case (memory [[fix-already-committed-check]] case-090 教训): 确认 opt-pachong-1783229257 已 merge 清除, browser_crawler.py 不在 case-090 files_changed 内, master 60ee43b 的 CHROMIUM_STEALTH_ARGS 仍含 --disable-web-security + --no-sandbox → PA-L-003 真未修, 非重复 fix.",
+  "action": "单文件 fix (crawler/browser_crawler.py, 1 文件 5+/1-): (1) 从 CHROMIUM_STEALTH_ARGS 列表删除 \"--disable-web-security\" — fetch_page() 抓取 untrusted 公告 detail_url, 关闭同源策略让恶意页可跨域读资源/探内网/读 file://, 反爬不需要它(UA + stealth 注入脚本已够). (2) 保留 \"--no-sandbox\" + \"--disable-setuid-sandbox\" 不动 (Chromium 容器内 root 跑无此 flag 拒绝启动), 在 CHROMIUM_STEALTH_ARGS 上方补 6 行注释说明安全权衡: --disable-web-security 已移除理由 + --no-sandbox 仅容器隔离场景安全/绝不裸机或多租户启用. 未引入容器检测逻辑(超出最小单位, 且当前部署即容器内 root, 条件化反而引入误判风险). opt-worktree.sh /home/admin/workspace/x-tool commit pachong:browser-crawler-remove-web-security → direction_kind 判定 route-fix (browser_crawler.py 不在 .claude/public-interfaces.txt); 旧 opt-pachong-1783229257 已 merge 清除 → 无同 area worktree 可复用 → 脚本新建 opt-pachong-1783233062 (base=60ee43b=master). origin push 403 x-tool fork (同 PA-H-002..PA-L-002 全部先例), 本地 commit + worktree 保留待人工 sanctioned squash-merge.",
+  "files_changed": [
+    "x-tool/pachong-master/crawler/browser_crawler.py"
+  ],
+  "worktree": "opt-pachong-1783233062 (auto/opt-pachong-1783233062, base=60ee43b=x-tool master, HEAD=c5a4d8b, 1 commit, disk 保留; origin push 403 x-tool fork 同 PA-H-002..PA-L-002 先例)",
+  "direction": "pachong:browser-crawler-remove-web-security (route-fix, 新建 opt-pachong-1783233062; 旧 opt-pachong-1783229257 已 case-090 merge 清除)",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "opt-worktree.sh commit 输出: '✓ 提交到 opt-pachong-1783233062  方向=pachong:browser-crawler-remove-web-security'",
+    "git log opt-pachong-1783233062: c5a4d8b 'opt(pachong:browser-crawler-remove-web-security): fix(browser_crawler): remove --disable-web-security from CHROMIUM_STEALTH_ARGS (audit-2026-07-05-010 PA-L-003)...' 基于父 60ee43b(merge case-090) — 干净 1-commit, 无 stack 污染",
+    "git show --stat HEAD: pachong-master/crawler/browser_crawler.py | 6 +++++- (1 file changed, 5 insertions, 1 deletion) — 仅触及声明文件, 无 scope 蔓延",
+    "grep 验证 worktree HEAD 文件: '--disable-web-security' 仅出现在注释行 50('已移除'说明), args 列表内 0 命中; '--no-sandbox' 仍在 args 行 57 + 注释行 52 说明容器场景理由 — 移除与保留均符合 remediation",
+    "python3 ast.parse 语法 OK (改动仅列表删一行 + 注释, 无结构变更)",
+    "main x-tool 状态: opt-worktree cp+commit+restore 舞步后 git status pachong-master/crawler/browser_crawler.py 干净(脚本已恢复 main 到 HEAD 60ee43b, 无残留 dirt)",
+    "origin push: 'remote: git push is not allowed' / 403 ghp-ro.alibaba-inc.com r-ayin/x-tool.git — 同 PA-H-002..PA-L-002 全部先例, 本地 worktree + commit 完整保留待人工 sanctioned squash-merge (precedent: case-090 一次性 squash 7 finding)"
+  ],
+  "next_suggestion": "下轮派 PA-I-002 (priority 10, info, web_admin/app.py:207 notice_detail SELECT n.* → 显式列名 SELECT n.id,n.title,... 与 notice_list 风格一致; route-fix 复用 opt-pachong-1783233062 堆叠). PA-I-002 派完后 audit-2026-07-05-010 全 10 derived fix 落定(1 rejected + 8 dispatched + 1 待派) → 但 8 个 dispatched 仍 pending 人工 merge, status 维持 fix-in-progress 不转 cycle-complete, 待人工 sanctioned squash-merge (同 case-090 模式) 后再 cycle-complete → 触发下一轮全量审计(挑未深审项目). 累积 8 个 pending fix 在 opt-pachong-1783233062 (PA-L-003) + case-090 已 merge 的 7 个; 建议人工尽快审 opt-pachong-1783233062 diff (单文件 6 行) merge 或 reject.",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "x-tool/pachong-master/crawler/browser_crawler.py",
+      "line": 57,
+      "severity": "low",
+      "finding": "CHROMIUM_STEALTH_ARGS 含 --disable-web-security, 用该浏览器 fetch_page(任意 detail_url) 抓取被爬 untrusted 公告页 → 关闭同源策略下恶意页可跨域读资源/探内网/读 file://, 浏览器进程本身被污染页利用. (audit-2026-07-05-010 PA-L-003)",
+      "remediation": "删 --disable-web-security (反爬不需要, UA+stealth script 已够); --no-sandbox 保留并注释容器场景理由. 已在本 case 实施.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-010",
+  "audit_depth": "shallow"
+}

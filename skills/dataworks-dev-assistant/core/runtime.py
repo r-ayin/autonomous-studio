@@ -319,6 +319,23 @@ def _atexit_print_status():
 atexit.register(_atexit_print_status)
 
 
+def _atomic_write_json(path, obj):
+    """原子写 JSON：先写 tmp 文件再 os.replace，崩溃不截断目标文件。
+
+    与 bootstrap_context 的写入语义一致（RUNTIM-03：原 save_tool_result
+    用 open(w)+json.dump 非原子，崩溃会留下截断的 session_state.json）。
+    失败打印 stderr 不抛（RUNTIM-06：原裸 `except: pass` 静默吞错）。
+    """
+    try:
+        os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+        tmp = path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(obj, f, ensure_ascii=False, indent=2)
+        os.replace(tmp, path)
+    except (OSError, TypeError, ValueError) as e:
+        print(f"⚠️ 写入失败 {path}: {e}", file=sys.stderr)
+
+
 def save_tool_result(tool_name, result_dict, work_dir=None):
     """Save structured tool result to a JSON file in the working directory.
 
@@ -336,21 +353,11 @@ def save_tool_result(tool_name, result_dict, work_dir=None):
     result_dict["_tool"] = tool_name
     result_dict["_timestamp"] = datetime.now().isoformat()
 
-    try:
-        with open(result_path, "w", encoding="utf-8") as f:
-            json.dump(result_dict, f, ensure_ascii=False, indent=2)
-    except Exception:
-        pass
+    _atomic_write_json(result_path, result_dict)
 
     # Update session state
     state_path = os.path.join(runtime_dir, _SESSION_STATE_FILE)
-    state = {}
-    if os.path.exists(state_path):
-        try:
-            with open(state_path, "r", encoding="utf-8") as f:
-                state = json.load(f)
-        except Exception:
-            pass
+    state = _read_session_state(work_dir)
 
     state.setdefault("tool_results", {})[tool_name] = {
         "file": f".dataworks/{tool_name}_result.json",
@@ -358,11 +365,7 @@ def save_tool_result(tool_name, result_dict, work_dir=None):
         "summary": result_dict.get("summary", ""),
     }
 
-    try:
-        with open(state_path, "w", encoding="utf-8") as f:
-            json.dump(state, f, ensure_ascii=False, indent=2)
-    except Exception:
-        pass
+    _atomic_write_json(state_path, state)
 
 
 def load_backlogs(work_dir=None):

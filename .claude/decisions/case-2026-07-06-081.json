@@ -1,0 +1,32 @@
+{
+  "case_id": "case-2026-07-06-081",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-06T22:20:00+08:00",
+  "project": "wechat-main",
+  "work_unit": "M-011 pipeline-gate.sh TOPIC glob injection — duplicate-dispatch resolution",
+  "situation": "audit-cycle-state derived_fixes M-011 (pipeline-gate.sh:46 TOPIC unsanitized in find -name glob) status=pending. Scout-scan ran; health snapshot nominal. cp-guard blocked re-edit because worktree opt-wechat-main-1783130541 already contains equivalent GATE-10 fix from prior audit cycle.",
+  "action": "Verified pre-existing fix on worktree branch: commit 73599c0 'fix(gate): WM-GATE-02 TOPIC glob 注入校验' adds regex validation rejecting non-[a-zA-Z0-9_-] TOPIC before any find -name interpolation. Branch pushed to origin/auto/opt-wechat-main-1783130541. Marked M-011 as merged (duplicate-dispatch of WM-GATE-02 from audit-2026-07-05-001). No new commit created per [[Fix already committed check]] memory rule.",
+  "files_changed": [],
+  "worktree": "opt-wechat-main-1783130541",
+  "direction": "wechat-main:gate-topic-sanitize",
+  "outcome": "merged",
+  "outcome_evidence": "git log auto/opt-wechat-main-1783130541 shows commit 73599c0 with message 'fix(gate): WM-GATE-02 TOPIC glob 注入校验'; git branch -r confirms origin/auto/opt-wechat-main-1783130541 exists; worktree file scripts/pipeline-gate.sh line ~32 contains regex [^a-zA-Z0-9_-] guard preceding resolve_checkpoint function. Duplicate of audit-2026-07-05-001 WM-GATE-02 finding.",
+  "next_suggestion": [
+    "派生下一个 pending fix M-012 (verifier.py:351 --output arbitrary file write)",
+    "若连续 3 轮 duplicate-dispatch，重新评估 audit-2026-07-06-022 derived_fixes 去重"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "scripts/pipeline-gate.sh",
+      "line": 46,
+      "severity": "medium",
+      "finding": "TOPIC unsanitized in find -name glob (metachar *?[] enables cross-topic match or find error). Already fixed as WM-GATE-02 in commit 73599c0 on opt-wechat-main-1783130541; M-011 is duplicate-dispatch from second audit pass.",
+      "remediation": "Already applied: regex reject [^a-zA-Z0-9_-] before find interpolation. Pending human merge of worktree to main.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-022",
+  "audit_depth": "shallow",
+  "_duplicate_dispatch_note": "M-011 duplicates WM-GATE-02 from audit-2026-07-05-001. Both target same sink (resolve_checkpoint find -name), same remediation (slug charset validation). Marking merged avoids redundant commit."
+}

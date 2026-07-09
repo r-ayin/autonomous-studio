@@ -1,0 +1,32 @@
+{
+  "case_id": "case-2026-07-03-020",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-03T21:40:00Z",
+  "project": "wechat-main",
+  "work_unit": "script-verifier/verifier.py merge_retry_report 历史丢失修复 (HV-001)",
+  "situation": "audit-2026-07-03-011 HV-001 finding：merge_retry_report(attempts) 在 retry 命令中被传入 [current_report] 单元素列表，函数内浅拷贝 + 重置 retry_history=[] 后仅从 attempts 重建历史，导致之前累积的 _retry_history 全部丢失。修复闭环在多轮重试时看不到前几轮的 falsified/unverifiable 计数。",
+  "action": "改写 merge_retry_report：先从所有 attempts 的 _retry_history 字段收集已累积条目（去重 by attempt 号），再把未带历史的 attempt 补入，最后排序得到完整 merged_history；final['retries'] 与 final['retry_history'] 均基于此合并结果。保留原函数签名与返回值结构，调用方无需改动。",
+  "files_changed": ["script-verifier/verifier.py"],
+  "worktree": "opt-wechat-1783021994",
+  "direction": "wechat:verifier-merge-retry-history",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh commit 输出 '✓ 提交到 opt-wechat-1783021994' + '✓ 已 push auto/opt-wechat-1783021994 → origin/auto/opt-wechat-1783021994'；远端提示创建 CR URL https://code.alibaba-inc.com/qunbu/wechat/codereview/new?from=main&to=auto/opt-wechat-1783021994",
+  "next_suggestion": [
+    "派生 HV-002 (fact_checker.py data_year UTC 统一)",
+    "派生 HV-003 (hot-scanner.py event-scan --output 安全 merge)",
+    "audit-cycle-state.pending_count 降至 8 后再跑 scout 瞭望"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "script-verifier/verifier.py",
+      "line": 252,
+      "severity": "high",
+      "finding": "merge_retry_report 浅拷贝 + 重置 retry_history=[] 后仅从 attempts 列表重建历史，当 retry 命令传入 [current_report] 单元素时丢失之前累计的 _retry_history",
+      "remediation": "先从 attempts 各 report 的 _retry_history 字段收集已有条目再去重补全，已实施",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-03-011",
+  "audit_depth": "shallow"
+}

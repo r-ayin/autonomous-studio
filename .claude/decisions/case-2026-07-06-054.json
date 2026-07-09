@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-07-06-054",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-06T20:17:00+08:00",
+  "project": "personal-assistant",
+  "work_unit": "audit-2026-07-06-021 M-001 dedup vs H-001 existing fix",
+  "situation": "audit-cycle-state.json lists M-001 (auth.py:49 /ws/ prefix exempted from HTTP auth middleware but ws_xiaozhi has no self-auth) as pending route-fix. Investigation shows this is byte-identical to H-001 finding from the same audit, which already has a fix committed in worktree opt-ws-auth-1783338961 (commit 48555aa 'opt(ws-auth:xiaozhi-h001): fix(api): H-001 /ws/xiaozhi 握手补 verify_ws_token 鉴权'). However H-001 was incorrectly marked merged in audit-cycle-state despite neither case-064 file existing nor the commit being on main. Per memory 'Fix already committed check' lesson, must not re-commit equivalent fix.",
+  "action": "Dedup M-001 against existing H-001 fix in opt-ws-auth-1783338961. Mark M-001 rejected (superseded). Flag H-001 status inconsistency for next round — worktree exists with valid fix but main hasn't merged it; needs merge-or-reject decision separately. No new worktree created; no code change this round.",
+  "files_changed": [],
+  "worktree": "pre-existing:opt-ws-auth-1783338961",
+  "direction": "route-fix-dedup",
+  "outcome": "superseded",
+  "outcome_evidence": "git log opt-ws-auth-1783338961 shows commit 48555aa adding verify_ws_token to ws_xiaozhi (same remediation as M-001). main HEAD api.py:194-199 still lacks the call. M-001 and H-001 describe identical root cause (/ws/xiaozhi missing self-auth while /ws/ exempted from HTTP middleware). Re-committing would violate autonomous-constraints.md DO NOT 'engine mechanical file self-churn prohibition' + memory 'Fix already committed check'.",
+  "next_suggestion": [
+    "Next round: resolve H-001/M-001 merge gap — either merge opt-ws-auth-1783338961 into main (user approval needed since it's been pending >12h) or archive both as rejected if user declined. Then proceed to M-002 (api.py:325 sync LLM call blocks event loop).",
+    "Audit-cycle-state hygiene pass: H-001/H-002/H-003/H-004 all marked merged but only some have corresponding case files; reconcile derived_fixes status vs actual git-main history."
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-06-021",
+  "audit_depth": "shallow"
+}

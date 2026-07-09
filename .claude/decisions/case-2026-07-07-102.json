@@ -1,0 +1,31 @@
+{
+  "case_id": "case-2026-07-07-102",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-08T00:05:00+08:00",
+  "project": "personal-assistant",
+  "work_unit": "android liveBus WS message size cap (M-ANDROID-001)",
+  "situation": "audit-2026-07-07-034 M-ANDROID-001: android/index.html liveBus WebSocket onmessage 直接 JSON.parse(ev.data) 无大小上限，与服务端 relay_bridge.py 64KB MAX_MSG_SIZE 不对称。恶意/异常大帧可致客户端 DoS。派生 fix。",
+  "action": "在 ws.onmessage handler 入口加 64KB 字符串长度守卫：超限 warn + drop，不触发 JSON.parse。保持与服务端限制对称。",
+  "files_changed": ["android/index.html"],
+  "worktree": "opt-android-1783372989",
+  "direction": "android:ws-size-cap",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 4680f5a on auto/opt-android-1783372989, pushed to origin. liveBus ws.onmessage now guards ev.data.length > 65536 before JSON.parse.",
+  "next_suggestion": [
+    "monitor opt-android-1783372989 for human merge; once merged mark M-ANDROID-001 merged in audit-cycle-state → cycle-complete triggers next full audit",
+    "scout-scan #1 shizi PROGRESS.md stale 7.7d — refresh if no pending fix work"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "android/index.html",
+      "line": 600,
+      "severity": "medium",
+      "finding": "liveBus ws.onmessage accepts arbitrarily large frames before JSON.parse; no client-side size cap unlike server-side relay_bridge.py 64KB limit",
+      "remediation": "Add 64KB length guard at onmessage entry; drop + console.warn oversized frames",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-034",
+  "audit_depth": "shallow"
+}

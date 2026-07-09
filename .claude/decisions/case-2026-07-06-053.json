@@ -1,0 +1,34 @@
+{
+  "case_id": "case-2026-07-06-053",
+  "agent_id": "autonomous-loop-ralph",
+  "timestamp": "2026-07-06T12:12:06Z",
+  "project": "personal-assistant",
+  "work_unit": "scripts/audio_relay.py H-004 bind+auth gate",
+  "situation": "audit-2026-07-06-021 H-004 finding: audio_relay.py:222 binds 0.0.0.0 with no authentication, accepting PCM from any network peer. ESP32 is local device; default should be loopback + optional token gate for cross-segment deployments.",
+  "action": "Changed default bind from 0.0.0.0 to 127.0.0.1. Added --host CLI arg + PA_RELAY_HOST env override. Added optional AUTH token gate in handler(): when self.token configured, first text message must be 'AUTH <token>' or connection closed. Backward compatible (no token = original behavior). Single file, route-fix via opt-worktree.sh.",
+  "files_changed": [
+    "scripts/audio_relay.py"
+  ],
+  "worktree": "opt-scripts-1783339532",
+  "direction": "scripts:audio-relay-auth",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh commit exit 0; push origin/auto/opt-scripts-1783339532 54ea6e0..8fc9257 confirmed by remote response; diff stats: scripts/audio_relay.py | 35 ++++++++++++++++++++++++++++++----- (30 insertions, 5 deletions)",
+  "next_suggestion": [
+    "派生 M-001 fix: auth.py:49 /ws/ prefix exempted from HTTP auth but ws_xiaozhi has no self-auth (remove /ws/ from _EXEMPT_PREFIXES)",
+    "派生 M-005 fix: relay_bridge.py:107 Origin validation bypassed when Origin header absent",
+    "H-004 merged 后更新 audit-cycle-state derived_fixes status=pending→merged"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "scripts/audio_relay.py",
+      "line": 222,
+      "severity": "high",
+      "finding": "WebSocket server binds 0.0.0.0 with no authentication; any network peer can inject PCM audio into assistant pipeline",
+      "remediation": "Default bind 127.0.0.1 + --host override + optional AUTH token gate in handler()",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-021",
+  "audit_depth": "shallow"
+}

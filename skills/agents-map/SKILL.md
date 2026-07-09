@@ -2,6 +2,7 @@
 name: agents-map
 description: 根据一个或多个子项目的 `.planning/codebase/` 事实文档，生成或刷新根级 `AGENTS.md`、根级 `ARCHITECTURE.md` 与系统级补充文档。适用于 monorepo、多应用工作区、前后端分仓合并目录、服务拆分仓等场景。当用户提到“创建 AGENTS.md 地图”“根据 A/.planning/codebase B/.planning/codebase 生成 AGENTS.md”“汇总多个子项目导航规则”时使用。本技能先读取子项目事实层，再沉淀根级系统架构图与系统级补充说明，最后生成简洁的导航型 `AGENTS.md`，避免复制实现细节。
 repository: https://code.alibaba-inc.com/qunbu/agents-map
+version: 1.0.0
 ---
 
 # AGENTS / ARCHITECTURE 地图生成器

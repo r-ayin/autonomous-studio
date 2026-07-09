@@ -1,0 +1,29 @@
+{
+  "case_id": "case-2026-07-01-657",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-01T17:30:00Z",
+  "project": "moni-master",
+  "work_unit": "deep-audit: local_simulator + factors/scripts + moni-rs/crates/{core,engine,data}",
+  "situation": "audit-cycle-state.json status=cycle-complete (audit-009 fixes 全部 merged)。触发新一轮全量审计。已审过 autonomous-studio-aone/sunset-prediction/wechat-main/shizi/personal-assistant/autonomous-studio/x-tool/autonomous-engine。选 moni-master（未审过，后端/量化允许）作为本轮目标。",
+  "action": "深度审计 moni-master 后端：读 CLAUDE.md/local_simulator/config.yaml/engine.rs/memory.rs/paths.rs/config.rs/provider.rs；grep factors/*.py 和 local_simulator/*.py 的 Windows 路径硬编码；分析 Rust crates 错误处理和并发安全。产出 audit-2026-07-01-010.md，发现 8 findings (2H/4M/2L)，派生 6 derived_fixes (4 route-fix + 2 structural)。",
+  "files_changed": [
+    ".claude/audits/audit-2026-07-01-010.md",
+    ".claude/audit-cycle-state.json"
+  ],
+  "worktree": null,
+  "direction": "audit-only",
+  "outcome": "succeeded",
+  "outcome_evidence": "审计报告 .claude/audits/audit-2026-07-01-010.md 已落盘（8 findings, 6 derived fixes）。audit-cycle-state.json 已更新 status=fix-in-progress, current_audit_id=audit-2026-07-01-010, pending_count=6。无代码改动（纯审计轮）。",
+  "next_suggestion": "下轮从 audit-2026-07-01-010 derived_fixes 派生第一个 fix：MH-001 (priority 1, route-fix) — 改 CLAUDE.md/README/USAGE 文档为跨平台格式。用 opt-worktree.sh commit docs:cross-platform-docs ...",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {"file": "CLAUDE.md", "line": 37, "severity": "high", "finding": "文档全面假定 Windows 环境（E:\\x-tool\\moni 路径 + PowerShell 命令），Linux 部署不可操作", "remediation": "改相对路径 + bash 等价命令 + env var 说明", "kind": "route-fix"},
+    {"file": "factors/multi_factor_round2.py", "line": 7, "severity": "high", "finding": "factors/ 70+ 脚本硬编码 F:/stock-backtest/E:/x-tool Windows 路径，结构性技术债", "remediation": "建 market_lake_common.py 公共路径模块，渐进迁移活跃脚本", "kind": "structural"},
+    {"file": "moni-rs/crates/moni-engine/src/engine.rs", "line": 467, "severity": "medium", "finding": "attempt_match 错误被 let _ = 静默吞掉，撮合异常不入日志不通知客户端", "remediation": "改为 if let Err(e) + tracing::warn + match_error event", "kind": "route-fix"},
+    {"file": "moni-rs/crates/moni-data/src/memory.rs", "line": 28, "severity": "medium", "finding": "RwLock unwrap 5处无 poison recovery，违反防御性编程惯例", "remediation": "unwrap_or_else(|e| e.into_inner()) 或封装 PoisonSafeRwLock", "kind": "structural"},
+    {"file": "moni-rs/crates/moni-core/src/config.rs", "line": 339, "severity": "medium", "finding": "canonicalize unwrap_or_else 静默 fallback 掩盖缺失配置文件", "remediation": "让 canonicalize 错误传播 + is_file 前置校验", "kind": "route-fix"},
+    {"file": "moni-rs/crates/moni-engine/src/engine.rs", "line": 298, "severity": "medium", "finding": "map_err(|e| e) 恒等变换死代码", "remediation": "删除 map_err，直接 reply.send(result)", "kind": "route-fix"}
+  ],
+  "audit_id": "audit-2026-07-01-010",
+  "audit_depth": "deep"
+}

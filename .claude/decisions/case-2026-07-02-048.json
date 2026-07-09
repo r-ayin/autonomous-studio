@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-02-048",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-02T03:25:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "install-studio-hooks.sh lint guard registration (AS-EC-011)",
+  "situation": "audit-2026-07-02-002 finding AS-EC-011 pending: install-studio-hooks.sh copies and registers 3 hooks (studio-progress-check, studio-prd-validate, studio-auto-commit-remind) but omits studio-lint-guard.sh — the lint guard hook script exists in hooks/ but is never installed to ~/.claude/hooks/ nor registered in PostToolUse settings.",
+  "action": "Added studio-lint-guard.sh to (1) the copy loop at line 17 so it gets deployed to ~/.claude/hooks/, and (2) the new_hooks Python list with both Write and Edit matchers (timeout 15s) so it gets registered in PostToolUse settings.json. This also partially addresses AS-EC-012 (lint guard ignores Edit) by ensuring the hook fires on Edit operations too.",
+  "files_changed": ["hooks/install-studio-hooks.sh"],
+  "worktree": "opt-hooks-shift-1782934123",
+  "direction": "hooks:lint-guard-install",
+  "outcome": "succeeded",
+  "outcome_evidence": "Verified worktree content: grep confirms studio-lint-guard.sh appears at lines 17, 72, 76 of hooks/install-studio-hooks.sh in opt-hooks-shift-1782934123. Branch pushed to origin/auto/opt-hooks-shift-1782934123.",
+  "next_suggestion": "Next pending fix: AS-EC-012 studio-lint-guard.sh ignores Edit operations (priority 12). Note: AS-EC-011 fix already registers lint guard for Edit matcher, so AS-EC-012 may only need the internal logic fix in studio-lint-guard.sh itself.",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-002",
+  "audit_depth": "shallow"
+}

@@ -1,0 +1,100 @@
+{
+  "case_id": "case-2026-07-07-065",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-07T01:30:00+08:00",
+  "project": "personal-assistant",
+  "work_unit": "Re-audit: post-audit-2026-07-06-021 new commits (d6f650b, af5c873, f665031, 4f64c77, 5162ef6) + worktree backlog analysis",
+  "situation": "audit-cycle-state was cycle-complete with no unaudited git projects remaining in workspace. All 9 git repos previously deep-audited. personal-assistant selected for re-audit due to highest post-audit activity (5 new commits in 12h since audit-2026-07-06-021). Additionally, 16 stale worktrees with 37 unmerged commits identified as operational risk.",
+  "action": "Deep re-audit via sonnet sub-agent. Read 5 recent commits' changed files (web/api.js, web/index.html, android/index.html, personal_assistant/api.py, tests/test_ui_click_flow.py). Verified prior H-001..H-004 substantively addressed via independent reimplementation on main. Found 9 new findings (0 high, 4 medium, 4 low, 1 info). Produced audit report audit-2026-07-07-027.md. Updated audit-cycle-state.json with 4 derived_fixes (M-004 route-fix pending; M-001/M-002/M-003 structural pending). Status → fix-in-progress.",
+  "files_changed": [
+    ".claude/audits/audit-2026-07-07-027.md",
+    ".claude/audit-cycle-state.json"
+  ],
+  "worktree": null,
+  "direction": "deep-audit-re-audit",
+  "outcome": "succeeded",
+  "outcome_evidence": "audit-2026-07-07-027.md written (9 findings, 4 medium). audit-cycle-state.json updated: status=fix-in-progress, pending_count=4, current_audit_id=audit-2026-07-07-027. Prior H-001..H-004 confirmed substantively addressed on main via d6f650b/af5c873/f665031. 16 stale worktrees documented as conflict risk.",
+  "next_suggestion": [
+    "派生 M-004 route-fix: personal_assistant/api.py ReminderIn.what 加 max_length=1000 (1-file fix, opt-worktree 复用)",
+    "归档 personal-assistant 16 个 stale worktree（substantive fixes 已独立重实现到 main，merge 会冲突）",
+    "M-001/M-002/M-003 structural timeout 架构问题写入 structural-debt.md 待用户授权",
+    "下轮若所有 derived_fixes 处理完毕且仍无未审项目，继续 re-audit 次活跃项目（moni-master 或 shizi）"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "web/api.js",
+      "line": 56,
+      "severity": "medium",
+      "finding": "clearTimeout(tid) placed after fetch resolve but before r.json() — body-read phase has no timeout protection",
+      "remediation": "Move clearTimeout after r.json() completes or wrap r.json() in its own timeout race",
+      "kind": "structural"
+    },
+    {
+      "file": "web/index.html",
+      "line": 187,
+      "severity": "medium",
+      "finding": "Bootstrap Promise.race 5s timeout does not cancel in-flight fetches — orphan requests mutate MockData after render",
+      "remediation": "Pass AbortSignal into bootstrap() and propagate to each get() call",
+      "kind": "structural"
+    },
+    {
+      "file": "android/index.html",
+      "line": 581,
+      "severity": "medium",
+      "finding": "Android api() function has no timeout/AbortController — any fetch can hang forever blocking UI",
+      "remediation": "Add AbortController with ~10s timeout matching web/api.js pattern",
+      "kind": "structural"
+    },
+    {
+      "file": "personal_assistant/api.py",
+      "line": 400,
+      "severity": "medium",
+      "finding": "POST /reminders accepts unbounded 'what' string with no length validation — stored verbatim in SQLite",
+      "remediation": "Add Field(min_length=1, max_length=1000) to ReminderIn.what",
+      "kind": "route-fix"
+    },
+    {
+      "file": "web/api.js",
+      "line": 23,
+      "severity": "low",
+      "finding": "PA_TOKEN ASCII regex rejects JWT-format tokens containing dots",
+      "remediation": "Add dot to allowed charset: /^[A-Za-z0-9._-]+$/",
+      "kind": "direction-shift"
+    },
+    {
+      "file": "android/index.html",
+      "line": 347,
+      "severity": "low",
+      "finding": "postMessage with wildcard '*' origin leaks tweak state to any parent frame",
+      "remediation": "Replace '*' with specific expected parent origin; validate event.origin",
+      "kind": "structural"
+    },
+    {
+      "file": "android/index.html",
+      "line": 602,
+      "severity": "low",
+      "finding": "WS reconnect backoff caps at 30s but retry counter never resets on transient recovery",
+      "remediation": "Reset retry on navigator.onchange or add periodic probe; emit status event when retry > 8",
+      "kind": "structural"
+    },
+    {
+      "file": "tests/test_ui_click_flow.py",
+      "line": 68,
+      "severity": "low",
+      "finding": "Playwright-style tests are actually TestClient API-level tests — naming mismatch with commit message",
+      "remediation": "Rename to test_api_click_flow.py or clarify in comments",
+      "kind": "direction-shift"
+    },
+    {
+      "file": "android/index.html",
+      "line": 595,
+      "severity": "info",
+      "finding": "WS token passed as URL query parameter — visible in access logs (unavoidable for browser WS API)",
+      "remediation": "Document in security notes; consider server-side log scrubbing",
+      "kind": "structural"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-027",
+  "audit_depth": "deep"
+}

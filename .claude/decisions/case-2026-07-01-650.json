@@ -1,0 +1,30 @@
+{
+  "case_id": "case-2026-07-01-650",
+  "agent_id": "ralph-wiggum-loop",
+  "timestamp": "2026-07-01T23:50:00Z",
+  "project": "autonomous-engine",
+  "work_unit": "全量深度审计 — hooks+watchdog+skill-firmware",
+  "situation": "audit-cycle-state.status=cycle-complete（audit-2026-07-01-008 x-tool 派生 fix 全部 merged），触发新一轮全量审计。选 autonomous-engine（未深审过的姊妹引擎，有真实 Python hooks + watchdog，非纯文档）。",
+  "action": "深审 9 文件：ARCHITECTURE.md, CLAUDE.md, GATES.md, SKILL.md, decision-agent-prompt.md, decision-observer.py, save-checkpoint.py, resume-checkpoint.py, incremental-save.py, notify-phone.py, watchdog.sh, protocol-check.py。追踪跨模块数据流（SessionStart→firmware注入→hook触发→checkpoint写入→resume恢复）。发现 6 个 bug（2H/3M/1L）+ 1 structural debt。与 x-tool audit-008 交叉比对确认 6 个同源 bug 零同步。",
+  "files_changed": [
+    ".claude/audits/audit-2026-07-01-009.md",
+    ".claude/audit-cycle-state.json",
+    ".claude/structural-debt.md"
+  ],
+  "worktree": null,
+  "direction": "deep-audit-only",
+  "outcome": "succeeded",
+  "outcome_evidence": "产出 .claude/audits/audit-2026-07-01-009.md（6 findings 详细记录含行号+remediation）；audit-cycle-state.json status→fix-in-progress + 6 条 derived_fixes pending；structural-debt.md 新增 SD-002（三重冗余固件）。",
+  "next_suggestion": "下轮派生 AE-H-001 fix（priority 1，resume-checkpoint.py firmware 硬编码路径 → 用 PROJECT_DIR f-string 替换 + WSL/Linux 条件分支）。单文件改动，走 opt-worktree 复用。",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {"file": ".claude/hooks/resume-checkpoint.py", "line": 121, "severity": "high", "finding": "AE-H-001: build_engine_firmware() 三处硬编码 E:/x-tool Windows 路径 + WSL-only 命令，Linux 部署下引擎 SessionStart 注入完全失效", "remediation": "用 {PROJECT_DIR} f-string 替换硬编码；sys.platform 条件分支区分 WSL/Linux 指令", "kind": "route-fix"},
+    {"file": ".claude/hooks/save-checkpoint.py", "line": 137, "severity": "high", "finding": "AE-H-002: find_task_files() 用 Path 但 import 在 main 块内(L215)；collect_recent_activity() 读 ~/.claude/audit/audit.jsonl(全局)而非引擎自己的 decision-log.jsonl → checkpoint recent_activity 恒空", "remediation": "import Path 移到顶部；collect_recent_activity 改读 PROJECT_DIR/.claude/decision-log.jsonl 并对齐字段名", "kind": "route-fix"},
+    {"file": ".claude/watchdog.sh", "line": 15, "severity": "medium", "finding": "AE-M-001: PROJECT_DIR=/mnt/e/x-tool 硬编码 WSL 路径，Linux 原生部署 L6 no-op", "remediation": "PROJECT_DIR=$(cd $(dirname $0)/../.. && pwd) 或读 CLAUDE_PROJECT_DIR env", "kind": "route-fix"},
+    {"file": ".claude/hooks/notify-phone.py", "line": 206, "severity": "medium", "finding": "AE-M-002: main() 调 send() 不捕获返回值，confirm 通知失败静默丢失", "remediation": "success = send(...); if not success and reason==confirm: stderr 警告 + 写 .last_phone_notify_failed 标记", "kind": "route-fix"},
+    {"file": ".claude/hooks/decision-observer.py", "line": 263, "severity": "medium", "finding": "AE-M-003: handle_stop 反向读日志 chunk 拼接 off-by-one，跨边界行被切残片致 JSON parse 失败，active_project 间歇性 unknown", "remediation": "简化为一次性 tail-read: seek max(0,size-8192), read, splitlines, 取最后20行", "kind": "route-fix"},
+    {"file": ".claude/hooks/protocol-check.py", "line": 70, "severity": "low", "finding": "AE-L-001: bootstrap 调用传 dummy 虚构路径，依赖隐式 dirname 约定", "remediation": "传真实 project_dir 或 bootstrap.py 支持 --project-dir flag", "kind": "route-fix"}
+  ],
+  "audit_id": "audit-2026-07-01-009",
+  "audit_depth": "deep"
+}

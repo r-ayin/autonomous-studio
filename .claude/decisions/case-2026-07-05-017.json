@@ -1,0 +1,45 @@
+{
+  "case_id": "case-2026-07-05-017",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-05T23:30:00Z",
+  "project": "personal-assistant",
+  "work_unit": "全量深度审计 personal-assistant（FastAPI 控制端 + LLM + 摄取 + 存储 + 反幻觉 + 蒸馏/对话 + 联网搜索 + JS 前端）",
+  "situation": "audit-cycle-state.status=cycle-complete（wechat-main audit-2026-07-05-001 于 2026-07-05T22:30Z deadlock archive，pending_count=0）→ 事件驱动触发新全量审计。候选未深审项目：personal-assistant（59 源文件，跨 Python/Android/Web，攻击面最大）/ sunset-prediction（42）/ autonomous-engine（7，且触 self-polish 排除项但真结构性问题仍可审）。选 personal-assistant。",
+  "action": "深度审计（depth=deep，解绑深度限制）：读 14 源文件全文（api.py 294行 / llm.py 586行 / config.py 160行 / storage.py 492行 / ingest.py 97行 / transcript.py 92行 / verify.py 265行 / temporal.py 185行 / memory.py 65行 / distill.py 105行 / chat.py 45行 / calendar.py 72行 / reminders.py 124行 / recommend.py 114行 / wiki.py 119行 / web.py 183行 / cli.py 199行 / asr.py 202行 / web/api.js 141行 / android/dev-server.js 182行）+ CLAUDE.md。追跨模块数据流：/inbox/upload→transcript.parse→ingest→memory.extract(transcript 进 prompt)→LLM(base_url 经 /settings/llm 任意改)→存 memories→distill→persona→chat 回复；/settings/llm POST(无 auth,无 base_url 校验)→_post_json(base_url=attacker, Bearer api_key + prompt 含转录 PII)；/verify POST(无 auth)→apply_corrections 删数据。产出 10 findings 落 .claude/audits/audit-2026-07-05-002.md。未派生 fix（审计轮单轮内完成，下轮起逐个派生）。",
+  "files_changed": [
+    ".claude/audits/audit-2026-07-05-002.md (新建, 深度审计报告)",
+    ".claude/audit-cycle-state.json (status cycle-complete→fix-in-progress, current_audit_id→audit-2026-07-05-002, derived_fixes 6 pending, history +1, _wait_round_count 3→0, _status_note 更新)",
+    ".claude/structural-debt.md (+SD-PA-01 零认证框架, +SD-PA-02 prompt注入防御)"
+  ],
+  "worktree": null,
+  "direction": "audit-only (无 opt-worktree 提交；审计轮产出独立 report，不直接 commit)",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    ".claude/audits/audit-2026-07-05-002.md 已创建（10 findings: 4H/3M/3L，含跨模块数据流图证 + 正面发现清单 + 派生 fix 计划）",
+    "audit-cycle-state.json Python json.load 校验通过 VALID JSON，status=fix-in-progress, pending_count=6, current_audit_id=audit-2026-07-05-002, derived_fixes 6 条全 pending, _wait_round_count=0, history 尾部=audit-2026-07-05-002",
+    ".claude/structural-debt.md 追加 SD-PA-01 (severity=high, status=open, source_finding=PA-API-01) + SD-PA-02 (severity=high, status=open, source_finding=PA-PII-01)，文件 42→64 行",
+    "10 findings 均标 file:line + 代码证据（如 api.py:15-16 CORS * / api.py:45,248-268 base_url 无校验 / llm.py:332-333 resp.read() 无 cap / verify.py:159-160 bigram 2字接地 / storage.py:146-153 非原子 DB+file）"
+  ],
+  "next_suggestion": [
+    "下轮 status=fix-in-progress → 派生 priority#1 PA-API-02（CORS 去 *，api.py 1 文件 route-fix，最高 ROI，堵跨站读/写主入口）",
+    "随后 priority#2 PA-API-03（/settings/llm base_url 校验，api.py+llm.py，堵 SSRF+PII+凭证外泄）",
+    "随后 PA-LLM-01（_post_json size cap+https，llm.py）/ PA-UPL-01（upload size cap，api.py）/ PA-STOR-01（原子写，storage.py）/ PA-WEB-01（web size cap，web.py）逐个派生",
+    "2 structural debt（SD-PA-01 零认证框架 / SD-PA-02 prompt 注入防御）需用户授权更大单位后再动，本轮只在 NEXT_SUGGESTION 提醒",
+    "全部 6 route-fix 落定后 status=cycle-complete → 下一次全量审计候选 sunset-prediction（42 文件未审）/ autonomous-engine（7 文件未审）"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {"file": "personal_assistant/api.py", "line": 12, "severity": "high", "finding": "PA-API-01: FastAPI app 零认证（无 Depends/auth 中间件），全部端点裸暴露含写/破坏性（POST /settings/llm 写 base_url+api_key / POST /verify apply_corrections 删 events/reminders/memories / DELETE /chat-log 全清 / POST /ingest / POST /distill / POST /chat），叠加 cli.py:190 serve 默认 --host 0.0.0.0 → 任何能到 8000 端口的主体可读全部转录/记忆/人格、改 LLM 后端、删数据", "remediation": "加最小认证框架：APIKeyHeader 依赖注入（token 从 env PA_API_TOKEN 读，未设则仅绑 127.0.0.1 拒 0.0.0.0）；写/删端点额外 require-token；serve 默认 host 改 127.0.0.1。跨 api.py+cli.py+config.py，direction-shift worktree", "kind": "structural"},
+    {"file": "personal_assistant/api.py", "line": 15, "severity": "high", "finding": "PA-API-02: CORSMiddleware allow_origins=['*'] + allow_methods=['*'] + allow_headers=['*']。配 PA-API-01 零认证 → 任意网页可跨域 fetch 读响应（ACAO:* 反射）、跨域 POST /settings/llm 改 base_url / POST /verify 删数据 / DELETE /chat-log。CORS * 把零认证从本地特权提升为跨站可利用", "remediation": "删 CORSMiddleware（同源 /web 不需要，源码注释自称同源时本不需要）；若另行托管改显式 allowlist config.web.allowed_origins，写/删端点拒跨域。1 文件 route-fix", "kind": "route-fix"},
+    {"file": "personal_assistant/api.py", "line": 248, "severity": "high", "finding": "PA-API-03: POST /settings/llm 的 LLMSettingsIn.base_url 无 scheme/host 校验，config.set_override 直接落运行态。此后 get_llm 构造 OpenAICompatLLM/AnthropicProxyLLM(base_url=...)，_post_json(base_url,...) headers 含 Authorization: Bearer api_key (llm.py:420) 或 x-api-key (llm.py:449)，body 含 system+user prompt（memory.py:28 转录 JSON=PII / chat.py:29 人格+记忆 / distill.py:90 全部新记忆）。攻击者经 PA-API-01/02 一次 POST 即 SSRF+PII 外泄+凭证外泄。证据：api.py:260-264 backend 有枚举校验但 base_url/api_key 零校验", "remediation": "base_url 入参校验：scheme ∈ {https} 或 http+loopback；host 走 allowlist（config.llm.allowed_hosts 默认空=仅 loopback）；拒 file://。serve 默认绑 loopback。2 文件 route-fix（api.py+llm.py）", "kind": "route-fix"},
+    {"file": "personal_assistant/memory.py", "line": 28, "severity": "high", "finding": "PA-PII-01: 间接 prompt 注入——转录文本来自 /inbox/upload（不可信，经 PA-API-01/02 任何人可上传）后裸插进所有抽取 prompt（memory.py:28 / distill.py:90 / chat.py:29-37 / calendar.py:42 / reminders.py:67 / recommend.py:32 / wiki.py:68）。verify.check_memories 内容溯源仅 any(bg in src_norm for bg in bigrams) where bigrams={content[i:i+2]}（verify.py:159）——2 字 bigram 命中即落地。注入记忆只要含源段任一 2 字子串（通用 bigram 的/我/了 几乎必然命中）即过反幻觉，进而进 distill 蒸馏进人格、进 chat 数字分身回复。verify 只保证可溯源性不保证意图完整性", "remediation": "结构性：(a) 输入侧转录进 prompt 前围栏隔离 <untrusted_transcript> + system 显式不可信声明；(b) 输出侧强化 verify.check_memories 接地阈值（≥N 不重叠 bigram 或关键实体命中，非单 bigram）；(c) 人格写回前加指令性内容检测。跨 memory/distill/chat/verify 多文件", "kind": "structural"},
+    {"file": "personal_assistant/llm.py", "line": 323, "severity": "medium", "finding": "PA-LLM-01: _post_json 用 urllib.request.urlopen(req,timeout) 后 resp.read()（llm.py:332-333）全量读响应无字节上限。base_url 经 PA-API-03 可被攻击者控制 → 恶意上游返 GB 响应 → OOM/DoS。60s timeout 只限挂钟不限字节。叠加 base_url 允许 http://（llm.py:399 无 scheme 校验）→ http 时 Authorization: Bearer / x-api-key 明文上链。镜像 wechat-main WM-BOCHA-02", "remediation": "_post_json 流式读 + MAX_BYTES cap（如 5MB，超 abort+RuntimeError）；base_url 非 loopback 必须 https://；可加 ssl.create_default_context()。1 文件 route-fix（llm.py）", "kind": "route-fix"},
+    {"file": "personal_assistant/api.py", "line": 271, "severity": "medium", "finding": "PA-UPL-01: /inbox/upload 用 content=await request.body()（api.py:291）无大小上限读全部请求体；transcript.parse p.read_text()（transcript.py:34）+ splitlines() + 多层 regex 全量处理。经 PA-API-01/02 任何人可 POST 多 GB .txt/.srt → ingest read_text 时 OOM。该端点已做路径遍历三重防御（W-006, api.py:276-290）但漏 size 维度", "remediation": "上传前检 Content-Length 或流式读累计字节，超阈值（如 10MB）返 413；transcript.parse 对 read_text 加 size guard。1 文件 route-fix（api.py，可选 transcript.py）", "kind": "route-fix"},
+    {"file": "personal_assistant/storage.py", "line": 143, "severity": "medium", "finding": "PA-STOR-01: save_persona_version 非原子跨 DB+file——先 c.execute INSERT persona_versions + c.commit()（storage.py:146-147），后 p.write_text(json.dumps(stamped))（storage.py:153）落 data/persona/profile.json。write_text 失败（磁盘满/权限/中断）时 DB 已记版本 N 但磁盘 profile.json 旧/缺 → DB 与文件漂移，依赖文件的下游（cli status 读 persona_path）读到陈旧人格。镜像 wechat-main WM-PIP-02/WM-VER-02", "remediation": "改顺序：先写文件（temp+os.replace 原子）再 commit DB；或去掉文件镜像只用 DB（latest_persona 已读 DB）。1 文件 route-fix（storage.py）", "kind": "route-fix"},
+    {"file": "personal_assistant/web.py", "line": 28, "severity": "low", "finding": "PA-WEB-01: _fetch/_generic 用 urllib.request.urlopen 后 r.read().decode()（web.py:39,157）无响应大小 cap；ApiWebSearcher._generic 的 base_url（web.py:120,154）无 scheme 校验，可 http:// + 任意 host → SSRF，且 api_key 作 query param（web.py:153）走明文。比 PA-LLM-01 低：web.backend/web.api 走 config 文件不经 /settings/llm 暴露，攻击者需 config 文件写权限才可利用。Bing/Baidu 路径 URL 硬编码不可利用", "remediation": "_fetch/_generic 加 MAX_BYTES cap；base_url 非 loopback 强制 https；api_key 优先走 header 而非 query。1 文件 route-fix（web.py）", "kind": "route-fix"},
+    {"file": "personal_assistant/temporal.py", "line": 150, "severity": "low", "finding": "PA-VER-01: find_exprs（temporal.py:150）只枚举 REL_DAY 关键字、周表达式、月表达式、N 天前后——不抽纯时间表达（下午三点/三点 无日期）。verify._when_grounded 的日期等价接地路径（verify.py:48-49 det_dt.date() in src_dates）依赖 find_exprs，故对纯时间 when_raw 该路径恒 False，只靠逐字命中路径（verify.py:44）。防御深度之一的日期等价对纯时间表达有缺口；LLM 若非原样摘录而精简时间词，纯时间事件可能误判不落地被删。非安全漏洞，是反幻觉接地一致性缺口", "remediation": "find_exprs 增加纯时间模式（_parse_hm 触发的 [点时半] 表达）抽取；或 verify 对纯时间 when_raw 显式走逐字路径不依赖 src_dates。info 不派生 fix", "kind": "route-fix"},
+    {"file": "personal_assistant/storage.py", "line": 88, "severity": "low", "finding": "PA-ID-01: 记忆/事件/提醒/干预/wiki 的 id 用 f'm-{abs(hash((...)))%10**12}'（storage.py:88,184,219,254,379）。Python hash() 受 PYTHONHASHSEED 随机化（进程级），同一逻辑内容跨重启产生不同 id → 重新 ingest 同一转录后（ingested_files 记录被清/换机）memories 不会 INSERT OR REPLACE 命中旧 id，产生重复记忆行；distill 重复归纳。非安全问题，是去重/幂等性弱", "remediation": "id 改确定性 hash（hashlib.sha256(...).hexdigest()[:12]）或 uuid5(命名空间, 内容)。info 不派生 fix", "kind": "route-fix"}
+  ],
+  "audit_id": "audit-2026-07-05-002",
+  "audit_depth": "deep"
+}

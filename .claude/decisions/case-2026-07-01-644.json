@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-07-01-644",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-01T13:58:51Z",
+  "project": "x-tool",
+  "work_unit": "XT-H-001 resume-checkpoint.py 硬编码 E:/x-tool 路径 + L6 watchdog WSL-only 恢复命令 → Linux 部署失效",
+  "situation": "audit-2026-07-01-008 全量审计 x-tool hooks+skills+watchdog+protocol 产出 11 findings，派生 6 条 route-fix（含 2 High）。本轮按优先级派生最高优先级的 XT-H-001：resume-checkpoint.py build_engine_firmware() 内 3 处硬编码 E:/x-tool/... Windows 路径（lines 121, 124, 150），且 L6 watchdog 恢复命令固定为 `wsl -d Ubuntu -- sudo service cron start`。该文件作为 SessionStart hook 每次会话注入 Claude Code 系统提示；在 Linux/macOS 部署下，注入的指令指向不存在的 Windows 路径，导致 L1 自主检查、首条回复状态确认、L6 watchdog 恢复三项核心引擎能力完全失效。",
+  "action": "route-fix 最小改动：(1) 新增 _platform_recovery_cmd() 辅助函数，win32 走 wsl、其他平台走 systemctl/service 回退链；(2) build_engine_firmware() 改为 f-string，所有路径用 PROJECT_DIR（line 25 已从 CLAUDE_PROJECT_DIR env / cwd 取得）插值；(3) {session_id} 转义为 {{session_id}} 避免 f-string 误解析。仅改 1 个文件，符合修复轮 1-3 文件纪律。",
+  "files_changed": [
+    ".claude/hooks/resume-checkpoint.py"
+  ],
+  "worktree": "opt-hooks-1782914295",
+  "direction": "hooks:resume-checkpoint-crossplat",
+  "outcome": "succeeded",
+  "outcome_evidence": "worktree commit ba9d4f3 (22 insertions, 9 deletions); python3 ast.parse syntax OK; grep 'E:/x-tool|wsl -d Ubuntu' 仅在 _platform_recovery_cmd win32 分支出现（正确跨平台分发）；main checkout 文件未动（待 merge）",
+  "next_suggestion": "继续派生 audit-2026-07-01-008 下一条 pending fix：XT-H-002 decision-observer.py handle_stop off-by-one（priority 2，High）。或若需加速，可并行派生 XT-M-001 save-checkpoint.py 硬编码路径（priority 3）。",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-01-008",
+  "audit_depth": "shallow"
+}

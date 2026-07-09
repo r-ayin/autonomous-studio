@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-02-041",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-01T19:02:42Z",
+  "project": "autonomous-studio",
+  "work_unit": "AS-EC-007 fix: autonomous-loop.sh SIGINT temp file leak",
+  "situation": "audit-2026-07-02-002 finding AS-EC-007 (priority 7): run_round mktemp↔shred window leaks /tmp/tmp.XXXX on SIGINT. Working tree already had uncommitted fix from prior session; main lacked it.",
+  "action": "Committed existing working-tree fix via opt-worktree.sh. Script auto-detected direction-shift (autonomous-loop.sh is in public-interfaces.txt) and opened new worktree opt-loop-shift-1782932546.",
+  "files_changed": ["scripts/autonomous-loop.sh"],
+  "worktree": "opt-loop-shift-1782932546",
+  "direction": "loop:sigint-tempfile-cleanup",
+  "outcome": "superseded",
+  "outcome_evidence": "AS-EC-007 was already merged in prior round (case-2026-07-02-039, worktree opt-autonomous-loop-shift-1782931909). This commit duplicated the fix. Branch auto/opt-loop-shift-1782932546 pushed but contains no new changes vs already-merged fix.",
+  "next_suggestion": "Continue audit-2026-07-02-002 derived_fixes queue: next pending is AS-EC-008 (opt-worktree.sh cmd_commit orphaned files on commit failure, priority 8)",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-002",
+  "audit_depth": "shallow"
+}

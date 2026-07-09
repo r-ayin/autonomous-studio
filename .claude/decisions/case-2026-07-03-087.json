@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-03-087",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-03T13:29:56Z",
+  "project": "scripts",
+  "work_unit": "audit-2026-07-03-012 SCRIPTS-L03/L04 blocked-fix status reconciliation",
+  "situation": "audit-cycle-state showed SCRIPTS-L03 (loop PROMPT heredoc) and SCRIPTS-L04 (distill bare except) as blocked. Worktree opt-autonomous-studio-shift-1783079845 (L03) no longer exists; worktree opt-scripts-l04-1783082107 (L04) still exists but contains wrong fix (load_json_robust already on main) not the real L04 target (line 347 subprocess.run bare except). Scout-scan ran clean; #1 recommended = skills.",
+  "action": "Verified L03 already merged to main (PROMPT is heredoc at line 35). Verified L04 worktree mis-targeted: its commit 5e22f30 narrows load_json_robust which main already has at line 42; real L04 = line 347 subprocess.run bare except Exception still present on main. Cannot apply real L04 fix until existing worktree merged/rejected (cp-guard blocks overwrite). Updated audit-cycle-state: L03 → superseded (merged via different path); L04 stays blocked with clarified note. No code change this round — awaiting human merge decision on opt-scripts-l04-1783082107.",
+  "files_changed": [],
+  "worktree": null,
+  "direction": "route-fix",
+  "outcome": "blocked",
+  "outcome_evidence": "main:scripts/autonomous-loop.sh:35 shows 'read -r -d '' PROMPT <<'PROMPT_EOF'' (L03 resolved). main:scripts/distill-patterns.py:347 shows 'except Exception:' (real L04 unresolved). worktree opt-scripts-l04-1783082107 diff shows only load_json_robust narrowing (redundant with main line 42) + verify-pattern L01 sys.argv fix (separate finding). cp-guard blocked new commit to same worktree. Human merge/reject of opt-scripts-l04-1783082107 required before real L04 can be applied.",
+  "next_suggestion": "Human: review and merge (or reject) opt-scripts-l04-1783082107. After merge, next autonomous round will re-derive real SCRIPTS-L04 fix (narrow line 347 subprocess.run bare except to SubprocessError,OSError,TimeoutError). If rejected, also re-derive L01 verify-pattern sys.argv fix separately.",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-03-012",
+  "audit_depth": "shallow"
+}

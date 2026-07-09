@@ -1,0 +1,40 @@
+{
+  "case_id": "case-2026-07-05-078",
+  "agent_id": "ralph-autonomous-studio",
+  "timestamp": "2026-07-05T12:40:00+08:00",
+  "project": "wechat-main",
+  "work_unit": "godtier-deep-research dcf.py value_per_share=EV/shares 标错 → 拆 enterprise_value_per_share + 加 --net_debt 算 (EV-net_debt)/shares (派生 fix of audit-2026-07-05-009 finding GD-L-001)",
+  "situation": "audit-2026-07-05-009 深审 wechat-main godtier-deep-research skill 发现 GD-L-001 (low, priority 5): dcf.py:45-46 把 enterprise_value/shares_outstanding 标为 value_per_share。DCF 算出的是企业价值（EV），每股股权价值应为 (EV - net_debt)/shares；直接 EV/shares 把净债务/股数算进公平价值 → 据此比价会高估。前 4 个派生 fix 状态在 audit-cycle-state 标 merged (GD-H-001 case-074 / GD-M-001 case-075 / GD-M-002 case-076 / GD-M-003 case-077)，本轮派生 GD-L-001 (pending_count 4→3 后续 GD-L-002..004)。注：审计目标路径 = wechat-main/.claude/skills/godtier-deep-research/，本轮在审计目标副本内修复。",
+  "action": "dcf.py main() 加 --net_debt (type=float, default=0.0) 参数；shares_outstanding 给定时输出两口口径：enterprise_value_per_share = round(EV/shares, 2)（如实报每股企业价值），value_per_share = round((EV - net_debt)/shares, 2)（真正每股股权价值，旧 key 保留但语义修正）。net_debt 缺省 0 时 value_per_share == enterprise_value_per_share 向后兼容。不触公共接口（.claude/public-interfaces.txt 无 dcf 条目）→ opt-worktree judge_direction_kind 判 route-fix，复用同 area worktree opt-godtier-deep-research-1783223962（与 GD-H-001 case-074 / GD-M-001 case-075 同 wt 累积，wechat-main 项目）。",
+  "files_changed": [
+    ".claude/skills/godtier-deep-research/scripts/computation/finance/dcf.py"
+  ],
+  "worktree": "opt-godtier-deep-research-1783223962",
+  "worktree_branch": "auto/opt-godtier-deep-research-1783223962",
+  "worktree_head": "1133980",
+  "direction": "godtier-deep-research:dcf-equity-per-share",
+  "direction_kind": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "python3 dcf.py --fcf 100 110 121 --wacc 0.10 --terminal_growth 0.02 --shares_outstanding 50 --net_debt 300 → enterprise_value=1431.82 / enterprise_value_per_share=28.64 / value_per_share=22.64；assert abs(value_per_share - (EV-300)/50)<0.01 通过",
+    "无 --net_debt 时 enterprise_value_per_share==value_per_share==26.82（向后兼容 assert 通过）",
+    "opt-worktree.sh commit → '✓ 提交到 opt-godtier-deep-research-1783223962 方向=godtier-deep-research:dcf-equity-per-share'（route-fix 复用同 area wt）",
+    "git push: 1f609a7..1133980 HEAD -> auto/opt-godtier-deep-research-1783223962 (origin 已同步)",
+    "worktree HEAD=1133980 commit message 含 'GD-L-001: dcf.py value_per_share=EV/shares ... 新增 --net_debt ... enterprise_value_per_share'"
+  ],
+  "next_suggestion": "下轮继续派生 audit-2026-07-05-009 剩余 pending fix（GD-L-002 monte_carlo stdev<2 崩 / GD-L-003 timeseries cagr 负终值崩 / GD-L-004 source_hallucination 合法前瞻年份 false-fail），均 1 文件 route-fix，复用 opt-godtier-deep-research-1783223962（wechat-main 审计目标副本）。⚠️ 跨副本漂移待澄清：case-076/077 (GD-M-002/M-003) 被提交到 skills 项目 wendang/godtier-deep-research/ 副本，但审计目标与 _planned_files 指向 wechat-main/.claude/skills/godtier-deep-research/ 副本——已核实 wechat-main 副本 cross_check.py:20 仍 `diff/abs(avg)`（avg=0 致符号相反分歧报一致，GD-M-002 bug 仍 OPEN）且 state_manager.py 无 _atomic_write_json/os.replace（GD-M-003 fix 未应用）。建议下轮或下一全量审计：① 确认哪个副本为 canonical（skills/wendang vs wechat-main/.claude）；② 将 GD-M-002/M-003 重派到 wechat-main 副本（若它仍被 GodtierExecutor 调用），或在 structural-debt 登记跨副本同步债。全 4 LOW merged 后 audit-cycle-state.status → cycle-complete，触发下一轮全量深审（选未深审项目）。",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": ".claude/skills/godtier-deep-research/scripts/computation/finance/dcf.py",
+      "line": 46,
+      "severity": "low",
+      "finding": "GD-L-001: value_per_share = round(enterprise_value / shares_outstanding, 2) 把企业价值(EV)/股标为每股股权价值。EV 含净债务，每股股权价值应为 (EV - net_debt)/shares；缺净债务减项 → 用户/Agent 据此比价会按净债务/股数高估公平价值。",
+      "remediation": "加 --net_debt 参数（缺省 0.0），输出 enterprise_value_per_share=EV/shares（如实）+ value_per_share=(EV-net_debt)/shares（真正股权口径）。net_debt=0 时二者相等向后兼容。已实现于 commit 1133980。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-009",
+  "audit_depth": "deep",
+  "parent_finding_id": "GD-L-001"
+}

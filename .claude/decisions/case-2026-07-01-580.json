@@ -1,0 +1,31 @@
+{
+  "case_id": "case-2026-07-01-580",
+  "agent_id": "autonomous-loop-ralph",
+  "timestamp": "2026-07-01T09:40:00Z",
+  "project": "wechat-main",
+  "work_unit": "full-deep-audit scripts+pipeline+tests",
+  "situation": "fix-in-progress 阶段 11 pending fixes 全为人工阻塞 >19h，引擎侧无推进空间；破例启动新全量审计覆盖未深审项目 wechat-main（前 3 次审计已覆盖 autonomous-studio-aone/hooks、autonomous-studio-aone/scripts、sunset-prediction/server+routes）",
+  "action": "sonnet sub-agent deep audit：读 15 文件（pipeline.py/steps.py/search*.py/knowledge_base.py/mail_push.py/qq_push.py/cron/daily-hotspot.sh/tests/*.py 等），产出 21 findings (3H/8M/6L/4I)，派生 11 条 route-fix 加入 audit-cycle-state.derived_fixes",
+  "files_changed": [".claude/audits/audit-2026-07-01-004.md", ".claude/audit-cycle-state.json"],
+  "worktree": null,
+  "direction": "audit-only",
+  "outcome": "succeeded",
+  "outcome_evidence": "audit report written at .claude/audits/audit-2026-07-01-004.md (21 findings structured); audit-cycle-state.json updated with 11 new derived_fixes (WM-H-001~WM-L-003) status=pending priority=12-22; history appended with audit-2026-07-01-004 entry; total pending_count=22",
+  "next_suggestion": "下轮从 priority=12 (WM-H-001 cmd_tool 注入) 开始派生 wechat-main fix case，按 kind=route-fix 走 opt-worktree 复用同 area；每轮派生 1 个最小 fix。若用户 merge/reject 旧 11 pending 则 pending_count 下降加速。",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {"file": "scripts/pipeline.py", "line": "310-320", "severity": "high", "finding": "cmd_tool args.name 未校验拼入路径 + args.rest 透传 subprocess.run 命令注入风险", "remediation": "白名单校验 args.name + 过滤 args.rest", "kind": "route-fix"},
+    {"file": "scripts/qq_push.py", "line": "38-47", "severity": "high", "finding": "_load_env .env 解析不剥引号，含引号 secret 静默损坏", "remediation": "v.strip().strip('\"').strip(\"'\")", "kind": "route-fix"},
+    {"file": "scripts/cron/daily-hotspot.sh", "line": "38-46", "severity": "high", "finding": "DEEPSEEK_API_KEY grep+cut 无引号保护，特殊字符被 shell 展开", "remediation": "source .env 或 sed+printf %q", "kind": "route-fix"},
+    {"file": "scripts/pipeline.py", "line": "87-98", "severity": "medium", "finding": "_run_gate subprocess.run 无 timeout，gate 挂起永久阻塞", "remediation": "timeout=120 + catch TimeoutExpired", "kind": "route-fix"},
+    {"file": "scripts/steps.py", "line": "287", "severity": "medium", "finding": "outline_check python -c f-string slug 未转义注入", "remediation": "提取独立脚本 argv 传参", "kind": "route-fix"},
+    {"file": "scripts/bing_search.py", "line": "138-148", "severity": "medium", "finding": "_bing_fetch 无重试机制，网络抖动直接失败", "remediation": "复用 brave_search 重试模式", "kind": "route-fix"},
+    {"file": "scripts/bocha_search.py", "line": "128-129", "severity": "medium", "finding": "热路径循环内 import re 反模式", "remediation": "移至文件顶部", "kind": "route-fix"},
+    {"file": "scripts/deepseek_refine.py", "line": "209-231", "severity": "medium", "finding": "ThreadPoolExecutor 并发写共享 item dict 形式 race 风险", "remediation": "as_completed 外收集结果统一写回", "kind": "route-fix"},
+    {"file": "scripts/knowledge_base.py", "line": "119-121", "severity": "medium", "finding": "JSONL append 无文件锁，多实例并发写入错位", "remediation": "fcntl.flock LOCK_EX", "kind": "route-fix"},
+    {"file": "scripts/mail_push.py", "line": "78", "severity": "low", "finding": "裸 except Exception 无 traceback 调试困难", "remediation": "traceback.print_exc()", "kind": "route-fix"},
+    {"file": "scripts/qq_push.py", "line": "59", "severity": "low", "finding": "RuntimeError 暴露 HTTP 响应体可能含敏感信息", "remediation": "只记 status code 脱敏", "kind": "route-fix"}
+  ],
+  "audit_id": "audit-2026-07-01-004",
+  "audit_depth": "deep"
+}

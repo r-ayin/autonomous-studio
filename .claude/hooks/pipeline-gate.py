@@ -66,19 +66,45 @@ def _remind(reason: str) -> None:
     print(json.dumps({"decision": "remind", "reason": reason}, ensure_ascii=False))
 
 
-# git 调用识别（case-432 audit + audit-2026-07-02-001 M-002 增强）：
+# git 调用识别（case-432 audit + audit-2026-07-02-001 M-002 增强 + audit-2026-07-04-001 ES-H001 加固）：
 # - token regex: 裸 `git` 或路径形 `/usr/bin/git`、`./bin/git`（basename=git），前后为
 #   行首/空白/斜杠/引号边界；后 lookahead 要求空白或字符串结尾避免匹配 `github` 等子串。
 # - 命令链拆段：按 shell 控制符 `&& / || / ; / |` 拆分，逐段独立判定 git commit/push，
 #   防 `foo && git commit` / `bar || git push` 等复合形态绕过。
-# - 不覆盖 eval/exec/sh -c/$()/反引号等间接执行壳（与 autonomous-commit-gate token 法
-#   同局限；studio 流水线阶段约束被绕过的实际风险受 main gate 兜底，见 M-002 finding）。
+# - 间接执行壳检测（ES-H001）：识别 sh -c/bash -c/eval/exec/$()/反引号等包装形态，
+#   命中即视为"疑似 git commit/push"走安全侧（阻断+审计埋点）。不尝试解包嵌套内容
+#   （与 autonomous-commit-gate 同局限），但确保常见绕过形态被纳入拦截面。
 _GIT_TOKEN = re.compile(r"""(?:^|[\s/'"])        # 前边界: 行首/空白/斜杠/引号
                             (?:[\w./~+-]*/)?      # 可选目录前缀(含 ./ ../ /abs/path/)
                             git                   # basename=git
                             (?=[\s'"]|$)          # 后边界: 空白/引号/行尾
                          """, re.VERBOSE)
 _CHAIN_SPLIT = re.compile(r"\s*(?:&&|\|\||[;|])\s*")
+# ES-H001: 间接执行壳模式。命中任一即视为"可能隐藏 git commit/push"——上层在
+# _is_git_commit_or_push 里先过此筛，命中直接返回 True 走安全侧。覆盖：
+#   sh/bash/zsh/dash -c '<cmd>'   eval '<cmd>'   exec '<cmd>'
+#   $(<cmd>)   `<cmd>`   python*/perl/ruby -c '<cmd>'  node -e '<cmd>'
+_INDIRECT_EXEC = re.compile(
+    r"""(?:^|[\s;|&('"])                   # 前边界
+        (?:                                # 间接执行关键字
+          (?:sh|bash|zsh|dash|ksh|csh)\s+-[a-zA-Z]*c   # shell -c
+        | eval\s+                          # eval
+        | exec\s+                          # exec (shell builtin)
+        | python[23]?\s+-c                 # python -c
+        | perl\s+-[a-zA-Z]*e               # perl -e
+        | ruby\s+-e                        # ruby -e
+        | node\s+-e                        # node -e
+        | \$\(                             # $(...) command substitution
+        | `                                # `...` backtick substitution
+        )
+    """, re.VERBOSE)
+
+
+def _has_indirect_exec_shell(cmd: str) -> bool:
+    """命令是否含间接执行壳（sh -c/eval/exec/$()/backtick/脚本语言 -c/-e）。
+    ES-H001 加固：这些壳可包裹 'git commit' 绕过 _GIT_TOKEN 直检。
+    保守策略——命中即视作潜在 git commit/push 走安全侧；误伤由用户改直写解除。"""
+    return bool(_INDIRECT_EXEC.search(cmd))
 
 
 def _has_git_commit_or_push(segment: str) -> bool:
@@ -92,7 +118,11 @@ def _has_git_commit_or_push(segment: str) -> bool:
 
 
 def _is_git_commit_or_push(cmd: str) -> bool:
-    """整条命令是否含 git commit/push（支持命令链拆段评估）。"""
+    """整条命令是否含 git commit/push（支持命令链拆段评估）。
+    ES-H001 加固：先过间接执行壳检测——命中即返回 True 走安全侧（阻断+审计），
+    防止 sh -c 'git commit'/eval 'git push'/$(git commit)/`git push` 等绕过。"""
+    if _has_indirect_exec_shell(cmd):
+        return True
     for seg in _CHAIN_SPLIT.split(cmd):
         seg = seg.strip()
         if seg and _has_git_commit_or_push(seg):

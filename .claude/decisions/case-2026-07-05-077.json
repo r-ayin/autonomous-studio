@@ -1,0 +1,40 @@
+{
+  "case_id": "case-2026-07-05-077",
+  "agent_id": "ralph-autonomous-studio",
+  "timestamp": "2026-07-05T12:25:00+08:00",
+  "project": "wechat-main",
+  "work_unit": "godtier-deep-research state_manager.save 非原子写 → 原子写 (派生 fix of audit-2026-07-05-009 finding GD-M-003)",
+  "situation": "audit-2026-07-05-009 深审 wechat-main godtier-deep-research skill 发现 GD-M-003 (medium, priority 4): state_manager.py:save (原 369-380) 用两个独立 with open(path,'w') 直接写 state_file + analysis_state checkpoint.json。两写之间或写中崩溃 → 留下截断/空 JSON 文件，断点续传 load() 时 json.load 抛异常，整个研究任务状态丢失。前 3 个派生 fix (GD-H-001 case-074 / GD-M-001 case-075 / GD-M-002 case-076) 已 merged，本轮派生 GD-M-003 (pending_count 5→4 后续 GD-L-001..004)。",
+  "action": "在 ResearchState 加 staticmethod _atomic_write_json(path, payload): makedirs(dirname, exist_ok=True) → 写 path.tmp → json.dump + flush + os.fsync(fileno) → os.replace(tmp, path)（POSIX 原子）。save() 改调 _atomic_write_json 两次（state_file + analysis_state），共享一次 get_checkpoint() 调用避免重复序列化。对齐 x-tool ota_workflow OTA-M-003/L-004 已验证模式。不触公共接口（.claude/public-interfaces.txt 无 state_manager 条目）→ opt-worktree judge_direction_kind 判 route-fix，复用同 area worktree opt-godtier-deep-research-1783225012（与 GD-M-002 case-076 同 wt 累积）。",
+  "files_changed": [
+    "wendang/godtier-deep-research/scripts/orchestration/state_manager.py"
+  ],
+  "worktree": "opt-godtier-deep-research-1783225012",
+  "worktree_branch": "auto/opt-godtier-deep-research-1783225012",
+  "worktree_head": "642068e",
+  "direction": "godtier-deep-research:state-atomic-write",
+  "direction_kind": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "python3 -m py_compile state_manager.py → COMPILE_OK (语法过)",
+    "opt-worktree.sh commit → '✓ 提交到 opt-godtier-deep-research-1783225012 方向=godtier-deep-research:state-atomic-write'",
+    "git push: b29e0f2..642068e HEAD -> auto/opt-godtier-deep-research-1783225012 (origin 已同步)",
+    "worktree HEAD=642068e commit message 含 'GD-M-003 ... 原子写'",
+    "sed 验证 worktree 文件 369-395 行: _atomic_write_json + save() 两处调 _atomic_write_json，无残留 with open(path,'w')"
+  ],
+  "next_suggestion": "下轮继续派生 audit-2026-07-05-009 剩余 pending fix: GD-L-001 (dcf.py value_per_share=EV/shares 标错, low priority 5) → opt-godtier-deep-research-1783225012 复用。之后 GD-L-002 monte_carlo stdev / GD-L-003 timeseries cagr 负终值 / GD-L-004 source_hallucination 前瞻年份。全 5 (GD-M-003 + 4 LOW) merged 后 audit-cycle-state.status → cycle-complete，触发下一轮全量深审（选未深审项目，看 .claude/audits/ 避重复）。",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "wendang/godtier-deep-research/scripts/orchestration/state_manager.py",
+      "line": 374,
+      "severity": "medium",
+      "finding": "GD-M-003: save() 用 with open(state_file,'w') + with open(analysis_state,'w') 非原子直写；写中/两写之间崩溃留下截断 JSON，断点续传 load() 的 json.load 抛异常 → 研究任务状态全丢。godtier-deep-research 长跑（多 phase 多 agent，单任务数十分钟）崩溃窗口非空，命中即丢断点。",
+      "remediation": "加 _atomic_write_json(path, payload) helper: 写 {path}.tmp → flush+fsync → os.replace(tmp, path)（POSIX 原子 rename）。save() 两处改调 helper，get_checkpoint() 只调一次。已实现于 commit 642068e。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-009",
+  "audit_depth": "deep",
+  "parent_finding_id": "GD-M-003"
+}

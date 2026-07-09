@@ -1,0 +1,50 @@
+{
+  "case_id": "case-2026-07-06-019",
+  "agent_id": "ralph-autonomous-engine",
+  "timestamp": "2026-07-06T03:40:00Z",
+  "project": "FinanceTracker",
+  "work_unit": "全量深度安全审计（audit-cycle-state 触发：audit-018 cycle-complete → 新审计轮，选未审过的项目 FinanceTracker）",
+  "situation": "audit-cycle-state.status=cycle-complete（audit-2026-07-06-018 oneday-auto-fix 全 9 派生 fix rejected，项目已用户删除）→ 触发新一轮全量审计。扫描 workspace 候选项目，FinanceTracker 为 Android Kotlin 记账 App（minSdk26/targetSdk35、SQLCipher 4.6.1、Hilt、Room），含 core/security 模块，且 .claude/audits/ 历史无该项目的审计记录（history 共 22 条均不含 FinanceTracker），确认为未深度审过的目标。财务类应用 → 安全审计优先级高。",
+  "action": "深度安全审计（深度解禁，读 12 个源文件 + 跨模块 grep 验证数据流）。重点追：SQLCipher 接线是否真实生效、生物识别是否被调用、口令存储与生成、备份可提取性、CSV 导入导出 I/O 风险、迁移策略、日志泄露。关键证据链：(1) grep `getPassphrase|openHelper|SupportFactory|SQLCipher` 在 core/data 模块零命中 → DatabaseModule 建 Room 时无 SupportFactory，SQLCipher 是死代码，DB 实为明文 SQLite；(2) grep `BiometricAuthenticator.authenticate(` 除自身定义处（BiometricAuthenticator.kt:62）外零调用 → 生物识别从不被调用；(3) SettingsViewModel.toggleBiometric 只调 canAuthenticate()（能力查询）就写布尔偏好，开关本身不验证身份；MainActivity.onCreate 直进 AppNavigation 无启动鉴权屏；(4) DatabaseEncryption.getOrCreatePassphrase 明文 String 写 SharedPreferences + chars.random()（kotlin.random.Random 非 CSPRNG）；(5) AndroidManifest android:allowBackup=true 叠加明文库+明文密钥 → adb backup 一把导走。产出独立 report .claude/audits/audit-2026-07-06-019.md（15 findings: 5H/4M/4L/2I）。8 条 route-fix 派生 fix 入 audit-cycle-state.json derived_fixes（pending）；2 条 structural（H-001 SQLCipher 接线+迁移、H-005 启动鉴权门）入 .claude/structural-debt.md SD-004/SD-005 待用户授权。本轮不派 fix（审计轮单轮内完成，下轮起逐个派生）。",
+  "files_changed": [
+    ".claude/audits/audit-2026-07-06-019.md (新建，深度审计 report)",
+    ".claude/audit-cycle-state.json (current_audit_id→019, status→fix-in-progress, derived_fixes 8 pending, history 追加 019)",
+    ".claude/structural-debt.md (追加 SD-004、SD-005)"
+  ],
+  "worktree": "none（审计轮不产出 opt-worktree commit；report 与 state 为 .claude/ 元文件，按归档机制直提 main）",
+  "direction": "none（审计轮，无代码改动方向）",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    ".claude/audits/audit-2026-07-06-019.md 已落盘，含 15 条 findings（H-001..H-005 / M-001..M-004 / L-001..L-004 / I-001..I-002），每条带 file:line + finding + remediation + kind",
+    "grep 验证：`DatabaseEncryption|getPassphrase|openHelper|SupportFactory|SQLCipher` 命中仅在 core/security（自身+DI），core/data 模块零命中 → SQLCipher 接线缺失确证（H-001）",
+    "grep 验证：`BiometricAuthenticator|authenticate(` 调用点仅 BiometricAuthenticator.kt:62 自身 → 生物识别零外部调用确证（H-005）",
+    "audit-cycle-state.json python3 json.load 校验通过：status=fix-in-progress, pending_count=8, current_audit_id=audit-2026-07-06-019, history_len=23（追加 019 条目）",
+    "structural-debt.md 追加 SD-004（源 H-001, severity high, status open）+ SD-005（源 H-005, severity high, status open）",
+    "derived_fixes 8 条全部 status=pending：case-010(H-002+H-003)/011(H-004)/012(M-001)/013(M-002+M-003)/014(M-004)/015(L-001)/016(L-002)/017(L-003+L-004+I-002)"
+  ],
+  "next_suggestion": [
+    "下轮（fix-in-progress）取 derived_fixes pending #1 = case-2026-07-06-010（SQLCipher 口令改 Keystore/EncryptedSharedPreferences + SecureRandom），最小 fix，改 core/security/.../DatabaseEncryption.kt 单文件，走 opt-worktree 复用（route-fix，不动公共接口）",
+    "提醒用户：SD-004（SQLCipher 端到端接线+既有明文库迁移到加密库）与 SD-005（启动鉴权门 AuthScreen+AppNavigation 守卫）是 FinanceTracker 安全宣传的两根空心支柱，需较大改动单位授权，建议优先排期",
+    "case-013（CSV 公式注入+流式解析+RFC4180）与 case-017（CSV 导入校验+minSdk29+exportSchema）建议相邻轮派发（同涉 CsvService.kt，避免 worktree 冲突）"
+  ],
+  "audit_type": "security-review",
+  "audit_findings": [
+    {"file": "core/data/src/main/java/com/financetracker/core/data/di/DatabaseModule.kt", "line": "24-37", "severity": "high", "finding": "SQLCipher 死代码：provideDatabase 建 Room 时无 openHelper/SupportFactory，DB 实为明文 SQLite，README 宣称的加密不成立（grep 确证 getPassphrase 在 core/data 零调用）", "remediation": "注入 DatabaseEncryption + openHelperFactory(SupportFactory(passphrase))；既有明文库需 ATTACH KEY 迁移。属结构性 → SD-004", "kind": "structural"},
+    {"file": "core/security/src/main/java/com/financetracker/core/security/crypto/DatabaseEncryption.kt", "line": "28-36", "severity": "high", "finding": "SQLCipher 口令明文 String 存 SharedPreferences(MODE_PRIVATE)，root/adb backup 可直接读出，加密形同虚设", "remediation": "改 Android Keystore（EncryptedSharedPreferences 或 Keystore AES 包裹随机口令）", "kind": "route-fix"},
+    {"file": "core/security/src/main/java/com/financetracker/core/security/crypto/DatabaseEncryption.kt", "line": "38-41", "severity": "high", "finding": "generateSecurePassphrase 用 chars.random()（kotlin.random.Random 非 CSPRNG），口令强度不达标", "remediation": "改 java.security.SecureRandom 驱动生成", "kind": "route-fix"},
+    {"file": "app/src/main/AndroidManifest.xml", "line": "6", "severity": "high", "finding": "android:allowBackup=true 叠加明文库+明文密钥，adb backup 一次性导走库与口令", "remediation": "allowBackup=false + dataExtractionRules 排除 databases/ 与 security_prefs", "kind": "route-fix"},
+    {"file": "feature/settings/src/main/java/com/financetracker/feature/settings/SettingsViewModel.kt", "line": "36-42", "severity": "high", "finding": "生物识别从未生效：toggleBiometric 只查 canAuthenticate() 就写布尔、authenticate() 全仓零外部调用、MainActivity 无启动鉴权屏（grep 确证）", "remediation": "新建 AuthScreen + AppNavigation 守卫 + toggleBiometric 强制首验。属结构性 → SD-005", "kind": "structural"},
+    {"file": "core/security/src/main/java/com/financetracker/core/security/biometric/BiometricAuthenticator.kt", "line": "55-59", "severity": "medium", "finding": "setNegativeButtonText 与 DEVICE_CREDENTIAL 互斥，无 PIN 兜底；不绑 CryptoObject", "remediation": "改 BIOMETRIC_STRONG|DEVICE_CREDENTIAL + 预留 CryptoObject 重载", "kind": "route-fix"},
+    {"file": "feature/import-export/src/main/java/com/financetracker/feature/importexport/CsvService.kt", "line": "30-32", "severity": "medium", "finding": "CSV 导出 title/note 原样塞单元格，=+-@\\t\\r 开头值在 Excel 触发公式注入（WEBSERVICE/HYPERLINK 外泄账目）", "remediation": "危险首字符前置 ' 中和", "kind": "route-fix"},
+    {"file": "feature/import-export/src/main/java/com/financetracker/feature/importexport/CsvService.kt", "line": "49,88-101", "severity": "medium", "finding": "导入 readLines() 全量入内存 OOM；parseCsvLine 每 \" 翻转 inQuotes 不识别 \"\" 转义 → 导出再导入往返损坏", "remediation": "流式逐行+行数上限；改 RFC4180 状态机（引号内 \"\" 视为字面 \"）", "kind": "route-fix"},
+    {"file": "core/data/src/main/java/com/financetracker/core/data/di/DatabaseModule.kt", "line": "33-35", "severity": "medium", "finding": "fallbackToDestructiveMigration 守卫为 version==1 而非 BuildConfig.DEBUG，release 更新即静默 drop 全部财务历史", "remediation": "守卫改 BuildConfig.DEBUG；version>1 提供真实 Migration", "kind": "route-fix"},
+    {"file": "core/common/src/main/java/com/financetracker/core/common/util/Logger.kt", "line": "1-30", "severity": "low", "finding": "Logger 无条件输出 Log.*，无 BuildConfig.DEBUG 守卫无 PII 脱敏，金额/备注可能进 logcat", "remediation": "加 BuildConfig.DEBUG 守卫 + 字段截断脱敏", "kind": "route-fix"},
+    {"file": "core/security/src/main/java/com/financetracker/core/security/crypto/DatabaseEncryption.kt", "line": "20-26", "severity": "low", "finding": "getPassphrase catch(Exception) 吞异常返 null，安全路径静默 fail-open", "remediation": "抛具体异常/返 sealed result，上层 fail-closed", "kind": "route-fix"},
+    {"file": "feature/import-export/src/main/java/com/financetracker/feature/importexport/CsvService.kt", "line": "55-68", "severity": "low", "finding": "导入信任 CSV 内 accountId/categoryId 不校验存在性；defaultAccountId 兜底硬编码 1L 易错挂账", "remediation": "导入前 DAO 存在性校验，不存在计 failedCount；去硬编码 1L", "kind": "route-fix"},
+    {"file": "feature/import-export/src/main/java/com/financetracker/feature/importexport/ImportExportViewModel.kt", "line": "35-39", "severity": "low", "finding": "pre-Q 导出分支写公共 Downloads 需 WRITE_EXTERNAL_STORAGE 但 manifest 未声明，API26-28 崩溃", "remediation": "minSdk→29 全走 MediaStore 删 legacy 分支", "kind": "route-fix"},
+    {"file": "app/build.gradle.kts", "line": "21-25", "severity": "info", "finding": "release 无 signingConfig（产出未签名）+ 无 isShrinkResources", "remediation": "配 release keystore(CI 注入) + isShrinkResources=true", "kind": "route-fix"},
+    {"file": "core/data/src/main/java/com/financetracker/core/data/db/FinanceDatabase.kt", "line": "24", "severity": "info", "finding": "Room exportSchema=false，无 schema JSON，迁移无法用 MigrationTestHelper 校验", "remediation": "exportSchema=true + schemas/ 入仓 + 迁移测试", "kind": "route-fix"}
+  ],
+  "audit_id": "audit-2026-07-06-019",
+  "audit_depth": "deep"
+}

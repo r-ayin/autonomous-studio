@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-07-04-037",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-05T01:30:00Z",
+  "project": "moni-master",
+  "work_unit": "MM-L002: weighted_average_price f64 drift elimination",
+  "situation": "engine.rs L919-926: weighted_average_price() recomputes avg from (old_rounded_avg * old_qty + new_price * new_qty) / total_qty each fill. The old_avg was already round4'd, so multiplying back by qty reverses the rounding, introducing cumulative f64 drift across partial fills. After N fills the error grows as O(N * epsilon). Audit finding MM-L002.",
+  "action": "Added total_cost: f64 field to OrderRecord (#[serde(default)] for backward compat). Buy fills accumulate total_cost += trade_price*qty + fees (true cost basis). Sell fills accumulate total_cost += trade_price*qty (turnover). avg_price derived as round4(total_cost / filled_quantity) at write time. Removed unused weighted_average_price function. Updated test assertion to reflect correct fee-inclusive avg_price semantics.",
+  "files_changed": [
+    "moni-rs/crates/moni-core/src/types.rs",
+    "moni-rs/crates/moni-engine/src/engine.rs"
+  ],
+  "worktree": "opt-moni-engine-1782949388",
+  "direction": "engine:weighted-avg-drift",
+  "outcome": "succeeded",
+  "outcome_evidence": "cargo check -p moni-engine passes; cargo test -p moni-engine 39/39 pass; cargo test -p moni-core 10/10 pass; commit f8d22fe pushed to origin/auto/opt-moni-engine-1782949388",
+  "next_suggestion": "MM-L003: factor-adapter/lib.rs L147 budget_per_stock edge case — clamp top_n to ranked_symbols.len()",
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-04-002",
+  "audit_depth": "shallow"
+}

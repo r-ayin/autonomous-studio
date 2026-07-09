@@ -1,0 +1,49 @@
+{
+  "case_id": "case-2026-07-06-008",
+  "agent_id": "ralph-autonomous-engine",
+  "timestamp": "2026-07-06T00:50:00+08:00",
+  "project": "prod-deploy",
+  "work_unit": "PD-TIME-01 derived fix: observation time-gate reads batchEvent.updated_at as 'batch SUCCESS time' but report-observation bumps updated_at every tick → gate never passes. Stamp payload.success_at on SUCCESS transition; readers prefer success_at (fallback updated_at for in-flight batches).",
+  "situation": "audit-cycle-state status=fix-in-progress, 5 pending findings under audit-2026-07-06-001 (prod-deploy deep audit). PD-TIME-01 is the highest-severity (HIGH) pending finding. Per dispatch priority (audit report 'Next fix round should dispatch PD-TIME-01 first'), this round dispatches it. Bug: resume-next-batch.js:51 computes elapsedMs from new Date(batchEvent.updated_at).getTime(); report-observation.js:57-59 uses same updated_at as Sunfire query startTime with comment 'when the batch became SUCCESS'. But report-observation.js:91 writes observation_result into the SAME batch event every tick (updateEvent(batchEvent, null, {observation_result})), and any PUT bumps server updated_at → updated_at becomes 'last tick write time' not 'SUCCESS time'. In a tick-interleaved loop elapsedMs≈0 → time gate NEVER passes; even without interleaving, effective observation ≈2×observe_minutes with misleading 'remaining' messages. Silent deploy-gate corruption (over-blocks, but erodes gate trust → operators work around it → under-blocks in practice). Even if server today doesn't bump updated_at on payload-only writes, correctness depends on undocumented server invariant; defense-in-depth demands explicit timestamp.",
+  "action": "3-file route-fix (prod-deploy scripts not in public-interfaces.txt → route-fix, opt-worktree reused/new area wt). (1) report-event.js handleDeployBatch: in BOTH the create-then-status path (line 209-216) and the update-existing path (line 220-227), when values.status==='SUCCESS' add fields.success_at=Date.now() before updateEvent. existing.status is guaranteed non-terminal at the update path (TERMINAL_STATUSES guard at :216 returns early), so this only stamps fresh SUCCESS transitions, never overwrites an existing success_at on a re-send. extraPayload (from --payload) is Object.assign'd AFTER, so an explicit caller-supplied success_at wins. (2) resume-next-batch.js:51: const successAt = batchEvent.payload?.success_at; const successTime = successAt != null ? new Date(successAt).getTime() : new Date(batchEvent.updated_at).getTime(); — fallback preserves backward compat with in-flight batches stamped before the fix. (3) report-observation.js:57-59: same fallback for startTime when --start-time omitted; updated header comment. success_at is Date.now() (ms number); new Date(number).getTime() round-trips correctly; new Date(iso).getTime() also works if ever stored as ISO. node --check passes on all 3 files.",
+  "files_changed": [
+    ".claude/skills/prod-deploy/scripts/report-event.js",
+    ".claude/skills/prod-deploy/scripts/resume-next-batch.js",
+    ".claude/skills/prod-deploy/scripts/report-observation.js"
+  ],
+  "worktree": "opt-prod-deploy-1783270172",
+  "direction": "prod-deploy:time-gate-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh committed d5c4078 on branch auto/opt-prod-deploy-1783270172 (worktree opt-prod-deploy-1783270172), 3 files changed +27/-7, pushed to origin (new branch tracked). `git -C wt log --oneline -2` shows d5c4078 on top of 7102e75 (main HEAD). `grep success_at` in wt confirms fix present in all 3 files (report-event.js:215/231, resume-next-batch.js:54, report-observation.js:61). `node --check` OK on all 3. Main working tree clean post-restore (opt-worktree cp/commit/restore dance completed).",
+  "next_suggestion": "Dispatch PD-HANG-01 next (MEDIUM, 3 lib files: sunfire-client.httpPost req.setTimeout(30000)+destroy; task-client/event-client fetch AbortController 30s; querySunfireInsights surfaces timeout as skipped). Stack on same opt-prod-deploy-1783270172 worktree (same area, route-fix). Then PD-TOKEN-01 (host allowlist, 2 lib files), then PD-BATCH-01 + PD-CONCL-01 (low). Note: divergent copy at skills/prod-deploy/scripts/ (with audit-log-helper.js/http-base.js, never audited) also has PD-TIME-01 bug but audit did not cover it — flag for future audit, do NOT fix unverified this round.",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": ".claude/skills/prod-deploy/scripts/report-event.js",
+      "line": 215,
+      "severity": "high",
+      "finding": "PD-TIME-01 (fixed this round): handleDeployBatch did not stamp a success timestamp; observation time-gate in resume-next-batch.js:51 read updated_at as 'SUCCESS time' but report-observation bumps updated_at every tick → gate never passes in a tick-interleaved loop.",
+      "remediation": "Stamp payload.success_at=Date.now() when values.status==='SUCCESS' in both create-then-status and update-existing paths of handleDeployBatch.",
+      "kind": "route-fix"
+    },
+    {
+      "file": ".claude/skills/prod-deploy/scripts/resume-next-batch.js",
+      "line": 54,
+      "severity": "high",
+      "finding": "PD-TIME-01 (fixed this round): successTime derived from updated_at (corrupted by observation ticks).",
+      "remediation": "Prefer batchEvent.payload.success_at; fall back to updated_at for in-flight batches stamped before fix.",
+      "kind": "route-fix"
+    },
+    {
+      "file": ".claude/skills/prod-deploy/scripts/report-observation.js",
+      "line": 61,
+      "severity": "high",
+      "finding": "PD-TIME-01 (fixed this round): startTime for Sunfire query used updated_at, same corruption.",
+      "remediation": "Same success_at-preferred fallback for startTime when --start-time omitted.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-001",
+  "audit_depth": "shallow",
+  "_audit_depth_note": "derived fix case — parent audit-2026-07-06-001 was deep; this fix-dispatch case itself is shallow (3-file targeted edit per audit remediation sketch)."
+}

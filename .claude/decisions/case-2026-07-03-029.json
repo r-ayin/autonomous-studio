@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-07-03-029",
+  "agent_id": "ralph-wiggum-cycle-92",
+  "timestamp": "2026-07-03T21:58:00Z",
+  "project": "wechat-main",
+  "work_unit": "MV-006 hot-scanner consume 回退路径补字段+角度",
+  "situation": "audit-2026-07-03-011 MV-006 finding：topic-pool/hot-scanner.py L780-L795 当 parse_search_result 因 summary 过短返回 None 时，回退手动构造 topic dict。但 has_event/has_controversy/has_data 恒 False、angle 用 summary[:200] 截断而非 _extract_angle 推荐 → score_bomb_potential 的 counter/narrative/event 维度信号丢失，短摘要选题被系统性降权。派生 fix（derived_fixes pending_count=1→0）。",
+  "action": "在 consume 回退分支内联复用 parse_search_result 同款关键字检测（summary.lower() + any(...)）及 _extract_angle(summary, query_dict) 调用，使正常路径与回退路径评分语义一致。cp-guard 触发（opt-wechat-1783021994 含未合并 HV/MV 旧提交与 main HEAD 分歧），先 reject 该 worktree 再 cd wechat-main 用相对路径重新 commit → 新开 opt-wechat-1783029724。",
+  "files_changed": ["topic-pool/hot-scanner.py"],
+  "worktree": "opt-wechat-1783029724",
+  "direction": "wechat:topic-pool",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit d6cab22 on auto/opt-wechat-1783029724; pushed to origin/auto/opt-wechat-1783029724; python ast.parse OK; diff 仅改动 consume 回退分支（L780-L806），新增 summary_lower + has_event/has_controversy/has_data 检测 + _extract_angle 调用；score_bomb_potential 输入对齐正常路径。",
+  "next_suggestion": [
+    "merge opt-wechat-1783029724 (MV-006) 后 derived_fixes 全 cleared → audit-cycle-state.status=cycle-complete → 下轮触发新全量审计（挑未审项目如 shizi/sunset-prediction/autonomous-studio-aone-engine-skills-extracted 之外的）",
+    "scout #1 autonomous-engine 缺 planning/ 目录可独立做一轮文档补建（非审计周期依赖）"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-03-011",
+  "audit_depth": "shallow"
+}

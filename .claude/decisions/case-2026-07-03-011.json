@@ -1,0 +1,24 @@
+{
+  "case_id": "case-2026-07-03-011",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-03T15:45:00Z",
+  "project": "personal-assistant",
+  "work_unit": "web/mock-pii-scrub-w013",
+  "situation": "audit-2026-07-03-009 W-013（low severity）：MockData.jsx 含半真实 PII — 人名 'Lily'、地点 '虹桥星巴克'、宠物健康信息（小奶猫喂药剂量）、法务脱敏方案事项。虽为 demo 数据，但若被搜索引擎索引或截图传播可能泄露产品负责人真实社交/医疗/法务关系。派生 fix 轮 #72。",
+  "action": "在 opt-web-1782977902 worktree 内直接提交（cp-guard 因前轮未合并改动阻止 main→wt 拷贝，已在 wt 内编辑）。通用化替换：Lily→Alex、虹桥星巴克→园区咖啡馆、小奶猫喂药→绿植浇水、法务脱敏方案→README 更新；保留 Kahneman《思考，快与慢》等公共领域引用（非 PII）；保持 demo 叙事结构与跨表 evidence 链完整。21 行对称替换，无 schema 变更。",
+  "files_changed": ["web/MockData.jsx"],
+  "worktree": "opt-web-1782977902",
+  "direction": "web:mock-pii-scrub",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 880b923 on auto/opt-web-1782977902; diff +21/-21 lines symmetric replacement; git log confirms parent f62d4fc (W-012); no schema or import changes; demo narrative structure preserved",
+  "next_suggestion": [
+    "下轮评估 W-006 状态 — 后端 api.py:271-294 已有 4 层路径遍历防御（reject sep/.., Path.name 双保险, ext whitelist, resolve().relative_to() 兜底），前端 InboxPage.jsx:19-24 客户端预检；验证后可标 merged",
+    "opt-web-1782977902 已累积 6 commits (W-002/W-005/W-006+007/W-008+009/W-010/W-011/W-012/W-013)，建议人工审 diff 后 merge",
+    "全部 derived_fixes 落定后 audit-cycle-state.status → cycle-complete，触发下一轮全量审计"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-03-009",
+  "audit_depth": "shallow",
+  "_parent_finding": "W-013"
+}

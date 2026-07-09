@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-07-03-097",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-03T14:35:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "ESE-M02 fix: autonomous-loop.sh comment/code contradiction re --max-iterations + missing per-round timeout",
+  "situation": "audit-2026-07-03-006 finding ESE-M02 (priority 4, kind route-fix) pending. Live main scripts/autonomous-loop.sh header L14 claimed '--max-iterations 防 claude -p 单轮卡死' but code never passed any such flag; L144 subshell comment repeated the false claim ('cloudcli claude 无 --max-iterations'). No per-round timeout mechanism existed. Archive copy already contained fix from prior extract but live main diverged.",
+  "action": "Applied ESE-M02 fix to live main working copy then committed via opt-worktree.sh. Changes: (1) Header L14 rewritten to describe actual --max-turns flag and document two new env vars AUTONOMOUS_MAX_TURNS / AUTONOMOUS_ROUND_TIMEOUT with default-unset semantics. (2) Added MAX_TURNS/ROUND_TIMEOUT variable declarations after model strategy block (L111-113). (3) run_round() rewritten to build claude command as local -a cmd array, conditionally append --max-turns when MAX_TURNS non-empty, conditionally wrap invocation with timeout when ROUND_TIMEOUT non-empty. (4) Subshell L163 comment corrected to reference new env var knobs instead of false 'no --max-iterations' claim. bash -n syntax check passed. Diff vs archive verified semantically equivalent (only minor wording differences in comments).",
+  "files_changed": [
+    "scripts/autonomous-loop.sh"
+  ],
+  "worktree": "opt-autonomous-loop-shift-1783089113",
+  "direction": "autonomous-loop:ese-m02-boundary-knobs",
+  "outcome": "succeeded",
+  "outcome_evidence": "worktree branch auto/opt-autonomous-loop-shift-1783089113 pushed to origin; commit contains MAX_TURNS/ROUND_TIMEOUT declarations at L112-113, cmd array construction at L124-134, corrected header at L14-18, corrected subshell comment at L163. bash -n returned 0. grep confirms no remaining '--max-iterations' false claims in worktree copy.",
+  "next_suggestion": "All derived_fixes from audit-2026-07-03-006 now merged (H01/H02/M01/M02). Update audit-cycle-state.status to cycle-complete next round to trigger fresh full audit on a project not recently audited (candidates: shizi backend/data, wechat-main scripts/pipeline re-audit, or moni-master backend/quant — avoiding moni frontend per constraints).",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-03-006",
+  "audit_depth": "shallow"
+}

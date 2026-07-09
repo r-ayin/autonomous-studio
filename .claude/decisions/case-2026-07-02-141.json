@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-02-141",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-02T10:58:00Z",
+  "project": "personal-assistant",
+  "work_unit": "llm:error-handling (audit-2026-07-02-008 M-006 derived fix)",
+  "situation": "audit-2026-07-02-008 finding M-006: llm._post_json() has no network error handling — urllib.error.URLError (DNS/connection refused/timeout), OSError, and json.JSONDecodeError propagate as raw exceptions through the pipeline. Callers at lines 393/480 don't catch these; only line 425 catches HTTPError. Opaque failures make debugging LLM connectivity impossible.",
+  "action": "Derived route-fix from audit-2026-07-02-008 priority-9 finding. First merged pre-existing opt-llm-1782909896 (PA-M-002 timeout sanitize, f38c0b6) which refactored _post_json signature but left error handling gap. Then added LLMRequestError exception class + wrapped urlopen in try/except chain (HTTPError→sanitize body, URLError→reason, OSError→str, JSONDecodeError→message). Reused existing _sanitize_error_body helper to avoid leaking tokens in error messages. Committed to new worktree opt-llm-1782989167 (direction=llm:error-handling, route-fix area divergence from engine).",
+  "files_changed": ["personal_assistant/llm.py"],
+  "worktree": "opt-llm-1782989167",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh commit succeeded; branch auto/opt-llm-1782989167 pushed to origin; diff adds LLMRequestError class + 4 except clauses in _post_json; prior worktree opt-llm-1782909896 merged to main (f38c0b6) before stacking",
+  "next_suggestion": "派生 M-007 (priority 10): storage ID generation uses non-deterministic hash() — dedup broken across processes. Use hashlib.sha256",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-008",
+  "audit_depth": "shallow"
+}

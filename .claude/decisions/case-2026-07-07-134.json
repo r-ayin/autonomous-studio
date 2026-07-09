@@ -1,0 +1,32 @@
+{
+  "case_id": "case-2026-07-07-134",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-07T21:25:00+08:00",
+  "project": "shizi",
+  "work_unit": "SZ-BG-H-002: blobToBase64 O(n²) string concat → chunked O(n)",
+  "situation": "audit-2026-07-07-047 finding SZ-BG-H-002 (high): blobToBase64 uses str += String.fromCharCode(bytes[i]) in a loop for base64 encoding. For a 4MB image blob this causes ~4 million string reallocations (O(n²)), blocking the service worker and potentially causing OOM on large OCR inputs.",
+  "action": "Replaced O(n²) string concatenation with chunked String.fromCharCode.apply (8192-byte chunks) + array join, yielding O(n) performance. Used case-104 escape hatch (direct wt edit + wt-internal commit) because opt-background-1783213292 had diverged from main (5 stacked commits from prior SZ-BG fixes).",
+  "files_changed": ["src/background/ocr-internal.ts"],
+  "worktree": "opt-background-1783213292",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 9b35dd4 on auto/opt-background-1783213292 pushed to origin. Function body changed from 4-line loop concat to 5-line chunked apply+joint. No other call sites modified (blobToBase64 called at lines 189/219/519/531/629 — all benefit automatically).",
+  "next_suggestion": [
+    "SZ-SH-H-001: host_permissions grants <all_urls> but extension never uses tab/scripting APIs — remove excess permissions (manifest.json, high severity)",
+    "SZ-PP-H-001: No file size limit on image upload — add pre-upload size guard (popup, high severity)",
+    "SZ-BG-H-003: Tile ownership quadrant check drops valid results near tile boundaries (background, high severity)"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "src/background/ocr-internal.ts",
+      "line": 166,
+      "severity": "high",
+      "finding": "blobToBase64 O(n²) string concatenation via str += charCode in loop",
+      "remediation": "Replace with chunked String.fromCharCode.apply + array join",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-047",
+  "audit_depth": "shallow"
+}

@@ -1,0 +1,29 @@
+{
+  "case_id": "case-2026-07-05-148",
+  "agent_id": "autonomous-studio-engine",
+  "timestamp": "2026-07-05T22:55:00+08:00",
+  "project": "x-tool/wanxia",
+  "work_unit": "WX-TIMEOUT-01 (MED, 4th of 7 derived from audit-2026-07-05-016): weather-fetcher.js + grid-fetcher.js fetchJSON 加 AbortController + 12s timeout，复用 social-scraper.js:81-91 timedFetch 范式 — open-meteo 挂起时 fail-fast 而非无限堆积",
+  "situation": "audit-2026-07-05-016 (case-144 deep-audit) 派生 7 route-fix，前 3 (WX-AUTH-01 eb00793 / WX-HEALTH-01 d4960bd / WX-ENV-01 c0c13b4) 已 stacked on opt-security-1783235416。本轮派生第 4 条 WX-TIMEOUT-01。weather-fetcher.js:6-10 fetchJSON 与 grid-fetcher.js:59-72 fetchJSON 均 `await fetch(url)` 裸调无 AbortController/timeout；对照 social-scraper.js:81-91 timedFetch 已有正确范式（AbortController + 9s timeout + try/finally clearTimeout），weather/grid 层漏了。open-meteo TCP 连上但不返响应时请求永不返回，叠加 WX-CACHE-01 loading 锁去重缺漏会 stampede（多并发请求各自 fallthrough 到 fetchAllCityData）。",
+  "action": "2 文件最小改动，复刻 timedFetch 范式：weather-fetcher.js 加 `const FETCH_TIMEOUT_MS = 12000` + fetchJSON 包 `new AbortController()` + `setTimeout(()=>ctrl.abort(), FETCH_TIMEOUT_MS)` + try/finally clearTimeout，fetch 传 `{signal: ctrl.signal}`，`return await res.json()`。grid-fetcher.js 同范但保留既有 429 重试循环——timeout 只罩 fetch 本身（try/finally 包 `res = await fetch(...)`），429 检测+delay+continue 在 finally 之外，避免 12s timeout 误罩 3000-15000ms 的 429 退避 delay（i=4 时 wait=15s > 12s 会误触 abort，虽对已完成 fetch 无害但 messy）。AbortError（真挂起）直接抛出走错误路径，fail-fast 不静默重试，与 social-scraper 语义一致。node --check 两文件均 OK。",
+  "files_changed": [
+    "wanxia/src/weather-fetcher.js",
+    "wanxia/src/grid-fetcher.js"
+  ],
+  "worktree": "opt-security-1783235416",
+  "direction": "security:fetch-timeout (route-fix, 复用 security area wt — weather/grid-fetcher 非 .claude/public-interfaces.txt 公共接口)",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "commit 3a63b2b8502ba5e14b91ec35cd25b8cff9a8fb36 on opt-security-1783235416 (4-commit stack: eb00793 WX-AUTH-01 → d4960bd WX-HEALTH-01 → c0c13b4 WX-ENV-01 → 3a63b2b WX-TIMEOUT-01, FF-clean base=85bd9e1=master)",
+    "git show --stat HEAD: wanxia/src/grid-fetcher.js 13 insertions 2 deletions / wanxia/src/weather-fetcher.js 14 insertions 3 deletions (2 files changed, 22 insertions, 5 deletions)",
+    "node --check src/weather-fetcher.js → OK; node --check src/grid-fetcher.js → OK",
+    "diff 确认两文件均含 `new AbortController()` + `setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS)` + try/finally clearTimeout + `{ signal: ctrl.signal }`；grid-fetcher 429 重试 + delay 逻辑保留在 finally 之外",
+    "cp-guard 正常通过（weather/grid-fetcher 在 wt 与 main HEAD 未分叉，前 3 fix 未触及此 2 文件 → 无需 case-104 逃生通道）",
+    "push origin auto/opt-security-1783235416 → 403 'git push is not allowed' (remote r-ayin/x-tool external fork, precedent audit-008/010/016/145/146/147) — worktree+branch+commit 完整保留 local disk + local-ref 待人工 merge to master"
+  ],
+  "next_suggestion": "下轮派 WX-CACHE-01 (MED, src/cache.js + src/routes.js)——与 WX-TIMEOUT-01 叠加 stampede 主题紧随。cache.js 改 `Map<key,Promise>` getOrLoad 去重 + routes.js:47-53/141-167/169-228 三段式 setLoading/isLoading/clearLoading 重构为 cache.getOrLoad(cacheKey, async()=>{...})。注意 routes.js 已被 WX-AUTH-01 (eb00793) 在 wt 改过（server.js:95 bind 127.0.0.1——但那是 server.js 不是 routes.js；WX-AUTH-01 选了 (a) bind 方案未触 routes.js 中间件方案），routes.js 在 wt 与 main 应未分叉，cp-guard 可正常通过。WX-CACHE-01 涉及模式性小重构（2 文件内、边界清晰，audit 标注不进 structural-debt）。之后 WX-SILENT-01 (LOW) → WX-XHS-REUSE-01 (LOW)。全 7 merged|rejected 后 cycle-complete → 触发下次全量审计。",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-05-016",
+  "audit_depth": "shallow"
+}

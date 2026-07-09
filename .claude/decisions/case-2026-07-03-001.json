@@ -1,0 +1,40 @@
+{
+  "case_id": "case-2026-07-03-001",
+  "agent_id": "ralph-wiggum-cycle-63",
+  "timestamp": "2026-07-03T06:30:00Z",
+  "project": "personal-assistant",
+  "work_unit": "deep-audit: web module (api.js + index.html + JSX components)",
+  "situation": "audit-cycle-state status=cycle-complete → 触发全量审计轮。所有 git-backed 项目均已审过至少一个模块；personal-assistant 之前仅审 core-python (006) 和 python-backend-core (008)，web/ 模块未深审。web/ 是 HTTP 入口面，与已知后端安全问题（CORS * 零认证、路径遍历、.env 明文 key）深度耦合。",
+  "action": "使用 sonnet sub-agent 对 personal-assistant/web/ 模块做安全+代码质量深度审计。审查 8 个文件：api.js, index.html, ChatPage.jsx, InboxPage.jsx, SettingsPage.jsx, VerifyPage.jsx, MockData.jsx, package.json。覆盖 XSS/CSRF/敏感数据泄露/依赖漏洞/路径遍历/CSP/与后端问题耦合等维度。",
+  "files_changed": [],
+  "worktree": null,
+  "direction": "audit-only",
+  "outcome": "succeeded",
+  "outcome_evidence": "产出 audit-2026-07-03-009.md，16 findings (H5/M4/L3/I4)。派生 10 条 fix（9 route-fix + 1 direction-shift），3 条 structural debt 登记到 structural-debt.md。audit-cycle-state.json 已更新 status=fix-in-progress，derived_fixes 数组含 10 条 pending 条目。",
+  "next_suggestion": [
+    "下轮派生 W-006 (route-fix, high): InboxPage 文件上传路径遍历修复 — 前端校验文件名不含路径分隔符 + 后端 Path(filename).name 取纯文件名。触及 web/InboxPage.jsx + personal_assistant/api.py 两文件。",
+    "后续轮次按 severity 降序派生：W-008 (key 传输安全) → W-002 (fetch 错误处理) → W-011 (direction-shift, window.PA_BASE 固化) → W-005/W-007/W-009/W-010/W-012/W-013。",
+    "structural debt (W-001/W-003/W-004) 需用户授权后联动改造（后端认证+CSP+SRI），不自动派 fix。"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {"file": "web/api.js", "line": "9-27", "severity": "high", "finding": "fetch 全链路零认证，与后端 H-002 CORS * 耦合", "remediation": "后端加认证 + api.js 加 credentials:'same-origin' + CORS 收窄", "kind": "structural"},
+    {"file": "web/index.html", "line": "8-12", "severity": "high", "finding": "CDN 资源无 SRI + development 版本", "remediation": "加 integrity hash + 切 production.min.js + self-host", "kind": "structural"},
+    {"file": "web/index.html", "line": "1-190", "severity": "high", "finding": "无 Content-Security-Policy", "remediation": "添加 CSP meta 标签 + nonce", "kind": "structural"},
+    {"file": "web/InboxPage.jsx", "line": "18-19", "severity": "high", "finding": "文件上传路径遍历（前后端联动）", "remediation": "后端 Path.name 取纯文件名 + 前端校验", "kind": "route-fix"},
+    {"file": "web/SettingsPage.jsx", "line": 99, "severity": "high", "finding": "API key 明文 HTTP POST 传输", "remediation": "强制 HTTPS + 后端认证 + key 移出 web", "kind": "route-fix"},
+    {"file": "web/api.js", "line": "9-27", "severity": "medium", "finding": "fetch 错误静默吞掉", "remediation": "非 2xx 记录日志 + UI 提示", "kind": "route-fix"},
+    {"file": "web/index.html", "line": "132-188", "severity": "medium", "finding": "Babel Standalone 运行时编译", "remediation": "构建时预编译 JSX", "kind": "route-fix"},
+    {"file": "web/InboxPage.jsx", "line": "15-22", "severity": "medium", "finding": "upload 绕过 api.js 包装", "remediation": "统一走 PA.post + 检查 response.ok", "kind": "route-fix"},
+    {"file": "web/SettingsPage.jsx", "line": 82, "severity": "medium", "finding": "短 key 掩码回显无效", "remediation": "key < 12 字符仅显示 ****已设置", "kind": "route-fix"},
+    {"file": "web/api.js", "line": 6, "severity": "medium", "finding": "window.PA_BASE 可被外部脚本篡改", "remediation": "IIFE 内 freeze + CSP connect-src", "kind": "direction-shift"},
+    {"file": "web/SettingsPage.jsx", "line": 15, "severity": "low", "finding": "base_url 硬编码暴露 LLM provider", "remediation": "从后端 /settings/llm GET 拉取", "kind": "route-fix"},
+    {"file": "web/api.js", "line": 98, "severity": "low", "finding": "bootstrap() 页面加载触发写操作", "remediation": "改 GET /verify/report", "kind": "route-fix"},
+    {"file": "web/MockData.jsx", "line": "3-11", "severity": "low", "finding": "Mock 数据含半真实 PII", "remediation": "替换为明显虚构名", "kind": "route-fix"},
+    {"file": "web/index.html", "line": 103, "severity": "info", "finding": "无 X-Frame-Options", "remediation": "加 DENY header 或 frame-ancestors 'none'", "kind": "none"},
+    {"file": "web/package.json", "line": "1-9", "severity": "info", "finding": "无依赖声明，无法 npm audit", "remediation": "纳入 package.json 管理", "kind": "none"},
+    {"file": "web/ChatPage.jsx", "line": 87, "severity": "info", "finding": "安全承诺与实际行为不一致", "remediation": "修正声明或移除前端 key 输入", "kind": "none"}
+  ],
+  "audit_id": "audit-2026-07-03-009",
+  "audit_depth": "deep"
+}

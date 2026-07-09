@@ -1,0 +1,69 @@
+{
+  "case_id": "case-2026-07-05-006",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-05T04:20:00Z",
+  "project": "wechat-main",
+  "work_unit": "qq_push+mail_push 凭证/异常脱敏：合并 WM-QQ-01（qq_push 外部响应体误作'本地 JSON'整包打印）+ WM-MAIL-01（mail_push SMTP 异常 full message+traceback 进 cron 日志）+ B 节 audit-log 埋点（QQ Bot API / SMTP 外部出站 + 凭证 QQ_CLIENT_SECRET/SMTP_PASS 经手）",
+  "situation": "audit-2026-07-05-001 对 wechat-main 深审产出 16 findings，已派生 case-002/003/004/005（7 findings，全 pushed-awaiting-human-merge 堆在 opt-wechat-main-1783130541，5 commits stacked）。剩余 9 个 fix_case_id=null 的 pending finding 中，WM-QQ-01（MEDIUM，scripts/qq_push.py:69,119 _get_token/_upload_file 把外部 API 响应体 d 整包 raise RuntimeError，注释自欺'本地 JSON 解析结果（非外部响应体）'——d 实为 json.loads(r.read())，token 端点响应可含 refresh_token/_scope 邻近凭证字段，进 cron 日志归集）与 WM-MAIL-01（MEDIUM，scripts/mail_push.py:80-81 SMTP 异常 print full message + traceback.print_exc，SMTPAuthenticationError(535,b'...Username and Password...') 含服务器账号提示）同属'推送脚本凭证/异常日志脱敏'主题。两文件 qq_push.py+mail_push.py 均未被前 4 个 stacked commit 触及（stack 仅含 pipeline.py/pipeline-gate.sh/fact_checker.py/verifier.py/bocha_search.py）→ 无 cp-guard 冲突，可合并为单 case 派生。B 节评估：两文件均触及外部出站敏感路径（QQ Bot API urlopen / SMTP smtplib）且凭证经手（QQ_CLIENT_SECRET / SMTP_PASS），须同步补 audit-log 埋点。",
+  "action": "route-fix，复用 opt-wechat-main-1783130541（同 area wechat-main:logging-redaction，非公共接口文件→judge_direction_kind 判 route-fix 复用，未开新 worktree）。改 2 文件：\n1. scripts/qq_push.py：\n   - 加 _AUDIT_DIR/_AUDIT_SEQ/_audit_log helper（镜像 bocha_search.py case-005 模式，append-only JSONL 对齐 audit-log.schema.json，自身异常吞掉）\n   - WM-QQ-01 修 _get_token:69 `raise RuntimeError(f\"无 access_token: {d}\")` → `raise RuntimeError(f\"无 access_token (keys={list(d.keys())})\")`，并修正注释（d 是外部响应体非'本地 JSON'）\n   - WM-QQ-01 修 _upload_file:119 同型 `raise RuntimeError(f\"上传无 file_uuid: {d}\")` → `... (keys={list(d.keys())})`，修正注释\n   - B 节：_get_token（token 端点 success/HTTPError/no-access_token 3 分支）、_api（HTTPError 分支）、_upload_file（success/HTTPError/no-file_uuid 3 分支）加 _audit_log external_call 埋点，resource 含 type/identifier/baseUrl，failure details 含 reason+responseKeys，success details 截断 fileUuid[:10]\n2. scripts/mail_push.py：\n   - 加 _audit_log helper（同模式）\n   - WM-MAIL-01 修 :80-81 except 块：删 `print(...: {type(e).__name__}: {e})` 的 full message + 删 traceback.print_exc；改记 `type(e).__name__` + `getattr(e,'smtp_code',None)`（detail=smtp_code 或 no-smtp-code），无 PII\n   - B 节：SMTP login+send success/failure 加 _audit_log external_call 埋点，resource identifier=f\"{user}@{host}:{port}\"（注：含发件邮箱——发件邮箱本身是配置项非 PII 泄露口，且与 stdout `✅ 邮件已发: {to}` 一致口径；如后续收紧可 mask）",
+  "files_changed": [
+    "scripts/qq_push.py",
+    "scripts/mail_push.py"
+  ],
+  "worktree": "opt-wechat-main-1783130541",
+  "direction": "wechat-main:logging-redaction",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "python3 -m py_compile scripts/qq_push.py scripts/mail_push.py → PY_COMPILE_OK（语法通过）",
+    "opt-worktree.sh . commit → `✓ 提交到 opt-wechat-main-1783130541 方向=wechat-main:logging-redaction`，commit 4c38669，diffstat: scripts/mail_push.py 58 +-- / scripts/qq_push.py 79 +--（2 files changed, 130 insertions(+), 7 deletions(-)）",
+    "push 成功：`1924fc5..4c38669 HEAD -> auto/opt-wechat-main-1783130541`（远端 code.alibaba-inc.com/qunbu/wechat.git，第 5 个 stacked commit，已生成 codereview 链接）",
+    "main checkout 已恢复 clean：`git -C wechat-main status --porcelain scripts/qq_push.py scripts/mail_push.py` 无输出",
+    "worktree log -5 顶端 4c38669 opt(wechat-main:logging-redaction)，stack 序列 4ba2fc6→1092685→3b77d0a→1924fc5→4c38669 一致",
+    "WM-QQ-01 验证：committed qq_push.py 不再含字符串 `无 access_token: {d}` / `上传无 file_uuid: {d}`，改含 `(keys={list(d.keys())})`；注释由'本地 JSON 解析结果（非外部响应体）'改为'WM-QQ-01：d 是外部响应体...原注释错误'",
+    "WM-MAIL-01 验证：committed mail_push.py 不再含 `traceback.print_exc` / `{type(e).__name__}: {e}` full message，改含 `type(e).__name__` + `getattr(e, \"smtp_code\", None)`",
+    "B 节埋点验证：两文件 grep `_audit_log` 命中 3 处定义+调用（qq_push _get_token/_api/_upload_file；mail_push success/failure），_AUDIT_DIR=wechat-main/.audit 与现有 audit-2026-07-04.jsonl 同目录"
+  ],
+  "next_suggestion": "下轮继续派生 audit-2026-07-05-001 剩余 7 个 pending fix_case_id=null finding（WM-PIP-02 pipeline._save 原子写 / WM-QQ-01+WM-MAIL-01 本轮已派 / WM-GATE-02 pipeline-gate TOPIC glob 注入 find -name / WM-FC-02+WM-FC-03 fact_checker 收紧 / WM-PIP-03 cmd_tool moot filter / WM-VER-03 verifier merge_retry_report / WM-QQ-02 direction-shift 跨项目 .env 默认值迁移）。优先级：WM-PIP-02（与 case-002 同 pipeline.py，需 cp-guard 直编 worktree 或人工 merge case-002 后再做）→ 暂跳；建议下轮做 WM-GATE-02（pipeline-gate.sh，与 case-003 同文件，cp-guard 会跳——需等 case-003 merge）→ 也受阻；故下轮建议做 WM-VER-03（verifier.py merge_retry_report，与 case-003/004 同文件，同样 cp-guard 受阻）。⚠ 结论：剩余 pending finding 几乎全部触及已 stacked 的 5 文件之一，cp-guard 会拦。**强烈建议优先人工 merge opt-wechat-main-1783130541（5 commits）**，merge 后这些文件解锁，下轮可继续派 WM-PIP-02/WM-GATE-02/WM-VER-03/WM-FC-02/WM-FC-03。若用户暂不 merge，下轮可派 WM-QQ-02（direction-shift，新 worktree，qq_push.py 默认 _DEFAULT_ENV 从 /opt/wanxia/.env 改读 wechat 本地 .wechat-env——但本轮已改 qq_push.py stacked，QM-QQ-02 同文件 cp-guard 也会跳）。故下轮若仍未 merge，走瞭望轮（scout-scan 快照 + 在 NEXT_SUGGESTION 重申 merge 阻塞）。",
+  "audit_type": "audit-log-instrumentation",
+  "audit_findings": [
+    {
+      "file": "scripts/qq_push.py",
+      "line": 69,
+      "severity": "medium",
+      "finding": "WM-QQ-01: _get_token `raise RuntimeError(f\"无 access_token: {d}\")` 把外部 token 端点响应体 d（json.loads(r.read())）整包打到 stderr/cron 日志；注释自欺'本地 JSON 解析结果（非外部响应体）'——注释错误，d 是外部响应体。token 端点响应可含 refresh_token/_scope 等邻近凭证字段。",
+      "remediation": "改记 responseKeys=list(d.keys())，修正注释。+ _audit_log external_call 埋点 failure 分支记 reason+responseKeys。",
+      "kind": "route-fix"
+    },
+    {
+      "file": "scripts/qq_push.py",
+      "line": 119,
+      "severity": "medium",
+      "finding": "WM-QQ-01 同型：_upload_file `raise RuntimeError(f\"上传无 file_uuid: {d}\")` 把上传端点响应体整包打印，注释同样错误标'本地 JSON'。",
+      "remediation": "改记 responseKeys=list(d.keys())，修正注释。+ _audit_log external_call 埋点。",
+      "kind": "route-fix"
+    },
+    {
+      "file": "scripts/mail_push.py",
+      "line": 80,
+      "severity": "medium",
+      "finding": "WM-MAIL-01: `print(f\"❌ ...: {type(e).__name__}: {e}\")` 打印 SMTP 异常 full message（SMTPAuthenticationError(535,b'...Username and Password not accepted...') 含服务器账号提示）。",
+      "remediation": "仅记 type(e).__name__ + smtp_code=getattr(e,'smtp_code',None)，不打印 message。",
+      "kind": "route-fix"
+    },
+    {
+      "file": "scripts/mail_push.py",
+      "line": 81,
+      "severity": "medium",
+      "finding": "WM-MAIL-01: `traceback.print_exc(file=sys.stderr)` 打印完整调用栈进 cron 日志，过度暴露内部路径。",
+      "remediation": "删除 traceback.print_exc 调用（import traceback 一并移除）。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-001",
+  "audit_depth": "shallow",
+  "_dispatch_round": "fix-in-progress round 5 (case-006)",
+  "_worktree": "opt-wechat-main-1783130541",
+  "_commit": "4c38669",
+  "_merge_state": "pushed-awaiting-human-merge",
+  "_stack_position": "5/5 on opt-wechat-main-1783130541 (4ba2fc6→1092685→3b77d0a→1924fc5→4c38669)"
+}

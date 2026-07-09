@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-04-024",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-04T19:36:00Z",
+  "project": "moni-master",
+  "work_unit": "MM-H004 /agent/action kwargs whitelist",
+  "situation": "audit-2026-07-04-002 finding MM-H004 (priority 4, route-fix): api.py L1371-1397 run_agent_action expands untrusted payload.payload via **args into 12 engine methods. Attacker can inject arbitrary keyword arguments (e.g. import_baostock_snapshot(path='/etc/passwd') or create_rule with unexpected params) because no per-action parameter validation exists at the API layer.",
+  "action": "Added _ACTION_KWARGS_WHITELIST dict mapping each action name to its allowed parameter set (derived from engine method signatures). Added _filter_action_args helper that rejects unexpected keys with HTTP 400 listing the offending parameters. Applied filter before all **kwargs expansion points. update_rule/update_strategy_session whitelists include the popped rule_id/session_id keys so filtering doesn't strip them.",
+  "files_changed": ["local_simulator/api.py"],
+  "worktree": "opt-moni-master-1783105913",
+  "direction": "moni-master:api-action-whitelist",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit a8ee972 pushed to origin/auto/opt-moni-master-1783105913. Whitelist covers all 12 **kwargs actions: import_qlib_snapshot(3 keys), create_rule(6), update_rule(7 incl rule_id), create_strategy_session(6), update_strategy_session(7 incl session_id), run_strategy_once(4), run_backtest_qlib(5), run_backtest_batch(15), create_replay_session(6), get_qlib_history(3), settle_day(2). Non-**kwargs actions (place_order/cancel_order/set_data_source/update_settings/delete_rule/delete_strategy_session/evaluate_rules/advance_trade_date) use explicit key access and are not vulnerable.",
+  "next_suggestion": "派生 fix MM-M009 (priority 12, /llm/chat SSRF + credential theft) — 同文件 api.py，可在同一 worktree 追加修复",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "local_simulator/api.py",
+      "line": 1371,
+      "severity": "high",
+      "finding": "/agent/action **kwargs expansion from untrusted input enables parameter injection into 12 engine methods",
+      "remediation": "Per-action parameter whitelist with reject-on-unknown-keys enforcement applied before **kwargs expansion",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-04-002",
+  "audit_depth": "shallow"
+}

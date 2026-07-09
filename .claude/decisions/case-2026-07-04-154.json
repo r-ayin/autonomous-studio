@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-04-154",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-04T20:56:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "parallel-dispatch.sh TASK_ID word-split safety (AS-PERSIST-M03)",
+  "situation": "audit-2026-07-04-016 finding M03: parallel-dispatch.sh L54 used `for TASK_ID in $(python3 ...)` which word-splits on whitespace/special chars in task IDs. Malformed or adversarial plan.json could cause branch name injection, path traversal, or silent task skipping.",
+  "action": "Replaced newline-delimited for-loop with NUL-delimited while-read loop (`read -r -d ''`) fed by python3 process substitution outputting NUL-separated task IDs. Added regex validation (`^[a-zA-Z0-9_-]+$`) to reject unsafe IDs before use in branch names and filesystem paths.",
+  "files_changed": ["scripts/parallel-dispatch.sh"],
+  "worktree": "opt-parallel-dispatch-shift-1783169752",
+  "direction": "parallel-dispatch:word-split-safe",
+  "outcome": "succeeded",
+  "outcome_evidence": "bash -n syntax check passed; opt-worktree.sh committed to direction-shift worktree (public interface file detected); pushed to origin/auto/opt-parallel-dispatch-shift-1783169752",
+  "next_suggestion": "Dispatch L01 (route-health-scorer.py --json flag default=True bug) next; then L02 (triage.py bare except). After all 3 pending cleared, audit-cycle-state transitions to cycle-complete triggering next full audit.",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-04-016",
+  "audit_depth": "shallow"
+}

@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-01-646",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-01T14:18:00Z",
+  "project": "x-tool",
+  "work_unit": "XT-M-001 save-checkpoint audit log fallback",
+  "situation": "audit-2026-07-01-008 finding XT-M-001: save-checkpoint.py collect_recent_activity() 硬编码 ~/.claude/audit/audit.jsonl，Linux 部署下该路径不存在 → recent_activity 永远空列表 → SSH 断开后 checkpoint 恢复丢失最近活动上下文，自主引擎跨会话连续性失效。",
+  "action": "新增 _resolve_audit_log_paths() 候选链：先扫项目本地 .audit/audit-YYYY-MM-DD.jsonl（当日+昨日+兜底最新），再回退旧版全局路径。collect_recent_activity() 改为遍历候选列表，收集满 10 条即提前退出。单文件改动，route-fix。",
+  "files_changed": [".claude/hooks/save-checkpoint.py"],
+  "worktree": "opt-hooks-1782914295",
+  "direction": "hooks:save-checkpoint-audit-fallback",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 85c0d39 已落 worktree opt-hooks-1782914295；python3 -c ast.parse 语法校验通过；push 403 不阻断（merge 时再推）。main 工作区文件已被 linter 还原为原版（opt-worktree 迁移预期行为）。",
+  "next_suggestion": "继续派生 XT-M-003 (priority 4): notify-phone.py send() 返回值未消费，confirm 通知失败完全静默。同 area hooks 可复用 opt-hooks-1782914295。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": ".claude/hooks/save-checkpoint.py",
+      "line": 81,
+      "severity": "medium",
+      "finding": "collect_recent_activity() 硬编码 ~/.claude/audit/audit.jsonl，Linux 部署下不存在 → recent_activity 恒空",
+      "remediation": "fallback 链：项目本地 .audit/audit-YYYY-MM-DD.jsonl → 全局路径 → 空列表",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-01-008",
+  "audit_depth": "shallow"
+}

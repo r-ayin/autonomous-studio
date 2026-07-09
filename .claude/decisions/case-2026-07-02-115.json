@@ -1,0 +1,33 @@
+{
+  "case_id": "case-2026-07-02-115",
+  "agent_id": "ralph-wiggum-loop",
+  "timestamp": "2026-07-02T06:55:00Z",
+  "project": "autonomous-engine",
+  "work_unit": "full-deep-audit: skills+memory+checkpoints+docs layer",
+  "situation": "audit-cycle-state was cycle-complete when audit started (004 fixes all merged). Targeted autonomous-engine skills/memory/checkpoints/docs module — complementary to audit-2026-07-01-009 which covered hooks+watchdog+skill-firmware. State file was concurrently updated to fix-in-progress (006 pending fixes) during audit execution.",
+  "action": "Deep audit of 12 files across SKILL.md, decision-agent-prompt.md, memory/*, checkpoints/, sessions/, ARCHITECTURE.md, CLAUDE.md. Cross-document consistency analysis + deployment-context validation.",
+  "files_changed": [],
+  "worktree": null,
+  "direction": "none",
+  "outcome": "succeeded",
+  "outcome_evidence": "audit-2026-07-02-007.md written (9 findings: 3H/4M/2L + 1 structural debt). All findings registered in audit-cycle-state.derived_fixes with status=pending. No code changes (audit-only round).",
+  "next_suggestion": [
+    "Dispatch AE2-H-001 (latest.json path rewrite) as route-fix — single file, highest severity",
+    "Dispatch AE2-H-002 (L2 interval doc sync) as direction-shift — touches SKILL.md public interface",
+    "After 006 pending fixes clear, batch remaining 007 route-fixes into 2-3 worktrees by file proximity"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {"file": ".claude/checkpoints/latest.json", "line": 6, "severity": "high", "finding": "Checkpoint project/cwd hardcoded /mnt/e/x-tool — Linux recovery chain broken", "remediation": "Rewrite latest.json with current deployment path; verify save-checkpoint.py uses os.getcwd()", "kind": "route-fix"},
+    {"file": ".claude/skills/autonomous-engine/SKILL.md", "line": 131, "severity": "high", "finding": "L2 heartbeat interval 4 docs 3 values (SKILL.md=7min, CLAUDE.md=30min, ARCHITECTURE.md=7min, actual cron=30min)", "remediation": "Unify to actual cron value (30min); extract L2_INTERVAL_MINUTES to calibration.json as single source of truth", "kind": "direction-shift"},
+    {"file": ".claude/skills/autonomous-engine/decision-agent-prompt.md", "line": 272, "severity": "high", "finding": "Confidence threshold table 3 mutually exclusive versions across decision-agent-prompt.md, CLAUDE.md, ARCHITECTURE.md", "remediation": "Designate decision-agent-prompt.md v2.2 as authoritative; sync CLAUDE.md and ARCHITECTURE.md", "kind": "route-fix"},
+    {"file": ".claude/memory/project-index.md", "line": 11, "severity": "medium", "finding": "All project paths are Windows E:\\x-tool\\ — Linux memory system returns ENOENT for every project lookup", "remediation": "Rewrite project-index.md with /home/admin/workspace paths; clear session-progress.md; deprecate wechat-push-reference.md", "kind": "route-fix"},
+    {"file": ".claude/sessions/test-001.json", "line": 1, "severity": "medium", "finding": "3 session files are identical test stubs with last_project=unknown — session recovery never validated", "remediation": "Delete test stubs; audit incremental-save.py session write logic separately", "kind": "route-fix"},
+    {"file": ".claude/skills/autonomous-engine/decision-agent-prompt.md", "line": 507, "severity": "medium", "finding": "§3 forbids reading checkpoints but §0.2 cold-start requires checkpoint verification — read/write asymmetry", "remediation": "Add exception: checkpoints readable during CS-ACT verification phase only", "kind": "route-fix"},
+    {"file": ".claude/memory/autonomous-suggestions.md", "line": 19, "severity": "medium", "finding": "All suggestion entries reference Windows workspace projects (pachong-master/wanxia/moni) — stale on Linux", "remediation": "Archive existing suggestions to historical section; clear active queue", "kind": "route-fix"},
+    {"file": ".claude/memory/MEMORY.md", "line": 5, "severity": "low", "finding": "References non-existent decision-archive.md — broken link causes ENOENT on sub-agent read", "remediation": "Create skeleton decision-archive.md or remove link from MEMORY.md", "kind": "route-fix"},
+    {"file": "autonomous-engine/CLAUDE.md", "line": 74, "severity": "low", "finding": "Cron IDs 0a291b1f/53e6f6f8 not cross-verified against scheduled_tasks.json", "remediation": "Read scheduled_tasks.json and update CLAUDE.md if IDs mismatch", "kind": "route-fix"}
+  ],
+  "audit_id": "audit-2026-07-02-007",
+  "audit_depth": "deep"
+}

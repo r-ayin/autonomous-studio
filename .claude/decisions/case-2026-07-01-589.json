@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-07-01-589",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-01T10:30:00Z",
+  "project": "wechat-main",
+  "work_unit": "knowledge_base JSONL append 加 fcntl.flock LOCK_EX (audit-004 WM-M-008)",
+  "situation": "audit-004 WM-M-008 finding: scripts/knowledge_base.py _cmd_add line 120 直接 open('a') 写 JSONL 无文件锁，多进程并发 add 会交错字节导致后续 query/stats JSONDecodeError 跳过条目或丢数据。priority=20，前序 19 个 audit-004 fix 已派生待 merge。",
+  "action": "import fcntl；with open('a') as f: try flock(LOCK_EX) → write+flush → finally flock(LOCK_UN)。smoke test: python3 knowledge_base.py add kb-smoke-test-* --article /tmp/_kb_test_article.txt 通过，JSONL tail 解析成功。opt-worktree commit scripts:kb-jsonl-flock 复用 auto/opt-scripts-1782899218 (route-fix，未触公共接口)，push origin d7f8536。",
+  "files_changed": [
+    "scripts/knowledge_base.py"
+  ],
+  "worktree": "auto/opt-scripts-1782899218",
+  "direction": "scripts:kb-jsonl-flock",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit d7f8536 pushed to origin/auto/opt-scripts-1782899218; smoke test 'python3 scripts/knowledge_base.py add kb-smoke-test-1782901588 --article /tmp/_kb_test_article.txt' exit 0, output {action:add,slug:kb-smoke-test-1782901588,sources_count:1}; tail -1 of knowledge_base.jsonl parses as valid JSON with matching slug. merge-tree clean vs main (prior commits in same worktree already verified clean).",
+  "next_suggestion": "下轮继续 fix-in-progress 派生 WM-L-002 (priority=21, mail_push except Exception 添加 traceback.print_exc())，同 area route-fix 复用 opt-scripts-1782899218；WM-L-002 完成后派生 WM-L-003 (qq_push RuntimeError 响应体脱敏)。所有 pending fix 清零后 audit-cycle-state.status→cycle-complete 触发下一轮全量审计。",
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-01-004",
+  "audit_depth": "shallow"
+}

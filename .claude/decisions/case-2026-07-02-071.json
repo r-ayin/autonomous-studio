@@ -1,0 +1,24 @@
+{
+  "case_id": "case-2026-07-02-071",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-02T03:45:00Z",
+  "project": "skills",
+  "work_unit": "runner-exec/creds.js secret file permission check (SK-RE-006)",
+  "situation": "audit-2026-07-02-003 finding SK-RE-006: creds.js:11 getInternalSecret reads ~/.aone-cloud-cli/internal-rpc-secret without checking file permissions. World/group-readable secret file leaks RPC credentials to any local user.",
+  "action": "Added fail-closed permission check before reading secret file: fs.statSync mode & 0o077 must be 0 (owner-only). If insecure, logs warning with remediation command and throws. Committed directly in existing worktree opt-runner-exec-1782940040 (case-104 path: cp-guard would skip due to prior SK-RE-008/018 commits on same file).",
+  "files_changed": [
+    "runner-exec/scripts/creds.js"
+  ],
+  "worktree": "opt-runner-exec-1782940040",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 0f46abe on auto/opt-runner-exec-1782940040 pushed to origin; diff adds 10 lines (mode check + warn + throw) inside getInternalSecret's fs.existsSync branch",
+  "next_suggestion": [
+    "派生 SK-RE-007 (creds.js:16 pgrep pattern too broad) — 同文件可继续追加到本 worktree",
+    "人工 merge opt-runner-exec-1782940040 以落地 SK-RE-002/003/004/005/006/008/014/018 共 8 个 fix"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-003",
+  "audit_depth": "shallow"
+}

@@ -1,0 +1,55 @@
+{
+  "case_id": "case-2026-07-05-003",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-05T02:10:00Z",
+  "project": "wechat-main",
+  "work_unit": "派生 audit-2026-07-05-001 的 QA 门禁静默放行链合并 fix（WM-GATE-01 + WM-FC-01 + WM-VER-02，同根因，3 文件 route-fix）",
+  "situation": "audit-cycle-state.status=fix-in-progress，audit-2026-07-05-001 共 16 derived_fixes，WM-PIP-01 上轮已派生(case-2026-07-05-002→opt-wechat-main-1783130541 pushed 待人工 merge)，剩 15 pending。三处 finding 构成同一条 QA 门禁静默放行数据流：(1) pipeline-gate.sh:213 对 resolve_checkpoint 返回的绝对路径再前缀 $WECHAT_ROOT → 双前缀不存在的路径 → 3 个 advisory checker (style_fingerprint/ending_detector/structural_consistency_checker) python FileNotFoundError 静默不告警即放行；(2) fact_checker.py:620 _check_value_range 在声明含数值、搜索结果无数值时 return True 默认通过 → DATA 声明无数值佐证即 VERIFIED；(3) verifier.py 5 处 Path.write_text 非原子写报告，崩溃半写叠加 pipeline-gate.sh:90 grep -oE '\"falsified\"...\" 兜底可能读到残存字段误判 FALSIFIED=0。三层叠加可使数据声明无任何数值佐证的文章通过 Phase 3.5 QA 门禁，削弱 CLAUDE.md 规则 6 (FALSIFIED=0 才算通过) 的刚性。",
+  "action": "3 文件 route-fix 合并提交到复用 worktree opt-wechat-main-1783130541（同 area wechat-main，未触及 .claude/public-interfaces.txt 公共接口文件 → route-fix 复用，judge_direction_kind 自动判定）：\n1. scripts/pipeline-gate.sh:213 `local full=\"$WECHAT_ROOT/$f\"` → `local full=\"$f\"`（f 来自 find \"$WECHAT_ROOT/$ARTICLE_DIR\" 已是绝对路径）；并在 for checker 循环内对 rc∉{0,1,2} 加 `elif [ $rc -ne 0 ]` 告警分支，禁止异常退出静默放行（out 截断 120 字附上）。\n2. script-verifier/fact_checker.py:620 `return len(result_nums) == 0` → `return False`，注释由\"默认通过\"改为\"默认存疑→交 FALSIFIED/needs_claude_review\"。\n3. script-verifier/verifier.py 新增 `import os` + 模块级 helper `_atomic_write_text(path, text)`（tmp+os.fsync+os.replace），替换 5 处 Path(...).write_text(...) 调用（extract/judge/verify 输出 + retry 2 处报告写回）。\n未触及外部调用/凭证路径，故无需补 audit-log 埋点（B 节评估：本 case 是 QA 逻辑收紧 + 持久化原子性，非敏感路径新增；audit-2026-07-05-001 第 90 行已指出 WM-PIP-01/WM-QQ-01 才需埋点）。",
+  "files_changed": [
+    "scripts/pipeline-gate.sh",
+    "script-verifier/fact_checker.py",
+    "script-verifier/verifier.py"
+  ],
+  "worktree": "opt-wechat-main-1783130541 (auto/opt-wechat-main-1783130541, 已 push origin, HEAD=1092685, 与上轮 WM-PIP-01 同分支累积第 2 个 commit)",
+  "direction": "wechat-main:qa-gate-silent-bypass (route-fix, 复用同 area worktree)",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "python3 ast.parse verifier.py + fact_checker.py 通过；bash -n pipeline-gate.sh 通过",
+    "烟雾测试：verifier._atomic_write_text 写入后 readback 得 '{\"falsified\": 0}'（tmp+os.replace roundtrip OK）",
+    "烟雾测试：fact_checker._check_value_range('收入1270万元', '公司去年收入增长显著') 返回 False（修复前返回 True，修复后无数值佐证不再默认通过）",
+    "opt-worktree.sh commit 输出：✓ 提交到 opt-wechat-main-1783130541 方向=wechat-main:qa-gate-silent-bypass；git push: 4ba2fc6..1092685 HEAD -> auto/opt-wechat-main-1783130541",
+    "worktree git log -3 顶部即 1092685 本次 commit；grep 确认 pipeline-gate.sh:217 full=\"$f\" / :230 rc -ne 0 / verifier.py:59 _atomic_write_text / 5 处调用点全替换",
+    "CR 链接 https://code.alibaba-inc.com/qunbu/wechat/codereview/new?from=main&to=auto/opt-wechat-main-1783130541（与 WM-PIP-01 同 CR，累积待人工 merge）"
+  ],
+  "next_suggestion": "[1] 派生 WM-VER-01 单 case（verifier.py build_remediation_prompt 对 claim 文本围栏隔离 <claim_text> + 剥离指令式行，防间接 prompt 注入到修复 LLM）。[2] 原子写三处合并 case（WM-PIP-02 pipeline._save + WM-BOCHA-01 bocha_search 输出，同 tmp+os.replace 模式，复用本 case 的 _atomic_write_text 思路）。[3] WM-QQ-01 + WM-MAIL-01 凭证/异常脱敏合并 case（qq_push 响应体只记 keys、mail_push 仅记 smtp_code）。[4] WM-BOCHA-02 响应大小 cap + https 强制单 case。[5] WM-FC-02/WM-FC-03 fact_checker 收紧合并 case。[6] WM-GATE-02 TOPIC glob 注入校验单 case。[7] WM-PIP-03/WM-VER-03 冗余/命名 LOW 单 case。[8] WM-QQ-02 direction-shift 跨项目 .env 默认值迁移（单独新 worktree）。[9] 监控 opt-wechat-main-1783130541 CR（含 WM-PIP-01 + 本 case 2 commit）是否被人工 merge，3 轮无 merge → drift-repair 归档 rejected。目标 pending_count 16→13（本 case 派生 3 条 finding）。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "scripts/pipeline-gate.sh",
+      "line": 213,
+      "severity": "medium",
+      "finding": "WM-GATE-01: local full=\"$WECHAT_ROOT/$f\" 双前缀。f 来自 resolve_checkpoint 的 find \"$WECHAT_ROOT/$ARTICLE_DIR\"（绝对根），输出已是绝对路径，再前缀 $WECHAT_ROOT 得到 /home/admin/workspace/wechat-main//home/admin/workspace/wechat-main/output/... 不存在路径。python3 \"$script\" \"$full\" FileNotFoundError，rc 非 1/2，三个 advisory checker (style_fingerprint/ending_detector/structural_consistency_checker) 静默不输出任何告警，门禁照样 ✅ Phase 3 验证通过。同函数 198 行 wc -c < \"$f\" 直接用 $f（正确），唯独 213 行双前缀——笔误。",
+      "remediation": "改 local full=\"$f\"（f 已绝对）；并对 rc∉{0,1,2} 加告警分支禁止静默放行。",
+      "kind": "route-fix"
+    },
+    {
+      "file": "script-verifier/fact_checker.py",
+      "line": 620,
+      "severity": "medium",
+      "finding": "WM-FC-01: _check_value_range 末尾 return len(result_nums) == 0——声明含数值、搜索结果无数值时返回 True（默认通过）。DATA 声明只要 _check_corroboration 文本命中且 source_count>=1 即 VERIFIED，即使搜索结果纯散文、无数值佐证。事实核查对数据声明的数值层校验形同虚设。",
+      "remediation": "搜索结果无数值时 return False（→ FALSIFIED 或 needs_claude_review），注释改默认存疑。",
+      "kind": "route-fix"
+    },
+    {
+      "file": "script-verifier/verifier.py",
+      "line": 352,
+      "severity": "medium",
+      "finding": "WM-VER-02: Path(args.output).write_text(output) 非原子写报告（5 处：extract/judge/verify 输出 + retry 2 处报告写回）。崩溃半写叠加 pipeline-gate.sh:90 grep -oE '\"falsified\"\\s*:\\s*[0-9]+' 兜底：python 解析失败时 grep 在残缺 JSON 里可能命中残存 \"falsified\": 0 字段，致 gate 读到错误计数放行。",
+      "remediation": "新增 _atomic_write_text(tmp+os.fsync+os.replace) 替换 5 处 write_text；gate grep 兜底仅作最后手段且对残缺 JSON 应判失败（gate 侧本 case 未改，留待 WM-GATE-* 后续）。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-001",
+  "audit_depth": "shallow"
+}

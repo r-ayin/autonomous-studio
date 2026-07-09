@@ -1,0 +1,30 @@
+{
+  "case_id": "case-2026-07-07-086",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-07T03:11:00+08:00",
+  "project": "moni-master",
+  "work_unit": "local_simulator/api.py /validation/grid-search async offload",
+  "situation": "MONI-PY-003 (audit-2026-07-07-029): /validation/grid-search endpoint called wfo_engine.run_wfo() synchronously on FastAPI async event loop, blocking all concurrent requests during grid search (medium severity DoS vector). Derived fix from deep audit.",
+  "action": "Refactored run_grid_search to use AsyncRunStore.start('grid-search', _target) matching existing /wfo/run pattern. Endpoint now returns {run_id, kind, status} immediately; client polls /wfo/run/{run_id} for progress/result. WFO engine runs in background thread via run_store.",
+  "files_changed": [
+    "local_simulator/api.py"
+  ],
+  "worktree": "opt-local_simulator-1783352870",
+  "direction": "local_simulator:grid-search-async",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit ca76452 on auto/opt-local_simulator-1783352870 (pushed to origin d4fc660..ca76452). 1 file changed, 21 insertions(+), 18 deletions(-). cp-guard triggered (diverged wt), used case-104 direct-edit-wt escape hatch.",
+  "next_suggestion": "派生 MONI-PY-004 (M, agent action whitelist bypass api.py:1375) → 同 worktree opt-local_simulator-1783352870 追加修复；完成后 audit-cycle-state pending_count=0 → cycle-complete → 触发下一轮全量审计",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "local_simulator/api.py",
+      "line": 1793,
+      "severity": "medium",
+      "finding": "Synchronous wfo_engine.run_wfo() blocks FastAPI async event loop in /validation/grid-search (MONI-PY-003)",
+      "remediation": "Offload to AsyncRunStore.start() with kind='grid-search', return run_id for polling",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-029",
+  "audit_depth": "shallow"
+}

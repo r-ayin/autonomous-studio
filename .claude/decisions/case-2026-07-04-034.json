@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-04-034",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-04T23:45:00Z",
+  "project": "moni-master",
+  "work_unit": "MM-M010: redact sensitive config fields in /agent/state/full response",
+  "situation": "audit-2026-07-04-002 finding MM-M010 (priority 13): api.py L1328-1341 /agent/state/full returns raw app.state.engine.config under 'settings' key. Config dict contains LLM api_key, base_url, internal addresses, and any other user-supplied secrets. Endpoint has no auth guard (separate MM-H002 track), so any network caller can exfiltrate credentials. Existing /llm/config GET already demonstrates safe pattern (L1839 get_llm_config returns only has_api_key bool, never the key itself).",
+  "action": "Added _redact_sensitive_config() helper at module scope (above _json_safe) that deep-traverses dict/list/tuple structures and replaces values whose keys contain any of: api_key, apikey, secret, password, token, credential, authorization, private_key, access_key, session_key (case-insensitive substring match). Recursion capped at depth 16 to prevent stack overflow on cyclic refs. Applied to /agent/state/full 'settings' field. Stacked on existing opt-moni-core-1782953414 worktree (same file area as MM-M009 SSRF fix; cp-guard blocked opt-worktree.sh commit so committed directly in worktree). Pushed to origin.",
+  "files_changed": ["local_simulator/api.py"],
+  "worktree": "opt-moni-core-1782953414",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 17a6587 in auto/opt-moni-core-1782953414 branch (stacked on cad3df6); pushed to origin; CR link: https://code.alibaba-inc.com/xtool/moni/codereview/new?from=master&to=auto/opt-moni-core-1782953414; diff shows +36/-1 lines (helper function + 1 call site); python3 -c ast.parse passes syntax check",
+  "next_suggestion": "派生 fix for MM-M011 (engine.rs L796-803: can_match blocks ALL buys at limit_up contradicting risk.rs which allows LIMIT buy at limit_up) — different file area (engine.rs vs api.py), will open new opt-moni-engine-* worktree via route-fix reuse logic. Also consider marking case-2026-07-04-025 (MM-M009) as merged in audit-cycle-state since cad3df6 is now stacked under 17a6587 on same branch awaiting human merge.",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-04-002",
+  "audit_depth": "shallow"
+}

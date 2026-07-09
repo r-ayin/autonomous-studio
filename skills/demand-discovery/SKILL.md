@@ -19,6 +19,7 @@ triggers:
   - “MRD”
   - “把.*聊清楚”
 repository: https://code.alibaba-inc.com/qunbu/demand-discovery
+version: 1.0.0
 ---
 
 # Demand Discovery

@@ -1,0 +1,36 @@
+{
+  "case_id": "case-2026-07-03-013",
+  "agent_id": "ralph-wiggum-cycle-74",
+  "timestamp": "2026-07-03T19:30:00Z",
+  "project": "engine-skills-extracted",
+  "work_unit": "全量深度审计: 提交安全链 (auto-commit + main-branch-protection + post-edit-check)",
+  "situation": "audit-cycle-state=cycle-complete → 触发新全量审计。engine-skills-extracted 的提交安全链三件套从未深审过，且 scout-scan 显示 autonomous-engine #1 推荐但已无未审 Python runtime。选 ESE 提交安全链作为高价值审计目标。",
+  "action": "并行 3 个 sonnet sub-agent 分别深审自动提交、主分支保护、编辑后检查三个模块。读取所有脚本+SKILL.md，追踪数据流、安全边界、与引擎契约一致性。",
+  "files_changed": [".claude/audits/audit-2026-07-03-010.md", ".claude/audit-cycle-state.json"],
+  "worktree": null,
+  "direction": "deep-audit-only",
+  "outcome": "succeeded",
+  "outcome_evidence": "产出 audit-2026-07-03-010.md (39 findings: 9H/13M/10L/7I)。核心发现: extracted skill 与 live 部署严重脱节(MBP-F009)、凭证泄露链(AC-F002+F005)、5种gate bypass(MBP-F001~F005)、零observability。派生9条P0/P1 route-fix待下轮起逐个派发。",
+  "next_suggestion": [
+    "派生 AC-F002 fix: auto-commit.py git add -A → git add <filtered files>，扩展敏感文件排除列表",
+    "派生 AC-F005 fix: EXCLUDED_PREFIXES 增加 .env*/\\*.pem/\\*.key/credentials* 模式",
+    "派生 PEL-001 fix: post-edit-lint.py file_path 加 realpath + workspace root 边界校验",
+    "MBP-F001~F005 打包为 sync-from-live: 将 extracted gate 同步到 live 版本(517L)"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {"file": "自动提交/scripts/auto-commit.py", "line": 313, "severity": "high", "finding": "git add -A stages all files including sensitive ones; is_excluded only filters display list", "remediation": "Replace git add -A with git add <filtered-paths>; extend exclusion to .env/*.pem/*.key", "kind": "route-fix"},
+    {"file": "自动提交/scripts/auto-commit.py", "line": "38-41", "severity": "medium", "finding": "EXCLUDED_PREFIXES missing .env/*.pem/*.key/credentials patterns", "remediation": "Add sensitive file patterns to exclusion list", "kind": "route-fix"},
+    {"file": "自动提交/scripts/auto-commit.py", "line": "287-291", "severity": "high", "finding": "TOCTOU race between autonomous mode check and commit operation", "remediation": "Add file lock or double-check before commit", "kind": "route-fix"},
+    {"file": "自动提交/SKILL.md vs auto-commit.py", "line": "L6 vs L335-348", "severity": "high", "finding": "Docstring says 'never push' but code pushes; SKILL.md self-contradictory", "remediation": "Unify documentation and code behavior", "kind": "direction-shift"},
+    {"file": "主分支保护/scripts/autonomous-commit-gate.py", "line": 145, "severity": "high", "finding": "Missing cherry-pick/revert/am/rebase in guarded subcommands", "remediation": "Add missing subcommands to _GUARDED set", "kind": "route-fix"},
+    {"file": "主分支保护/scripts/autonomous-commit-gate.py", "line": 57, "severity": "high", "finding": "cmd.split() not shell-aware; eval/bash -c bypass gate", "remediation": "Use shlex.split() + indirect unwrapping", "kind": "route-fix"},
+    {"file": "主分支保护/scripts/autonomous-commit-gate.py", "line": "58-60", "severity": "high", "finding": "toks.index('git') exact match; /usr/bin/git bypasses", "remediation": "Check os.path.basename(t) == 'git'", "kind": "route-fix"},
+    {"file": "主分支保护/scripts/autonomous-commit-gate.py", "line": "51-71", "severity": "high", "finding": "No command-chain segmentation; A && git commit bypasses", "remediation": "Split on &&/||/;/| and evaluate each segment", "kind": "route-fix"},
+    {"file": "主分支保护/scripts/autonomous-commit-gate.py", "line": "51-71", "severity": "high", "finding": "No command-substitution detection; $(git commit) bypasses", "remediation": "Extract inner commands from $()/backtick contexts", "kind": "route-fix"},
+    {"file": "编辑后检查/scripts/post-edit-lint.py", "line": "37-48", "severity": "high", "finding": "Path traversal: file_path not validated against workspace root", "remediation": "Add realpath check + startswith(workspace_root)", "kind": "route-fix"},
+    {"file": "主分支保护/scripts/autonomous-commit-gate.py", "line": "1-194", "severity": "medium", "finding": "Extracted version severely diverged from live (194L vs 517L); all hardening missing", "remediation": "Sync extracted skill with live deployed version; add CI check", "kind": "structural"}
+  ],
+  "audit_id": "audit-2026-07-03-010",
+  "audit_depth": "deep"
+}

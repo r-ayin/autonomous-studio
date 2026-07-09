@@ -15,7 +15,7 @@
 
 import { parseArgs } from 'node:util';
 import { findBatchEvent, findEvent } from './lib/event-client.js';
-import { deriveConclusion } from './lib/sunfire-client.js';
+import { deriveConclusion, dedupByRuleNewest } from './lib/sunfire-client.js';
 
 const { values } = parseArgs({
   options: {
@@ -47,8 +47,14 @@ async function main() {
   const observeMinutes = planPayload.resolved_strategy?.observe_minutes ?? 5;
 
   // ── Gate 1: Time gate ─────────────────────────────────────────────
-  // updated_at from server is an ISO string; convert to ms
-  const successTime = new Date(batchEvent.updated_at).getTime();
+  // PD-TIME-01: prefer payload.success_at (stamped when the batch hit SUCCESS) over
+  // updated_at, because report-observation writes observation_result into the same event
+  // every tick, bumping updated_at and making the gate never pass. Fall back to updated_at
+  // for in-flight batches stamped before this fix.
+  const successAt = batchEvent.payload?.success_at;
+  const successTime = successAt != null
+    ? new Date(successAt).getTime()
+    : new Date(batchEvent.updated_at).getTime();
   const elapsedMs = Date.now() - successTime;
   const requiredMs = observeMinutes * 60 * 1000;
 
@@ -67,12 +73,9 @@ async function main() {
   if (observationResult && !observationResult.skipped) {
     const conclusion = deriveConclusion(observationResult.checks);
     if (conclusion === 'failed') {
-      // Dedup to find which HIGH-level rules are still failing
-      const byRule = new Map();
-      for (const item of (observationResult.checks || [])) {
-        if (item.insightRule) byRule.set(item.insightRule, item);
-      }
-      const failedHighRules = [...byRule.values()]
+      // PD-CONCL-01: dedup by insightRule keeping newest status per rule
+      // (timestamp-desc sort) to find which HIGH-level rules are still failing.
+      const failedHighRules = dedupByRuleNewest(observationResult.checks)
         .filter(item => item.status !== 'RECOVER' && item.insightLevel === 'HIGH')
         .map(item => item.insightRule);
 

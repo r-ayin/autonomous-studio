@@ -1,0 +1,45 @@
+{
+  "case_id": "case-2026-07-02-001",
+  "agent_id": "ralph-wiggum-autonomous-cycle",
+  "timestamp": "2026-07-01T16:13:00Z",
+  "project": "1BfrYW9R",
+  "work_unit": "派生 fix：audit-2026-07-01-011 OD-001+OD-002 /api/health 反代安全加固",
+  "situation": "audit-cycle-state.status=fix-in-progress，derived_fixes 含 1 条 pending route-fix（finding_id=OD-001+OD-002，priority=1）：dev-server.js /api/health 反代未校验上游 Content-Type（SSRF-to-XSS 风险，medium）+ 无 body size cap（DoS 风险，low）。本轮按约束派生最小 fix。",
+  "action": "在 dev-server.js /api/health 反代分支加两道防御：(1) up.on('data') 内累加 bytes，超 MAX_BODY=1MB fail 早停；(2) up.on('end') 内校验 up.headers['content-type'] 须以 application/json 开头，否则返 502 + reason 诊断。同步补两条 smoke test 负测（㊴ 非 json content-type 拒转发、㊵ 超 1MB 中断），端口 dev=3060/up=3061 与 dev=3062/up=3063 避开 3070-3099 既有占用段。GATES.md + PROGRESS.md canonical pass 计数 bump 40→42 闭合 ㉑ gates-doc-drift 三方对账。",
+  "files_changed": [
+    "dev-server.js",
+    "test/smoke.test.js",
+    "GATES.md",
+    "PROGRESS.md"
+  ],
+  "worktree": "opt-security-1782920360",
+  "direction": "security:api-health-proxy-hardening",
+  "outcome": "succeeded",
+  "outcome_evidence": "npm test 42 pass 0 fail（新增 ㊴/㊵ 两条负测全绿；gates-doc-drift #26 + port-uniqueness #32 两个 meta-test 由 doc bump + 端口避撞解决）；commit f0d11a3 push 到 origin/auto/opt-security-1782920360；route-fix 复用同 area worktree（opt-worktree.sh 自动判定不触 public-interfaces.txt）。",
+  "next_suggestion": [
+    "人工审 opt-security-1782920360 的 5 commits diff（含 DS-001 loopback bind 前轮 + 本次 OD-001/OD-002），merge 后 derived_fixes[0].status 改 merged → audit-cycle-state.status=cycle-complete → 下轮触发新一轮全量审计",
+    "OD-003 structural-debt（build.js AST parser 替代正则计数）已在 debt 队列，用户确认修时再派 direction-shift case",
+    "scout 推荐 #1 skills / #2 autonomous-engine 均有待合并 PROGRESS.md worktree（opt-docs-*），提醒用户审"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "dev-server.js",
+      "line": 100,
+      "severity": "medium",
+      "finding": "/api/health 反代未校验上游 Content-Type，text/html 透传可致 SSRF-to-XSS",
+      "remediation": "up.on('end') 内检查 ct.startsWith('application/json')，非 json 返 502 + reason",
+      "kind": "route-fix"
+    },
+    {
+      "file": "dev-server.js",
+      "line": 103,
+      "severity": "low",
+      "finding": "/api/health 反代 b += c 字符串拼接无界，GB 级响应可耗尽内存",
+      "remediation": "累加 bytes + MAX_BODY=1MB cap，超阈 fail 早停",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-01-011",
+  "audit_depth": "shallow"
+}

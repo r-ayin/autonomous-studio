@@ -52,10 +52,28 @@ while true; do
     fi
 
     # ── 2. Claude 进程检查（仅计本项目目录下的 claude 主进程）────
-    # 旧版 `pgrep -c claude` 会匹配任何名字含 "claude" 的进程（其他用户会话、
-    # claude-code-proxy、文件名带 claude 的脚本等），导致 watchdog 误判健康。
-    # 改为 pgrep -f 锚定 PROJECT_DIR，只统计在本项目下运行的 claude 进程。
-    CLAUDE_PROCS=$(pgrep -f "claude.*${PROJECT_DIR}" 2>/dev/null | wc -l | tr -d ' ')
+    # H02 fix (audit-2026-07-04-016): 旧版 `pgrep -f "claude.*${PROJECT_DIR}"`
+    # 会误匹配任何命令行含 PROJECT_DIR 字符串的进程（编辑器、shell、proxy 等），
+    # 导致 watchdog 误判健康。改为遍历候选 pid，用 /proc/<pid>/cwd 锚定真实
+    # 工作目录；非 Linux 或 /proc 不可用时回退到 pgrep -x claude + pwdx/cwd 检查。
+    CLAUDE_PROCS=0
+    if [ -d /proc ]; then
+        # Linux: 读每个 claude 进程的真实 cwd
+        for pid in $(pgrep -x claude 2>/dev/null); do
+            pid_cwd=$(readlink "/proc/$pid/cwd" 2>/dev/null || true)
+            if [ "$pid_cwd" = "$PROJECT_DIR" ]; then
+                CLAUDE_PROCS=$((CLAUDE_PROCS + 1))
+            fi
+        done
+    else
+        # macOS/BSD: pgrep -x 精确匹配进程名，再用 lsof/pwdx 校验 cwd
+        for pid in $(pgrep -x claude 2>/dev/null); do
+            pid_cwd=$(lsof -p "$pid" -Fn 2>/dev/null | awk '/^n\//{print substr($0,2); exit}' || true)
+            if [ "$pid_cwd" = "$PROJECT_DIR" ]; then
+                CLAUDE_PROCS=$((CLAUDE_PROCS + 1))
+            fi
+        done
+    fi
     if [ "$CLAUDE_PROCS" -eq 0 ]; then
         touch "$RESUME_FLAG"
         log "ALERT: No Claude processes running in $PROJECT_DIR"

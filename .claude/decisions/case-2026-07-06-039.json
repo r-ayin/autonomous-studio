@@ -1,0 +1,29 @@
+{
+  "case_id": "case-2026-07-06-039",
+  "agent_id": "ralph-autonomous-engine",
+  "timestamp": "2026-07-06T21:10:00+08:00",
+  "project": "x-tool/一件重启脚本/remote_control",
+  "work_unit": "派生 fix: audit-2026-07-06-004 RC-LEAK-02 — startup-enhanced.bat 去 hardcoded gateway auth token，改从 clawdbot.json 动态读取",
+  "situation": "audit-2026-07-06-004 (x-tool/remote_control deep audit) finding RC-LEAK-02 (MEDIUM, priority 8) pending dispatch. startup-enhanced.bat:39-40 硬编码 40-hex gateway auth token (4ee4af6aca33da22fb9d8c2362c1541c140acbb0a9dd8922) 且 git-tracked+push origin，token 入库即泄漏给任何能读 origin 的人。本轮 fix-in-progress，pending_count=6，RC-LEAK-02 为最高优先 pending finding (priority 8)。前 7 个 finding (RC-SEC-01/02/03, RC-XSS-01, RC-CFG-01, RC-BUG-01, RC-LEAK-01) 已 stack merged on opt-remote-control-1783283520 (HEAD b2a4faa)。RC-LEAK-02 触 startup-enhanced.bat (非 server.py, 非 public-interfaces 文件) → route-fix, 复用同 area worktree.",
+  "action": "1) 读 audit report audit-2026-07-06-004.md RC-LEAK-02 段 + startup-enhanced.bat 全文 + server.py:640-650 (gateway.auth.token 既存读法示范). 2) 编辑 startup-enhanced.bat: 删 REM 'Token is hardcoded here' 注释 + 硬编码 token 两行 (line 39 disabled auto-open start, line 40 echo 手动开 URL); 替换为 `for /f \"usebackq delims=\" %%T in (python -c 读 CLAWDBOT_CONFIG_PATH/gateway.auth.token 2^>nul) do set GATEWAY_TOKEN=%%T` + auto-open REM 行用 %GATEWAY_TOKEN% 占位 + echo 分支 if defined GATEWAY_TOKEN / else (token 未配置时不泄漏, 提示开 /). 同 server.py:643-644 既存读法 (config.get('gateway',{}).get('auth',{}).get('token','')). 3) grep 验证 hardcoded token 全消 (count=0). 4) opt-worktree.sh commit 复用 opt-remote-control-1783283520 (route-fix, 非 public-interface). 5) worktree 内 grep 复验 token=0 + GATEWAY_TOKEN 动态读存在.",
+  "files_changed": ["一件重启脚本/remote_control/startup-enhanced.bat"],
+  "worktree": "opt-remote-control-1783283520",
+  "direction": "remote-control:leak",
+  "outcome": "succeeded",
+  "outcome_evidence": "wt commit aa41963 stacked on b2a4faa (base 85bd9e1=master, FF-clean). opt-worktree.sh 输出 '✓ 提交到 opt-remote-control-1783283520 方向=remote-control:leak' + '复用同 area worktree (route-fix)'. worktree 内 grep '4ee4af6aca33da22fb9d8c2362c1541c140acbb0a9dd8922' count=0 (硬编码 token 全消). grep GATEWAY_TOKEN 命中 line 39/43/44/45 (动态读 + 占位 + 分支 echo). origin push 403 (外部 fork r-ayin/x-tool, [[x-tool-external-fork-push-403]] precedent, 预期) → disk+local-ref 保留待人工 merge. main checkout 已被 opt-worktree.sh revert 至干净 (cp-guard 回写 master 版本).",
+  "next_suggestion": "下轮继续派生 audit-2026-07-06-004 pending finding: RC-PIN-01 (priority 9, MED, server.py:371,474 PIN 明文走 URL query /restart) → stack on opt-remote-control-1783283520. 之后 RC-ATOMIC-01 (priority 10) / RC-ROBUST-01 (priority 12) / RC-PROXY-01 (priority 13). 全部 pending dispatched 后 status→cycle-complete 触发下一轮全量审计 (挑未深审项目). owner 侧待办: 轮换已泄漏的 gateway token (4ee4af6a..., 虽 .bat 去硬编码但 origin 历史已含) + set REMOTE_CONTROL_PIN env (RC-SEC-03 case-035 已交付).",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "一件重启脚本/remote_control/startup-enhanced.bat",
+      "line": "39-40",
+      "severity": "medium",
+      "finding": "RC-LEAK-02: gateway auth token (40-hex sha1-like, 4ee4af6aca33da22fb9d8c2362c1541c140acbb0a9dd8922) 硬编码于 git-tracked .bat 两行 (disabled auto-open start 命令 + echo 手动开 URL), push origin 即泄漏给任何能读 fork 的人; 配合本机其他暴露端点 token 可被复用.",
+      "remediation": "token 从 clawdbot.json 的 gateway.auth.token 经 python -c 动态读取 (同 server.py:643-644 既存读法), .bat 用 for /f set GATEWAY_TOKEN 变量; auto-open 已 disabled 行用 %GATEWAY_TOKEN% 占位; echo 手动 URL 分支 if defined / else (token 未配置时不泄漏). 不再硬编码.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-004",
+  "audit_depth": "deep",
+  "_derived_fix_update": "RC-LEAK-02 status pending→merged, dispatch_case_id=case-2026-07-06-039, dispatch_worktree=opt-remote-control-1783283520, dispatch_commit=aa41963. pending_count 6→5."
+}

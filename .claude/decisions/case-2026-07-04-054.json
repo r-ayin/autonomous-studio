@@ -1,0 +1,31 @@
+{
+  "case_id": "case-2026-07-04-054",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-04T08:15:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "batch-archive-untracked-decisions-audits",
+  "situation": "Scout scan revealed 392 untracked files in main worktree: 369 case JSONs in .claude/decisions/, 22 audit reports in .claude/audits/, plus 1 .opt-saved-patches/. These decision records were written by engine but never git-added — at risk of permanent loss if worktree merge doesn't carry them or main gets reset. Structural persistence-layer risk identified via scout health check (score=3.9 days stale, 401 dirty files).",
+  "action": "Batch git-add all untracked decisions/audits (excluding .opt-saved-patches and .bak/.patch files that had cp-guard conflicts) into new opt-worktree. Pure archive operation — no content changes, only tracking previously-unversioned engine outputs.",
+  "files_changed": [
+    ".claude/audits/audit-2026-07-01-005.md",
+    ".claude/audits/audit-2026-07-01-006.md",
+    ".claude/audits/audit-2026-07-01-007.md",
+    ".claude/audits/audit-2026-07-01-008.md",
+    ".claude/audits/audit-2026-07-01-009.md",
+    ".claude/audits/audit-2026-07-01-010.md",
+    ".claude/audits/audit-2026-07-01-011.md",
+    ".claude/audits/audit-2026-07-02-003.md through audit-2026-07-02-008.md",
+    ".claude/audits/audit-2026-07-03-004.md through audit-2026-07-03-013.md",
+    ".claude/audits/audit-2026-07-04-001.md through audit-2026-07-04-012.md",
+    ".claude/decisions/case-2026-07-01-002.json through case-2026-07-04-053.json (369 files)"
+  ],
+  "worktree": "opt-decisions-1783124067",
+  "direction": "decisions:batch-archive-untracked",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 1ddb230 on branch auto/opt-decisions-1783124067, pushed to origin. 389 files staged (369 case JSONs + 20 audit reports). Excluded: case-2026-07-01-409-local-1BfrYW9R.json.bak (cp-guard conflict), case-2026-07-02-109.patch (cp-guard conflict), .opt-saved-patches/ (not decisions/audits). Worktree branch verified on origin via git ls-remote.",
+  "next_suggestion": "Human review+merge opt-decisions-1783124067 to persist 389 decision records. After merge, consider adding pre-commit hook or periodic sweep to auto-stage new case/audit files preventing future untracked accumulation. Also: H01/H02 fixes still pending ~23h awaiting human merge.",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": null,
+  "audit_depth": "shallow"
+}

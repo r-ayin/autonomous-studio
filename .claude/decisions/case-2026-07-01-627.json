@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-07-01-627",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-01T21:45:00+08:00",
+  "project": "personal-assistant",
+  "work_unit": "storage.add_memory embedding shape/dtype 校验 (PA-M-003)",
+  "situation": "audit-2026-07-01-006 finding PA-M-003: storage.add_memory 直接 tobytes() 入库无 dtype/shape 校验；search_memories 用 np.frombuffer(..., dtype=np.float32) 反序列化并 vstack，假设所有行同维 float32。若 embedder 切换维度或返回 float64，vstack 失败或相似度计算错误。派生 fix（priority=5）。",
+  "action": "在 storage.py 新增 _validate_embedding()：None→透传；非 ndarray/ndim!=1/size==0/NaN/Inf→返回 None（降级无向量存储）；dtype!=float32→astype(float32, copy=True)。add_memory 调它后再 tobytes。仅改 1 文件，route-fix 复用 opt-personal-assistant-1782909325 worktree。",
+  "files_changed": ["personal_assistant/storage.py"],
+  "worktree": "opt-personal-assistant-1782909325",
+  "direction": "personal-assistant:storage-embedding-validation",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 5e9c673 on auto/opt-personal-assistant-1782909325 pushed to origin; route-fix 复用已有 worktree（area=personal-assistant 未触 public interface）",
+  "next_suggestion": [
+    "派生 PA-M-004（duckdb analytics 抽 storage.analytics_init）— priority=6，仍 personal-assistant route-fix",
+    "pending_count=3，下轮继续派生直到清零触发下一轮全量审计"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-01-006",
+  "audit_depth": "shallow"
+}

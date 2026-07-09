@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-07-01-611",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-01T12:30:00Z",
+  "project": "shizi",
+  "work_unit": "SH-H-002 orchestrator vl_text 三路并行错误透传",
+  "situation": "audit-2026-07-01-005 finding SH-H-002：src/background/orchestrator.ts vl_text 分支 Promise.all 三路并行（recognizeAllTextsWithVL / detectProductRegion / segmentProduct）的 .catch(() => []) 静默吞错，debugInfo 未记录 error 字段，导致 VL API key 失效/网络超时等故障在 UI 上完全不可见，用户只看到空结果无法排查。对比同文件非 vl_text 分支（L247-256）已有 error: detectFailed ? '...' : undefined 模式。",
+  "action": "最小 fix：在三路并行外声明 parallelErrors: string[]，每个 .catch 收集带标签的错误消息（'VL文字识别失败: ...' / 'VL商品检测失败: ...' / '本地分割失败: ...'），debugInfo.error = parallelErrors.join('\\n')，onProgress message 末尾追加 '（⚠ N 路失败）' 提示。保持降级语义不变（任一路失败仍返回 [] 让其他路继续），仅增加可观测性。",
+  "files_changed": [
+    "src/background/orchestrator.ts"
+  ],
+  "worktree": "auto/opt-shizi-1782906261",
+  "direction": "shizi:orchestrator-error-passthrough",
+  "outcome": "succeeded",
+  "outcome_evidence": "tsc --noEmit 通过；opt-worktree.sh commit 成功 push 到 origin/auto/opt-shizi-1782906261；Code Review URL https://code.alibaba-inc.com/qunbu/shizi/codereview/new?from=main&to=auto/opt-shizi-1782906261",
+  "next_suggestion": "继续派生 SH-M-001（storage.ts loadSettings 三层 nested merge）→ 下一个 route-fix",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-01-005",
+  "audit_depth": "shallow"
+}

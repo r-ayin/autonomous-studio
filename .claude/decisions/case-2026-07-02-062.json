@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-02-062",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-02T03:15:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "AS-EC-017 fix: --bg mode process group leak",
+  "situation": "audit-2026-07-02-002 finding AS-EC-017 (priority 17, pending): autonomous-loop.sh --bg mode uses nohup which does not create a new session/process group. The backgrounded process remains in the terminal's process group, so trap's `kill 0` on SIGINT/SIGTERM can leak signals to sibling processes in the same terminal process group.",
+  "action": "Replaced `nohup` with `setsid` in the --bg branch (line 40). setsid creates a new session + new process group + detaches from controlling terminal. This ensures the daemonized loop runs in its own process group; trap's `kill 0` only affects its own children, never leaking to the parent terminal's process group. IO redirection already handles stdin/stdout/stderr (</dev/null >LOG 2>&1), so nohup's signal-ignore side effect is unnecessary.",
+  "files_changed": ["scripts/autonomous-loop.sh"],
+  "worktree": "opt-engine-shift-1782938888",
+  "direction": "engine:loop-bg-setsid",
+  "outcome": "succeeded",
+  "outcome_evidence": "bash -n syntax check passed; opt-worktree.sh committed to opt-engine-shift-1782938888 (direction-shift triggered by public-interfaces.txt match on scripts/autonomous-loop.sh); pushed to origin/auto/opt-engine-shift-1782938888",
+  "next_suggestion": "派生 AS-EC-018 fix (opt-worktree.sh realpath -m symlink path rejection)，最后一个 pending finding；完成后 audit-cycle-state.status → cycle-complete，下轮触发新全量审计",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-002",
+  "audit_depth": "shallow"
+}

@@ -1,0 +1,25 @@
+{
+  "case_id": "case-2026-07-02-122",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-02T07:48:48Z",
+  "project": "autonomous-engine",
+  "work_unit": "AE2-M-001: memory files Windows→Linux path migration (project-index.md)",
+  "situation": "audit-2026-07-02-007 finding AE2-M-001: .claude/memory/project-index.md contains 5 Windows E:\\x-tool\\ paths that are non-functional on Linux workspace. Linux memory system references stale paths, causing engine to look for projects in wrong locations.",
+  "action": "Replaced 3 known-mapped Windows paths with Linux workspace equivalents (wanxia→sunset-prediction, moni→moni-master); marked 2 unmigrated projects (xia, pachong-master) as [未迁移-Linux] with original path preserved for reference. Added header comment noting AE2-M-001 fix date.",
+  "files_changed": [
+    ".claude/memory/project-index.md"
+  ],
+  "worktree": "opt-memory-1782978520",
+  "direction": "memory:paths",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh commit succeeded; branch auto/opt-memory-1782978520 pushed to origin; Code Review URL: https://code.alibaba-inc.com/xtool/autonomous-engine/codereview/new?from=master&to=auto/opt-memory-1782978520",
+  "next_suggestion": [
+    "AE2-M-004: autonomous-suggestions.md also has Windows paths — same treatment needed (route-fix, 1 file)",
+    "AE2-M-002: sessions/test-{001,002,003}.json test stubs with last_project=unknown — cleanup or populate",
+    "After AE2-M-001/004 merged, verify engine memory loading on Linux actually resolves correct project dirs"
+  ],
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-007",
+  "audit_depth": "shallow"
+}

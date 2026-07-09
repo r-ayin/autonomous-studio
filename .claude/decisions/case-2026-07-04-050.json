@@ -1,0 +1,23 @@
+{
+  "case_id": "case-2026-07-04-050",
+  "agent_id": "ralph-wiggum-loop",
+  "timestamp": "2026-07-03T23:34:06Z",
+  "project": "autonomous-studio",
+  "work_unit": "fix scout-scan.py planning/ detection to also recognize .planning/ convention (autonomous-engine/skills false-positive)",
+  "situation": "audit-cycle-state _status_note flagged autonomous-engine reports '无 planning/' but .planning/codebase/autonomous-engine.md exists. Verified 2 projects (autonomous-engine, skills) use .planning/ dot-prefix convention; scout only checked planning/ → false-positive score+1 → #1 recommendation misdirected every cycle.",
+  "action": "Patched scripts/scout-scan.py in two places: (1) scan_project has_planning now checks both planning/ and .planning/; (2) pending_planning_in_worktrees diff prefix check covers both conventions. Verified with --project autonomous-engine --json: has_planning=True post-fix.",
+  "files_changed": ["scripts/scout-scan.py"],
+  "worktree": "opt-scout-shift-1783121633",
+  "direction": "scout:planning-dotprefix",
+  "outcome": "succeeded",
+  "outcome_evidence": "post-fix scout --project autonomous-engine --json returns has_planning=True; worktree opt-scout-shift-1783121633 pushed to origin/auto/opt-scout-shift-1783121633; direction-shift triggered because judge_direction_kind detected public-interface touch (scout-scan.py is engine tooling consumed by all loop cycles).",
+  "next_suggestion": [
+    "H01 (case-2026-07-04-041, wt opt-scripts-shift-1783117803) + H02 (case-2026-07-04-040, wt opt-scripts-shift-1783116452) still pending human merge — remind user or auto-merge if policy allows",
+    "M02 remains structural debt (manifest checksum broken in engine-skills-extracted archive); escalate to user when capacity opens",
+    "Re-run scout-scan after this fix merges to confirm autonomous-engine drops from #1 ranking"
+  ],
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": null,
+  "audit_depth": "shallow"
+}

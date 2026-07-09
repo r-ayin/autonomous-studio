@@ -1,0 +1,26 @@
+{
+  "case_id": "case-2026-07-02-107",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-02T16:15:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "prod-deploy observation skipped visibility (M-004 from audit-2026-07-02-006)",
+  "situation": "audit-2026-07-02-006 finding M-004 (priority 5, route-fix): Sunfire observation skipped 时 report-observation.js 把 conclusion 标 'passed'，结合 resume-next-batch.js 的 skipped 静默跳过逻辑，导致无 Sunfire 凭证或 API 出错时观察期门控完全退化为纯时间门控，HIGH 级别生产异常被无声放过。派生 fix 使退化行为对运维可见。",
+  "action": "1) report-observation.js L75: conclusion 从 'passed' 改 'skipped'（语义准确，不再假装通过）；2) resume-next-batch.js L91 后新增 else-if 分支：当 observationResult.skipped=true 时输出 stderr WARNING，包含 batch index、reason、配置提示。不阻断部署（向后兼容），但让门控退化在日志/stderr 显式可见。两文件均 node --check 通过。",
+  "files_changed": [
+    "skills/prod-deploy/scripts/report-observation.js",
+    "skills/prod-deploy/scripts/resume-next-batch.js"
+  ],
+  "worktree": "opt-prod-deploy-1782970212",
+  "direction": "prod-deploy:observation-skipped-visibility",
+  "outcome": "succeeded",
+  "outcome_evidence": "node --check 双文件通过；opt-worktree.sh commit 输出 '✓ 提交到 opt-prod-deploy-1782970212 方向=prod-deploy:observation-skipped-visibility'；push 成功 de71b00..1c8449c → origin/auto/opt-prod-deploy-1782970212；CR 链接 https://code.alibaba-inc.com/qunbu/autonomous-studio/codereview/new?from=main&to=auto/opt-prod-deploy-1782970212",
+  "next_suggestion": [
+    "下轮派生 M-003 (Phase 0 checkpoint recovery direction-shift, priority 4) — 需改 phase 协议 + list-events.js，会触发新 worktree",
+    "或先做 M-001+M-002+L-003 合并健壮性 fix (JSON.parse try/catch + drillDownToPreCheckTask 串行优化)",
+    "H-001/H-002/H-003/M-004 四个派生 fix 均在 opt-prod-deploy-1782970212 待人工 review"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-006",
+  "audit_depth": "shallow"
+}

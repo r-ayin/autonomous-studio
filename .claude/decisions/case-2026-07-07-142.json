@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-07-142",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-07T18:06:49+08:00",
+  "project": "shizi",
+  "work_unit": "SZ-BG-L-008: pipelineProgress sendMessage error logging",
+  "situation": "audit-2026-07-07-047 derived fix. chrome.runtime.sendMessage for pipelineProgress uses .catch(() => {}) — silently swallows all errors including disconnected-listener bugs during development.",
+  "action": "Replace silent .catch(() => {}) with .catch(err => console.warn(...)) to preserve fire-and-forget semantics while surfacing failures for debugging.",
+  "files_changed": ["src/background/index.ts"],
+  "worktree": "auto/opt-background-1783213292",
+  "direction": "background:pipeline-progress-error-logging",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit b743f8f on auto/opt-background-1783213292, pushed to origin. cp-guard triggered (diverged worktree), used case-104 direct-edit channel.",
+  "next_suggestion": "Next pending: SZ-SP-L-001 (deletedStack stale closure in handleRegionsChange) or SZ-SP-L-002 (handleDeleteText stale closure). Both are sidepanel route-fixes.",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "src/background/index.ts",
+      "line": 82,
+      "severity": "low",
+      "finding": "pipelineProgress sendMessage .catch(() => {}) silently swallows all errors",
+      "remediation": "Replace with .catch(err => console.warn('[background] pipelineProgress sendMessage failed:', err))",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-047",
+  "audit_depth": "shallow"
+}

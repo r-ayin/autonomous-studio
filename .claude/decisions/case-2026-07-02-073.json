@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-07-02-071",
+  "agent_id": "human-directed",
+  "timestamp": "2026-07-01T23:18:22.425772+00:00",
+  "project": "autonomous-studio",
+  "work_unit": "EC-017 redo: --bg process group leak fix (setsid + trap delay)",
+  "situation": "EC-017 original fix was in opt-engine-shift-1782940353 (rejected due to conflict with EC-007 merge in autonomous-loop.sh same region). The --bg mode had two problems: (1) nohup without setsid left child processes in the launching terminal process group, so terminal close or kill could leak orphans or miss children; (2) trap with kill 0 installed before --bg exit meant the short-lived launcher process had a trap that would kill its own terminal process group.",
+  "action": "Moved trap handler to after --bg exit block (so only the long-running worker installs it). Wrapped nohup in setsid so the re-exec child becomes a new session leader with its own process group. Added detailed comments explaining the isolation.",
+  "files_changed": [
+    "scripts/autonomous-loop.sh"
+  ],
+  "worktree": "ec-017-redo",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "TEST1: setsid binary found. TEST2: worker session ID (117969) differs from launcher session ID (117953), confirming process group isolation. TEST3: kill -TERM on worker PID kills both worker and its child (sleep 60), confirming trap kill 0 works within isolated group. bash -n syntax check passes.",
+  "next_suggestion": "Merge ec-017-redo after human review. Then redo M-001/M-002 patches.",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": null,
+  "audit_depth": "shallow"
+}

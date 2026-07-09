@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-08-049",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-07T16:07:00+08:00",
+  "project": "shizi",
+  "work_unit": "popup:save-settings-debounce (SZ-PP-M-004)",
+  "situation": "audit-2026-07-07-047 derived fix. SettingsPage.tsx debounced saveSettings (300ms setTimeout) had two bugs: (1) sendMessage .then() with no .catch — any background error silently swallowed, user sees '已自动保存' only on success but gets no feedback on failure; (2) stale closure — setTimeout callback captured the `settings` value from the effect's render cycle, not the latest. Rapid edits + unmount within 300ms could save an older snapshot. cp-guard triggered because SZ-PP-M-001/M-002/M-003 commits exist in opt-popup-1783215325 but are not yet merged to main.",
+  "action": "Added latestSettingsRef (useRef<AppSettings>) synced via a dedicated useEffect on every settings change. Debounce callback now reads latestSettingsRef.current instead of the closed-over `settings`. Added .catch((err) => console.error(...)) to the sendMessage chain so failures are at least logged. Used case-104 direct-wt-commit escape hatch since cp-guard blocked opt-worktree.sh commit.",
+  "files_changed": ["src/popup/SettingsPage.tsx"],
+  "worktree": "opt-popup-1783215325",
+  "direction": "popup:save-settings-debounce",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 0f915ec on auto/opt-popup-1783215325, pushed to origin. Diff: +latestSettingsRef declaration, +sync useEffect, +.catch handler on saveSettings sendMessage. No other files touched.",
+  "next_suggestion": "Next pending fix by severity: SZ-PP-M-005 (Auto-save debounce timer not flushed on unmount — last edit lost). Same file, same debounce block; can batch in next round if cp-guard clears after merge. Otherwise continue shizi popup medium-severity queue: SZ-PP-M-006 (all chrome.runtime.sendMessage calls lack timeout).",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "src/popup/SettingsPage.tsx",
+      "line": 45,
+      "severity": "medium",
+      "finding": "Debounced saveSettings sendMessage had no .catch and captured stale `settings` via closure",
+      "remediation": "Add latestSettingsRef + sync useEffect; add .catch to sendMessage chain",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-047",
+  "audit_depth": "shallow"
+}

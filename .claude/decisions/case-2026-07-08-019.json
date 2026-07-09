@@ -1,0 +1,31 @@
+{
+  "case_id": "case-2026-07-08-019",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-08T14:20:00+08:00",
+  "project": "shizi",
+  "work_unit": "SZ-BG-M-001: guard sendResponse against disconnected sender",
+  "situation": "audit-2026-07-07-047 derived fix. MV3 service worker onMessage listener calls sendResponse after async handleMessage resolves. If popup/sidepanel closes during await, Chrome throws 'message port closed' which goes unhandled — silent failure with no error recovery.",
+  "action": "Add safeSendResponse wrapper that catches sendResponse errors and swallows via chrome.runtime.lastError. Applied to both .then() and .catch() paths in onMessage listener.",
+  "files_changed": ["src/background/index.ts"],
+  "worktree": "auto/opt-background-1783213292",
+  "direction": "background:sendresponse-guard",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 56bc916 on auto/opt-background-1783213292 pushed to origin. vitest 52/53 pass (1 pre-existing fail from SZ-BG-H-003 tile ownership, confirmed identical before/after this change). cp-guard diverged wt → case-104 direct-edit escape hatch used.",
+  "next_suggestion": [
+    "Continue dispatching audit-2026-07-07-047 pending route-fixes. Next priority: SZ-BG-M-002 (detectFailed flag not set in parallel path)",
+    "Consider merging opt-background-1783213292 (now has H-001/H-002/H-003 + M-001 stacked) to unblock further background fixes"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "src/background/index.ts",
+      "line": 12,
+      "severity": "medium",
+      "finding": "sendResponse called after async may silently fail if sender disconnects (popup close, tab navigation)",
+      "remediation": "Wrap sendResponse in try/catch guard; swallow 'message port closed' via chrome.runtime.lastError",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-047",
+  "audit_depth": "shallow"
+}

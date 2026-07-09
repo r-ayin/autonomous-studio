@@ -1,0 +1,39 @@
+{
+  "case_id": "case-2026-07-05-149",
+  "agent_id": "autonomous-engine-main-loop",
+  "timestamp": "2026-07-05T23:02:59+08:00",
+  "project": "x-tool/wanxia",
+  "work_unit": "WX-CACHE-01 cache.getOrLoad dedup inflight promises (audit-2026-07-05-016 derived fix #5 of 7)",
+  "situation": "audit-2026-07-05-016 finding WX-CACHE-01 [MED]: cache.js loading Set 无去重 → routes.js L47-53/L151-156/L180-185 三段式 wait-then-fallthrough → 并发请求在 open-meteo 慢时 stampede (N 个并发 fetchAllCityData). 数据层/预测算法卫生良好但 HTTP 缓存层缺 promise dedup. 前 4 fix (WX-AUTH-01 eb00793 / WX-HEALTH-01 d4960bd / WX-ENV-01 c0c13b4 / WX-TIMEOUT-01 3a63b2b) 已 stacked on opt-security-1783235416.",
+  "action": "cache.js: 新增 getOrLoad(key, loader, ttlMs?) 用 Map<key,Promise> inflight dedup; stale fallback preserved; set()/clearLoading() also clear inflight. routes.js: getPredictions()+GET /grid/:name+GET /contour 三处三段式替换为 getOrLoad; SSE /contour/stream intentionally unchanged (streaming semantics incompatible with promise-dedup). augmentGridWithCities silent-catch now console.warn (partial WX-SILENT-01). node --check OK. ⚠ cache.js+routes.js 已因前序 fix 在 wt 与 main HEAD 分叉 → opt-worktree cmd_commit cp-guard 跳过 + M-002 '..' 路径遍历拒绝 → 走 case-104/147 文档化逃生通道: 直编 opt-wt 版本 + wt 内 git commit (绕过 cp 流不触 main). route-fix 性质不变 (cache/routes 非公共接口), 仍 security area 复用 opt-security-1783235416 (现 5-commit stack FF-clean base=85bd9e1=master). push 403 external fork (r-ayin/x-tool, precedent audit-008/010/016/145/146/147/148). worktree+branch+commit 保留 local 待人工 merge to master.",
+  "files_changed": [
+    "wanxia/src/cache.js",
+    "wanxia/src/routes.js"
+  ],
+  "worktree": "opt-security-1783235416",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 75603a7 on auto/opt-security-1783235416 (5-commit stack: eb00793 WX-AUTH-01 → d4960bd WX-HEALTH-01 → c0c13b4 WX-ENV-01 → 3a63b2b WX-TIMEOUT-01 → 75603a7 WX-CACHE-01, FF-clean base=85bd9e1=master). node --check OK for both files. 2 files changed, 107 insertions(+), 89 deletions(-). push 403 external fork (r-ayin/x-tool precedent); worktree+branch+commit preserved local disk+local-ref 待人工 merge.",
+  "next_suggestion": "派生 WX-SILENT-01 [LOW] (routes.js L194/L275 + social-scraper.js L180/L242 空 catch 吞错 → console.warn 留诊断痕迹); 之后 WX-XHS-REUSE-01 [LOW] (social-scraper.js 浏览器单例 closeBrowser 竞态 + --no-sandbox 注释). 全 7 merged|rejected 后 cycle-complete → 触发下次全量审计.",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "wanxia/src/cache.js",
+      "line": "5-31",
+      "severity": "medium",
+      "finding": "WX-CACHE-01: loading Set 无 promise dedup → 并发请求在 loader 执行期间各自 fallthrough 重新发起 fetch (stampede). 叠加 WX-TIMEOUT-01 (open-meteo 挂起) 放大成对上游 API 的并发压力 + 客户端全挂.",
+      "remediation": "新增 getOrLoad(key, loader, ttlMs?) 用 Map<key,Promise> inflight dedup; concurrent callers share one in-flight promise; stale data returns immediately instead of blocking; loader failure clears inflight so next caller retries. Applied in this commit.",
+      "kind": "route-fix"
+    },
+    {
+      "file": "wanxia/src/routes.js",
+      "line": "47-53, 151-156, 180-185",
+      "severity": "medium",
+      "finding": "WX-CACHE-01 (caller side): 三段式 isLoading→sleep→get→fallthrough→setLoading 模式在 'no cached + loading 中' 分支超时后自己也发起并发 fetch 而非复用 in-flight.",
+      "remediation": "重构为 cache.getOrLoad(cacheKey, async () => {...}) 单调用; getPredictions + GET /grid/:name + GET /contour 三处均改. SSE /contour/stream intentionally unchanged (streaming semantics require independent batch progression per client). Applied in this commit.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-016",
+  "audit_depth": "shallow"
+}

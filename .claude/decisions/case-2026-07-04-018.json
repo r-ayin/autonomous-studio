@@ -1,0 +1,30 @@
+{
+  "case_id": "case-2026-07-04-018",
+  "agent_id": "autonomous-loop-fix-es-l003",
+  "timestamp": "2026-07-04T18:50:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "ES-L003: autonomous-loop.sh PROMPT shell escape for WORKSPACE path",
+  "situation": "audit-2026-07-04-001 finding ES-L003 (priority 10, route-fix): autonomous-loop.sh L82 embeds $WORKSPACE via shell interpolation inside single-quoted PROMPT string. Paths containing single quotes or other shell metacharacters would break prompt syntax (truncation or injection). Remediation: use printf %q to produce shell-safe escaped copy before embedding.",
+  "action": "Added `printf -v WORKSPACE_ESCAPED \"%q\" \"$WORKSPACE\"` before PROMPT assignment; replaced `$WORKSPACE` with `$WORKSPACE_ESCAPED` in PROMPT line referencing scout-scan --workspace argument. bash -n validated syntax OK. Committed via opt-worktree.sh (direction-shift auto-detected due to scripts/autonomous-loop.sh being listed in public-interfaces.txt).",
+  "files_changed": [
+    "scripts/autonomous-loop.sh"
+  ],
+  "worktree": "opt-autonomous-loop-shift-1783104688",
+  "direction": "direction-shift",
+  "outcome": "succeeded",
+  "outcome_evidence": "bash -n returned 0 after edit; opt-worktree.sh commit succeeded and pushed to origin/auto/opt-autonomous-loop-shift-1783104688; direction-shift triggered automatically because scripts/autonomous-loop.sh is a public interface file.",
+  "next_suggestion": "派生 fix ES-M004 (structural) 仍 pending — 需要 backfill structural-debt.md 或标注 orphan reference；下轮可处理该 structural finding（写 debt entry 而非代码修复）。另外 engine-skills-extracted extract copy 仍有旧版未修，下次 distill 同步时会自动拉取。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "scripts/autonomous-loop.sh",
+      "line": 76,
+      "severity": "low",
+      "finding": "PROMPT string embeds $WORKSPACE via shell interpolation inside single-quoted heredoc-style assignment. Path with single quote breaks PROMPT syntax.",
+      "remediation": "Use printf %q to generate shell-safe escaped copy before embedding.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-04-001",
+  "audit_depth": "shallow"
+}

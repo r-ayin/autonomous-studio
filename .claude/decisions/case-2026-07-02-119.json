@@ -1,0 +1,27 @@
+{
+  "case_id": "case-2026-07-02-119",
+  "agent_id": "autonomous-loop",
+  "timestamp": "2026-07-02T07:30:00Z",
+  "project": "autonomous-engine",
+  "work_unit": "L2 heartbeat interval doc sync (AE2-H-002 direction-shift)",
+  "situation": "audit-2026-07-02-007 finding AE2-H-002: L2 heartbeat interval documented as 7min in SKILL.md/ARCHITECTURE.md/autonomous-state.md/resume-checkpoint.py/decision-observer.py but actual cron expression 23,53 * * * * = every 30min. CLAUDE.md already correct. Four-doc drift causes sub-agents to have 4x wrong expectation of activation frequency. Direction-shift per audit kind (touches SKILL.md public interface).",
+  "action": "Unified all non-historical references to L2 interval from 7min to 30min. Authority: scheduled_tasks.json cron 23,53 * * * * (mathematically = every 30min). Edited 5 files: SKILL.md L131, ARCHITECTURE.md L30, autonomous-state.md L20, resume-checkpoint.py L129 firmware template, decision-observer.py L313 context string. cp-guard skipped ARCHITECTURE.md + resume-checkpoint.py (prior unmerged changes on same worktree) — only 3/5 files landed in commit. Skipped 2 need re-edit after human merge of opt-autonomous-engine-1782975771.",
+  "files_changed": [
+    ".claude/skills/autonomous-engine/SKILL.md",
+    ".claude/memory/autonomous-state.md",
+    ".claude/hooks/decision-observer.py"
+  ],
+  "files_skipped_by_cp_guard": [
+    "ARCHITECTURE.md",
+    ".claude/hooks/resume-checkpoint.py"
+  ],
+  "worktree": "opt-autonomous-engine-1782975771",
+  "direction": "autonomous-engine:l2-heartbeat-doc-sync",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 8124fa5 pushed to origin/auto/opt-autonomous-engine-1782975771. 3/5 target files updated (SKILL.md L131 '每 30 分钟', autonomous-state.md L20 '每30分钟', decision-observer.py L313 'L2 心跳 30min'). 2 files (ARCHITECTURE.md, resume-checkpoint.py) skipped by cp-guard due to prior unmerged AE2-H-003 changes on same worktree — require re-edit post-merge.",
+  "next_suggestion": "After human merges opt-autonomous-engine-1782975771, re-run edit for ARCHITECTURE.md L30 + resume-checkpoint.py L129 (both still say 7min in main). Then next pending: AE2-M-001 (memory Windows paths → Linux).",
+  "audit_type": "deep-audit",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-007",
+  "audit_depth": "shallow"
+}

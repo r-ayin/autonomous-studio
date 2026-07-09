@@ -1,0 +1,42 @@
+{
+  "case_id": "case-2026-07-01-614",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-01T11:55:00Z",
+  "project": "shizi",
+  "work_unit": "SH-M-002+SH-M-003 ocr-internal callOcr + segmentation getModelBuffer fetch timeout (AbortController 30s) + retry 1次（audit-005 派生 fix #5/9）",
+  "situation": "audit-005 shizi 全量深审发现 SH-M-002/SH-M-003：src/background/ocr-internal.ts callOcr 与 src/background/segmentation.ts getModelBuffer 的 fetch 均无超时/重试。service worker 内一旦 OCR 服务或 GitHub model mirror 卡住，整个识别/分割流程永久 pending；模型下载还会阻塞首次启动。属于可恢复网络调用缺少韧性防护。",
+  "action": "新增 fetchWithTimeout/fetchBufferWithTimeout 辅助（AbortController + clearTimeout），callOcr 拆为 callOcrOnce+外层 try/catch 在 AbortError 或 5xx 时重试一次；getModelBuffer 在每个 mirror URL 上加 30s 超时，timeout 时重试一次再 fall through 到下一 mirror。两文件均为内部模块，不触 public-interfaces.txt → route-fix 复用 opt-shizi-1782906261 worktree。",
+  "files_changed": [
+    "/home/admin/workspace/shizi/src/background/ocr-internal.ts",
+    "/home/admin/workspace/shizi/src/background/segmentation.ts"
+  ],
+  "worktree": "auto/opt-shizi-1782906261",
+  "direction": "shizi:ocr-segmentation-timeout",
+  "outcome": "succeeded",
+  "outcome_evidence": "npx tsc --noEmit 无 ocr-internal/segmentation 相关错误；git commit bc93ee2 已 push 到 origin/auto/opt-shizi-1782906261；CodeReview URL https://code.alibaba-inc.com/qunbu/shizi/codereview/new?from=main&to=auto/opt-shizi-1782906261",
+  "next_suggestion": [
+    "下轮派生 SH-M-005：SidePanelApp.tsx deletedStack key 改用 id 字段",
+    "人工 review opt-shizi-1782906261 diff（含本次 + SH-H-002/SH-M-001），merge/reject 后回写本 case status + audit-cycle-state.derived_fixes[SH-M-002+SH-M-003].status"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "src/background/ocr-internal.ts",
+      "line": 92,
+      "severity": "medium",
+      "finding": "callOcr fetch 无 timeout/retry，OCR 服务挂起会让 service worker pipeline 永久 pending",
+      "remediation": "fetchWithTimeout(AbortController 30s) + callOcrOnce 拆分 + 外层 retry 1次 on AbortError/5xx — 已修",
+      "kind": "route-fix"
+    },
+    {
+      "file": "src/background/segmentation.ts",
+      "line": 74,
+      "severity": "medium",
+      "finding": "getModelBuffer fetch 无 timeout/retry，GitHub mirror 卡死会阻塞首次分割模型加载",
+      "remediation": "fetchBufferWithTimeout(AbortController 30s) + timeout 时 retry 1次再 fall through 到下一 mirror — 已修",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-01-005",
+  "audit_depth": "shallow"
+}

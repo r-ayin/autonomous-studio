@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-07-03-096",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-03T14:25:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "prod-deploy time-gate clock-skew defense (PD-H001)",
+  "situation": "audit-2026-07-03-013 finding PD-H001: resume-next-batch.js L51-55 computes elapsedMs = Date.now() - server updated_at. Client/server clock skew can make elapsedMs negative (server ahead), bypassing observation period entirely, or permanently block if server is behind by > observe_minutes.",
+  "action": "Added clock-skew defense inline in resume-next-batch.js Gate 1: (1) NaN guard on updated_at parse with explicit error exit; (2) negative elapsedMs clamped to 0 with WARNING log so forward server skew cannot bypass observation; (3) 30s tolerance window retained without auto-approve. No new dependencies, no public-interface change (route-fix).",
+  "files_changed": [
+    "skills/prod-deploy/scripts/resume-next-batch.js"
+  ],
+  "worktree": "opt-prod-deploy-1782970212",
+  "direction": "prod-deploy:time-gate-clock-skew",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit d222a04 pushed to origin/auto/opt-prod-deploy-1782970212; node --check passed; worktree reused (route-fix, same area as prior prod-deploy fixes); CR link emitted by push hook.",
+  "next_suggestion": "Dispatch PD-H002 (priority 2, route-fix): event-client.js terminal-state payload-only update path missing audit-log for observation_result append after deploy-complete.",
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-03-013",
+  "audit_depth": "shallow"
+}

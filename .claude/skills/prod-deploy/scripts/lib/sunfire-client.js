@@ -14,6 +14,16 @@ import https from 'https';
 
 const SUNFIRE_URL = 'https://api.x.alibaba-inc.com/api/dispatcher.do';
 
+/**
+ * Default HTTP request timeout in milliseconds for Sunfire API calls.
+ * Prevents https.request from hanging indefinitely when the Sunfire dispatcher
+ * is unresponsive (TCP stall / slowloris) — without this, report-observation
+ * ticks block forever with no error, stalling batch progression.
+ * Can be overridden via SUNFIRE_HTTP_TIMEOUT_MS env var for testing / slow networks.
+ * Audit reference: audit-2026-07-06-001 finding PD-HANG-01.
+ */
+const DEFAULT_TIMEOUT_MS = Number(process.env.SUNFIRE_HTTP_TIMEOUT_MS) || 30000;
+
 // ─── Auth / Transport ──────────────────────────────────────────────────────
 
 /**
@@ -46,6 +56,12 @@ function httpPost(url, body) {
       let data = '';
       res.on('data', (chunk) => (data += chunk));
       res.on('end', () => resolve(data));
+    });
+    // Abort the request if the server stops responding within the timeout.
+    // req.setTimeout fires on socket inactivity; destroy() rejects the promise
+    // via the 'error' handler so querySunfireInsights can degrade to skipped.
+    req.setTimeout(DEFAULT_TIMEOUT_MS, () => {
+      req.destroy(new Error(`Sunfire httpPost timed out after ${DEFAULT_TIMEOUT_MS}ms`));
     });
     req.on('error', reject);
     req.write(body);
@@ -153,6 +169,46 @@ export function buildObservationResult(items, analysis) {
 }
 
 /**
+ * Dedup observation checks by insightRule, keeping the NEWEST status per rule.
+ *
+ * PD-CONCL-01: Sunfire's API does not guarantee array order reflects recency,
+ * so the previous "last array occurrence = newest" dedup was unsafe — depending
+ * on response order, a still-WARNING rule could be masked by a stale RECOVER,
+ * or a recovered rule could still be reported failed. Sort by `timestamp`
+ * ascending (numeric, oldest first) before deduping, so the newest entry per
+ * rule is written to the Map last and wins. Checks with missing/invalid
+ * timestamp sort to the front (treated as oldest), so timestamped entries win;
+ * stable tiebreaker preserves input order.
+ *
+ * Preserves prior fall-back: if NO check carries an insightRule, the full
+ * (timestamp-sorted) list is returned unchanged.
+ *
+ * @param {Array} checks — observation_result.checks array (raw Sunfire items)
+ * @returns {Array} deduped checks (newest status per rule)
+ */
+export function dedupByRuleNewest(checks) {
+  if (!checks || checks.length === 0) return [];
+
+  const indexed = checks.map((c, idx) => ({ c, idx }));
+  indexed.sort((a, b) => {
+    const ta = Number(a.c && a.c.timestamp);
+    const tb = Number(b.c && b.c.timestamp);
+    const na = Number.isFinite(ta) ? ta : -Infinity;
+    const nb = Number.isFinite(tb) ? tb : -Infinity;
+    if (na !== nb) return na - nb; // ascending: oldest first → newest wins (last set)
+    return a.idx - b.idx;          // stable tiebreaker
+  });
+
+  const byRule = new Map();
+  for (const { c } of indexed) {
+    if (c && c.insightRule) {
+      byRule.set(c.insightRule, c); // last set per rule = newest (highest ts)
+    }
+  }
+  return byRule.size > 0 ? [...byRule.values()] : indexed.map(({ c }) => c);
+}
+
+/**
  * Derive a conclusion from raw Sunfire items (same logic as old interpretSunfireResults).
  *
  * - Any HIGH-level WARNING → "failed"
@@ -165,14 +221,9 @@ export function buildObservationResult(items, analysis) {
 export function deriveConclusion(checks) {
   if (!checks || checks.length === 0) return 'passed';
 
-  // Dedup by insightRule, keeping the last (newest) status per rule
-  const byRule = new Map();
-  for (const c of checks) {
-    if (c.insightRule) {
-      byRule.set(c.insightRule, c);
-    }
-  }
-  const deduped = byRule.size > 0 ? [...byRule.values()] : checks;
+  // PD-CONCL-01: dedup by insightRule keeping newest status per rule
+  // (timestamp-desc sort, not array order — Sunfire order is unspecified).
+  const deduped = dedupByRuleNewest(checks);
 
   const hasHighWarning = deduped.some(
     (c) => c.insightLevel === 'HIGH' && c.status === 'WARNING',

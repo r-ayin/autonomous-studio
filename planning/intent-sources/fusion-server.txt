@@ -1,0 +1,9 @@
+# fusion-server — 用户口输入（去重后，6 条 / 原始 6 条）
+# 由 distill-user-style.py Step1 生成，供 BUSINESS-INTENT 提炼 + 引擎阶段①CONTEXTUALIZE 读
+
+[2026-06-17] 我怎么切换到这个模型？
+[2026-06-17] 当前模型配置不还是qwen3.7-max吗？
+[2026-06-17] 我怎么手动切换？
+[2026-06-17] 我怎么在会话中切换？
+[2026-06-17] API error: 400 {"error":"model not found"}
+[2026-06-17] 不能配置为本地代理认识的吗

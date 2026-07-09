@@ -1,0 +1,30 @@
+{
+  "case_id": "case-2026-07-07-080",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-07T18:30:00+08:00",
+  "project": "moni-master",
+  "work_unit": "MC-003 config read TOCTOU fix (derived from audit-2026-07-07-028)",
+  "situation": "Audit-028 finding MC-003: load_config() calls canonicalize(path) to derive base_dir, then reads from original `path` instead of canonicalized `abs`. Narrow TOCTOU window allows config.yaml replacement between the two syscalls. Low severity (admin-controlled file) but defense-in-depth gap.",
+  "action": "Changed read_to_string(path) → read_to_string(&abs) in config.rs:512. Error message also uses abs.display(). Added comment explaining the TOCTOU closure. When canonicalize fails, abs falls back to path (unwrap_or_else), so behavior is unchanged on non-canonicalizable paths.",
+  "files_changed": [
+    "moni-rs/crates/moni-core/src/config.rs"
+  ],
+  "worktree": "opt-moni-core-1783359735",
+  "direction": "moni-core:mc-003-config-toctou",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit b87e287 on auto/opt-moni-core-1783359735, pushed to origin. Diff: +5/-2 lines, single file. read_to_string now uses &abs (canonicalized path).",
+  "next_suggestion": "Dispatch MC-004 (no upper-bound sanity checks on fees/ratios in config validation, config.rs:373, low direction-shift). After both pending fixes merged, set audit-cycle-state status=cycle-complete to trigger next full audit.",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "moni-rs/crates/moni-core/src/config.rs",
+      "line": 512,
+      "severity": "low",
+      "finding": "TOCTOU between canonicalize() and read_to_string() — read used original path instead of canonicalized abs",
+      "remediation": "Read from &abs instead of path; error message also uses abs.display()",
+      "kind": "direction-shift"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-028",
+  "audit_depth": "shallow"
+}

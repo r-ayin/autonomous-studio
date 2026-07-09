@@ -1,0 +1,36 @@
+{
+  "case_id": "case-2026-07-05-138",
+  "agent_id": "ralph-autonomous-studio",
+  "timestamp": "2026-07-05T23:55:00+08:00",
+  "project": "x-tool/api额度监测",
+  "work_unit": "派生 fix: APIMON-SSRF-01 (base_url 无 scheme/host 校验, Bearer api_key 可发任意主机 → SSRF/token 泄露)",
+  "situation": "audit-2026-07-05-015 (x-tool/api额度监测 TUI) finding APIMON-SSRF-01: get_billing_info(base_url, api_key) 直接 base_url.rstrip('/') 拼 URL 发 Bearer api_key。base_url 来自 config.json (用户可改), 无 scheme/host 校验 → 攻击者改 config 指向 169.254.169.254 (云元数据) / 内网 / 自建域 即可窃 live API key。第 5/8 派生 fix (前 4: SECRET case-135 + KEYDISPLAY case-136 + SWALLOW case-137 已派待 merge, 本轮 SSRF)。monitor.py 已被 e410417 (SWALLOW) 改 → 直编 worktree 走 direct-worktree-commit precedent (同 case-118/120/124/137)。",
+  "action": "在 worktree opt-api-monitor-1783256389/api额度监测/monitor.py 加 validate_base_url(base_url) + _is_blocked_host(host) 两个 helper, get_billing_info 入口先校验, error 即 return (None, err) 不触 requests.get → Bearer 永不送达被拒主机。校验规则: (1) scheme 必须 https (拒 http/file/gopher/ftp/空), (2) hostname 非空, (3) _is_blocked_host: 私网/环回/链路本地/保留/多播/未指定 IP (127.0.0.1 / 169.254.169.254 / 10.x / 172.16-31.x / 192.168.x / ::1 / fc00::/7) + 云元数据主机名 (metadata.google.internal / metadata.azure.com) 全拒; 非IP字面量 (yunyi.cfd) 放行。严格 hostname allowlist 留 owner 决策 (base_url 本可配置, 属结构性权衡, 在 case 与 audit-cycle-state 标注)。",
+  "files_changed": ["x-tool/api额度监测/monitor.py"],
+  "worktree": "opt-api-monitor-1783256389 (branch auto/opt-api-monitor-1783256389, base=85bd9e1=master, 5-commit stack 3ed7fb7+2030a4a+0691bb9+e410417+c02abf5, FF-clean)",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "git commit c02abf5 on auto/opt-api-monitor-1783256389: 1 file changed, 44 insertions(+), 2 deletions(-) — stacked on e410417 (APIMON-SWALLOW-01) 同 area route-fix 复用 worktree",
+    "py_compile OK: python3 -m py_compile api额度监测/monitor.py 无错",
+    "功能验证 12 case (msvcrt/rich/dateutil stub 后 import monitor): https://yunyi.cfd PASS / http://yunyi.cfd BLOCK (scheme) / file:///etc/passwd BLOCK (scheme) / https://169.254.169.254 BLOCK (私网/元数据) / http://127.0.0.1:8080 BLOCK / https://10.0.0.1 BLOCK / https://192.168.1.1 BLOCK / https://[::1] BLOCK (::1) / https://metadata.google.internal BLOCK / '' BLOCK (空) / gopher://evil.com BLOCK (scheme) / https://yunyi.cfd.evil.com PASS (hostname 非 IP, allowlist 结构性)",
+    "get_billing_info('https://169.254.169.254','SK-LIVE-KEY') → (None, 'base_url 主机被拒（私网/环回/元数据）: 169.254.169.254') 短路返回, 不触 requests.get → 确认 Bearer 永不送达 metadata 端点",
+    "git rev-list --left-right --count master...HEAD = 0\t5 (master 0 ahead / branch 5 ahead, FF-clean)",
+    "git push origin auto/opt-api-monitor-1783256389 → 403 'git push is not allowed' (x-tool 外部 fork ghp-ro.alibaba-inc.com/github.com/r-ayin/x-tool.git, 同 audit-008/010/011/013/015 前 4 派生 fix precedent) — worktree + branch + 5-commit stack 完整保留 disk + local-ref 待人工后 merge to master"
+  ],
+  "next_suggestion": "下轮派 APIMON-RACE-01 (route-fix, monitor.py: 后台线程迭代 keys list 同时主线程 append/pop 同 list → RuntimeError; fix: 快照拷贝 list(config.get('keys',[]))) — 同 area route-fix 复用 opt-api-monitor-1783256389, monitor.py 已被 c02abf5 改 → 仍走 direct-worktree-commit。之后派 APIMON-KEYLEN-01 (route-fix, monitor.py: len(cmd)>10 当 key 改 KEY_RE 正则)。2 structural (NOAUDITLOG/WINDOWS) 入 structural-debt 待 owner。全 8 派生 fix 全 dispatched 后, 待人工 merge 落定 (或 3 连续 wait round 0 merged → deadlock-archive precedent), cycle-complete → 触发下次全量审计 (候选未深审: xia 499 / personal-assistant re-audit / wechat-main re-audit)。",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "x-tool/api额度监测/monitor.py",
+      "line": 61,
+      "severity": "low",
+      "finding": "APIMON-SSRF-01: get_billing_info 直接用 config.json 的 base_url 拼 URL 发 Bearer api_key, 无 scheme/host 校验 → 改 config 指向任意主机 (含 169.254.169.254 云元数据 / 内网) 即可窃 live API key (token 泄露 + SSRF)",
+      "remediation": "加 validate_base_url: scheme 必须 https + hostname 非空 + 拒私网/环回/链路本地/保留/多播/未指定 IP + 云元数据主机名; get_billing_info 入口先校验 error 即 return 不触 requests.get。严格 hostname allowlist 留 owner (结构性权衡)",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-015",
+  "audit_depth": "shallow",
+  "_audit_depth_note": "派生 fix case (非审计轮), audit_depth=shallow 表示本 case 自身未做深审 (深审在父审计 audit-2026-07-05-015 已完成 deep)"
+}

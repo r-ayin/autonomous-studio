@@ -2,6 +2,10 @@
 const WebSocket = require('./vendor/ws');
 const { getInternalSecret, getSessionToken, getRunnerID, WS_HOST } = require('./creds');
 
+// 16MB cap — Runner 命令可能 emit GB 级输出，this.buf += msg.data 无界累积会 OOM (audit-017 RE-EXEC-01)。
+// 超 cap 时 reject 当前 exec promise，部分输出挂 error.output，对齐 write-file/batch-write 契约。
+const MAX_OUTPUT = 16 * 1024 * 1024;
+
 class RunnerSession {
   constructor() {
     this.ws = null;
@@ -37,15 +41,28 @@ class RunnerSession {
 
   exec(cmd, timeoutMs = 30000) {
     const marker = `__X${Date.now()}${Math.random().toString(36).slice(2, 8)}__`;
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
+      // 超时不再静默 resolve 部分输出（push.js 的 try/catch 会把截断误计为成功）；
+      // 改为 reject 并把部分输出挂在 error.output 上，与 write-file/batch-write 的 {ok:false,error:'timeout'} 契约对齐。
       const timer = setTimeout(() => {
         const result = this.buf;
         this.buf = '';
         this._onData = null;
-        resolve(result);
+        const e = new Error('timeout');
+        e.output = result;
+        reject(e);
       }, timeoutMs);
 
       this._onData = () => {
+        if (this.buf.length > MAX_OUTPUT) {
+          clearTimeout(timer);
+          const e = new Error('output_overflow');
+          e.output = this.buf.slice(0, MAX_OUTPUT);
+          this.buf = '';
+          this._onData = null;
+          reject(e);
+          return;
+        }
         if (this.buf.includes(marker)) {
           clearTimeout(timer);
           const idx = this.buf.indexOf(marker);

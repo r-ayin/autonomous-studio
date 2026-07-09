@@ -1,0 +1,32 @@
+{
+  "case_id": "case-2026-07-08-112",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-07T12:58:01Z",
+  "project": "personal-assistant",
+  "work_unit": "web:m002-bot-ua",
+  "situation": "audit-2026-07-07-020 M-002 finding: web.py scraper _fetch() UA 伪装 Chrome/120.0，违反 Bing/Baidu ToS 且易被反爬识别封 IP。派生 route-fix 改为诚实 bot UA + 注释推荐官方搜索 API。",
+  "action": "直编 opt-web-1782977902 worktree（与 main 已分叉 ahead 4 commits，cp-guard 会跳过 → 走 case-104 逃生通道）：(1) 新增 _BOT_USER_AGENT 常量 'personal-assistant/0.3 (+https://github.com/user/personal-assistant; research-bot; contact@example.invalid)'；(2) _fetch() Request headers User-Agent 改用该常量；(3) L-001 注释更新说明 M-002 修复理由 + 生产环境应切 web.backend=api 走 Tavily/Bing Web Search API/SerpAPI。git commit 88ec20e + push origin auto/opt-web-1782977902 (f373344..88ec20e)。",
+  "files_changed": ["personal_assistant/web.py"],
+  "worktree": "opt-web-1782977902",
+  "direction": "web:m002-bot-ua",
+  "outcome": "succeeded",
+  "outcome_evidence": "git -C /home/admin/workspace/.opt-worktrees/personal-assistant/opt-web-1782977902 log --oneline -1 = 88ec20e fix(web): M-002 honest bot UA...; git push output f373344..88ec20e auto/opt-web-1782977902 -> auto/opt-web-1782977902 to https://code.alibaba-inc.com/qunbu/personal-assistant.git; diff +9/-5 lines personal_assistant/web.py",
+  "next_suggestion": [
+    "继续派发 audit-2026-07-07-020 pending M-003 (ApiWebSearcher._generic base_url SSRF validation)",
+    "M-004 rate limiting on /chat /ingest /distill endpoints",
+    "RF-001 SenseVoice ASR 替换研究-informed fix（需 direction-shift，涉及 asr.py 公共接口）"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "personal_assistant/web.py",
+      "line": 35,
+      "severity": "medium",
+      "finding": "_fetch() User-Agent 伪装 Chrome/120.0 Mozilla/5.0，违反 Bing/Baidu ToS §prohibited-uses（禁止 misrepresent identity）；Bing 反爬 2026-Q2 起对 Chrome UA + 无 cookie 请求强化指纹检测，IP 封禁阈值降至 ~50 req/h",
+      "remediation": "改为诚实 bot UA 'personal-assistant/0.3 (+repo-url; research-bot)' + 模块 docstring 注明 HTML scraping 仅作无 key 兜底，生产推荐 web.backend=api",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-020",
+  "audit_depth": "shallow"
+}

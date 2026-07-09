@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-01-590",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-01T11:05:00Z",
+  "project": "wechat-main",
+  "work_unit": "scripts/mail_push.py except Exception 添加 traceback.print_exc (audit-004 WM-L-002)",
+  "situation": "audit-004 finding WM-L-002 (low): mail_push.py line 78 bare `except Exception` 只打印 type+message，无堆栈信息；生产邮件发送失败时日志无法反查调用链与根因。派生 fix。",
+  "action": "在 except Exception 块内追加 `traceback.print_exc(file=sys.stderr)`，保留原有单行错误摘要（兼容已有告警解析），新增完整堆栈到 stderr。import traceback 加到文件顶部 stdlib 组。",
+  "files_changed": ["scripts/mail_push.py"],
+  "worktree": "auto/opt-scripts-1782899218",
+  "direction": "scripts:mail-push-traceback",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 1ba586d pushed to origin/auto/opt-scripts-1782899218; python3 -c ast.parse OK; merge-tree clean vs main (route-fix 复用 opt-scripts-1782899218); linter post-commit stripped import but commit content retains traceback import + print_exc call.",
+  "next_suggestion": "下轮派生 WM-L-003 (qq_push RuntimeError 响应体脱敏，priority=22)，同 area route-fix 复用 opt-scripts-1782899218。pending 剩余 20 (WM-L-002→merged after this)。",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-01-004",
+  "audit_depth": "shallow"
+}

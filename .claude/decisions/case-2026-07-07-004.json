@@ -1,0 +1,31 @@
+{
+  "case_id": "case-2026-07-07-004",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-07T19:25:00+08:00",
+  "project": "moni-master",
+  "work_unit": "MONI-PY-004: agent action whitelist bypass — complete kwargs whitelist + fail-closed filter",
+  "situation": "audit-2026-07-07-029 found _ACTION_KWARGS_WHITELIST in api.py:1403 missing entries for 8 actions (place_order, cancel_order, set_data_source, update_settings, delete_rule, delete_strategy_session, evaluate_rules, advance_trade_date). _filter_action_args fallback returned unfiltered raw args when action not in whitelist → parameter injection via **args expansion. place_order most critical: OrderRequest(**args) accepts arbitrary fields.",
+  "action": "Added whitelist entries for all 8 missing actions with exact kwargs matching engine method signatures. Changed _filter_action_args from fail-open (return raw args) to fail-closed (raise HTTPException 400 for unrecognized actions). Defense-in-depth: even actions that safely destructure args now have explicit whitelist entries.",
+  "files_changed": ["local_simulator/api.py"],
+  "worktree": "opt-local_simulator-1783352870",
+  "direction": "local_simulator:agent-action-whitelist",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 682bda8 on auto/opt-local_simulator-1783352870. Python syntax validated. Whitelist now covers all 19 dispatchable actions. Fail-closed filter rejects unknown actions with HTTP 400.",
+  "next_suggestion": [
+    "Merge opt-local_simulator-1783352870 to main (5 commits: MONI-PY-001/002/003/005/004)",
+    "After merge, audit-cycle-state derived_fixes MONI-PY-004 → merged, then status → cycle-complete → next full audit"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "local_simulator/api.py",
+      "line": 1424,
+      "severity": "medium",
+      "finding": "_filter_action_args returned unfiltered raw args for actions not in whitelist (fail-open). 8 actions had no whitelist entry, allowing arbitrary kwargs injection via **args expansion to engine methods.",
+      "remediation": "Added whitelist entries for all 8 missing actions; changed fallback to fail-closed HTTPException 400.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-029",
+  "audit_depth": "shallow"
+}

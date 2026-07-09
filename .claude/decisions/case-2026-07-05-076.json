@@ -1,0 +1,40 @@
+{
+  "case_id": "case-2026-07-05-076",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-05T04:17:00+08:00",
+  "project": "skills",
+  "work_unit": "fix(godtier-deep-research): GD-M-002 cross_check avg==0 false-consistent — opposite-sign values silently bypass cross-validation",
+  "situation": "派生 fix（父审计 audit-2026-07-05-009，finding GD-M-002，priority 3/medium，kind=route-fix）。cross_check.py:18-21 计算 diff_pct 时 `avg=(a+b)/2; diff_pct = (diff/abs(avg)*100) if avg else 0`：当 value_a 与 value_b 符号相反且绝对值相等（如 +5 vs -5）时 avg==0，guard 把 diff_pct 置 0 → consistent=true（0 <= tolerance），即两个方向完全相反的数值被报为完全一致，静默绕过交叉验证门禁。这是 phase4 验证链里 data 层 cross_check 的低频但高风险旁路 bug。",
+  "action": "把分母从 abs(avg)（avg==0 时 guard 置 0）改为 max(abs(value_a), abs(value_b), 1e-9)：opposite-sign 对必然 diff_pct>>tolerance（+5/-5 → 200%），同值对 a==b==0 时 diff==0 仍判一致不误杀，正常 within-tol 对（100/105 → 4.76%）行为不变。1 文件最小改动，不触公共接口（route-fix）。",
+  "files_changed": [
+    "wendang/godtier-deep-research/scripts/computation/data/cross_check.py"
+  ],
+  "worktree": "opt-godtier-deep-research-1783225012",
+  "direction": "godtier-deep-research:cross-check-avg0-denom",
+  "direction_kind": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "worktree opt-godtier-deep-research-1783225012 已建并 push 到 origin/auto/opt-godtier-deep-research-1783225012（remote 返回 new branch + Code Review 链接）",
+    "worktree HEAD 内容验证：cross_check.py:18-26 含新 denom=max(abs(a),abs(b),1e-9) 实现 + GD-M-002 注释（git show HEAD 确认）",
+    "行为回归（python3 cross_check.py CLI 直跑）：+5/-5 → diff_pct=200.0 consistent=false（旧实现 consistent=true diff_pct=0，bug 复现→修复）；100/105 → diff_pct=4.76 consistent=true；0/0 → diff_pct=0 consistent=true（不误杀）；100/120 → diff_pct=16.67 consistent=false",
+    "main worktree 已恢复 clean（opt-worktree cmd_commit cp→worktree + restore main 流程，无残留 WIP）"
+  ],
+  "next_suggestion": "audit-cycle-state 派生 fix 队列剩余 pending: GD-M-003 (state_manager.save 非原子写, medium) / GD-L-001 (dcf value_per_share=EV/shares 标签错, low) / GD-L-002 (monte_carlo stdev<2 崩, low) / GD-L-003 (timeseries cagr 负终值崩, low) / GD-L-004 (source_hallucination 前瞻年份 false-fail, low)。下轮继续派生 GD-M-003（priority 4，medium，单文件 state_manager.py，route-fix，对齐 x-tool OTA-M-003/L-004 temp+os.replace 模式）。待 8 条全 merged/rejected 后 audit-cycle-state.status→cycle-complete，触发下一轮全量审计（选另一个未深审项目/模块）。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "wendang/godtier-deep-research/scripts/computation/data/cross_check.py",
+      "line": "18-21",
+      "severity": "medium",
+      "finding": "GD-M-002: diff_pct 计算用 `avg=(a+b)/2; (diff/abs(avg)*100) if avg else 0`，avg==0（符号相反等绝对值，如 +5/-5）时 guard 置 diff_pct=0 → consistent=true，opposite-sign 严重分歧被报为完全一致，静默绕过交叉验证门禁。",
+      "remediation": "分母改 max(abs(value_a),abs(value_b),1e-9)：opposite-sign 必然 diff_pct>>tolerance；a==b==0 时 diff==0 仍判一致不误杀。已实施 + 4 例 CLI 行为回归验证。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-009",
+  "audit_depth": "shallow",
+  "_audit_parent": "audit-2026-07-05-009 (wechat-main godtier-deep-research deep audit)",
+  "_derived_finding_id": "GD-M-002",
+  "_derived_finding_severity": "medium",
+  "_derived_finding_priority": 3
+}

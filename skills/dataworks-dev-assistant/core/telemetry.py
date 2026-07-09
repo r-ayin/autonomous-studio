@@ -37,6 +37,50 @@ _start_time = None
 _context = {}
 
 
+# ─── 敏感参数脱敏（AUDITT-01，audit-2026-07-06-005） ──────────────
+# telemetry 落本地 JSONL 且经 telemetry_upload.py 上传远端，
+# sql/password/token 等 kwarg 全程零脱敏会外泄表名/列名/WHERE 值（PII/业务数据）。
+_SENSITIVE_KWARGS = {
+    "password", "passwd", "token", "access_token", "refresh_token",
+    "secret", "api_key", "apikey", "credential", "credentials",
+    "session_code", "cookie", "authorization",
+}
+
+
+def _sanitize_sql(sql_text, max_len=50):
+    """对 SQL 文本保留类型 + 前 max_len 字符，丢弃其余。
+
+    例：'SELECT phone FROM users WHERE id=13800000000'
+        → 'SELECT phone FROM users WHERE id=1380000000…'(截断)
+    """
+    if not isinstance(sql_text, str):
+        sql_text = str(sql_text)
+    head = sql_text.strip()
+    # 提取首个 SQL 关键字作为类型标记
+    first_tok = head.split(None, 1)[0].upper() if head else ""
+    if len(head) <= max_len:
+        body = head
+    else:
+        body = head[:max_len] + "…"
+    return f"{first_tok}:{body}" if first_tok else body
+
+
+def _sanitize_extra(extra):
+    """对 args dict 中敏感 key 脱敏：sql 截断，凭证类丢弃值。"""
+    if not extra:
+        return extra
+    sanitized = {}
+    for k, v in extra.items():
+        kl = k.lower()
+        if kl == "sql":
+            sanitized[k] = _sanitize_sql(v)
+        elif kl in _SENSITIVE_KWARGS:
+            sanitized[k] = "<redacted>"
+        else:
+            sanitized[k] = v
+    return sanitized
+
+
 # ─── 公开 API ──────────────────────────────────────────────────
 
 # Session ID 管理已迁移到 runtime.py（Phase 0b）
@@ -67,12 +111,12 @@ def telemetry_start(script_name, module=None, intent=None, **kwargs):
         for key in ("project_id", "date", "node_id", "keyword", "status"):
             if key in kwargs and kwargs[key] is not None:
                 _context[key] = kwargs[key]
-        # 其余参数放 args
+        # 其余参数放 args（敏感 kwarg 脱敏，避免 SQL/凭证外泄——AUDITT-01）
         extra = {k: v for k, v in kwargs.items()
                  if k not in ("project_id", "date", "node_id", "keyword", "status")
                  and v is not None}
         if extra:
-            _context["args"] = extra
+            _context["args"] = _sanitize_extra(extra)
     except Exception:
         pass  # 遥测不影响主流程
 

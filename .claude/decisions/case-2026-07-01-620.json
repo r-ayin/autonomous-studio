@@ -1,0 +1,33 @@
+{
+  "case_id": "case-2026-07-01-620",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-01T12:19:50Z",
+  "project": "shizi",
+  "work_unit": "SH-L-003 saveHistoryItem/deleteHistoryItem/clearHistory promise queue mutex (audit-005 派生 fix #9/9)",
+  "situation": "audit-005 shizi 全量深审发现 SH-L-003：storage.ts saveHistoryItem 读→改→写非原子；两次并发 save（快速连拍分析）chrome.storage.local.set last-write-wins 丢历史条目。deleteHistoryItem/clearHistory 同样无锁，与 save 并发也会丢。",
+  "action": "新增模块级 _historyWriteTail + withHistoryLock(fn) promise queue，把 saveHistoryItem/deleteHistoryItem/clearHistory 全部包进锁内串行化。loadHistory/loadSettings 只读不动，不加锁。单文件 route-fix（不触 public-interfaces.txt）。",
+  "files_changed": [
+    "/home/admin/workspace/shizi/src/shared/storage.ts"
+  ],
+  "worktree": "auto/opt-storage-1782908330",
+  "direction": "storage:history-write-mutex",
+  "outcome": "succeeded",
+  "outcome_evidence": "npx tsc --noEmit exit=0；opt-worktree.sh commit a6fdb58 push 到 origin/auto/opt-storage-1782908330；diff +34/-10 lines 包含 _historyWriteTail + withHistoryLock + 三处 mutation 包裹；CodeReview URL https://code.alibaba-inc.com/qunbu/shizi/codereview/new?from=main&to=auto/opt-storage-1782908330",
+  "next_suggestion": [
+    "audit-005 派生 fix 已全部产出（9/9），剩余 pending 等人工 review merge/reject",
+    "待 SH-M-005(case-615)/SH-L-001(case-616)/SH-L-003(case-620) 三个 worktree 合并后，audit-cycle-state.status → cycle-complete，下轮触发新审计（候选：x-tool 或 moni 后端）"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "src/shared/storage.ts",
+      "line": 37,
+      "severity": "low",
+      "finding": "saveHistoryItem 读→改→写非原子，并发调用 chrome.storage.local.set last-write-wins 丢条目；deleteHistoryItem/clearHistory 同",
+      "remediation": "promise queue mutex 串行化所有 history mutation — 已修",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-01-005",
+  "audit_depth": "shallow"
+}

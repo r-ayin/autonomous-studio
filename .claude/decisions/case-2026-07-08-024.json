@@ -1,0 +1,32 @@
+{
+  "case_id": "case-2026-07-08-024",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-08T16:15:00+08:00",
+  "project": "shizi",
+  "work_unit": "popup:getSettings-error-handling",
+  "situation": "SZ-PP-M-003 from audit-2026-07-07-047: SettingsPage.tsx line 23 chrome.runtime.sendMessage({action:'getSettings'}).then(...) has no .catch handler. When background service worker is sleeping/unavailable (extension updating, idle timeout), promise rejects and setLoading(false) never fires → permanent loading spinner on settings page.",
+  "action": "Added .catch(err => console.error(...)) and .finally(() => setLoading(false)) to guarantee loading state clears regardless of success/failure. Also added optional chaining res?.success to handle undefined responses. Single-file fix in popup worktree (route-fix). cp-guard triggered (prior SZ-PP-M-001/M-002 unmerged), used case-104 direct wt commit escape hatch.",
+  "files_changed": ["src/popup/SettingsPage.tsx"],
+  "worktree": "opt-popup-1783215325",
+  "direction": "popup:getSettings-error-handling",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 88d4c7b on auto/opt-popup-1783215325 pushed to origin; diff shows +4/-1 lines adding .catch/.finally chain to getSettings sendMessage call",
+  "next_suggestion": [
+    "SZ-PP-M-004: Debounced saveSettings has no error handling and stale closure risk",
+    "SZ-PP-M-005: Auto-save debounce timer not flushed on unmount — last edit lost",
+    "SZ-PP-M-006: All chrome.runtime.sendMessage calls lack timeout"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "src/popup/SettingsPage.tsx",
+      "line": 23,
+      "severity": "medium",
+      "finding": "chrome.runtime.sendMessage getSettings has no .catch — permanent loading state on rejection",
+      "remediation": "Add .catch/.finally to guarantee setLoading(false) runs regardless of outcome",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-047",
+  "audit_depth": "shallow"
+}

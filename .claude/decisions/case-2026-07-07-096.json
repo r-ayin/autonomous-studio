@@ -1,0 +1,32 @@
+{
+  "case_id": "case-2026-07-07-096",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-07T20:50:00+08:00",
+  "project": "autonomous-studio",
+  "work_unit": "runner-exec/scripts/creds.js PID validation hardening",
+  "situation": "audit-2026-07-07-032 M-POST-002 finding: creds.js line 20-22 pgrep output used as /proc/${pid}/environ path without numeric validation. Non-numeric pid (corrupt pgrep output, unexpected text) would cause read of arbitrary /proc path or silent info leak.",
+  "action": "Add /^\d+$/ regex guard on pid string before /proc path interpolation. Single-line fix at line 21 — if (pid) → if (pid && /^\d+$/.test(pid)). Derived from audit-2026-07-07-032 M-POST-002.",
+  "files_changed": ["runner-exec/scripts/creds.js"],
+  "worktree": "opt-runner-exec-1783371002",
+  "direction": "runner-exec:pid-validation",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit hash in opt-runner-exec-1783371002 branch; push succeeded to origin/auto/opt-runner-exec-1783371002; file diff shows single-line guard addition at line 21",
+  "next_suggestion": [
+    "Merge opt-runner-exec-1783371002 after human review (M-POST-002 route-fix)",
+    "Mark H-POST-001 case-2026-07-07-006 merged in audit-cycle-state (fix already in opt-prod-deploy-1783370693 commit 01cb782)",
+    "After both pending fixes resolved, flip audit-cycle-state.status to cycle-complete to trigger next full audit"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "runner-exec/scripts/creds.js",
+      "line": 21,
+      "severity": "medium",
+      "finding": "pgrep PID output used unvalidated in /proc path interpolation — non-numeric input could traverse /proc unexpectedly",
+      "remediation": "Add /^\d+$/ regex guard before path construction",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-032",
+  "audit_depth": "shallow"
+}

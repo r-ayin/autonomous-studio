@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-04-016",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-03T18:25:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "ES-L001 fix: hoist _DECISION_RE to module-level constant in decision-observer.py",
+  "situation": "audit-2026-07-04-001 finding ES-L001 (priority 8, kind=route-fix): count_decisions() 在 Stop hook 热路径上被频繁调用，函数体内 re.compile 每次重编译正则（违背 docstring '单次编译' 承诺）。属派生 fix 阶段第 7 个处理项。",
+  "action": "将 _DECISION_RE 从 count_decisions() 函数体移到模块级常量，使正则只编译一次。改动仅 1 文件、纯重构、零行为变更。因 opt-hooks-1783018753 worktree 已有前轮未合并改动触发 cp-guard，改在同 area 的 opt-decision-observer-1783099363 worktree 内直接编辑并提交（该 worktree 本就拥有 decision-observer.py 修改权，且当时处于 clean 状态）。",
+  "files_changed": [".claude/hooks/decision-observer.py"],
+  "worktree": "opt-decision-observer-1783099363",
+  "direction": "decision-observer:atomic-safe-write",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 3c25bca on auto/opt-decision-observer-1783099363; python3 ast.parse syntax check passed; diff shows 14 insertions / 10 deletions in single file; _DECISION_RE now at module scope, count_decisions body reduced to findall+sum only.",
+  "next_suggestion": "继续派生 fix：下一优先级 ES-L002 (pipeline-gate._is_doc_or_meta 缺 .claude/ prefix match) → 单文件 route-fix；ES-L003 (autonomous-loop.sh PROMPT shell interpolation) 之后；ES-M004 structural 不派 fix，已登记 structural-debt。",
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-04-001",
+  "audit_depth": "shallow"
+}

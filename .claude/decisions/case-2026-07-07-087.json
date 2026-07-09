@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-07-087",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-07T19:35:00+08:00",
+  "project": "moni-master",
+  "work_unit": "FE-H-001 SSRF via user-controlled LLM base_url (audit-2026-07-07-030 derived fix)",
+  "situation": "moni-master frontend chatLoop.ts:62-79 forwards store.config.localBaseUrl (persisted to localStorage via zustand) straight into provider_override.base_url sent to /llm/chat backend. No scheme/host validation. Attacker who controls localStorage (XSS, shared device, prompt-injection-induced settings write) can set base_url to file:///etc/passwd, http://169.254.169.254/latest/meta-data/, or internal service endpoint → backend fetches it server-side (SSRF).",
+  "action": "Added validateBaseUrl() helper in chatLoop.ts that enforces: (1) only http/https schemes, (2) hostname is not localhost/::1/private-IP/link-local/metadata IP. Invalid URL returns undefined → override.base_url omitted → backend falls back to server-configured default. Non-blocking: legit users with public endpoints unaffected; malicious/poisoned values silently dropped.",
+  "files_changed": ["frontend/src/components/ai/chatLoop.ts"],
+  "worktree": "opt-frontend-1783366395",
+  "direction": "frontend:ssrf-baseurl-validation",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit landed in auto/opt-frontend-1783366395, pushed to origin/auto/opt-frontend-1783366395. git diff shows +32/-1 lines adding validateBaseUrl + call site replacement at line 63. Worktree listed via opt-worktree.sh list.",
+  "next_suggestion": "派生下一个 pending finding FE-H-002 (prompt injection bypasses medium-risk tool confirm — DEFAULT_PERMISSIONS.allowMediumWithoutConfirm=true). 该修复在 aiStore.ts:82-86，独立文件不冲突。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "frontend/src/components/ai/chatLoop.ts",
+      "line": 63,
+      "severity": "high",
+      "finding": "User-controlled localBaseUrl forwarded verbatim to backend provider_override.base_url without scheme/host validation → SSRF via poisoned localStorage",
+      "remediation": "validateBaseUrl allowlist (http/https + public host) before assignment; drop invalid silently",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-030",
+  "audit_depth": "shallow"
+}

@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-02-121",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-02T07:38:30Z",
+  "project": "personal-assistant",
+  "work_unit": "PA-WA-M01 api.js get/post error observability + PA-WA-H02 rejection",
+  "situation": "audit-2026-07-02-005 derived_fixes 全 pending。按 priority 取 #1 PA-WA-H02（delete dead .jsx）复核发现误报：所有 15 个 .jsx 都被 index.html <script src> 引用且 Object.assign(window,{Component}) 暴露，无 dead file。跳到 PA-WA-M01（api.js swallows errors）。调用方全部用 if(j&&j.field) null-check 模式，改 triple return 需动 10+ 文件超最小 fix 范围。",
+  "action": "向后兼容修复：get/post 仍返回 data|null，新增 LIVE.lastError={path,status,message,ts} 记录最近失败 + console.warn 带 status/path。只动 api.js 1 文件，零调用方改动。同时标记 PA-WA-H02 rejected（误报）。",
+  "files_changed": ["web/api.js"],
+  "worktree": "opt-web-1782977902",
+  "direction": "web:api-error-surface",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh commit 输出 '✓ 提交到 opt-web-1782977902' + push 成功到 origin/auto/opt-web-1782977902；grep 确认所有 15 个 .jsx 在 index.html line 114-130 被 script src 引用；tail -10 DashboardPage.jsx 确认 Object.assign(window,{DashboardPage}) 暴露模式",
+  "next_suggestion": "派生 PA-WA-M02（android api() port===3015 hardcode → 读 window.PA_BASE 或 env），route-fix，1 文件 android/index.html",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-005",
+  "audit_depth": "shallow"
+}

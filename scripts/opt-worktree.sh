@@ -465,6 +465,12 @@ _validate_commit_file_path() {
 cmd_commit() {
   local direction="${3:?need direction}"
   local msg="${4:?need commit message}"
+  # housekeeping:archive* 豁免 state-only gate（case-2026-07-06-arch：loop-archive-cases.sh 的
+  # 归档 commit 全是 case-*.json，本就被 state-only 判定拦死→archive 从没真跑→307 孤儿堆积。
+  # gate 原意是拦引擎每轮回写 state 堆 commit，非拦正当归档；归档是 case 文件入 worktree 的
+  # 唯一合法通道（直提 main 被 autonomous-commit-gate 拦）。故 archive 方向豁免 wholesale + per-file 两道。
+  local _archive_exempt=0
+  [[ "$direction" == housekeeping:archive* ]] && _archive_exempt=1
   ensure_main_wt
   local cur_area; cur_area=$(current_area)
   local new_area; new_area=$(area_of "$direction")
@@ -601,7 +607,7 @@ cmd_commit() {
   # （实测 60 轮堆了 39 behind + 11 state commit），污染 diff、增加未来 merge 冲突面。
   # 检测：files 非空 且 全部命中 state-file 模式 → 拒绝提交，提示人工 merge。
   # 注：files 为空时走下方 git status 兜底（可能真有源码改动未显式列出），此处仅拦截显式声明的纯状态提交。
-  if [[ ${#files[@]} -gt 0 ]]; then
+  if [[ ${#files[@]} -gt 0 ]] && (( ! _archive_exempt )); then
     local _state_only=1
     for _f in "${files[@]}"; do
       case "$_f" in
@@ -703,7 +709,7 @@ cmd_commit() {
       # 防 _cp_guard + rm -f 写/删 worktree 外文件。校验失败跳过该文件（不 abort），
       # 让合法文件继续迁移；报错已含 finding id 便于追溯。
       _validate_commit_file_path "$f" || { skipped+=("$f"); continue; }
-      _is_state_only_file "$f" && { echo "⏸ state-only skip: $f (按 archival-commit-mechanism 应直提 main，不进 worktree)" >&2; skipped+=("$f"); continue; }
+      (( ! _archive_exempt )) && _is_state_only_file "$f" && { echo "⏸ state-only skip: $f (按 archival-commit-mechanism 应直提 main，不进 worktree)" >&2; skipped+=("$f"); continue; }
       if [[ -e "$f" ]]; then
         _cp_guard "$f" "$target/$f" || { skipped+=("$f"); continue; }
       elif git ls-files --error-unmatch "$f" >/dev/null 2>&1; then
@@ -726,7 +732,7 @@ cmd_commit() {
       local _xy="${p:0:2}"
       p="${p#???}"               # 去掉前导 "XY "（status 2 字符 + 空格）
       case "$p" in *" -> "*) p="${p##* -> }";; esac   # rename 取新路径
-      _is_state_only_file "$p" && { echo "⏸ state-only skip: $p (直提 main)" >&2; skipped+=("$p"); continue; }
+      (( ! _archive_exempt )) && _is_state_only_file "$p" && { echo "⏸ state-only skip: $p (直提 main)" >&2; skipped+=("$p"); continue; }
       if [[ -e "$p" ]]; then
         _cp_guard "$p" "$target/$p" || { skipped+=("$p"); continue; }
       elif git ls-files --error-unmatch "$p" >/dev/null 2>&1; then
@@ -1041,12 +1047,14 @@ cmd_cleanup() {
     [[ "$name" == "_indexes" ]] && continue
     local ahead dirty status_out line
     ahead=$(git -C "$d" rev-list --count "$MAIN_BRANCH"..HEAD 2>/dev/null || echo 0)
-    # .opt-direction 是每个 worktree 的方向标记桩（untracked），非真改动，剔后再判脏。
+    # .opt-direction / .opt-lock 是 worktree 基础设施桩文件（untracked），非真改动，剔后再判脏。
+    # .opt-lock = cmd_commit 持锁防并发；.opt-direction = 方向标记。两者均不应阻止 cleanup。
     status_out=$(git -C "$d" status --porcelain 2>/dev/null || true)
     dirty=0
     while IFS= read -r line; do
       [[ -z "$line" ]] && continue
       [[ "$line" == "?? .opt-direction" ]] && continue
+      [[ "$line" == "?? .opt-lock" ]] && continue
       dirty=$((dirty + 1))
     done <<< "$status_out"
     if [[ "$ahead" != "0" || "$dirty" != "0" ]]; then

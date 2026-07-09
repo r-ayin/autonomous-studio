@@ -1,0 +1,25 @@
+{
+  "case_id": "case-2026-07-08-003",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-08T02:15:00+08:00",
+  "project": "shizi",
+  "work_unit": "SH-SIDE-L-001 real fix — handleDeleteText/onDeleteItem idx→id (replaces phantom commit 4372504)",
+  "situation": "audit-cycle-state listed SH-SIDE-L-001 as pending with fix_case_id=case-2026-07-08-003, but that case file never existed. Prior worktree opt-sidepanel-id-delete-1783378486 commit 4372504 was empty (.opt-lock only, no source change). Bug still live on main: handleDeleteText(idx:number) uses array index for deletion, inconsistent with SH-M-005 id-based deletedStack (58c71ec). When two VerifiedText entries share identical text+bbox but different ids, index-based delete can remove the wrong entry after re-sort/filter.",
+  "action": "Removed phantom worktree+branch. Created fresh worktree opt-sidepanel-id-delete-fix-1783378817. Applied real fix across 2 files: (1) SidePanelApp.tsx handleDeleteText signature idx:number→id:string, lookup via .find(t=>t.id===id), filter via t.id!==id; ImageWithOverlay onDeleteText prop signature updated, call site passes t.id not i. (2) ResultPanel.tsx onDeleteItem prop signature idx:number→id:string, call site passes item.id not i. Committed e5e9af4, pushed to origin.",
+  "files_changed": [
+    "src/sidepanel/SidePanelApp.tsx",
+    "src/popup/ResultPanel.tsx"
+  ],
+  "worktree": "opt-sidepanel-id-delete-fix-1783378817",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit e5e9af4 on auto/opt-sidepanel-id-delete-fix-1783378817 pushed to origin. git diff --cached shows 2 files changed, 7 insertions(+), 7 deletions(-). Pre-existing build error (storage.ts:44 Unexpected export) confirmed identical on main — not introduced by this fix.",
+  "next_suggestion": [
+    "SH-VIS-M-001 (binary string O(n²) at vision-adapter.ts:321,347) still unfixed on main — marked merged in audit-cycle-state but no commit evidence. Next round should dispatch real fix for M-001.",
+    "After M-001 fix merged → cycle-complete → trigger next full deep-audit."
+  ],
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-08-037",
+  "audit_depth": "shallow"
+}

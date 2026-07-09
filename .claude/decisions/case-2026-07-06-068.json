@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-06-068",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-06T22:50:00+08:00",
+  "project": "wechat-main",
+  "work_unit": "M-016 daily_report.py --output path validation + atomic write",
+  "situation": "audit-2026-07-06-022 finding M-016: daily_report.py:432 accepts raw --output CLI arg without validating it falls under project root (arbitrary file write), and writes via non-atomic Path.write_text (crash → half-written HTML). Derived fix from wechat-main deep audit.",
+  "action": "Applied two-part fix in worktree opt-wechat-main-1783130541: (1) resolve --output path and validate relative_to(_ROOT), reject with exit 2 if outside project; (2) replace write_text with tempfile.mkstemp + os.fdopen + os.replace for atomic write, cleanup on exception. Added imports os + tempfile.",
+  "files_changed": ["scripts/daily_report.py"],
+  "worktree": "opt-wechat-main-1783130541",
+  "direction": "wechat-main:m016-daily-report-output-safety",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 4b0073b on auto/opt-wechat-main-1783130541 pushed to origin; diff adds 26 lines (path validation block + atomic write block + 2 imports); git log confirms amend includes M-016 fix",
+  "next_suggestion": "Dispatch M-017 (hot-scanner.py:738 topic pool merge TOCTOU + no schema) — last pending fix from audit-2026-07-06-022. After M-017 merged/rejected, set audit-cycle-state status=cycle-complete to trigger next full audit.",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "scripts/daily_report.py",
+      "line": 432,
+      "severity": "medium",
+      "finding": "--output CLI arg accepted without path validation → arbitrary file write outside project root; non-atomic write_text → crash leaves partial HTML",
+      "remediation": "resolve() + relative_to(_ROOT) guard; tempfile.mkstemp + os.replace atomic write",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-022",
+  "audit_depth": "shallow"
+}

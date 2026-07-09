@@ -1,0 +1,30 @@
+{
+  "case_id": "case-2026-07-07-074",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-06T17:36:29Z",
+  "project": "moni-master",
+  "work_unit": "MONI-API-002: cap replay/backtest frames to prevent memory-exhaustion DoS",
+  "situation": "audit-2026-07-07-028 finding MONI-API-002 (medium, route-fix): POST /replay/sessions and POST /backtest/run accept unbounded frames Vec; single request with millions of frames consumes unbounded heap during deserialization. Derived fix pending dispatch per audit-cycle-state._status_note.",
+  "action": "Added MAX_FRAMES_PER_REQUEST=10_000 const + early-reject guard in both create_replay_session and run_backtest handlers. Returns ApiError::bad_request with count+limit message when exceeded. Minimal 1-file change, no behavior change for legitimate requests under cap.",
+  "files_changed": [
+    "moni-rs/crates/moni-api/src/routes.rs"
+  ],
+  "worktree": "opt-moni-api-1783359370",
+  "direction": "moni-api:frames-dos-cap",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh committed + pushed auto/opt-moni-api-1783359370 to origin (new branch). git diff shows +18 lines, 0 deletions. Both handlers guarded. Const documented with audit finding reference.",
+  "next_suggestion": "派生下一个 pending derived_fix: MC-001 (symlink TOCTOU on new-file leaf in resolve_storage_path, paths.rs:65, medium route-fix). 之后 COGALPHA-05 (unbounded LLM output parsing, llm.rs:183, low).",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "moni-rs/crates/moni-api/src/routes.rs",
+      "line": 239,
+      "severity": "medium",
+      "finding": "Unbounded replay/backtest frames ingestion — memory exhaustion DoS vector (MONI-API-002 from audit-2026-07-07-028)",
+      "remediation": "Cap frames.len() at 10k via MAX_FRAMES_PER_REQUEST const; reject over-limit with bad_request before deserialization completes",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-028",
+  "audit_depth": "shallow"
+}

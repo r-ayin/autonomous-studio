@@ -1,0 +1,30 @@
+{
+  "case_id": "case-2026-07-07-003",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-07T17:42:18+08:00",
+  "project": "moni-master",
+  "work_unit": "MC-001 symlink TOCTOU on new-file leaf in resolve_storage_path (paths.rs:65)",
+  "situation": "audit-2026-07-07-028 derived_fixes 8 pending. _status_note 指示下一步派发 MC-001 (medium route-fix). paths.rs new-file fallback canonicalizes parent then re-appends file_name; attacker pre-placing symlink at leaf lets writes escape base_dir after parent check passes.",
+  "action": "Add symlink_metadata (lstat) check on leaf after cp.join(file). If leaf exists and is symlink, reject with descriptive Err. Only regular files or truly-nonexistent leaves permitted. Add regression test symlink_leaf_in_new_file_fallback_rejected creating dangling symlink to /etc/passwd inside base_dir and asserting resolve_storage_path returns Err.",
+  "files_changed": [
+    "moni-rs/crates/moni-core/src/paths.rs"
+  ],
+  "worktree": "opt-moni-core-1783359735",
+  "direction": "moni-core:mc-001-symlink-toctou",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit a8b111f on auto/opt-moni-core-1783359735 pushed to origin. cargo test -p moni-core --lib paths:: ran 6/6 passed including new symlink_leaf_in_new_file_fallback_rejected. Worktree branch tracks origin/auto/opt-moni-core-1783359735.",
+  "next_suggestion": "Next derived_fix to dispatch: COGALPHA-05 (unbounded LLM output parsing in llm.rs:183, low route-fix). After that M-005-risk (daily loss limit <= boundary semantics, low route-fix). Direction-shifts (M-001-position, COGALPHA-03, COGALPHA-04, MC-003, MC-004) queue after route-fixes clear.",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "moni-rs/crates/moni-core/src/paths.rs",
+      "line": 73,
+      "severity": "medium",
+      "finding": "MC-001 TOCTOU: new-file fallback cp.join(file) did not verify leaf was non-symlink; attacker-preplaced symlink inside base_dir pointing outside would pass parent canonicalization check but subsequent writes follow symlink to arbitrary location",
+      "remediation": "Added symlink_metadata (lstat) check after join; reject if leaf exists and is_symlink(). Added regression test.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-028",
+  "audit_depth": "shallow"
+}

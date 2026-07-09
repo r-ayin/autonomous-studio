@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-07-03-076",
+  "agent_id": "ralph-wiggum-loop",
+  "timestamp": "2026-07-03T11:57:39Z",
+  "project": "autonomous-studio",
+  "work_unit": "SCRIPTS-L03 fix (audit-2026-07-03-012 derived): autonomous-loop.sh PROMPT single-quote → heredoc",
+  "situation": "audit-2026-07-03-012 finding SCRIPTS-L03 flagged PROMPT variable in scripts/autonomous-loop.sh defined via single-quoted string literal. Single-quote bash strings are fragile against future edits containing apostrophes (e.g. \"don't\", \"engine's\") — any such insertion breaks parsing and stops the autonomous loop from launching.",
+  "action": "Replaced PROMPT='...' single-quote definition with `read -r -d '' PROMPT <<'PROMPT_EOF' || true` heredoc form. Heredoc preserves no-expansion semantics (single-quoted delimiter) while being content-agnostic to apostrophes. Added explanatory comment referencing SCRIPTS-L03 + audit id. Verified: bash -n syntax check passes; PROMPT loads at runtime with identical 3098-byte content.",
+  "files_changed": [
+    "scripts/autonomous-loop.sh"
+  ],
+  "worktree": "opt-autonomous-studio-shift-1783079845",
+  "direction": "autonomous-studio:loop-prompt-heredoc",
+  "outcome": "succeeded",
+  "outcome_evidence": "bash -n scripts/autonomous-loop.sh exits 0; runtime test shows PROMPT variable populated with 3098 bytes matching original content; commit 7ef480a landed on auto/opt-autonomous-studio-shift-1783079845 and pushed to origin; direction-shift triggered automatically by opt-worktree.sh judge_direction_kind (scripts/autonomous-loop.sh listed in .claude/public-interfaces.txt).",
+  "next_suggestion": "Next round: dispatch SCRIPTS-L04 (distill-patterns.py load_json_robust bare Exception catch, priority 6) — last remaining pending finding from audit-2026-07-03-012. After L04 merged/rejected, all derived fixes closed → set audit-cycle-state.status=cycle-complete to trigger next full audit.",
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-03-012",
+  "audit_depth": "shallow"
+}

@@ -1,0 +1,25 @@
+{
+  "case_id": "case-2026-07-01-585",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-01T10:03:00Z",
+  "project": "wechat-main",
+  "work_unit": "extract inline python -c outline_check to standalone scripts/check_outline.py with argv params (audit finding WM-M-003)",
+  "situation": "scripts/steps.py:286-288 的 3.outline_check step 用 f-string 插值 python -c '...' inline 脚本，难测试、难 lint、shell 转义脆弱。audit-2026-07-01-004 finding WM-M-003 建议提取为独立脚本 + argv 传参。",
+  "action": "新增 scripts/check_outline.py（含 validate_outline() 函数 + main CLI 入口 + docstring + exit code 约定），改 steps.py 调用为 'python scripts/check_outline.py <path> <min_bytes>'。本地 smoke test 4/4 cases pass（valid/too-few/budget-short/missing-thesis）。",
+  "files_changed": [
+    "scripts/check_outline.py",
+    "scripts/steps.py"
+  ],
+  "worktree": "auto/opt-scripts-1782899218",
+  "direction": "scripts:outline-check-extract",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit cf682d9 in auto/opt-scripts-1782899218, pushed origin. git merge-tree --write-tree returns valid SHA (no conflicts). smoke test 4/4 cases passed. diffstat: +71/-1 across 2 files.",
+  "next_suggestion": [
+    "派生 WM-M-004 (priority=17): bing_search 复用 brave_search 重试模式 (_RETRYABLE_HTTP_CODES + 指数退避)，kind=route-fix 复用同 worktree",
+    "提醒用户：auto/opt-scripts-1782899218 现积压 4 个 commit (WM-H-002/WM-H-003/WM-M-001/WM-M-003) 待人工 sanctioned-merge；merge 后 pending_count 会降 4"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-01-004",
+  "audit_depth": "shallow"
+}

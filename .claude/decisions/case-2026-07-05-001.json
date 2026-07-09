@@ -1,0 +1,42 @@
+{
+  "case_id": "case-2026-07-05-001",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-05T00:30:00Z",
+  "project": "wechat-main",
+  "work_unit": "全量深度审计 wechat-main 内容管线 + 事实验证 + 外部搜索/推送（audit-cycle-state.status=cycle-complete 触发的新一轮全量审计）",
+  "situation": "audit-cycle-state.json 显示 status=cycle-complete（上轮 audit-2026-07-03-017 的 8 个派生 fix 全部 merged）。按 autonomous-constraints A 节，本轮走全量审计路径。wechat-main 在 .claude/audits/ 无历史报告、未深审过，且含 script-verifier/qq_push/mail_push/bocha_search 等真实安全面，故选为本轮审计目标。",
+  "action": "直接深读 7 个核心文件（scripts/pipeline.py、scripts/pipeline-gate.sh、script-verifier/verifier.py、script-verifier/fact_checker.py、scripts/bocha_search.py、scripts/qq_push.py、scripts/mail_push.py）+ steps.py/cmd 模板 grep + CLAUDE.md/PROTOCOL.md 上下文 + .audit/ jsonl。追跨模块数据流：pipeline.next→steps.cmd(__ARTICLE__ 占位)→_resolve_article(glob LLM 命名文件)→bash STEP.cmd；pipeline-gate.verify 3→resolve_checkpoint→full=$WECHAT_ROOT/$f 双前缀→advisory checker 静默失效；verifier.judge→fact_checker._check_value_range→无数值默认通过→QA 门禁 FALSIFIED=0 误判。尝试用 Workflow 并行 sonnet sub-agent 读 5 簇文件，但 schema 模式下 StructuredOutput 工具调用两次失败（0 token），回退直接读。产出独立 report .claude/audits/audit-2026-07-05-001.md（16 findings：1H/7M/5L/3I），未派生 fix（按 A 节本轮只审计，下轮起逐个派生）。",
+  "files_changed": [],
+  "worktree": null,
+  "direction": "none",
+  "outcome": "succeeded",
+  "outcome_evidence": "report 文件 .claude/audits/audit-2026-07-05-001.md 已落盘（16 条 finding，每条含 file:line + 代码证据 + remediation + kind）；audit-cycle-state.json 已更新 current_audit_id=audit-2026-07-05-001、status=cycle-complete→fix-in-progress、derived_fixes 数组登记 16 条 pending（15 route-fix + 1 direction-shift）、pending_count=16、last_audit_id/last_audit_completed_at 同步。最高优先级 WM-PIP-01（pipeline.py:218-220 + steps.py:302）：`cmd.replace(\"__ARTICLE__\", art)` 裸替换 LLM 命名的文章文件名进 bash STEP.cmd，标题含空格即断参、含 `;$()` 即 RCE——证据可观察于 steps.py:302 `python script-verifier/verifier.py extract __ARTICLE__ -o ...` 模板无引号 + pipeline.py:226 `out[\"cmd\"] = cmd` 直传 agent-loop bash 执行。",
+  "next_suggestion": [
+    "下轮派生 WM-PIP-01（HIGH，shell 注入）为最小 fix case：pipeline.py cmd_next 用 shlex.quote(art) 包路径，触及 scripts/pipeline.py（公共接口？需查 .claude/public-interfaces.txt 判 direction_kind）；audit-log 埋点因触及外部执行边界建议同步补",
+    "再下轮合并 WM-GATE-01+WM-FC-01+WM-VER-02 为'QA 门禁静默放行链'case（pipeline-gate.sh:213 改 full=\"$f\"、fact_checker:620 收紧、verifier 报告原子写）",
+    "原子写三处（WM-PIPE-02/WM-BOCHA-01/WM-VER-02 已并入上一条）统一 tmp+os.replace+fsync 模式，对齐 autonomous-studio audit-2026-07-03-017 M-009 标准",
+    "WM-QQ-02（direction-shift，跨项目 .env 默认值）单独开新 worktree case",
+    "LOW/INFO 逐个最小 case，不合并"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {"file": "scripts/pipeline.py", "line": "218-220", "severity": "high", "finding": "cmd_next 用 cmd.replace(\"__ARTICLE__\", art) 裸替换 Phase 3 文章路径（LLM 命名、含中文标题）进 cmd，agent-loop 随后 bash STEP.cmd 执行。模板 steps.py:302 `__ARTICLE__` 无引号。标题含空格→argparse 断参 extract 静默读不到文件（FALSIFIED=0 误过门禁）；含 ;/$()/反引号→命令注入。", "remediation": "shlex.quote(art) 再 replace；或模板里 __ARTICLE__ 包单引号。_resolve_article 空时阻断而非追加注释继续。", "kind": "route-fix"},
+    {"file": "scripts/pipeline-gate.sh", "line": "213", "severity": "medium", "finding": "local full=\"$WECHAT_ROOT/$f\"，f 已是 find 输出的绝对路径，再前缀得不存在路径；python3 checker 收坏路径报错 rc 非 1/2，style_fingerprint/ending_detector/structural_consistency_checker 三 advisory 静默不告警，门禁照样 ✅ 通过。", "remediation": "改 full=\"$f\"（f 已绝对）；python rc!=0 时 echo 告警。", "kind": "route-fix"},
+    {"file": "script-verifier/fact_checker.py", "line": "620", "severity": "medium", "finding": "_check_value_range 末尾 return len(result_nums)==0：声明含数值、搜索结果无数值时返回 True（默认通过）。DATA 声明文本命中+source_count>=1 即 VERIFIED，无数值佐证。", "remediation": "result 为空时返回 False 或降级 UNVERIFIABLE，不默认通过。", "kind": "route-fix"},
+    {"file": "script-verifier/verifier.py", "line": "199-248", "severity": "medium", "finding": "build_remediation_prompt 把 c['text']（提取自文章、可能含爬来的研究内容）裸插进 LLM 重生成 system prompt。恶意 claim 文本可'忽略以上指令…'间接 prompt 注入，绕 FALSIFIED 闭环。", "remediation": "<claim_text> 围栏隔离 + 剥指令式行 + prompt 明示不可信数据。", "kind": "route-fix"},
+    {"file": "scripts/pipeline.py", "line": "80", "severity": "medium", "finding": "_save p.write_text 非原子；mark 每步都调，崩溃半写→state JSON 残缺→next/status json.loads 抛错，管线恢复断链。init 有 .bak 但 _save 无。", "remediation": "tmp + os.replace + os.fsync。", "kind": "route-fix"},
+    {"file": "scripts/qq_push.py", "line": "69,119", "severity": "medium", "finding": "_get_token/_upload_file raise RuntimeError(f\"无 access_token: {d}\")，d 是外部 API 响应体 json.loads 结果，注释误称'本地 JSON'。token 端点响应含 refresh_token/_scope 等邻近字段，打到 stderr/cron 日志。", "remediation": "只记 key 名 list(d.keys())，修正注释。", "kind": "route-fix"},
+    {"file": "scripts/bocha_search.py", "line": "219", "severity": "medium", "finding": "out.write_text 非原子；崩溃半写→hot-scanner consume 读残缺 JSON 静默 fallback 空。", "remediation": "tmp + os.replace。", "kind": "route-fix"},
+    {"file": "script-verifier/verifier.py", "line": "351,374,411,461", "severity": "medium", "finding": "Path(args.output).write_text 非原子写报告；叠加 pipeline-gate.sh:90 grep 兜底在残缺 JSON 里可能命中残存 \"falsified\":0，gate 读错计数放行。", "remediation": "报告 tmp+os.replace；gate grep 兜底对残缺 JSON 判失败。", "kind": "route-fix"},
+    {"file": "scripts/pipeline-gate.sh", "line": "46,50,54,58,63", "severity": "low", "finding": "TOPIC 直接插值进 find -name \"${TOPIC}_*.md\" glob；gate 可被其他 agent 直调，TOPIC 含 */?/[ 拓宽匹配（strict 下变 *_*.md 全匹配）。", "remediation": "入口校验 TOPIC 仅 [a-zA-Z0-9_-]，或强制 slug。", "kind": "route-fix"},
+    {"file": "scripts/bocha_search.py", "line": "92,237", "severity": "low", "finding": "urlopen 无响应体大小上限（resp.read 全量）；--base-url 接受 http:// 则 Bearer token 明文上链。", "remediation": "Content-Length 预检/流式截断 5MB；base_url 强制 https://。", "kind": "route-fix"},
+    {"file": "script-verifier/fact_checker.py", "line": "563", "severity": "low", "finding": "_estimate_source_count return max(1, len(domains))：0 URL 也返 1，_compute_confidence 据此加 +0.2，空结果当单信源。", "remediation": "return len(domains) 自然数。", "kind": "route-fix"},
+    {"file": "script-verifier/fact_checker.py", "line": "507", "severity": "low", "finding": "_check_corroboration 无实体时退化 claim_text[:30] 子串匹配，通用开头易假 VERIFIED。", "remediation": "无实体时返 False 交 needs_claude_review。", "kind": "route-fix"},
+    {"file": "scripts/mail_push.py", "line": "80-81", "severity": "low", "finding": "print(f\"...: {type(e).__name__}: {e}\") + traceback.print_exc；SMTP 异常消息含服务器返回可能泄账号提示进 cron 日志。", "remediation": "仅记 type + smtp_code，不打印 full message/traceback。", "kind": "route-fix"},
+    {"file": "scripts/qq_push.py", "line": "35", "severity": "info", "finding": "_DEFAULT_ENV=\"/opt/wanxia/.env\" 跨项目读凭证；有意复用 wanxia bot 但耦合部署，wanxia 未装则不可用，wanxia .env 变更影响 wechat。", "remediation": "默认改 wechat 本地 .wechat-env，wanxia .env 仅 --env-file fallback。", "kind": "direction-shift"},
+    {"file": "scripts/pipeline.py", "line": "348-354", "severity": "info", "finding": "cmd_tool dangerous token 过滤集缺 \\n/>/< 等但 subprocess.run 用 list 无 shell，过滤冗余不构成注入面。", "remediation": "补全或删除冗余过滤并注释。", "kind": "route-fix"},
+    {"file": "script-verifier/verifier.py", "line": "448", "severity": "info", "finding": "merge_retry_report([report]) 永远单元素，'合并多次尝试'名不副实；retry_history 每次从当前 report 重建，跨文件旧 attempt 丢失。", "remediation": "累积 attempts 列表传参，或重命名 finalize_retry_report。", "kind": "route-fix"}
+  ],
+  "audit_id": "audit-2026-07-05-001",
+  "audit_depth": "deep"
+}

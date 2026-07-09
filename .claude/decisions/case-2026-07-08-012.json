@@ -1,0 +1,34 @@
+{
+  "case_id": "case-2026-07-08-012",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-08T11:45:00+08:00",
+  "project": "personal-assistant",
+  "work_unit": "temporal.py _cn_to_int malformed input silent zero (PA-B2-M-002)",
+  "situation": "audit-2026-07-08-045 finding PA-B2-M-002: _cn_to_int returns 0 for any unrecognized input (e.g. '百', '千', 'abc', empty string). This silently corrupts date/time parsing — callers treat 0 as valid, producing wrong dates or hours instead of gracefully returning None.",
+  "action": "Changed _cn_to_int to return None for malformed input. Updated all 5 call sites in temporal.py (_parse_hm ×3, resolve absolute-date ×1, resolve X天前/后 ×1, resolve_range 最近N天 ×1) to propagate None → return None. Added test_malformed_returns_none with 6 cases. All 48 tests pass.",
+  "files_changed": [
+    "personal_assistant/temporal.py",
+    "tests/test_temporal.py"
+  ],
+  "worktree": "opt-temporal-1783392187",
+  "direction": "temporal:cn-to-int-malformed",
+  "outcome": "succeeded",
+  "outcome_evidence": "git commit in worktree opt-temporal-1783392187 pushed to origin/auto/opt-temporal-1783392187; pytest 48/48 passed including new test_malformed_returns_none (6 assertions); branch visible at https://code.alibaba-inc.com/qunbu/personal-assistant/codereview/new?from=main&to=auto/opt-temporal-1783392187",
+  "next_suggestion": [
+    "Dispatch PA-B2-M-005 (distill.py non-atomic profile update) — next pending route-fix by severity",
+    "After all 5 pending route-fixes merged/rejected, audit-cycle-state → cycle-complete → trigger next full audit"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "personal_assistant/temporal.py",
+      "line": 31,
+      "severity": "medium",
+      "finding": "_cn_to_int returns 0 for unrecognized input (fallthrough at line 31), silently corrupting date/time parsing when regex matches non-CN characters",
+      "remediation": "Return None for malformed input; propagate None at all 5 call sites to gracefully degrade",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-08-045",
+  "audit_depth": "shallow"
+}

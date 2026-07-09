@@ -1,0 +1,36 @@
+{
+  "case_id": "case-2026-07-06-018",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-06T10:50:00+08:00",
+  "project": "personal-assistant",
+  "work_unit": "PA-REC-01 MED route-fix: recommend.grounded 空标题 grounding 旁路——搜索结果 title 为空时 _norm(\"\")=\"\" 留在 res_titles (truthy list)，item_ok 走 any(...) 分支遇空 t 时 `t in item` 即 `\"\" in item` Python 恒 True → 任意 LLM 幻觉 item 经空串伪匹配落地，反幻觉门洞开。修：过滤空规范标题使无可用标题时 not res_titles 旁路正确触发。",
+  "situation": "audit-2026-07-06-002 cycle fix-in-progress，4/12 dispatched (PA-ASR-01/02/03 + PA-WIKI-01 merged)，本轮派生第 5 个 finding PA-REC-01 (MED, recommend.py:62,94-95)。空标题场景：scraper 故障/反爬返 {\"title\":\"\"} 时，旧实现 res_titles=[\"\",\"\",...] truthy → not res_titles=False → any(item and (item in t or t in item or _share_token) for t in res_titles) 对空 t 走 `t in item`=\"\" in item 恒 True → 任意幻觉 item 落地。违背模块 docstring line 3 '不编造'。混合场景 (1 real + 1 empty title) 尤其危险：真实标题本应拦住幻觉 item，但空标题的 \"\" in item 短路放行。",
+  "action": "改 recommend.py:62 res_titles 构造：`[_norm(r.get('title','')) for r in (results or [])]` → `[t for t in (_norm(r.get('title','')) for r in (results or [])) if t]`，过滤空规范标题。附 2 行注释说明空串是所有串子串的陷阱。无可用标题时 res_titles=[] → not res_titles=True 旁路正确触发 (设计意图：无标题可对齐时不拦 item)；有真实标题时只对真实标题做 token 落地校验，空标题不再伪匹配放行。1 文件 route-fix，recommend.py 非 public-interfaces.txt 公共接口 → opt-worktree 新 area=recommend wt。",
+  "files_changed": ["personal_assistant/recommend.py"],
+  "worktree": "opt-recommend-1783275547",
+  "direction": "recommend:pa-rec-01-empty-title-grounding",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "worktree opt-recommend-1783275547 新建 (方向分歧 engine→recommend, route-fix 新 area), branch auto/opt-recommend-1783275547, base=580c4aa=main HEAD, 1 commit c79641c, pushed origin (new branch tracked)",
+    "bug 复现 (修前 /tmp/test_pa_rec_01.py): res_titles_buggy=['机器学习入门指南',''] (含空串), `'' in hallu_norm`=True (空串伪匹配泄漏), grounded([hallu_item,grounded_item], mixed_results) → hallu_item kept=True (BUG 确认) + grounded_item kept=True",
+    "fix 验证 (修后 /tmp/test_pa_rec_01_post.py): res_titles_fixed=['机器学习入门指南'] (空串过滤); mixed 场景 hallu_item kept=False (修前 True→修后 False, 漏洞闭合) + grounded_item kept=True (不误杀); all-empty titles hallu_item kept=True (经 not res_titles 旁路, 非空串伪匹配, 设计意图保留); all-real titles hallu_item kept=False (真实标题拦住幻觉); no-results(None) hallu_item kept=False (based_on=result:0 无 results 不可校验, 正确行为非回归)",
+    "py_compile personal_assistant/recommend.py OK (无语法错)",
+    "diff stat: personal_assistant/recommend.py | 5 ++++- (1 file changed, 4 insertions, 1 deletion) — 最小改动"
+  ],
+  "next_suggestion": "下轮派生 PA-AND-01 (MED, android/api.js:7-10 header 合并被 ...opts 覆盖：fetch(url,{headers:{'Content-Type':'application/json',...opts.headers},...opts}) 中 ...opts 把 opts.headers 原样覆写合并结果, 修 `const {headers:custom,...rest}=opts; fetch(url,{headers:{'Content-Type':'application/json',...custom},...rest})`). OR 继续派生剩余 7 pending: PA-WIKI-02/PA-PRO-01/PA-REC-02/PA-DEV-01/PA-AND-02 (LOW) + PA-SPK-01 (INFO). 全 12 merged|rejected 后 status=cycle-complete 触发下轮新审计 (candidates: dataworks-dev-assistant 32k loc / fbi-dev-assistant 19k loc, 均未深审). ⚠ opt-recommend-1783275547(1-commit c79641c) + opt-asr-1783274064(3-commit) + opt-wiki-1783275111(1-commit) + opt-prod-deploy-1783270172(6-commit) 均待人工 merge to main — 不阻塞派生 (worktree 隔离).",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "personal_assistant/recommend.py",
+      "line": 62,
+      "severity": "medium",
+      "finding": "PA-REC-01: res_titles=[_norm(r.get('title','')) for r in (results or [])] 保留空规范标题 _norm('')='', 臺 item_ok any(...) 分支对空 t 走 `t in item`=`'' in item` Python 恒 True → 任意 LLM 幻觉 item 经空串伪匹配落地, 反幻觉门洞开 (尤其混合 real+empty title 场景)",
+      "remediation": "过滤空规范标题: res_titles=[t for t in (_norm(r.get('title','')) for r in (results or [])) if t] — 无可用标题时 not res_titles 旁路正确触发, 有真实标题时只对真实标题 token 落地校验",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-002",
+  "audit_depth": "shallow",
+  "audit_cycle_role": "derived-fix-dispatch",
+  "parent_finding_id": "PA-REC-01"
+}

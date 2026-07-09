@@ -1,0 +1,67 @@
+{
+  "case_id": "case-2026-07-05-047",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-05T10:10:00+08:00",
+  "project": "oneday-design (1BfrYW9R)",
+  "work_unit": "全量审计轮（deep audit）— audit-cycle-state.status=cycle-complete 触发新一轮全量审计；挑 .claude/audits/ 未深度审过的项目 oneday-design（前零报告），深度审 dev-server.js + build.js + index.html + test/smoke.test.js，产出 4 findings（2 high + 2 medium），2 route-fix (OD-SEC-01/03) 登 derived_fixes pending 待下轮派发，2 structural (SD-OD-01/02) 入 structural-debt.md。本轮不派生 fix（审计轮单轮内完成）。",
+  "situation": "step 0 读 autonomous-constraints.md（DO NOT + DO A/B/C/D 四节）+ audit-cycle-state.json。audit-cycle-state.status=cycle-complete（上轮 case-046 deadlock-archive autonomous-engine audit-005 后），pending_count=0 → 本轮走全量审计路径。扫 /home/admin/workspace 项目清单 + .claude/audits/ 已有报告避重：autonomous-engine/PA/sunset/wechat-main/generate-image 系/x-tool 等已审；engine-skills-extracted=skill tarball 包（跳过，纯打包产物）、wanxia-posts-2026-06-28=纯内容素材（跳过）、moni-master=DO NOT 前端重构排除项。唯一未审真实代码项目=oneday-design（1BfrYW9R，personal-assistant 控制面板 UI）。cycle-state.history 的 '1BfrYn9G' 条目 n9G≠W9R 且描述 JWT 后端、无 .md 报告文件 → 与本项目无关，oneday-design 真零审计。审计轮解绑深度：读 5 文件（dev-server.js 161 行 + build.js 84 + index.html 1225 + test/smoke.test.js 2401 + 配置若干）。",
+  "action": "(1) 读 autonomous-constraints.md 全文 + audit-cycle-state.json 全文确认本轮类型=全量审计（status=cycle-complete）+ 避重清单。 (2) ls /home/admin/workspace 候选项目 + 排除 engine-skills-extracted/wanxia-posts/moni-master，选 oneday-design。 (3) Read dev-server.js（161 行全）+ build.js（84 行全）逐行审：静态分发路径穿越防御（path.normalize+path.join）、方法守卫、nosniff、端口守卫、EADDRINUSE、优雅关闭、/api/health 反代 responded 守卫+http/https 选+2s 超时——均健全。 (4) grep index.html 安全 sink: innerHTML/dangerouslySetInnerHTML/eval/document.write/insertAdjacentHTML 全零命中（XSS sink 洁净）；localStorage 命中 1043/1080/1133；fetch/api 命中 1039/1047。 (5) Read index.html:1030-1156 SettingsPage LLM 配置面板——发现 apiKey 明文存 localStorage 1bfr_settings_v1（line 1133 setItem 载荷含 apiKey）+ 掩码回显 keyMask（line 1077）。 (6) grep test/smoke.test.js 确认回归锁覆盖维度：路径穿越 ⑯(test:655)/方法守卫 ㉓㉔/nosniff/404 头 ⑰/端口守卫 ㉒/EADDRINUSE ⑥/dotfile/.git/.audit/.env → 仅 .gitignore 覆盖测(test:468)无 dotfile 服务测；CSP/X-Frame 零命中。 (7) 实证驱动：起 PORT=3091 node dev-server.js 3091，curl 实测每条 finding——GET /.git/config→HTTP 200 558B 含 remote url 'https://syp02536326:HStZLJue84222jXR1oWW@code.alibaba-inc.com/OneDayAI-RPUKYRO/1BfrYW9R.git'（内嵌 Basic Auth 凭证！）；/.git/HEAD→200 30B；/.gitignore→200 366B；/.opt-lock→200 0B；/.audit/audit-2026-07-01.jsonl→200 448B 含 userId/userRole/action/resource 引擎审计流；/.claude/settings.json→404（不存在）；/.design/→404（EISDIR）；/../../etc/passwd→404（穿越仍被拦 baseline 确认）；curl -D - / 响应头仅 X-Content-Type-Options:nosniff+Content-Type，无 CSP。 (8) 写 audit report .claude/audits/audit-2026-07-05-006.md（4 findings: OD-SEC-01 high dotfile 泄漏+实证 / OD-SEC-02 high structural git remote 内嵌凭证 / OD-SEC-03 medium 无 CSP / OD-SEC-04 medium structural apiKey 明文 localStorage；附已洁净维度表防下轮重提议）。 (9) Python 原子更新 audit-cycle-state.json: status cycle-complete→fix-in-progress, current_audit_id=audit-2026-07-05-006, derived_fixes=[OD-SEC-01 pending priority1 high, OD-SEC-03 pending priority3 medium]（同触 dev-server.js 可栈堆）, pending_count=2, history+1 (27 条), last_audit_* 同步。 (10) 追加 structural-debt.md: SD-OD-01 (git 凭证轮换 ops) + SD-OD-02 (apiKey 存储重构)。本轮不派生 fix——审计轮单轮内完成，下轮 fix-in-progress 起逐个派生 OD-SEC-01 优先。",
+  "files_changed": [".claude/audits/audit-2026-07-05-006.md", ".claude/audit-cycle-state.json", ".claude/structural-debt.md"],
+  "worktree": "none（审计轮不派生 fix，不进 opt-worktree；改的是 autonomous-studio/.claude/ 下审计产物，非源码，gate 不拦；下轮派生 OD-SEC-01 时开 opt-dev-server-* worktree on 1BfrYW9R）",
+  "direction": "route-fix（全量审计轮，深度解绑；4 findings 中 2 route-fix + 2 structural；本 case 仅产审计 report + cycle-state/structural-debt 状态文件，非源码 commit）",
+  "outcome": "succeeded",
+  "outcome_evidence": "实证 curl 输出（非散文）：GET /.git/config → HTTP 200 558B body 含 'url = https://syp02536326:HStZLJue84222jXR1oWW@code.alibaba-inc.com/OneDayAI-RPUKYRO/1BfrYW9R.git'（OD-SEC-01 实证）；GET /.audit/audit-2026-07-01.jsonl → HTTP 200 448B body 含 'userId:autonomous-engine/userRole:engine/action:delete/resource:...'（OD-SEC-01 实证）；GET /../../etc/passwd → HTTP 404 'Not found'（穿越 baseline 仍有效）；curl -D - / 响应头仅 'X-Content-Type-Options: nosniff'+'Content-Type: text/html'，无 Content-Security-Policy（OD-SEC-03 实证）。grep innerHTML|dangerouslySetInnerHTML|eval(|document.write|insertAdjacentHTML index.html → 零命中（XSS sink 洁净，OD-SEC-04 无即时利用路径）。audit-2026-07-05-006.md 已落 .claude/audits/（Write 成功）。Python 脚本输出 'OK: audit-cycle-state updated / status: fix-in-progress / pending_count: 2 / derived_fixes: 2 / history len: 27'（JSON 原子写+校验通过）。structural-debt.md tail 确认 SD-OD-01+SD-OD-02 已追加。4 findings 全有 file:line+实证 evidence+remediation_sketch+kind，符合 DO C 节 audit_findings 字段要求。",
+  "next_suggestion": "[下轮] audit-cycle-state.status=fix-in-progress + derived_fixes 有 2 pending → 派生 OD-SEC-01（priority 1 HIGH，dev-server.js dotfile/点目录段过滤守卫 + test 回归锁；复用 opt-worktree route-fix，1BfrYW9R 公共接口文件清单未知但 dev-server.js 是静态服务入口非公共接口→route-fix 复用同 area worktree；若 opt-worktree.sh 判 direction-shift 则开新 wt）。OD-SEC-03（CSP）同触 dev-server.js 可栈堆同 worktree（同文件多 finding 栈堆规则，镜像 autonomous-engine audit-005 模式）。两 route-fix 全 merged|rejected 后 status→cycle-complete 触发下轮新审计。运维 todo（不自动，需人工）：(1) SD-OD-01 立即轮换 code.alibaba-inc.com push token HStZLJue84222jXR1oWW（已实证经 dev-server 暴露）+ git remote set-url 剥离内嵌凭证 + credential helper store/netrc；(2) SD-OD-02 apiKey 存储重构需授权（过渡期 OD-SEC-03 CSP stopgap）；(3) 前周期积压 wt 待人工 merge：autonomous-engine opt-hooks-1783203936 7-commit + sunset opt-routes-1783141439 5-commit + PA opt-api-1783193708 6-commit + wechat-main opt-wechat-main-1783130541 15-commit；(4) 5+1 structural debt（SD-PA-01/02+SD-SP-01/02+SD-AE-01+SD-OD-01/02）需用户授权更大单位。",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "1BfrYW9R/dev-server.js",
+      "line": 121,
+      "severity": "high",
+      "finding": "OD-SEC-01: 静态分发（path.join+fs.readFile）无 dotfile/点目录段过滤。dir=__dirname（项目根）下 .git/.audit/.claude/.gitignore/.opt-lock 全可被 GET /.<seg> 直读。GET /.git/config→HTTP 200 558B 泄漏 remote url 含内嵌 Basic Auth 凭证 syp02536326:HStZLJue84222jXR1oWW@code.alibaba-inc.com；GET /.audit/audit-2026-07-01.jsonl→HTTP 200 448B 泄漏引擎 userId/action/resource 审计流。回归锁 ⑯(test:655)只证不泄露 served 目录外文件，未覆盖 served 目录内 dotfile——真实盲区。dev-server 亦为 npm start 生产入口+server.listen 绑 0.0.0.0 全网卡放大暴露面。",
+      "remediation": "静态分发前（line 121 前）加 segs=safePath.split('/').filter(Boolean); if(segs.some(s=>s.startsWith('.'))){404; return;} 守卫，落在探针路由后静态分发前。补回归锁：GET /.git/config / /.git/HEAD / /.audit/<file> / /.env 均断言 404+body 不含机密标记。",
+      "kind": "route-fix"
+    },
+    {
+      "file": "1BfrYW9R/.git/config",
+      "line": 0,
+      "severity": "high",
+      "finding": "OD-SEC-02: git remote get-url origin 返回 https://syp02536326:HStZLJue84222jXR1oWW@code.alibaba-inc.com/...——用户名+push token 明文嵌 remote URL（.git/config）。凭证反模式：secret 落 .git/config/可能进历史/构建产物/备份；OD-SEC-01 实证经 dev-server 网络可达。即便 OD-SEC-01 修复后凭证仍明文存 .git/config，须按已泄漏处置。",
+      "remediation": "ops 动作（非源码提交）：(a) 立即轮换——吊销 HStZLJue84222jXR1oWW 签发新 token；(b) git remote set-url origin https://code.alibaba-inc.com/OneDayAI-RPUKYRO/1BfrYW9R.git 移除 user:pass@；(c) git config --global credential.helper store（0600 ~/.git-credentials）或 .netrc；(d) git log -p 扫描确认未提交。入 structural-debt SD-OD-01，引擎不自动修。",
+      "kind": "structural"
+    },
+    {
+      "file": "1BfrYW9R/dev-server.js",
+      "line": 46,
+      "severity": "medium",
+      "finding": "OD-SEC-03: 全响应仅 setHeader('X-Content-Type-Options','nosniff')，无 Content-Security-Policy。index.html 从 cdnjs.cloudflare.com 加载 React/Tailwind/FontAwesome；无 CSP 时 CDN 供应链入侵/XSS/中间人注入→攻击者脚本读 localStorage 1bfr_settings_v1.apiKey（OD-SEC-04）外传。实证 curl -D - / 响应头无 CSP；test grep CSP/X-Frame 零命中（无回归锁）。nosniff 只防 MIME 嗅探不防脚本执行。",
+      "remediation": "line 46 后补 res.setHeader('Content-Security-Policy', \"default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; font-src 'self' https://cdnjs.cloudflare.com; img-src 'self' data:; connect-src 'self' http://127.0.0.1:8000; object-src 'none'; base-uri 'self'; frame-ancestors 'none';\")。unsafe-inline 因单文件 <script type=text/babel> 内联不可避免。补回归锁断言响应头含 CSP。connect-src 须随 ONEDAY_API_BASE 部署值同步。",
+      "kind": "route-fix"
+    },
+    {
+      "file": "1BfrYW9R/index.html",
+      "line": 1133,
+      "severity": "medium",
+      "finding": "OD-SEC-04: SettingsPage 将 LLM 配置含 apiKey 明文写 localStorage key 1bfr_settings_v1（line 1042/1043/1133）。CLAUDE.md 明示与 cli llm 同源（localStorage 是前端+CLI 共享真相源，apiKey 必须落 localStorage 是架构决定）。localStorage 性质：同源 JS 可读（XSS 即取，OD-SEC-03 缺 CSP 不阻断）、跨会话持久、无 HttpOnly。UI 侧掩码回显 keyMask（line 1077）但存储值明文。当前无 XSS sink（grep 全零）故无即时利用路径，但 OD-SEC-03 缺 CSP 是纵深缺口。",
+      "remediation": "架构性，非 1-3 文件 route-fix。apiKey 不落浏览器，改由 personal-assistant 后端持有（env/0600 文件/keychain），前端只存 apiKey_id 引用句柄，调用经 /api/llm/* 后端反代（复用 dev-server.js:86-120 /api/health 反代模式）；CLI cli llm 同改读后端。跨 index.html+personal_assistant 后端+cli，需更大单位授权。过渡期 OD-SEC-03 CSP 作 stopgap。入 structural-debt SD-OD-02。",
+      "kind": "structural"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-006",
+  "audit_depth": "deep",
+  "_round_meta": {
+    "round_kind": "full-deep-audit",
+    "trigger": "audit-cycle-state.status=cycle-complete (上轮 case-046 deadlock-archive autonomous-engine audit-005 后) → step 0 触发新一轮全量审计",
+    "project_selected": "oneday-design (1BfrYW9R) — 唯一未审真实代码项目（engine-skills-extracted/wanxia-posts 跳过纯产物/内容，moni-master DO NOT 排除）",
+    "files_read_count": 5,
+    "files_read": ["1BfrYW9R/dev-server.js (161L)", "1BfrYW9R/build.js (84L)", "1BfrYW9R/index.html (1225L, 重点 1030-1156 SettingsPage)", "1BfrYW9R/test/smoke.test.js (2401L grep 维度)", "1BfrYW9R/CLAUDE.md+package.json+.gitignore+GATES.md"],
+    "empirical_evidence": "起 PORT=3091 node dev-server.js + curl 实测：GET /.git/config→200 558B (remote url 含凭证 syp02536326:HStZLJue84222jXR1oWW@code.alibaba-inc.com); /.git/HEAD→200 30B; /.gitignore→200 366B; /.opt-lock→200 0B; /.audit/audit-2026-07-01.jsonl→200 448B (userId/userRole/action/resource); /.claude/settings.json→404; /.design/→404 EISDIR; /../../etc/passwd→404 (穿越 baseline 仍有效); curl -D - / 响应头仅 nosniff 无 CSP",
+    "findings_total": 4,
+    "findings_by_severity": {"high": 2, "medium": 2, "low": 0, "info": 0},
+    "derived_route_fixes": 2,
+    "derived_structural_debts": 2,
+    "cycle_status_change": "cycle-complete→fix-in-progress",
+    "fix_dispatched_this_round": false,
+    "next_round": "fix-in-progress + derived_fixes 2 pending → 派生 OD-SEC-01 (priority1 HIGH dev-server.js dotfile filter) route-fix, OD-SEC-03 (CSP) 同文件栈堆"
+  }
+}

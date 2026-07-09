@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-07-03-070",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-03T18:45:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "infra:l02-workspace-public-interfaces (AS-INFRA-L02 derived fix)",
+  "situation": "audit-2026-07-03-005 AS-INFRA-L02 finding pending. judge_direction_kind() in opt-worktree.sh reads $PROJECT/.claude/public-interfaces.txt, which only exists under autonomous-studio/.claude/. Cross-project calls (shizi/kaoqin/pc_agent/etc.) never find the file and silently default to route-fix, disabling direction-shift detection for all non-AS projects.",
+  "action": "Relocate public-interfaces.txt lookup to workspace-level /home/admin/workspace/.claude/public-interfaces.txt via BASH_SOURCE resolution. File content unchanged; moved from autonomous-studio/.claude/ to workspace/.claude/. Updated judge_direction_kind() to resolve script repo root via BASH_SOURCE[0], cd .. to workspace root, then read shared manifest.",
+  "files_changed": [
+    "scripts/opt-worktree.sh"
+  ],
+  "worktree": "auto/opt-infra-shift-1783074612",
+  "direction": "infra:l02-workspace-public-interfaces",
+  "outcome": "succeeded",
+  "outcome_evidence": "bash -n syntax OK. Live test: bash -c 'source scripts/opt-worktree.sh; PROJECT=/home/admin/workspace/shizi; judge_direction_kind /home/admin/workspace/shizi src/background/index.ts' returns 'direction-shift' (hit). Non-listed file returns 'route-fix' (miss). Worktree commit 94340fc pushed to origin/auto/opt-infra-shift-1783074612.",
+  "next_suggestion": "Human merge auto/opt-infra-shift-1783074612 → main. After merge, audit-cycle-state derived_fixes AS-INFRA-L02 can be marked merged; once H01-H03/M01 also merge, set status=cycle-complete to trigger next full audit.",
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-03-005",
+  "audit_depth": "shallow"
+}

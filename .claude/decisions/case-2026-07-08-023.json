@@ -1,0 +1,31 @@
+{
+  "case_id": "case-2026-07-08-023",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-08T16:45:00+08:00",
+  "project": "shizi",
+  "work_unit": "SZ-SP-M-004: Progress listener race condition — interleaved events from concurrent analyses",
+  "situation": "SidePanelApp.tsx onMessage listener receives all pipelineProgress broadcasts globally with no correlation filtering. If two analyses trigger rapidly, both listeners receive each other's progress events, causing missed/interleaved updates and stale debug info.",
+  "action": "Add unique requestId per analysis run. Sidepanel generates req-{timestamp}-{random} and sends with runPipeline message. Background echoes requestId in every pipelineProgress broadcast. Sidepanel filters progress events by matching requestId. Used case-104 direct wt commit escape hatch (cp-guard triggered because opt-sidepanel-1782907225 had prior unmerged id-delete-fix divergence).",
+  "files_changed": [
+    "src/sidepanel/SidePanelApp.tsx",
+    "src/background/index.ts"
+  ],
+  "worktree": "auto/opt-sidepanel-1782907225",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 1bcf11f on auto/opt-sidepanel-1782907225, pushed to origin. 2 files changed, +8/-1 lines. requestId generated in handleAnalyze, echoed in background onProgress, filtered in progressListener.",
+  "next_suggestion": "Next pending finding: SZ-PP-M-001 (FileReader has no onerror handler — silent failure on read errors). Then SZ-PP-M-002 through SZ-PP-M-006 (popup medium fixes batch).",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "src/sidepanel/SidePanelApp.tsx",
+      "line": 71,
+      "severity": "medium",
+      "finding": "onMessage is a global broadcast channel with no correlation ID filtering. Concurrent analyses interleave progress events.",
+      "remediation": "Add unique requestId per analysis; filter pipelineProgress by matching requestId.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-047",
+  "audit_depth": "shallow"
+}

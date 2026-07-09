@@ -1,0 +1,33 @@
+{
+  "case_id": "case-2026-07-05-110",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-05T18:20:00+08:00",
+  "project": "x-tool (pdd监测)",
+  "work_unit": "派生 audit-2026-07-05-012 PDD-DUMP-01 (LOW, 优先级5, 最后一个 pending route-fix)：pdd_monitor.py _dump_ui/_dump_detailed_ui 失败分支把 UI 调试 dump 写项目根固定名 (detailed_ui_dump.txt/ui_dump.txt/*_debug.txt) + 不清理 + 未 gitignore, 含 PDD 后台 UI 结构 (automationId/ClassName) 敏感调试信息且反复运行覆盖前次无法追溯。Fix: 裸 dump 文件名经新 _resolve_dump_path 重定向到项目 .debug/<ts>_<name> 子目录 (时间戳防覆盖); .gitignore 加 .debug/ + *_debug.txt + *ui_dump*.txt; git rm --cached 已追踪的 detailed_ui_dump.txt+ui_dump.txt",
+  "situation": "audit-cycle-state.status=fix-in-progress, audit-012 (x-tool/pdd监测 deep audit) 5 route-fix finding 中 PDD-LEAK-01(case-106)+PDD-AUTH-01(case-107)+PDD-SANDBOX-01(case-108)+PDD-PSH-01(case-109) 已 dispatched 待人工 merge (4/5 awaiting_merge), 仅 PDD-DUMP-01 (priority 5, LOW) 仍 pending 未派生。本轮按 NEXT_SUGGESTION 派生最后一个 route-fix, 同 area 'pdd' 堆叠 opt-pdd-1783240875 第 6 commit。",
+  "action": "1) 读 audit-012 PDD-DUMP-01 finding (pdd_monitor.py:153/638/660/889/933/977, .gitignore 无 dump 规则) + worktree list 确认 opt-pdd-1783240875 5-commit stack FF-clean (b09970e+4c16e26+e5ae071+4fd27c0+c0a45ae) base 85bd9e1=master. 2) 按 [[fix-already-committed-check]] 查 worktree list + 已有 case → PDD-DUMP-01 fix_case_id=null 未派生无重复. 3) grep 确认 dump 写入点: _dump_ui:638 open(filename)/_dump_detailed_ui:660 open(filename), 调用点 153/889/933/977 传裸文件名, import os/time 已在. 4) 编辑 main checkout /home/admin/workspace/x-tool/pdd监测/pdd_monitor.py (与 worktree 同 file, 5 commit 均未触它 → 非 diverged, cp-guard 放行): 新增 _resolve_dump_path(self,filename) helper (裸名→os.path.dirname(abspath(__file__))/'.debug'/ts+'_'+filename, os.makedirs exist_ok, 绝对/含目录路径原样返回); _dump_ui:653 path=_resolve_dump_path(filename)+open(path)+'dumped to {path}'; _dump_detailed_ui:677 同. 净 +21/-5. 5) .gitignore 直接在 worktree 编辑 (cp-guard 会 skip: worktree .gitignore 已含 PDD-LEAK-01 b09970e 加的 pdd_*.json 规则, 与 main HEAD .gitignore diverged → cmp -s 失败 → opt-worktree cp 阶段 skip 不覆盖; 故直编 worktree 版本, add -A 会 stage): 追加 .debug/ + *_debug.txt + *ui_dump*.txt 3 规则 + 注释. 6) worktree 内 git rm --cached pdd监测/detailed_ui_dump.txt + pdd监测/ui_dump.txt (2 已追踪旧根级 dump, git check-ignore 验证 *ui_dump*.txt 命中). 7) opt-worktree.sh commit 'pdd:dump-isolation' 传绝对路径 pdd_monitor.py → 复用 opt-pdd-1783240875 (route-fix, judge_direction_kind 自动判定 pdd_monitor.py 非 public-interfaces.txt), cp pdd_monitor.py (非 diverged 通过), git add -A stage (pdd_monitor.py cp + .gitignore 直编 + 2 dump deletion), _assert_no_collateral_revert 通过 (3 文件 diff merge-base..HEAD 空, 5 commit 未触它们), commit 0e03462, main restore 干净 (pdd_monitor.py checkout HEAD).",
+  "files_changed": [
+    "x-tool/pdd监测/pdd_monitor.py (worktree opt-pdd-1783240875 提交 0e03462 第6commit; 新增 _resolve_dump_path:638-651 + _dump_ui:653 path=+open(path)+:673 dumped to {path} + _dump_detailed_ui:677 path=+open(path)+:717 dumped to {path}; 净+21/-5; py_compile OK)",
+    "x-tool/.gitignore (worktree 直编, 提交 0e03462; 追加 .debug/ + *_debug.txt + *ui_dump*.txt 3 规则; main .gitignore 未动因 cp-guard skip diverged 文件)",
+    "x-tool/pdd监测/detailed_ui_dump.txt (worktree git rm --cached, 提交 0e03462 -1 行; 已追踪旧根级 dump untrack, 磁盘保留被 gitignore 防再 add)",
+    "x-tool/pdd监测/ui_dump.txt (worktree git rm --cached, 提交 0e03462 -12 行; 同上)"
+  ],
+  "worktree": "opt-pdd-1783240875 (path: /home/admin/workspace/.opt-worktrees/x-tool/opt-pdd-1783240875, branch: auto/opt-pdd-1783240875, base: 85bd9e1=master, HEAD: 0e03462, 6-commit stack: b09970e .gitignore pdd_*.json + 4c16e26 git rm --cached 4 JSON + e5ae071 PDD-AUTH-01 auth guard + 4fd27c0 PDD-SANDBOX-01 sandbox + c0a45ae PDD-PSH-01 winreg validate + 0e03462 PDD-DUMP-01 dump isolation, FF-clean 6 ahead master, push 403 x-tool 外部 fork 待人工 merge)",
+  "direction": "pdd:dump-isolation (route-fix; pdd_monitor.py 不在 public-interfaces.txt → 非 direction-shift, opt-worktree judge_direction_kind 自动判定 route-fix 复用同 area opt-pdd-1783240875 第6 commit 堆叠)",
+  "outcome": "succeeded",
+  "outcome_evidence": "git show --stat HEAD=0e03462 显示 4 files changed (.gitignore +7 / pdd_monitor.py +21-5 / detailed_ui_dump.txt -1 / ui_dump.txt -12); git rev-list --count master..HEAD=6 (6-commit FF-clean stack); grep worktree HEAD pdd_monitor.py 确认 _resolve_dump_path:638 + path=_resolve_dump_path:653,677 + 'dumped to {path}':673,717 + '.debug':647; python3 -m py_compile pdd_monitor.py OK; git check-ignore -v 验证 detailed_ui_dump.txt/ui_dump.txt 命中 *ui_dump*.txt + .debug/ 子目录命中 .debug/ 规则; main checkout git status 无 tracked 改动 (pdd_monitor.py 已 checkout HEAD 还原); _assert_no_collateral_revert 无警告 (3 staged 文件 diff merge-base..HEAD 空); push 403 (git ls-remote origin fatal 'could not read Username for ghp-ro.alibaba-inc.com' — x-tool 外部 fork 同 audit-008/010/011 + PDD-LEAK/AUTH/SANDBOX/PSH precedent, 6-commit stack disk+origin 完整保留待人工 merge)",
+  "next_suggestion": "[下轮] audit-012 全部 5 route-fix 已派生 dispatched (PDD-LEAK-01/02→case-106, PDD-AUTH-01→case-107, PDD-SANDBOX-01→case-108, PDD-PSH-01→case-109, PDD-DUMP-01→case-110), 全 pending 待人工 merge, awaiting_merge_count=5。下轮起走 3 连续 wait 轮 (x-tool origin push 403 外部 fork 是常态, 同 audit-008/010/011 deadlock precedent): 每轮 scout-scan 瞭望快照 + 检查 opt-pdd-1783240875 是否被人工 merge (HEAD 不再 0e03462 即已 merge) → 若 merge 则 5 finding status pending→merged, audit-cycle-state.status=cycle-complete → 下轮触发新全量审计 (候选: 聚合ai客服开发 2987 py 需分段, 或 wanxia/xia 未深审); 若连续 3 轮无 merge → 5 finding 全标 rejected-archive (push 403 不可达人工 merge 阻塞, wt+commit stack 保留 disk 待人工介入), 同样 cycle-complete 触发新审计。⚠ 3 structural (SD-PDD-01 9222端口接管/SD-PDD-02 裸except/SD-PDD-03 文件重复) 仍在 structural-debt 待用户授权。⚠ 待人工 merge 积压共 11 worktree (audit-011×5 + opt-pdd-1783240875 新6commit + opt-godtier-deep-research + opt-ota_workflow + opt-hooks + opt-oneday-design) 全 FF-clean 保留 disk。SD-OD-01 push token 轮换仍最高优先级 (structural-debt)。提醒用户 opt-pdd-1783240875 6-commit FF-clean 可 git merge --ff-only 一次性落地 5 finding。",
+  "audit_type": "none",
+  "audit_findings": [
+    {
+      "file": "x-tool/pdd监测/pdd_monitor.py",
+      "line": 153,
+      "severity": "low",
+      "finding": "PDD-DUMP-01 (父审计 audit-2026-07-05-012): _dump_ui/_dump_detailed_ui 失败分支把含 PDD 后台 UI 结构 (automationId/ClassName) 的调试 dump 写项目根固定名 (detailed_ui_dump.txt/ui_dump.txt/*_debug.txt), 不清理 + 未 gitignore, 反复运行覆盖前次无法追溯且易被 git add . 误提交 (2 文件 detailed_ui_dump.txt+ui_dump.txt 已追踪入库)",
+      "remediation": "已派生 case-110 route-fix: _resolve_dump_path 重定向 .debug/<ts>_<name> + .gitignore 3 规则 + git rm --cached 2 旧 dump, 提交 0e03462 待人工 merge",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-012",
+  "audit_depth": "shallow"
+}

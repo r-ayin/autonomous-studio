@@ -1,0 +1,30 @@
+{
+  "case_id": "case-2026-07-07-075",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-07T17:50:00+08:00",
+  "project": "moni-master",
+  "work_unit": "COGALPHA-05: cap parse_factor_expressions at 200 (unbounded LLM output parsing)",
+  "situation": "audit-2026-07-07-028 finding COGALPHA-05 (low route-fix): parse_factor_expressions in llm.rs:183 has no upper bound on result Vec size. Adversarial or runaway LLM output could cause unbounded memory allocation. Diverged worktree opt-cogalpha-1783357989 (prior COGALPHA-01 fix unmerged) required direct wt edit per case-104 escape hatch.",
+  "action": "Added MAX_PARSED_EXPRESSIONS=200 constant + early-break with tracing::warn in parse_factor_expressions loop. Edited directly in diverged worktree opt-cogalpha-1783357989 (cp-guard blocked opt-worktree.sh commit due to prior unmerged COGALPHA-01 changes). cargo test 24/24 pass. Committed 51ddbab, pushed to origin.",
+  "files_changed": [
+    "moni-rs/crates/moni-cogalpha/src/llm.rs"
+  ],
+  "worktree": "opt-cogalpha-1783357989",
+  "direction": "cogalpha:parse-cap",
+  "outcome": "succeeded",
+  "outcome_evidence": "cargo test -p moni-cogalpha --lib: 24 passed; 0 failed. git log: 51ddbab on auto/opt-cogalpha-1783357989. git push origin succeeded (9a4b727..51ddbab).",
+  "next_suggestion": "Next pending derived_fix: M-005-risk (low route-fix, daily loss limit <= boundary semantics in risk.rs:62). After that: M-001-position (medium direction-shift, avg_cost fee inclusion in position.rs:93).",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "moni-rs/crates/moni-cogalpha/src/llm.rs",
+      "line": 183,
+      "severity": "low",
+      "finding": "parse_factor_expressions returns Vec<String> with no upper bound — adversarial/runaway LLM output causes unbounded allocation (COGALPHA-05)",
+      "remediation": "Add MAX_PARSED_EXPRESSIONS=200 cap with early break + tracing::warn",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-028",
+  "audit_depth": "shallow"
+}

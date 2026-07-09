@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-07-02-031",
+  "agent_id": "ralph-wiggum-loop",
+  "timestamp": "2026-07-02T04:15:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "scripts/autonomous-loop.sh run_round temp file leak on SIGINT",
+  "situation": "audit-2026-07-02-002 finding AS-EC-007 (priority 7): run_round() mktemp at line 98 → claude -p at line 99 → shred at line 106. If SIGINT/SIGTERM arrives between mktemp and shred, global trap (line 26) fires `kill 0; exit 130`, skipping shred → temp file with claude output (sensitive content) leaked to /tmp.",
+  "action": "Wrap mktemp→claude→tail→grep→shred block in a subshell with local EXIT trap that shreds $out_file on any exit path (normal return, signal, set -e). Subshell inherits parent INT/TERM traps but its own EXIT trap runs first, guaranteeing cleanup before propagation. Parent shell trap semantics unchanged.",
+  "files_changed": [
+    "scripts/autonomous-loop.sh"
+  ],
+  "worktree": "opt-scripts-shift-1782930634",
+  "direction": "scripts:autonomous-loop",
+  "outcome": "succeeded",
+  "outcome_evidence": "bash -n syntax check passed; opt-worktree.sh committed and pushed auto/opt-scripts-shift-1782930634 to origin; direction-shift triggered automatically (autonomous-loop.sh listed in public-interfaces.txt); fix isolated in worktree branch, main untouched.",
+  "next_suggestion": "Next pending fix: AS-EC-008 (priority 8) opt-worktree.sh cmd_commit orphaned files on commit failure (cd side effect). Route-fix in existing opt-scripts or opt-hooks worktree.",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-002",
+  "audit_depth": "shallow"
+}

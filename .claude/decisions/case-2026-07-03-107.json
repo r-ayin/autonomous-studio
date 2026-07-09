@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-03-107",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-03T12:30:00Z",
+  "project": "autonomous-studio-aone",
+  "work_unit": "fix H-001 commit-gate -a/--all bypass of case-metadata exemption",
+  "situation": "audit-2026-07-03-017 found H-001: when is_case_metadata_only(staged) returns True, the commit is exempted from main-branch block. But git commit -a auto-stages ALL modified tracked files at commit time, bypassing the staged-only exemption check. Real gate bypass vector allowing non-metadata code to be committed directly to main.",
+  "action": "Added _unstaged_modified_files() helper (mirrors staged_files but uses git diff --name-only without --cached). In the exemption path, detect -a/--all/-am flags in rest tokens; if present, also verify unstaged modified files pass is_case_metadata_only(). If any unstaged file is non-metadata, deny exemption with descriptive message. Single-file fix in autonomous-commit-gate.py.",
+  "files_changed": [".claude/hooks/autonomous-commit-gate.py"],
+  "worktree": "opt-hooks-1783036663",
+  "direction": "hooks:h001-commit-gate-all-bypass",
+  "outcome": "succeeded",
+  "outcome_evidence": "python3 py_compile OK; opt-worktree.sh committed + pushed to origin/auto/opt-hooks-1783036663; direction_kind=route-fix (no public-interface files touched); new worktree created because area=hooks differs from prior area=engine",
+  "next_suggestion": "Dispatch H-003 (check-planning-status.sh shell injection, route-fix, trivial) next — audit report recommends it as highest-impact-easiest-fix. Then M-008+M-009 atomic-write batch.",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": ".claude/hooks/autonomous-commit-gate.py",
+      "line": 367,
+      "severity": "high",
+      "finding": "H-001: git commit -a/--all bypasses case-metadata exemption by auto-staging unstaged modified files that are not checked by is_case_metadata_only()",
+      "remediation": "Detect -a/--all/-am flags; when present, also check unstaged modified files against exemption set. Deny exemption if any unstaged file is non-metadata.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-03-017",
+  "audit_depth": "shallow"
+}

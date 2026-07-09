@@ -1,0 +1,95 @@
+{
+  "case_id": "case-2026-07-06-087",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-06T23:55:00+08:00",
+  "project": "autonomous-engine",
+  "work_unit": "deep-audit: hooks + watchdog control plane",
+  "situation": "audit-cycle-state was cycle-complete after wanxia-edit drift-repair. Triggered new full audit cycle. Selected autonomous-engine (sister project to autonomous-studio, never deep-audited). IS_GIT=true so opt-worktree dispatch viable.",
+  "action": "Deep audit of all 7 hook/watchdog scripts in .claude/hooks/ + .claude/watchdog.sh. Read ARCHITECTURE.md for context. Identified 10 findings (2H/5M/2L/1I). Wrote audit report audit-2026-07-06-024.md. Updated audit-cycle-state.json with 9 derived_fixes (all pending). Status transitioned to fix-in-progress. No opt-worktree commit this round (audit round produces report only; fixes dispatched next rounds).",
+  "files_changed": [
+    ".claude/audits/audit-2026-07-06-024.md",
+    ".claude/audit-cycle-state.json"
+  ],
+  "worktree": null,
+  "direction": "deep-audit-only",
+  "outcome": "succeeded",
+  "outcome_evidence": "audit-2026-07-06-024.md created (10 findings documented with file:line references). audit-cycle-state.json updated: status=fix-in-progress, pending_count=9, current_audit_id=audit-2026-07-06-024. History entry appended.",
+  "next_suggestion": "Next round: dispatch first derived_fix from audit-2026-07-06-024. Recommend H-002 (save-checkpoint.py non-atomic write) as highest-impact fix — data integrity on resume path. Use opt-worktree.sh against /home/admin/workspace/autonomous-engine (not autonomous-studio). After H-002 merged, proceed H-001 → M-001 → M-004/M-005 (batch x-tool path fixes).",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": ".claude/hooks/save-checkpoint.py",
+      "line": 137,
+      "severity": "high",
+      "finding": "Path referenced before import — NameError at runtime when find_task_files() called. Import is inside if __name__=='__main__' block (line 215), unreachable in hook invocation context.",
+      "remediation": "Move 'from pathlib import Path' to top-level imports (after line 17), or delete unused find_task_files() function entirely.",
+      "kind": "route-fix"
+    },
+    {
+      "file": ".claude/hooks/save-checkpoint.py",
+      "line": 187,
+      "severity": "high",
+      "finding": "Checkpoint write is non-atomic: json.dump directly to target path + shutil.copy2 for latest.json. Process crash mid-write leaves corrupt JSON; concurrent watchdog read gets partial content. Contrast with incremental-save.py:44-58 which already uses correct tempfile+fsync+os.replace pattern.",
+      "remediation": "Adopt incremental-save.py atomic write pattern: tempfile.mkstemp in same dir → json.dump → flush/fsync → os.replace for both checkpoint file and LATEST_LINK.",
+      "kind": "route-fix"
+    },
+    {
+      "file": ".claude/hooks/protocol-check.py",
+      "line": 68,
+      "severity": "medium",
+      "finding": "subprocess.run passes env={**os.environ, ...} leaking all parent environment variables (including potential API keys/tokens) to bootstrap.py child process. Defense-in-depth gap.",
+      "remediation": "Construct minimal env dict with only PATH, PYTHONPATH, CLAUDE_PROJECT_DIR, HOME, LANG.",
+      "kind": "route-fix"
+    },
+    {
+      "file": ".claude/hooks/decision-observer.py",
+      "line": 207,
+      "severity": "medium",
+      "finding": "Session context file read-modify-write without locking. Rapid consecutive events within same session can lose field updates via last-writer-wins race.",
+      "remediation": "Add fcntl.flock around read-modify-write, or document eventual-consistency trade-off in comments.",
+      "kind": "route-fix"
+    },
+    {
+      "file": ".claude/hooks/notify-phone.py",
+      "line": 67,
+      "severity": "medium",
+      "finding": "TCP payload has no length prefix and uses unescaped | delimiter. Termux listener recv() may split at arbitrary byte boundaries; title/message containing | breaks parsing.",
+      "remediation": "Add 4-byte big-endian length prefix, or switch to newline-terminated protocol with escaping.",
+      "kind": "route-fix"
+    },
+    {
+      "file": ".claude/watchdog.sh",
+      "line": 15,
+      "severity": "medium",
+      "finding": "PROJECT_DIR hardcoded to /mnt/e/x-tool — copy-paste artifact from x-tool project. Deploying this watchdog for autonomous-engine monitors wrong directory.",
+      "remediation": "Derive from script location: PROJECT_DIR=\"$(cd \"$(dirname \"$0\")/../..\" && pwd)\" or read from $AUTONOMOUS_ENGINE_DIR env var.",
+      "kind": "route-fix"
+    },
+    {
+      "file": ".claude/hooks/resume-checkpoint.py",
+      "line": 121,
+      "severity": "medium",
+      "finding": "Engine firmware template hardcodes E:/x-tool/ Windows paths (lines 121-122). Injected into Claude system prompt, misdirects agent to nonexistent paths on non-Windows/non-x-tool deployments.",
+      "remediation": "Use f-string with PROJECT_DIR variable (already defined at line 25) to replace hardcoded paths.",
+      "kind": "route-fix"
+    },
+    {
+      "file": ".claude/hooks/decision-observer.py",
+      "line": 392,
+      "severity": "low",
+      "finding": "Multiple bare except clauses silently swallow exceptions (safe_append_jsonl:55, write_session_context:184, state file write:365). Correct design intent (don't block main flow) but zero observability for debugging.",
+      "remediation": "Add stderr debug logging with file/line context in safe_append_jsonl and write_session_context except blocks.",
+      "kind": "route-fix"
+    },
+    {
+      "file": ".claude/hooks/save-checkpoint.py",
+      "line": 27,
+      "severity": "low",
+      "finding": "run() helper uses shell=True with string commands. Currently safe (all cmds are hardcoded literals) but maintenance hazard — future parameterization could introduce shell injection.",
+      "remediation": "Convert to subprocess.check_output(['git', 'branch', '--show-current'], ...) list form.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-024",
+  "audit_depth": "deep"
+}

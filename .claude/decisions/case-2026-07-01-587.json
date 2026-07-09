@@ -1,0 +1,24 @@
+{
+  "case_id": "case-2026-07-01-587",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-01T10:18:00Z",
+  "project": "wechat-main",
+  "work_unit": "scripts/bocha_search.py: move import re to file top (WM-M-006)",
+  "situation": "audit-2026-07-01-004 finding WM-M-006: `import re` was inside _bocha_fetch() loop body (line 128). Python caches module imports so runtime cost is negligible, but PEP 8 + static analyzers expect stdlib imports at file top. Derived fix from deep audit; route-fix reusing existing opt-scripts-1782899218 worktree.",
+  "action": "Moved `import re` from line 128 (inside for-loop in _bocha_fetch) to file-top import block (alphabetical position after `os`). Verified syntax via ast.parse and runtime import (re in globals=True). Committed and pushed to auto/opt-scripts-1782899218. merge-tree clean vs origin/main.",
+  "files_changed": [
+    "scripts/bocha_search.py"
+  ],
+  "worktree": "auto/opt-scripts-1782899218",
+  "direction": "scripts:bocha-import-re-top",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 60709ef on auto/opt-scripts-1782899218, pushed to origin (766d1b3..60709ef). git merge-tree --write-tree origin/main auto/opt-scripts-1782899218 returned tree sha 63202535a4da39859384cb4fb58817db6b0f6b52 with no conflict markers. python3 -c 'import ast; ast.parse(...)' passed; runtime import confirmed re in module globals.",
+  "next_suggestion": [
+    "派生 WM-M-007 (priority=19): deepseek_refine as_completed 外收集结果到独立 list，循环后统一写回 items。同 area route-fix 复用 opt-scripts-1782899218。",
+    "audit-cycle pending_count=21 → 继续按 priority 顺序派生，直到全部 merged/rejected 才触发下一轮全量审计。"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-01-004",
+  "audit_depth": "shallow"
+}

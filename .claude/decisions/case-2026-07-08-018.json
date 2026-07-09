@@ -1,0 +1,39 @@
+{
+  "case_id": "case-2026-07-08-018",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-07T14:12:00+08:00",
+  "project": "shizi",
+  "work_unit": "sidepanel containerRef dedup + drag region index fix",
+  "situation": "audit-2026-07-07-047 derived_fixes: SZ-SP-H-001 (containerRef assigned to two DOM elements — outer scroll div line 272 AND inner flex wrapper line 281; ResizeObserver only sees last-assigned, causing erratic containerWidth when imageData null/unmount) and SZ-SP-H-002 (handleHandleMouseDown captures region by value but mousemove uses identity check `reg === regions[0]` to find target — always matches first region regardless of which was clicked). Both HIGH severity, both in SidePanelApp.tsx, co-located fix.",
+  "action": "SZ-SP-H-001: removed duplicate ref={containerRef} from inner flex wrapper (line 281), keeping it only on outer scroll-container div (line 272) which is stable across tab/image states. Added explanatory comment. SZ-SP-H-002: extended DragState union to carry regionIndex for move/resize variants; updated handleHandleMouseDown signature to accept regionIndex param; updated mousemove handlers to match by idx===dragState.regionIndex instead of reg===regions[0]; updated both call sites (body rect line 778, handle rects line 811) to pass map index i.",
+  "files_changed": ["src/sidepanel/SidePanelApp.tsx"],
+  "worktree": "opt-shizi-1783404582",
+  "direction": "shizi:sidepanel",
+  "outcome": "succeeded",
+  "outcome_evidence": "git log opt-shizi-1783404582 fa1649e shows 20 insertions / 12 deletions in src/sidepanel/SidePanelApp.tsx. Branch pushed to origin/auto/opt-shizi-1783404582. audit-cycle-state.json SZ-SP-H-001 and SZ-SP-H-002 status flipped pending→merged with fix_case_id=case-2026-07-08-018. pending_count decremented 53→51.",
+  "next_suggestion": [
+    "Next HIGH: SZ-SH-H-001 (host_permissions <all_urls> excess — manifest.json route-fix)",
+    "Then MEDIUM batch: SZ-BG-M-001 (sendResponse after async), SZ-BG-M-002 (detectFailed silent zero-region)"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "src/sidepanel/SidePanelApp.tsx",
+      "line": 281,
+      "severity": "high",
+      "finding": "containerRef assigned to two different DOM elements (line 272 scroll container AND line 281 inner flex wrapper). React ref can only track one node; last assignment wins. When imageData is null the inner div unmounts, ResizeObserver loses target, containerWidth freezes at stale value → layout thrash on image load.",
+      "remediation": "Remove ref from inner flex wrapper; keep only on stable outer scroll-container div.",
+      "kind": "route-fix"
+    },
+    {
+      "file": "src/sidepanel/SidePanelApp.tsx",
+      "line": 664,
+      "severity": "high",
+      "finding": "Drag move handler uses `reg === regions[0]` identity check to locate dragged region. Always matches first element of array regardless of which region user clicked. Same bug at line 683 for resize. Root cause: handleHandleMouseDown captured region value but not its index; mousemove had no way to identify which region was being dragged except broken identity comparison against hardcoded regions[0].",
+      "remediation": "Capture regionIndex at mousedown; propagate through DragState; match by index in mousemove.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-047",
+  "audit_depth": "shallow"
+}

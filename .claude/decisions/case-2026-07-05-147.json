@@ -1,0 +1,44 @@
+{
+  "case_id": "case-2026-07-05-147",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-05T22:50:00+08:00",
+  "project": "x-tool/wanxia",
+  "work_unit": "派生 fix #3 of 7 from audit-2026-07-05-016: WX-ENV-01 [MEDIUM] server.js:5-13 自写 .env 解析器无 try/catch → 缺 .env 文件启动即崩 + value 不剥引号 → WEIBO_COOKIE=\"...\" 字面量含引号致 Weibo 视无效 cookie 误报 expired",
+  "situation": "audit-cycle-state.status=fix-in-progress, audit-016 (x-tool/wanxia 全栈 deep audit) 派生 7 route-fix findings. 已派发 #1 WX-AUTH-01 (case-145 eb00793) + #2 WX-HEALTH-01 (case-146 d4960bd), 同 opt-security-1783235416 worktree 2-commit stack FF-clean base=85bd9e1=master. 本轮按序派发 #3 WX-ENV-01 [MEDIUM] — server.js L5-13 自写 .env 解析: readFileSync(new URL('.env',...)) 无 try/catch, 缺 .env（当前 clone-fresh 即此状态, .env 在 .gitignore 内不入库）→ boot 即 ENOENT 崩; L10 value 不剥引号, 用户按 dotenv 惯例写 WEIBO_COOKIE=\"abc\" 会得到字面量含引号的 cookie 值, Weibo 视无效 → social-scraper 误报 cookie expired, 调试误导.",
+  "action": "最小 1 文件 server.js L5-13 改: 包 try/catch, ENOENT 静默（.env optional, 缺文件不崩 boot）, 其它错误 console.warn 不阻塞; value 剥首尾引号 v.replace(/^[\"']|[\"']$/g,'') 符合 dotenv 惯例. 附 1 行注释说明根因 + audit-016 WX-ENV-01 追溯. ⚠ 关键: server.js 已在 worktree HEAD 因 WX-AUTH-01(eb00793) 与 main HEAD(85bd9e1) 分叉, opt-worktree.sh cmd_commit 的 cp-guard(L643 cmp $dst vs git show HEAD:$main_rel) 会判 worktree server.js ≠ main HEAD server.js → 跳过以避免覆盖 → '无文件被实际迁移...中止' (case-104/case-091 教训类). 走 case-104 文档化逃生通道: 直编 opt-worktree 版本后 wt 内 git commit (绕过 cp 流, 不触 main). server.js 非 x-tool public-interfaces.txt 公共接口 → route-fix 性质不变, 仍 security area 复用 opt-security-1783235416 (现 3-commit stack). node --check OK. push 403 external fork (r-ayin/x-tool, precedent audit-008/010/016 WX-AUTH-01/WX-HEALTH-01) → worktree+branch+commit 保留 local 待人工 merge.",
+  "files_changed": ["wanxia/server.js"],
+  "worktree": "opt-security-1783235416 (auto/opt-security-1783235416, route-fix 复用 security area, base=85bd9e1=master, HEAD=c0c13b4, FF-clean 3-commit stack: eb00793 WX-AUTH-01 → d4960bd WX-HEALTH-01 → c0c13b4 WX-ENV-01, 待人工 merge to master)",
+  "direction": "security:env-parse (route-fix, 复用 opt-security-1783235416; 因 server.js 已在 wt 分叉走 case-104 直编 wt 通道)",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "git -C .opt-worktrees/x-tool/opt-security-1783235416 log --oneline -4 → c0c13b4 (WX-ENV-01) stacked on d4960bd (WX-HEALTH-01) on eb00793 (WX-AUTH-01) on opt-security-1783235416 branch",
+    "git show HEAD --stat → wanxia/server.js | 14 +++++- 9 ----, 1 file changed 14 insertions 9 deletions",
+    "worktree 内 sed -n '5,19p' wanxia/server.js → try { const envLines = readFileSync(...) ... .replace(/^[\"']|[\"']$/g,'') ... } catch (e) { if (e.code !== 'ENOENT') console.warn(...) } (无 try/catch + 不剥引号 两缺陷已消)",
+    "cd wanxia && node --check server.js → SYNTAX_OK (语法合法, 不破坏 WX-AUTH-01 L100 app.listen(PORT,HOST,...))",
+    "opt-worktree.sh /home/admin/workspace/x-tool commit ... wanxia/server.js (绝对路径) → 'cp-guard: wanxia/server.js 在 worktree 与 main HEAD 不同（前轮未合并改动），跳过' + '无文件被实际迁移...中止' → 确认 cp 流不可用 (server.js 因 WX-AUTH-01 已分叉), 改走 case-104 直编 wt 通道",
+    "wt 内 git add wanxia/server.js && git commit → c0c13b4 (3rd commit on stack, FF-clean)",
+    "git push origin auto/opt-security-1783235416 → 403 (r-ayin/x-tool 外部 fork, precedent audit-008/010/016) → worktree+branch+commit 完整保留 local disk+local-ref 待人工 merge (本地可 scripts/opt-worktree.sh x-tool merge opt-security-1783235416 squash 合并不依赖 push)"
+  ],
+  "next_suggestion": "[下轮=fix-in-progress 派生路径] audit-cycle-state.derived_fixes 余 4 条 pending. 按序派生 #4+#5 WX-TIMEOUT-01 + WX-CACHE-01 [MEDIUM, 建议合并一个 fetch-cache worktree]: (a) src/weather-fetcher.js:6-10 + src/grid-fetcher.js:59-72 fetchJSON 无 AbortController → 单挂起请求叠加 cache stampede 致 open-meteo 并发压力 + 客户端全挂; 复用 src/social-scraper.js:81-91 timedFetch 范式加 10-15s timeout. (b) src/cache.js loading Set 无去重 → wait-then-fallthrough stampede; 改 Map<key,Promise> getOrLoad 模式 + src/routes.js:47-53/141-167/169-228 setLoading/isLoading/clearLoading 三段式重构为 cache.getOrLoad. 2 文件 fetch-cache 改动 (weather/grid-fetcher 共一 wt, cache.js+routes.js 共另一 wt 或同 wt 视文件分叉状态). ⚠ 同 case-104 教训: 若目标文件已在 worktree 分叉 (前轮未合并) → opt-worktree cp-guard 会跳过, 须走直编 wt 通道. 之后 WX-SILENT-01 [LOW routes.js+social-scraper.js 空 catch 加 console.warn] → WX-XHS-REUSE-01 [LOW social-scraper.js 浏览器单例竞态]. 全 7 merged|rejected 后 status→cycle-complete→触发下一轮全量审计. ⚠ 待人工 merge 积压: opt-security-1783235416 现含 3 commit (WX-AUTH-01+WX-HEALTH-01+WX-ENV-01) 全 FF-clean 保留 disk, x-tool 外部 fork push 403, 本地可 `scripts/opt-worktree.sh x-tool merge opt-security-1783235416` squash 合并.",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "wanxia/server.js",
+      "line": 5,
+      "severity": "medium",
+      "finding": "WX-ENV-01: L5 readFileSync(new URL('.env', import.meta.url)) 无 try/catch. .env 在 .gitignore 内不入库, clone-fresh 即缺文件 → boot 时 ENOENT 未捕 → 服务无法启动. 当前仓库即处此态.",
+      "remediation": "包 try { ... } catch (e) { if (e.code !== 'ENOENT') console.warn(...) } — .env optional, 缺文件静默不崩 boot. 已实施 commit c0c13b4.",
+      "kind": "route-fix"
+    },
+    {
+      "file": "wanxia/server.js",
+      "line": 10,
+      "severity": "medium",
+      "finding": "WX-ENV-01 (同 finding, value 剥引号面): L10 l.slice(i+1).trim() 不剥首尾引号. 用户按 dotenv 惯例写 WEIBO_COOKIE=\"abc\" 会得字面量含引号的 cookie 值 → Weibo 视无效 → social-scraper 误报 cookie expired, 调试误导 (看似有效实则损坏).",
+      "remediation": "value 剥首尾引号 .replace(/^[\"']|[\"']$/g,'') 符合 dotenv 惯例. 已实施 commit c0c13b4 (与上一面同 commit).",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-016",
+  "audit_depth": "deep"
+}

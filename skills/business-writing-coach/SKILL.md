@@ -2,6 +2,7 @@
 name: business-writing-coach
 description: 用于真实工作场景下的中文写作、表达复盘和去 AI 感改写。只要用户要写、改、复盘或准备 OKR、中期述职、SOP、面试复盘、演讲复盘、分享复盘、工作汇报、需求说明、协作通知、反馈收集、业务运营/数据交付相关材料，都应使用本 Skill。重点是先判断场景、受众、用户角色、输出长度和责任边界，再选择文本形态：自然段、短句、表格、颜色标注、流程或列表都要按受众接收方式来用；不要过度扩写，不要机械堆有序/无序列表，不要套模板腔，不要替用户无限兜底；根据用户反馈持续更新风格记忆。
 repository: https://code.alibaba-inc.com/qunbu/business-writing-coach
+version: 1.0.0
 ---
 
 # Business Writing Coach

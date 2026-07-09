@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-07-07-092",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-07T21:30:00+08:00",
+  "project": "moni-master",
+  "work_unit": "FE-M-004 route-fix: DataConfig runtime JSON editor schema guard",
+  "situation": "audit-2026-07-07-030 finding FE-M-004 (medium): RuntimeSettings in frontend/src/pages/DataConfig.tsx accepted arbitrary JSON structure via updateAgentSettings with no schema validation, no diff preview, no undo. User could inject malformed/non-object config into backend config.yaml without confirmation.",
+  "action": "Added structural validation + Modal.confirm with top-level key diff preview to RuntimeSettings component. Validation rejects non-object/array/null top-level shapes; Modal surfaces added/removed keys before apply; TextArea shows error status on parse failure. Single-file fix in DataConfig.tsx (+60/-4 lines). Used case-104 escape hatch (direct worktree commit) because cp-guard detected prior unmerged FE-H/M fixes already diverged the file in opt-frontend-1783366395.",
+  "files_changed": [
+    "frontend/src/pages/DataConfig.tsx"
+  ],
+  "worktree": "opt-frontend-1783366395",
+  "direction": "frontend:dataconfig-schema-guard",
+  "direction_kind": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit fc29ac1 on auto/opt-frontend-1783366395 pushed to origin (14f743d..fc29ac1). TypeScript imports valid (useState/useMemo from react, Modal from antd). CodeReview URL: https://code.alibaba-inc.com/xtool/moni/codereview/new?from=master&to=auto/opt-frontend-1783366395",
+  "next_suggestion": "Next pending route-fix: FE-L-001 (router splat wildcard silent redirect → add 404 feedback) or FE-L-002 (WebSocket reconnect infinite loop → add max retry cap). Both low severity; FE-L-002 has clearer user-visible impact.",
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-07-030",
+  "audit_depth": "shallow"
+}

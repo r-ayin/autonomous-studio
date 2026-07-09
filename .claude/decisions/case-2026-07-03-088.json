@@ -1,0 +1,30 @@
+{
+  "case_id": "case-2026-07-03-088",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-03T13:37:15Z",
+  "project": "scripts",
+  "work_unit": "SCRIPTS-L04 real fix: distill-patterns.py subprocess.run narrow except (combined with pending L01 in same worktree)",
+  "situation": "audit-2026-07-03-012 SCRIPTS-L04 was blocked: worktree opt-scripts-l04-1783082107 had mis-targeted load_json_robust narrowing (already on main via case-2026-07-03-082 reconciliation note, but actually NOT on main — only L01 verify-pattern sys.argv fix lived there unmerged). Real L04 target = line 361 bare 'except Exception' at subprocess.run dispatch. Blocker cleared by applying real L04 into existing worktree and amending commit to cover both L01+L04 for single merge.",
+  "action": "Applied narrow-except fix directly into blocking worktree opt-scripts-l04-1783082107 (line 361: except Exception → except (SubprocessError,OSError,TimeoutError)). Amended commit bad42c2 to include both L01 (verify-pattern sys.argv) + L04 (subprocess.run narrow). Force-pushed to origin/auto/opt-scripts-l04-1783082107. Reverted dirty edit on main working tree to keep main clean.",
+  "files_changed": [
+    "scripts/distill-patterns.py"
+  ],
+  "worktree": "opt-scripts-l04-1783082107",
+  "direction": "scripts:l01+l04-combined",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit bad42c2 on branch auto/opt-scripts-l04-1783082107 includes 2 files changed (verify-pattern.sh + distill-patterns.py). Force-push succeeded to origin. grep -n confirms line 361 now reads 'except (subprocess.SubprocessError, OSError, TimeoutError) as e:'. Main working tree reverted to original bare-except state (no dirty files). Worktree ready for human merge; merging will close both SCRIPTS-L01 and SCRIPTS-L04.",
+  "next_suggestion": "Human: review + merge opt-scripts-l04-1783082107 (covers L01+L04). After merge, update audit-cycle-state derived_fixes SCRIPTS-L04 status→merged; then all 6 findings from audit-2026-07-03-012 will be merged → status=cycle-complete → next ralph round triggers new full audit on unaudited project.",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "scripts/distill-patterns.py",
+      "line": 361,
+      "severity": "low",
+      "finding": "bare 'except Exception' at subprocess.run dispatch catches KeyboardInterrupt/SystemExit/MemoryError, silently converting them to llm_status strings. Already flagged as SCRIPTS-L04 in audit-2026-07-03-012; this case applies the fix.",
+      "remediation": "Narrow to (subprocess.SubprocessError, OSError, TimeoutError). SubprocessError covers CalledProcessError+TimeoutExpired base; OSError covers env failures; TimeoutError covers stdlib timeout. Lets fatal signals propagate.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-03-012",
+  "audit_depth": "shallow"
+}

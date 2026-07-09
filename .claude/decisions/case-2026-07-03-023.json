@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-07-03-023",
+  "agent_id": "autonomous-engine-cycle-84",
+  "timestamp": "2026-07-03T20:25:00Z",
+  "project": "wechat-main",
+  "work_unit": "script-verifier/claim_extractor.py _SURNAMES 百家姓扩充",
+  "situation": "audit-2026-07-03-011 MV-001 finding 派生 fix。原 _SURNAMES 仅含 ~120 常见单姓，缺复姓（欧阳/诸葛/尉迟/司马/上官等）与低频单姓（仝/弋/菅等），导致 PERSON_NAME_RE 漏匹配 → 后续事实核查链对该人物完全失明。",
+  "action": "在 _SURNAMES 字符串追加两段注释分组：(1) 复姓 14 个（欧阳太史端木上官司马东方诸葛尉迟令狐宇文长孙慕容鲜于）；(2) 低频单姓 38 个（仝弋菅邝隗夔厍聂晁勾敖融冷訾辛阚那简饶空曾毋沙乜养鞠须丰巢关蒯相查后荆红游竺权逯盖益桓公）。PERSON_NAME_RE 正则本身不变，仅扩展字符集。",
+  "files_changed": [
+    "script-verifier/claim_extractor.py"
+  ],
+  "worktree": "opt-wechat-1783021994",
+  "direction": "wechat:claim-extractor",
+  "outcome": "succeeded",
+  "outcome_evidence": "smoke test via exec: '欧阳明说今天天气好' -> ['欧阳明']; '诸葛亮认为可行' -> ['诸葛亮']; '尉迟恭出战' -> ['尉迟恭']; '仝卓事件引发关注' -> ['仝卓事', '关注'] (仝命中)。commit 1f1bcea pushed to origin/auto/opt-wechat-1783021994.",
+  "next_suggestion": "下轮派生 MV-002 (fact_checker.py corroboration 正则收紧)。剩余 pending: MV-002..MV-006 (5)。",
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-03-011",
+  "audit_depth": "shallow"
+}

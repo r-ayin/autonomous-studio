@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-07-01-655",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-01T16:45:00Z",
+  "project": "autonomous-engine",
+  "work_unit": "fix AE-M-003 decision-observer.py handle_stop reverse-read off-by-one",
+  "situation": "audit-2026-07-01-009 finding AE-M-003 (priority=5, route-fix): handle_stop 反向读 LOG_FILE 最后 20 行时，chunk 边界处的半行被 split(b'\\n') 后当作独立行处理，导致 JSON 解析失败、active_project 提取丢数据。前序 fix (case-651/652/653/654) 已 merged/pushed，本轮派生第 5 个 fix。",
+  "action": "重写 263-288 行的反向读算法：split 后保留 parts[0] 作为跨 chunk 残留片段（下轮拼回），只从 parts[1:] 里统计完整行并截断到后 20 条；循环结束后用 buf.split(b'\\n')[-20:] 取最终结果。新增注释说明修复原因（AE-M-003）。",
+  "files_changed": [
+    ".claude/hooks/decision-observer.py"
+  ],
+  "worktree": "opt-hooks-1782916244",
+  "direction": "hooks:decision-observer-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "python3 -c ast.parse OK; 合成 6680B / chunk_size=1024 跨边界测试：OLD 算法恢复 19 行其中 1 行 JSONDecodeError，NEW 算法恢复 19 行全部 parseable；git log opt-hooks-1782916244 = 0625f4f",
+  "next_suggestion": "继续派生 audit-2026-07-01-009 剩余 pending finding AE-L-001 (protocol-check.py bootstrap dummy 路径隐式约定, priority=6)。完成后若所有 derived_fixes 状态变为 merged/rejected，将 audit-cycle-state.status 改 cycle-complete 触发下一轮全量审计。",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-01-009",
+  "audit_depth": "shallow"
+}

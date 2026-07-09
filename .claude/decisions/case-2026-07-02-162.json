@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-07-02-162",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-02T23:15:00+08:00",
+  "project": "autonomous-studio",
+  "work_unit": "AS-CP-L01 fix: backfill audit schema fields on case-2026-06-27-{001,002}",
+  "situation": "Audit finding AS-CP-L01 (priority 6, route-fix): case-2026-06-27-{001,002} used non-enum outcome 'done' and were missing audit_type/audit_findings/audit_id/audit_depth fields required by the current case schema. Investigation revealed both cases had already been migrated to outcome='succeeded' by a prior session, but the four audit metadata fields remained absent.",
+  "action": "Added audit_type='none', audit_findings=[], audit_id=null, audit_depth='shallow' to both case-2026-06-27-001.json and case-2026-06-27-002.json in the canonical autonomous-studio/.claude/decisions/ directory. Committed via opt-worktree.sh to optimization worktree (direction=engine:case-migration). Synced runtime copies at /home/admin/workspace/.claude/decisions/.",
+  "files_changed": [
+    ".claude/decisions/case-2026-06-27-001.json",
+    ".claude/decisions/case-2026-06-27-002.json"
+  ],
+  "worktree": "optimization",
+  "direction": "engine:case-migration",
+  "outcome": "succeeded",
+  "outcome_evidence": "Worktree verification: python3 JSON parse of optimization WT copies confirms audit_type/audit_findings/audit_id/audit_depth present in both files (True True True True). opt-worktree.sh list shows optimization worktree at 3 commits with direction=engine:general. Runtime copies synced via cp.",
+  "next_suggestion": "Next pending finding: AS-CP-L02 (case-2026-07-02-108 non-enum outcome 'blocked'; extend enum or remap to failed with evidence)",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-006",
+  "audit_depth": "shallow"
+}

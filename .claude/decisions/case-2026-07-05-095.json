@@ -1,0 +1,48 @@
+{
+  "case_id": "case-2026-07-05-095",
+  "agent_id": "autonomous-studio-ralph",
+  "timestamp": "2026-07-05T15:05:00+08:00",
+  "project": "x-tool",
+  "work_unit": "python-agent-hub scrape_product_reviews SSRF 防护 (PAH-H-001 派生 route-fix)",
+  "situation": "audit-2026-07-05-011 (x-tool python-agent-hub deep audit) 派生 finding PAH-H-001 (high): ScrapeProductReviewsInput.url 是裸 str 无 scheme/host/内网校验, scrape_product_reviews 直接 await page.goto(params.url) (implementations.py:411)。browser_manager 用 nodriver 起真 Chrome (uc.start headless), page.goto 接受 file:///etc/passwd、http://169.254.169.254/latest/meta-data/ (云元数据)、http://localhost:8000/v1 (本服务 LLM 端点)、http://127.0.0.1:8188 (ComfyUI)。/invoke 无 auth (routers/agent.py:40), 任何能到端口的进程或被 prompt-injected 的本地 LLM 可驱使服务端 Chrome 拉内网, 结果经 _extract_review_elements 落 reviews 回流给 LLM → 内网响应外泄。本轮 status=fix-in-progress, PAH-H-001 是 derived_fixes 里 priority=1 的最高优先级, 本轮派发。",
+  "action": "双层 SSRF 防护: (1) schemas/tools.py 给 ScrapeProductReviewsInput.url 加 pydantic @field_validator _validate_url_no_ssrf —— urlparse 校验 scheme∈{http,https} (拒 file:///ftp://空) + host 经 _is_disallowed_host 判 (localhost/::1/0.0.0.0 或 IP 字面量命中 is_private/is_loopback/is_link_local/is_reserved/is_multicast/is_unspecified 即拒); 域名放过留给二次防线。(2) implementations.py 新增 _SSRFError + _validate_url(url) 在 page.goto 前调: IP 字面量同口径判, 域名用 socket.getaddrinfo 解析后逐 A/AAAA 记录判内网 (挡 DNS 重绑定 metadata-svc.internal→169.254.169.254); 命中 _SSRFError 时不抛 (避免 FastAPI 进程崩), 返回 ScrapeProductReviewsOutput(success=False, error='url 校验失败: ...') 优雅降级。imports 增 socket/ipaddress/urlparse。两文件均 py_compile 通过。",
+  "files_changed": [
+    "x-tool/AB system/python-agent-hub/src/agent_hub/schemas/tools.py",
+    "x-tool/AB system/python-agent-hub/src/agent_hub/tools/implementations.py"
+  ],
+  "worktree": "opt-security-1783235416 (auto/opt-security-1783235416, base=85bd9e1=x-tool master post opt-pachong-1783233062 merge; 1-commit 78a5f14 PAH-H-001 [case-095 本轮]; x-tool 无 .claude/public-interfaces.txt → judge_direction_kind 默认 route-fix, 但 area=security 相对 engine 新 area → opt-worktree 开新 worktree opt-security-1783235416; origin push 走 opt-worktree 内置 push 步骤)",
+  "direction": "security:python-agent-hub",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "opt-worktree.sh → '✓ 提交到 opt-security-1783235416  方向=security:python-agent-hub'",
+    "git -C .opt-worktrees/x-tool/opt-security-1783235416 log --oneline -1: 78a5f14 PAH-H-001 SSRF 防护 (audit-2026-07-05-011 / case-2026-07-05-095)",
+    "git diff HEAD~1 --stat: schemas/tools.py +49/-0, tools/implementations.py +64/-4 (2 files, 109 insertions, 4 deletions)",
+    "grep _validate_url_no_ssrf schemas/tools.py → L166 field_validator 已落; grep _SSRFError/_validate_url implementations.py → L390/L394 已落",
+    "python3 -m py_compile src/agent_hub/schemas/tools.py src/agent_hub/tools/implementations.py → SYNTAX OK",
+    "schema validator 隔离测试 (importlib 绕 __init__ 链): BLOCKED file:///etc/passwd / http://169.254.169.254/ / http://127.0.0.1:8000/ / http://localhost:8188 / http://[::1]/ / ftp://example.com/ / 空串; ALLOWED https://www.ozon.com/product/123 / http://example.com/p/1",
+    "_validate_url 逻辑独立测试: BLOCKED http://127.0.0.1/ / http://localhost/(DNS→127.0.0.1) / https://10.0.0.1/ / http://[::1]/ / http://169.254.169.254/; DNS-ALLOWED https://www.ozon.com/product/123 / http://example.com/ (公网域名解析非私网 IP 通过)"
+  ],
+  "next_suggestion": "audit-2026-07-05-011 派发进度: 1/7 dispatched (PAH-H-001 case-095 opt-security-1783235416 78a5f14 awaiting human sanctioned squash-merge) + 6 pending未派发 (PAH-H-002/PAH-M-001..M-003/PAH-L-001/L-002)。下轮起按 priority 继续派发: #2 PAH-H-002 prompt-injection (implementations.py:697-704,784, user prompt 围栏+忽略内嵌指令声明+正则取最后平衡 JSON 块+overall_sentiment 白名单+confidence_score clamp) → #3 PAH-M-001 Telegram Markdown 注入 (notification.py html.escape+parse_mode=HTML) → #4 PAH-M-002 openai 依赖 (pyproject.toml) → #5 PAH-M-003 _tasks dict TTL/cap → #6 PAH-L-001 BrowserManager asyncio.Lock → #7 PAH-L-002 /invoke error 泄露。全 7 条 merged|rejected 后 audit-cycle-state.status → cycle-complete → 下下轮触发新全量审计 (挑 .claude/audits/ 未深度审过项目)。本轮 pending_count 7→6, _awaiting_merge_count 0→1。",
+  "audit_type": "security-review",
+  "audit_findings": [
+    {
+      "file": "x-tool/AB system/python-agent-hub/src/agent_hub/schemas/tools.py",
+      "line": 126,
+      "severity": "high",
+      "finding": "ScrapeProductReviewsInput.url 裸 str 无 scheme/host/内网校验, page.goto 可拉 file:///http://169.254.169.254/http://localhost:8000 等内网/元数据端点 (SSRF)。/invoke 无 auth 时任意进程或被注入的本地 LLM 可驱使服务端 Chrome 拉内网, 结果回流 LLM 上下文外泄。",
+      "remediation": "@field_validator 校验 scheme∈{http,https} + host 非 loopback/private/link-local/reserved/multicast IP 字面量; implementations.py goto 前 _validate_url 做 DNS 解析二次防线挡重绑定。",
+      "kind": "route-fix"
+    },
+    {
+      "file": "x-tool/AB system/python-agent-hub/src/agent_hub/tools/implementations.py",
+      "line": 411,
+      "severity": "high",
+      "finding": "await page.goto(params.url) 前无 URL 校验, 直接执行不可信 URL (与 schema 裸 str 联动构成 SSRF)。",
+      "remediation": "goto 前调 _validate_url(params.url), 命中 _SSRFError 时返回 ScrapeProductReviewsOutput(success=False, error=...) 优雅降级, 不抛以防 FastAPI 进程崩。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-011",
+  "audit_depth": "shallow",
+  "_audit_role_note": "本 case 是 audit-2026-07-05-011 的派生 fix case (非审计轮本身)。audit_depth=shallow 因为本轮是 fix-in-progress 派发轮 (瞭望/修复轮=shallow), 不是 deep audit 轮。audit_findings 复述父审计 PAH-H-001 finding 供 case 自洽。outcome=succeeded 指 fix 已提交 worktree 分支并验证 (非已 merge 到 main —— merge 待人工 sanctioned squash)。"
+}

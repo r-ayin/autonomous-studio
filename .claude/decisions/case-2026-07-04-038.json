@@ -1,0 +1,30 @@
+{
+  "case_id": "case-2026-07-04-038",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-04T05:51:00+08:00",
+  "project": "moni-master",
+  "work_unit": "MM-L003 factor-adapter budget_per_stock edge case clamp",
+  "situation": "audit-2026-07-04-002 finding MM-L003 (priority 17, route-fix): moni-rs/crates/moni-factor-adapter/src/lib.rs L147 divides budget_per_stock by raw top_n, but iteration via take(top_n) yields at most ranked_symbols.len() items. When caller requests top_n > available symbols, each slot is under-funded and valid buys are silently skipped. Derived fix from deep audit cycle.",
+  "action": "Introduce effective_top_n = top_n.min(ranked_symbols.len()) at function entry; replace all downstream uses of raw top_n (top_set construction, zero-guard, budget division, buy-loop take) with effective_top_n. Add regression test generate_rebalance_orders_clamps_top_n_to_ranked_len asserting both symbols receive correctly-sized buys when top_n=10 but only 2 symbols exist.",
+  "files_changed": [
+    "moni-rs/crates/moni-factor-adapter/src/lib.rs"
+  ],
+  "worktree": "opt-moni-master-1783105913",
+  "direction": "moni-master:factor-adapter",
+  "outcome": "succeeded",
+  "outcome_evidence": "cargo test -p moni-factor-adapter in worktree: 7 passed; 0 failed (including new clamps_top_n_to_ranked_len regression). Commit 6eb3e5d pushed to origin/auto/opt-moni-master-1783105913. opt-worktree.sh reused same-area worktree (route-fix).",
+  "next_suggestion": "派生 fix MM-L004 (priority 18): llm.rs L185 regex recompilation in hot path → OnceLock/lazy_static. 同 area route-fix，可继续复用 opt-moni-master-1783105913。",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "moni-rs/crates/moni-factor-adapter/src/lib.rs",
+      "line": 147,
+      "severity": "low",
+      "finding": "budget_per_stock divides by raw top_n while iteration caps at ranked_symbols.len(); over-large top_n silently under-funds each slot and skips valid buys",
+      "remediation": "Clamp effective_top_n = top_n.min(ranked_symbols.len()) and use consistently for budget division + iteration",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-04-002",
+  "audit_depth": "deep"
+}

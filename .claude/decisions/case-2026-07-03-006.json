@@ -1,0 +1,23 @@
+{
+  "case_id": "case-2026-07-03-006",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-03T14:15:00Z",
+  "project": "personal-assistant",
+  "work_unit": "web/inbox-upload-unify-w007",
+  "situation": "audit-2026-07-03-009 W-007：InboxPage.jsx doUpload 用 raw fetch 绕过 PA.post，不带 header、不检查 response.ok，上传失败静默吞掉，doIngest 仍继续执行，用户无反馈。派生 fix 轮 #67。",
+  "action": "在 opt-web-1782977902 worktree（已含 W-006 路径遍历防御）追加提交：fetch → PA.post(/inbox/upload?filename=..., {content})，PA.post 自带 Content-Type/Accept + ok 检查；null 返回时 alert 用户并中止后续 doIngest，避免脏数据流入 ingest。W-006 防御保留。",
+  "files_changed": ["web/InboxPage.jsx"],
+  "worktree": "opt-web-1782977902",
+  "direction": "web:inbox-upload-unify",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 9d5c9d7 on auto/opt-web-1782977902; diff +7/-2 lines; PA.post 替换 raw fetch; null→alert+early return 分支新增",
+  "next_suggestion": [
+    "下轮派生 W-008（同 audit-2026-07-03-009）",
+    "opt-web-1782977902 已累积 4 commits (W-002/W-005/W-006/W-007)，建议人工审 diff 后 merge"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-03-009",
+  "audit_depth": "shallow",
+  "_parent_finding": "W-007"
+}

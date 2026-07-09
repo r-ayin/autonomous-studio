@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-07-145",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-07T19:28:00+08:00",
+  "project": "shizi",
+  "work_unit": "counter:symbol-count — accumulate symbolCount in calculateEquivalentCount",
+  "situation": "audit-2026-07-07-047 finding SZ-SH-L-004: symbolCount always hardcoded to 0 in calculateEquivalentCount return. countChars() correctly counts symbols but the accumulator was missing. Popup ResultPanel.tsx:65 displays 符号 field which always showed 0.",
+  "action": "Added let symbolCount = 0 accumulator, accumulated chars.symbol in the meaningfulTexts loop, replaced hardcoded symbolCount: 0 with the variable. Single-file fix in src/background/counter.ts.",
+  "files_changed": ["src/background/counter.ts"],
+  "worktree": "auto/opt-counter-1783423684",
+  "direction": "counter:symbol-count",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit on auto/opt-counter-1783423684 verified via git show: symbolCount accumulator added (line 55), chars.symbol accumulated in loop (line 67), return uses variable not literal 0 (line 81). Branch pushed to origin.",
+  "next_suggestion": "Continue dispatching remaining pending findings from audit-2026-07-07-047: evaluate SZ-SH-L-005 (ONNX regex) next; bulk-reject info-severity items SZ-BG-I-001 and SZ-PP-I-001; reject SZ-SH-L-002 (loadSettings empty obj is non-bug per prior evaluation).",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "src/background/counter.ts",
+      "line": 81,
+      "severity": "low",
+      "finding": "symbolCount hardcoded to 0 despite countChars() correctly counting symbols — popup always shows 符号=0",
+      "remediation": "Accumulate chars.symbol in the loop and use the variable in return object",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-047",
+  "audit_depth": "shallow"
+}

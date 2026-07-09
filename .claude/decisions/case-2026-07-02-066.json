@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-07-02-066",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-02T04:10:00Z",
+  "project": "skills",
+  "work_unit": "SK-RE-002+SK-RE-014 fix: write-file.js PowerShell single-quote path injection + NUL control char handling",
+  "situation": "audit-2026-07-02-003 finding SK-RE-002 (priority 1, pending): write-file.js line 28 interpolates windowsPath and parent into PowerShell single-quoted strings without escaping '. In PowerShell, single-quoted strings use '' to represent literal '; unescaped ' in path (e.g. C:\\Users\\O'Brien\\file.txt) breaks out of quoting context → command injection or syntax error. Co-located SK-RE-014 (priority 11): escapePS function at line 5 does not strip NUL (\\x00) or other control chars (\\x01-\\x08, \\x0b, \\x0c, \\x0e-\\x1f), which cause PowerShell parse errors and silent data corruption when embedded in content.",
+  "action": "Two-part fix in single file: (1) Added escapePSSingleQuote(str) that replaces ' with '' per PowerShell convention; applied to both windowsPath and parent before interpolation into Set-Content -Path and New-Item -Path commands. (2) Extended escapePS to strip control chars [\\x00-\\x08\\x0b\\x0c\\x0e-\\x1f] before applying existing backtick escapes. Exported escapePSSingleQuote for reuse by batch-write.js/push.js/pull.js (same pattern needed per SK-RE-003/004/005). node -c syntax check passed. Committed via opt-worktree.sh from skills project root.",
+  "files_changed": [
+    "runner-exec/scripts/write-file.js"
+  ],
+  "worktree": "opt-runner-exec-1782940040",
+  "direction": "runner-exec:write-file-ps-injection",
+  "outcome": "succeeded",
+  "outcome_evidence": "node -c syntax check passed; opt-worktree.sh committed to opt-runner-exec-1782940040 and pushed auto/opt-runner-exec-1782940040 to origin (skills repo); worktree diff shows escapePSSingleQuote function added, escapePS extended with control char strip, line 28 cmd template uses safePath/safeParent variables; main restored by opt-worktree post-commit restore.",
+  "next_suggestion": "派生 SK-RE-003 fix (batch-write.js:28 same PowerShell single-quote path injection on f.path) — can import escapePSSingleQuote from write-file.js now exported. Then SK-RE-004 (push.js:60), SK-RE-005 (pull.js:41) same pattern.",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-003",
+  "audit_depth": "shallow"
+}

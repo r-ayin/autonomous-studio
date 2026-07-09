@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-07-138",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-07T14:55:00+08:00",
+  "project": "shizi",
+  "work_unit": "background:vision-timeout",
+  "situation": "SZ-BG-M-007: Vision API fetch calls in vision-adapter.ts have no timeout — can hang indefinitely if remote server is unresponsive. 4 bare fetch() calls at lines 95, 146, 669, 692 (callAnthropicApi, callOpenAiApi, testConnection×2).",
+  "action": "Added fetchWithTimeout() helper wrapping fetch with AbortController + 60s setTimeout. Replaced all 4 bare fetch calls. Committed directly in diverged opt-background-1783213292 worktree (cp-guard escape hatch per case-104 pattern).",
+  "files_changed": ["src/background/vision-adapter.ts"],
+  "worktree": "auto/opt-background-1783213292",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 4e7c23e on auto/opt-background-1783213292 pushed to origin. grep confirms zero bare 'await fetch(' outside fetchWithTimeout internals.",
+  "next_suggestion": "Continue SZ-BG-M-008 (Non-PNG images skip all scaling/tiling/enhancement). Then SZ-SP-M-001 (Draw mode replaces all regions instead of appending).",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "src/background/vision-adapter.ts",
+      "line": "95,146,669,692",
+      "severity": "medium",
+      "finding": "All Vision API fetch() calls lacked AbortController timeout — indefinite hang risk on unresponsive server",
+      "remediation": "Added fetchWithTimeout() wrapper with 60s default; replaced all 4 call sites",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-047",
+  "audit_depth": "shallow"
+}

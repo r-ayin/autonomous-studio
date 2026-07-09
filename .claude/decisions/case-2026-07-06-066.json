@@ -1,0 +1,24 @@
+{
+  "case_id": "case-2026-07-06-066",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-06T13:45:00Z",
+  "project": "wechat-main",
+  "work_unit": "qq_push upload 20MB cap (M-002)",
+  "situation": "audit-2026-07-06-022 finding M-002: qq_push.py _upload_file read entire file into memory via read_bytes() then concatenated multipart body — unbounded. Large attachments would OOM the process before QQ Bot API could reject oversized uploads.",
+  "action": "Add stat-based 20MB pre-check at top of _upload_file with clear error message. Escape-hatch path: cp-guard blocked opt-worktree.sh commit because wt already diverged (M-001 fix case-075 stacked earlier); edited wt directly and committed in-place per case-104 protocol.",
+  "files_changed": [
+    "scripts/qq_push.py"
+  ],
+  "worktree": "opt-wechat-main-1783130541",
+  "direction": "wechat-main:qq-push-upload-cap",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit afc2fce on auto/opt-wechat-main-1783130541 pushed to origin (1119d3c..afc2fce). +13 lines in scripts/qq_push.py adding MAX_UPLOAD_BYTES constant + stat check + RuntimeError on oversize.",
+  "next_suggestion": "派生 M-003 (qq_push.py:69 token response dict leaked in exception — sanitize) 或 M-004 (qq_push.py:119 upload response dict leaked)。两者都在同文件，可与 M-002 stack 在同一 wt。",
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-06-022",
+  "audit_depth": "shallow",
+  "_derived_from_finding": "M-002",
+  "_fix_kind": "route-fix",
+  "_stacked_on": "case-2026-07-06-075 (M-001, same wt)"
+}

@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-07-02-143",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-02T12:15:00Z",
+  "project": "personal-assistant",
+  "work_unit": "M-008 runtime api_key TTL (audit-2026-07-02-008 derived fix)",
+  "situation": "POST /settings/llm writes api_key plaintext into config._RUNTIME dict with no expiration. Finding M-008 from audit-2026-07-02-008. H-003 bearer gate already merged protects transport, but in-process memory retains key indefinitely — heap dump / debug attach / swap could leak. Personal single-user assistant so severity is medium, not P0.",
+  "action": "Add per-key TTL to _RUNTIME override layer. Sensitive path suffix 'api_key' gets 4h default TTL via _SENSITIVE_TTL map. set_override() attaches expire timestamp; get()/overrides() lazily evict expired entries before returning. Non-sensitive keys (model/base_url/etc.) remain untimed for backward compat. No API shape change. Tests pass (10/10 test_llm_config).",
+  "files_changed": [
+    "personal_assistant/config.py"
+  ],
+  "worktree": "opt-config-1782989845",
+  "direction": "config:m-008-runtime-key-ttl",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 14b1d44 in opt-config-1782989845 adds import time + _SENSITIVE_TTL + _is_expired + TTL-aware set_override/set_overrides + lazy-evict get()/overrides(). python3 -m pytest tests/test_llm_config.py → 10 passed in 0.24s. Worktree pushed to origin/auto/opt-config-1782989845. Awaiting human merge.",
+  "next_suggestion": "派生下一个 pending finding L-001 (web.py UA spoof for Bing/Baidu scraping — ToS violation + no rate limit). After L-001: L-002 (.env parser can't handle # in values), L-004 (reminder ID unbounded growth), L-005 (bare Exception catch in add_chat_log). All 5 pending cleared → audit-cycle-state.status=cycle-complete → next full audit.",
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-008",
+  "audit_depth": "shallow"
+}

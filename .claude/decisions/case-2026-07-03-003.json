@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-07-03-003",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-02T16:27:47Z",
+  "project": "sunset-prediction",
+  "work_unit": "social-calibration:znorm-min-sample-guard",
+  "situation": "audit-2026-07-03-001 finding SP-SC-H01 (priority 1, route-fix): zNormalize 单样本城市 std=0 fallback=1 → social_score_norm 坍缩为常量 50，NNLS 目标向量失去方差导致权重漂移。原测试断言此行为为预期（'std=0 → norm=50'），实为 bug 被测试固化。",
+  "action": "加 MIN_SAMPLES_PER_CITY=2 常量；zNormalize 在样本不足时跳过归一化、保留原始 social_score 并标记 _zNormSkipped=true 供下游诊断；更新测试：保留'样本足+同分→norm=50'断言（语义仍正确），新增单样本 skip + 混合场景测试。7/7 通过。",
+  "files_changed": [
+    "src/social-calibration-math.js",
+    "test/social-calibration.test.js"
+  ],
+  "worktree": "opt-social-calibration-1783009585",
+  "direction": "social-calibration:znorm-min-sample-guard",
+  "outcome": "succeeded",
+  "outcome_evidence": "node --test test/social-calibration.test.js: 7 pass / 0 fail; worktree pushed to origin/auto/opt-social-calibration-1783009585; 新测试 'zNormalize: 单样本城跳过 z-score，保留原始值并标记 _zNormSkipped' 验证单样本返回原始值+标记、多样本城不受影响。",
+  "next_suggestion": "派生当前周期 audit-2026-07-03-009 下一个 pending finding W-005 (route-fix)。注：本 case 源自上一周期 audit-2026-07-03-001/SP-SC-H01，该周期已被新周期覆盖；worktree opt-social-calibration-1783009585 已 push 待人工 merge。",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-03-001",
+  "audit_depth": "shallow"
+}

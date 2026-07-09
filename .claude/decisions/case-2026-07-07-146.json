@@ -1,0 +1,30 @@
+{
+  "case_id": "case-2026-07-07-146",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-07T21:15:00Z",
+  "project": "personal-assistant",
+  "work_unit": "api:llm-settings-key-block (H-002 derived fix)",
+  "situation": "audit-2026-07-07-020 H-002: POST /settings/llm 接受任意 api_key 值并写入运行态配置，持 bearer token 的攻击者可注入恶意 api_key + base_url 组合，将所有 LLM 调用（含 PII prompt、人格档案、转录文本）重定向到攻击者端点，实现凭据窃取+数据外泄。该端点已有 auth_middleware 保护，但合法用户的 token 泄露（XSS/日志/共享设备）即触发此攻击面。",
+  "action": "从 POST /settings/llm 的 for field 可写元组中移除 'api_key'；若前端仍传 api_key 字段，显式加入 rejected 列表并在响应中返回拒绝原因（指引使用 PA_LLM_API_KEY 环境变量或配置文件）。cp-guard 检测到 worktree api.py 已与 main 分叉（前轮未合并改动），按 escape hatch 直接在 wt 内编辑+commit。",
+  "files_changed": [
+    "personal_assistant/api.py"
+  ],
+  "worktree": "opt-api-1783193708",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "git commit a43b66a on auto/opt-api-1783193708; git push origin succeeded (2580277..a43b66a); diff shows api_key removed from field tuple at line 289, rejected list added at line 282-288, response includes rejected_reason dict at line 308-312",
+  "next_suggestion": "继续派生 H-003 (SSRF via base_url allowlist) → 但 opt-api-1783193708 已有 _validate_base_url 实现(PA-API-03)，需验证是否已覆盖 H-003 全部要求；若已覆盖则标 merged，否则补强。之后按严重度派生 H-004 (dev-mode auth bypass, direction-shift)。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "personal_assistant/api.py",
+      "line": 279,
+      "severity": "high",
+      "finding": "POST /settings/llm api_key write allows credential injection + LLM redirect attack",
+      "remediation": "Remove api_key from writable fields; require env var or config file for key changes",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-020",
+  "audit_depth": "shallow"
+}

@@ -1,0 +1,76 @@
+{
+  "case_id": "case-2026-07-06-089",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-06T23:55:00+08:00",
+  "project": "moni-master",
+  "work_unit": "deep-audit: strategy sandbox + data sync pipeline + backtest engine",
+  "situation": "audit-cycle-state was cycle-complete after audit-2026-07-06-024 phantom-fix batch resolution. Triggered fresh deep audit per event-driven cadence. Selected moni-master (quantitative backtest research platform) as next unaudited project — not in prior audit history, has substantive Python/Rust/FastAPI code with RCE surface (strategy upload+exec), DuckDB data pipelines, subprocess-based service management.",
+  "action": "Deep audit reading 12 files across local_simulator/ and factors/scripts/. Identified 6 findings: H-001 strategy sandbox escape via attribute-chain bypass in validate_strategy_source (AST blacklist) + exec in backtest_engine.py; H-002 factor expression eval with partially-open builtins in fast_t0_backtest.py:169; M-001 DuckDB f-string SQL injection across 11 sites (sync_additional_local_feeds, jqdata_minute_sync, build_market_lake_hot_db, etc.); M-002 PostClosePipeline.ensure_service zombie process leak + fd leak on timeout; L-001 DANGEROUS_PATTERNS substring check over-broad/under-complete; I-001 hardcoded Windows path structural debt. Wrote audit report audit-2026-07-06-025.md. Registered 5 derived_fixes as pending in audit-cycle-state.json. Did NOT dispatch fix this round (audit-only per protocol).",
+  "files_changed": [
+    ".claude/audits/audit-2026-07-06-025.md",
+    ".claude/audit-cycle-state.json"
+  ],
+  "worktree": null,
+  "direction": "none (audit-only round, no code changes)",
+  "outcome": "succeeded",
+  "outcome_evidence": "audit-2026-07-06-025.md written (6 findings, 2H/2M/1L/1I); audit-cycle-state.json updated with status=fix-in-progress, 5 derived_fixes pending, history entry appended with audit_id=audit-2026-07-06-025",
+  "next_suggestion": [
+    "Dispatch H-001+H-002 combined fix to moni-master worktree (both touch factors/scripts expression eval infra; single opt-worktree covering validate_strategy_source whitelist migration + fast_t0_backtest eval hardening)",
+    "After H-001/H-002 merged, dispatch M-001 (quote_identifier wrapper for DuckDB f-string SQL across 11 sites)",
+    "Then M-002 (subprocess zombie/fd leak fix in post_close_pipeline.py)",
+    "L-001 folds into H-001 fix (same file)"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "factors/scripts/qlib_repo/trader/frontend/api_server.py",
+      "line": 295,
+      "severity": "high",
+      "finding": "validate_strategy_source AST blacklist bypassable via getattr+string dynamic attribute access or object.__subclasses__ chain; passes through to exec(source) at backtest_engine.py:432",
+      "remediation": "Switch to whitelist AST visitor or RestrictedPython; remove __builtins__ entirely from exec namespace; add integration test with known bypass payloads",
+      "kind": "route-fix"
+    },
+    {
+      "file": "factors/scripts/fast_t0_backtest.py",
+      "line": 169,
+      "severity": "high",
+      "finding": "eval(fexpr, {'__builtins__': {'mul': lambda}}, env) exposes pandas/numpy objects in env whose .values.__class__.__bases__[0].__subclasses__() enables sandbox escape; same pattern in 8+ alpha_graph/strategy/*.py files",
+      "remediation": "Replace eval with pyparsing DSL or pandas.eval; set __builtins__={} (empty dict); pass ndarray .values instead of raw Series",
+      "kind": "route-fix"
+    },
+    {
+      "file": "factors/scripts/sync_additional_local_feeds.py",
+      "line": 242,
+      "severity": "medium",
+      "finding": "DuckDB f-string SQL injection: con.execute(f'INSERT INTO {table_name} ({cols})') with unquoted identifiers; 10+ sibling sites share pattern",
+      "remediation": "Add quote_identifier() utility with double-quote escaping; whitelist-validate table_name with regex; centralize in db_utils.py",
+      "kind": "route-fix"
+    },
+    {
+      "file": "local_simulator/post_close_pipeline.py",
+      "line": 161,
+      "severity": "medium",
+      "finding": "subprocess.Popen without stdin=DEVNULL, no terminate/kill on health-check timeout, stdout/stderr fd leak on exception path, no pid persistence for later management",
+      "remediation": "try/finally with process.kill()+wait() on failure; stdin=subprocess.DEVNULL; ExitStack for fd management; write service.pid on success",
+      "kind": "route-fix"
+    },
+    {
+      "file": "factors/scripts/qlib_repo/trader/frontend/api_server.py",
+      "line": 302,
+      "severity": "low",
+      "finding": "DANGEROUS_PATTERNS substring match ('eval' in 'evaluate') causes false positives; misses importlib.import_module, bytes.decode, type.__new__, object.__init_subclass__ escape primitives",
+      "remediation": "Fold into H-001 fix — switch to whitelist AST visitor or RestrictedPython",
+      "kind": "route-fix"
+    },
+    {
+      "file": "factors/final_optimization.py",
+      "line": 13,
+      "severity": "info",
+      "finding": "Hardcoded Windows path F:/stock-backtest/data/stocks_minute.duckdb breaks cross-platform; inconsistent with other scripts using config.yaml or relative paths",
+      "remediation": "Read from config.yaml or use Path(__file__).parent.parent / 'data' / ...; queue as structural debt (config unification)",
+      "kind": "structural"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-025",
+  "audit_depth": "deep"
+}

@@ -1,0 +1,34 @@
+{
+  "case_id": "case-2026-07-05-018",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-05T23:45:00Z",
+  "project": "personal-assistant",
+  "work_unit": "派生 fix PA-API-02：personal_assistant/api.py CORS 去 allow_origins=* —— 删 blanket CORSMiddleware，改显式 allowlist（config.web.allowed_origins），默认同源不挂 CORS",
+  "situation": "audit-cycle-state.status=fix-in-progress（audit-2026-07-05-002 personal-assistant 全量审计产出 10 findings，6 route-fix pending, pending_count=6）。本轮为派生 fix 路径：取 priority#1 PA-API-02（CORS allow_origins=['*']+methods/headers=['*']，api.py:15-16，1 文件 route-fix，最高 ROI——堵跨站读 /memories、跨域 POST /settings/llm 改 base_url、跨域 DELETE /chat-log 的主入口）。该 finding 配 PA-API-01 零认证把'本地特权'提升为'跨站可利用'：任意网页可 fetch('http://victim:8000/memories') 读响应（ACAO:* 反射）。源码注释自称'同源 /web 托管时本不需要 CORS'，故默认场景 CORS 多余。",
+  "action": "1 文件 route-fix（personal_assistant/api.py，不在 .claude/public-interfaces.txt → route-fix 复用/新 area worktree，非 direction-shift）。改动：删 blanket `app.add_middleware(CORSMiddleware, allow_origins=['*'], allow_methods=['*'], allow_headers=['*'])`；改为读 `config.get('web.allowed_origins', [])`，仅当显式配置非空时才挂 CORSMiddleware，且用显式 allowlist（绝不反射任意 Origin），方法限 GET/POST/DELETE、头限 Content-Type、allow_credentials=False。默认（无配置）→ 不挂 CORSMiddleware → 同源 /web+/android 走相对路径 fetch 免跨域，跨站请求被浏览器同源策略阻断。这样：(a) 默认场景零 CORS 暴露面；(b) 另行托管前端时管理员显式列 allowlist，不再 * 反射；(c) 写/删端点跨域自然被拒（未列入 allowlist 的 origin 不返 ACAO）。补 audit-log：本 finding 非'敏感路径'清单（auth/PII/凭证/外部调用/部署/删除）内的代码改动——CORS 是浏览器策略层非数据流，且不触 audit-log.schema.json 任意敏感类别，故不强制埋点；api.py 内无 audit logger 复用点。语法校验：python3 -c ast.parse 通过。",
+  "files_changed": [
+    "personal_assistant/api.py (api.py:14-16 删 blanket CORS *；替换为 14-26 行 config-gated allowlist 块)"
+  ],
+  "worktree": "opt-api-1783193708 (branch auto/opt-api-1783193708，route-fix 新 area worktree——无既存 opt-api-* 同 area wt 故 opt-worktree.sh 新建；HEAD 6a91312；已 push origin/auto/opt-api-1783193708)",
+  "direction": "api:cors-hardening (route-fix; judge_direction_kind 判定：api.py 不在 public-interfaces.txt → route-fix，非 direction-shift)",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "opt-worktree.sh . commit 'api:cors-hardening' ... personal_assistant/api.py 输出：'✓ 提交到 opt-api-1783193708 方向=api:cors-hardening' + '[new branch] HEAD -> auto/opt-api-1783193708' + '✓ 已 push auto/opt-api-1783193708 → origin/auto/opt-api-1783193708'",
+    "worktree 校验：git -C .opt-worktrees/personal-assistant/opt-api-1783193708 log -1 → 6a91312 'opt(api:cors-hardening): fix(api): PA-API-02 CORS 去 allow_origins=* ...'",
+    "worktree 内 api.py:14-26 含新代码：`_allowed_origins = config.get('web.allowed_origins', []) or []` + `if _allowed_origins: app.add_middleware(CORSMiddleware, allow_origins=[str(o) for o in _allowed_origins], allow_methods=['GET','POST','DELETE'], allow_headers=['Content-Type'], allow_credentials=False)`；原 `allow_origins=['*']` 已不存在",
+    "main 已被 opt-worktree cp+restore 舞步还原至 HEAD 580c4aa（main api.py 仍为原 * 版本——预期，fix 在 worktree 分支待人工 merge）",
+    "python3 ast.parse(worktree/api.py) 通过 syntax OK",
+    "scout-scan 快照（2026-07-05T~23:42Z）：personal-assistant 待处理 worktree 共5 待合并=3（含本轮 opt-api-1783193708）空=2；健康度未上榜 #1-3（#1 skills 1.08 / #2 autonomous-engine 1.0 / #3 1BfrYW9R 0.0）"
+  ],
+  "next_suggestion": [
+    "下轮 status 仍 fix-in-progress（pending_count=6，PA-API-02 已 dispatched 待人工 merge，未 terminal）→ 派生 priority#2 PA-API-03（/settings/llm base_url scheme/host 校验，api.py+llm.py 2 文件 route-fix，堵 SSRF+PII+凭证外泄主入口）",
+    "随后 PA-LLM-01（_post_json size cap+https 强制，llm.py）/ PA-UPL-01（/inbox/upload body size cap 返 413，api.py）/ PA-STOR-01（save_persona_version 原子写 file-then-DB，storage.py）/ PA-WEB-01（web._fetch/_generic size cap+scheme，web.py）逐个派生",
+    "提醒：opt-api-1783193708 / opt-storage-1782988687 / opt-web-1782977902 等 3 个 personal-assistant 待合并 worktree 积压，scout 标'待合并=3'，需人工 merge 落 main 后 derived_fixes 对应条目 status pending→merged",
+    "2 structural debt（SD-PA-01 零认证框架 / SD-PA-02 prompt 注入防御）需用户授权更大单位后再动",
+    "全部 6 route-fix 落定（merged|rejected）后 audit-cycle-state.status=cycle-complete → 下一次全量审计候选 sunset-prediction（42 文件未审）/ autonomous-engine（7 文件未审）"
+  ],
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-05-002",
+  "audit_depth": "shallow"
+}

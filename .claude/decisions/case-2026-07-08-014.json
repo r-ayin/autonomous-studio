@@ -1,0 +1,32 @@
+{
+  "case_id": "case-2026-07-08-014",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-07T11:25:00+08:00",
+  "project": "sunset-prediction",
+  "work_unit": "SP-SRV-H-002: GET /predictions?date= YYYY-MM-DD validation",
+  "situation": "audit-2026-07-08-046 derived route-fix. routes.js:118 passed req.query.date directly to getPredictionsByDate without format check; malformed input could bypass cache keying or produce confusing 404s. Same file line 398 already had canonical regex.",
+  "action": "Added YYYY-MM-DD regex guard at routes.js:119, returning 400 with truncated received value for debuggability. Reused existing pattern from POST /social/fetch for consistency.",
+  "files_changed": ["src/routes.js"],
+  "worktree": "opt-routes-1783141439",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 8706de2 on auto/opt-routes-1783141439 pushed to origin. cp-guard triggered (diverged worktree), so applied edit directly in worktree per case-104 escape hatch. Pre-commit hooks passed.",
+  "next_suggestion": [
+    "Next pending fix: SP-ENG-H-001 calibration.js UTC→CST date key shift (high)",
+    "Then SP-ENG-H-002 runDailyCalibration yesterday calc (high)",
+    "After high-severity batch done, tackle medium: SP-SRV-M-002 thundering herd"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "src/routes.js",
+      "line": 118,
+      "severity": "high",
+      "finding": "GET /predictions?date= passes unvalidated user string to getPredictionsByDate; no YYYY-MM-DD format check unlike POST /social/fetch line 398",
+      "remediation": "Add /^\d{4}-\d{2}-\d{2}$/ guard before lookup, return 400 on mismatch",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-08-046",
+  "audit_depth": "shallow"
+}

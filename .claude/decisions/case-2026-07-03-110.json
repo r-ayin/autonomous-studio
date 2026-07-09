@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-03-110",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-03T15:58:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "fix http-base.js dual credential silent coexistence (PD-M001)",
+  "situation": "audit-2026-07-03-013 PD-M001 finding: http-base.js L28-36 getHeaders() silently prefers CODE_PRIVATE_TOKEN over DEVOUT_TOKEN when both env vars are set. No warning emitted, masking misconfiguration that could cause auth failures or unintended credential use.",
+  "action": "Added stderr WARN in getHeaders() when both CODE_PRIVATE_TOKEN and DEVOUT_TOKEN are present. Warning identifies which token wins and suggests unsetting one to silence the warning. Non-blocking (warn-only), preserves existing behavior.",
+  "files_changed": ["skills/prod-deploy/scripts/lib/http-base.js"],
+  "worktree": "opt-prod-deploy-1782970212",
+  "direction": "prod-deploy:pd-m001-credential-warn",
+  "outcome": "succeeded",
+  "outcome_evidence": "git commit 32b9db8 pushed to origin/auto/opt-prod-deploy-1782970212; adds process.stderr.write WARN branch inside getHeaders() when both env vars truthy",
+  "next_suggestion": "Continue fix-in-progress: dispatch PD-M003 (priority 9, route-fix, resume-next-batch.js observation gate silent skip — add --strict-observation flag)",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-03-013",
+  "audit_depth": "shallow"
+}

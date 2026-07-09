@@ -1,0 +1,64 @@
+{
+  "case_id": "case-2026-07-05-123",
+  "agent_id": "autonomous-studio",
+  "timestamp": "2026-07-05T19:36:00+08:00",
+  "project": "x-tool",
+  "work_unit": "OMNICS-INJECT-01 CSS selector 字符串插值进 executeJavaScript 改参数化 (audit-2026-07-05-013 派生 route-fix #9)",
+  "situation": "audit-2026-07-05-013 (x-tool/聚合ai客服开发 omnics-client Electron deep audit) finding OMNICS-INJECT-01: InputSimulator.typeInto/clickElement 与 PddAdapter.sendMessage 的 inputSelectors/sendBtnSelectors 探测循环共 4 处把 CSS selector 变量直接字符串插值进 view.webContents.executeJavaScript 的 JS 源码字符串 (document.querySelector('${selector}') / !!document.querySelector('${sel}')). 当前 selector 来源是硬编码数组 (#textarea/.send-btn 等) 不可利用, 但模式脆弱——若日后 selector 来源改为用户输入/配置/远程 KB, 含单引号/反斜杠/反引号的 selector 可逃逸字符串边界注入任意 JS 进 renderer 主世界 (Electron BrowserView webContents.executeJavaScript 在主世界执行, 等同 RCE 后果). 派生 fix 前查 worktree list 确认 opt-omnics-1783246236 仍存在 (HEAD=6730919 case-122) + InputSimulator.ts/PddAdapter.ts 均未被前 8 个 stacked commit (case-115..122) 改过 → 可走 opt-worktree cp-flow (非 case-104 direct-worktree-commit).",
+  "action": "4 处 selector 字符串插值改参数化: (1) InputSimulator.ts:18 typeInto document.querySelector('${selector}') → document.querySelector(${JSON.stringify(selector)}); (2) InputSimulator.ts:62 clickElement 同样; (3) PddAdapter.ts:345 sendMessage inputSelectors 探测 !!document.querySelector('${sel}') → !!document.querySelector(${JSON.stringify(sel)}); (4) PddAdapter.ts:373 sendBtnSelectors 探测同样. JSON.stringify(selector) 产生合法双引号 JS 字符串字面量, 转义所有 \" \\ 与控制字符, selector 不能逃逸字符串边界. 行为不变 (querySelector 接收同样的 selector 字符串值), 仅消除代码注入风险面. PddAdapter.getConversationKey/scanForUnrepliedMessages 里的硬编码 selector 字面量 (非变量插值) 不需改——它们是源码内字面量, 无逃逸面.",
+  "files_changed": [
+    "聚合ai客服开发/src/main/core/services/InputSimulator.ts",
+    "聚合ai客服开发/src/main/core/adapters/PddAdapter.ts"
+  ],
+  "worktree": "opt-omnics-1783246236",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "opt-worktree.sh commit 输出: '→ 复用同 area worktree (route-fix): opt-omnics-1783246236' + '✓ 提交到 opt-omnics-1783246236 方向=omnics:inject-01-css-selector-param'",
+    "worktree HEAD=19dfc61 commit message 含 OMNICS-INJECT-01 + audit-2026-07-05-013 引用",
+    "git show --stat HEAD: 2 files changed, 4 insertions(+), 4 deletions(-) — InputSimulator.ts 2+/2- + PddAdapter.ts 2+/2-",
+    "git show HEAD diff: 4 处 document.querySelector('${sel}') → document.querySelector(${JSON.stringify(sel)}) 全部正确替换 (InputSimulator L18+L62, PddAdapter L345+L373)",
+    "git rev-list --left-right --count master...HEAD = '0 9' → ahead 9/behind 0",
+    "git merge-base --is-ancestor master HEAD = YES → FF-clean (master is ancestor of HEAD, fast-forward 干净可人工 merge)",
+    "9-commit stack 完整: 357a7ed(case-115 API-01)→3335c97(case-116 SIDECAR-01)→187afb2(case-117 LLM-01)→8fdbff3(case-118 LLM-02)→c459dba(case-119 KB-01)→d08cf80(case-120 PRELOAD-01)→147e86f(case-121 STORE-01)→6730919(case-122 DB-01)→19dfc61(case-123 INJECT-01)",
+    "x-tool external-fork push 403 (同 audit-005..012 precedent) → origin/auto/opt-omnics-1783246236 不存在, worktree+9-commit stack 完整保留 disk 待人工 merge to master"
+  ],
+  "next_suggestion": "[下轮 fix-in-progress 派生 fix] 派生 OMNICS-LOG-01 (priority 11, LOW, 2 文件 XiaoHongShuAdapter.ts+pdd.ts) — XHS 完整 LLM 响应/axios 错误体(可能回显 apiKey) + pdd.ts outerHTML 全量打日志, Fix: 响应只记长度/前 80 字符, 错误体 mask, outerHTML 记 className+前 50 字符. ⚠ XHS 已被 case-117/118 改须 case-104 direct-worktree-commit precedent (cp-guard 会因 worktree 文件≠main HEAD 误判 skip); pdd.ts 单独可 cp 流, 可考虑拆成两 case (pdd.ts 先 cp 流, XHS 后 case-104 直编). 之后仅剩 OMNICS-CONFIG-01 (priority 7, LOW, ConfigManager.ts apiKey 明文→safeStorage.encryptString, ⚠已被 case-118 改须 case-104 直编 + 触凭证敏感路径需同步补 audit-log 埋点 per autonomous-constraints.md B 节). 全 11 merged/rejected → cycle-complete → 新审计. ⚠ SD-OMNICS-01 (sidecar stdio 改造) 仍 open 在 structural-debt.md 待用户授权. ⚠ 待人工 merge 积压: opt-omnics-1783246236 现 9-commit stack (case-115..123) 全 FF-clean 保留 disk 待人工审 (x-tool external-fork push 403).",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "聚合ai客服开发/src/main/core/services/InputSimulator.ts",
+      "line": 18,
+      "severity": "low",
+      "finding": "typeInto: CSS selector 变量字符串插值进 executeJavaScript 源码 (document.querySelector('${selector}'))。当前硬编码不可利用，但 selector 若来自用户输入/配置/远程 KB，含引号/反斜杠可逃逸字符串边界注入 JS 进 renderer 主世界 (=Electron RCE)。",
+      "remediation": "改 document.querySelector(${JSON.stringify(selector)}) — JSON.stringify 产生合法 JS 字符串字面量，转义所有 \" \\ 控制字符，selector 不能逃逸。clickElement:62 同源同修。",
+      "kind": "route-fix"
+    },
+    {
+      "file": "聚合ai客服开发/src/main/core/services/InputSimulator.ts",
+      "line": 62,
+      "severity": "low",
+      "finding": "clickElement: 同 typeInto，selector 字符串插值进 executeJavaScript，模式脆弱。",
+      "remediation": "同上，document.querySelector(${JSON.stringify(selector)})。",
+      "kind": "route-fix"
+    },
+    {
+      "file": "聚合ai客服开发/src/main/core/adapters/PddAdapter.ts",
+      "line": 345,
+      "severity": "low",
+      "finding": "sendMessage inputSelectors 探测循环: !!document.querySelector('${sel}') 字符串插值。sel 当前来自硬编码数组，但模式脆弱。",
+      "remediation": "改 !!document.querySelector(${JSON.stringify(sel)})。sendBtnSelectors:373 同源同修。",
+      "kind": "route-fix"
+    },
+    {
+      "file": "聚合ai客服开发/src/main/core/adapters/PddAdapter.ts",
+      "line": 373,
+      "severity": "low",
+      "finding": "sendMessage sendBtnSelectors 探测循环: 同 L345，sel 字符串插值进 executeJavaScript。",
+      "remediation": "同上，!!document.querySelector(${JSON.stringify(sel)})。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-013",
+  "audit_depth": "deep"
+}

@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-03-101",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-03T16:55:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "ESE-M02: autonomous-loop.sh --max-turns/ROUND_TIMEOUT 旋钮补全 + 注释修正",
+  "situation": "audit-2026-07-03-006 finding ESE-M02 (pending): archive 已修复但 live main 仍保留旧注释 'cloudcli claude 无 --max-iterations'，且实际 env var 读取/--max-turns 传参/timeout 包裹代码缺失。注释与行为矛盾，用户无法通过 AUTONOMOUS_MAX_TURNS/AUTONOMOUS_ROUND_TIMEOUT 控制单轮上限。",
+  "action": "派生 route-fix：在 scripts/autonomous-loop.sh 头部补 MAX_TURNS/ROUND_TIMEOUT env var 读取；run_round() 内组装 cmd 数组按条件追加 --max-turns / timeout 包裹；头部注释和循环内注释同步为准确描述（--max-turns 可用，两个可选旋钮默认不限）。opt-worktree.sh 判定 direction-shift（触及公共接口文件），开新 worktree opt-autonomous-loop-shift-1783090183。bash -n 语法检查通过。",
+  "files_changed": ["scripts/autonomous-loop.sh"],
+  "worktree": "opt-autonomous-loop-shift-1783090183",
+  "direction": "autonomous-loop:ese-m02-max-turns",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 成功 push 到 origin/auto/opt-autonomous-loop-shift-1783090183；bash -n 返回 0；grep 确认 MAX_TURNS/ROUND_TIMEOUT/--max-turns/timeout 关键字出现在 worktree 分支文件中。main checkout 文件被 hook 还原（预期行为）。",
+  "next_suggestion": "ESE-M02 merged 后 audit-cycle-state.pending_count=0 → 下轮改 cycle-complete，再下轮触发新一轮全量审计（优先审未深审过的模块，避开 engine-skills-extracted 刚审完）。",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-03-006",
+  "audit_depth": "shallow"
+}

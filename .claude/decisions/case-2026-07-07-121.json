@@ -1,0 +1,34 @@
+{
+  "case_id": "case-2026-07-07-121",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-07T02:20:00+08:00",
+  "project": "personal-assistant",
+  "work_unit": "relay-bridge:token-empty-guard (audit PA-POST-L-001 derived fix)",
+  "situation": "audit-2026-07-08-044 finding PA-POST-L-001: relay_bridge.py _check_token returns True when RELAY_TOKEN env is empty, silently bypassing auth in misconfigured prod deployments. Route-fix dispatched per audit-cycle-state status=fix-in-progress.",
+  "action": "Fail-closed guard: when RELAY_TOKEN is empty, _check_token now logs 'auth_denied reason=relay_token_not_configured' and returns False instead of True. Operator must set PA_RELAY_TOKEN or PA_API_TOKEN to enable relay. Committed directly in existing worktree opt-relay-bridge-1783342228 via case-104 escape hatch (cp-guard blocked re-copy due to prior unmerged M-005 fix on same file). Pushed to origin.",
+  "files_changed": [
+    "scripts/ecs_relay/relay_bridge.py"
+  ],
+  "worktree": "opt-relay-bridge-1783342228",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 6f13a55 on auto/opt-relay-bridge-1783342228; pushed 0d97179..6f13a55 to origin. Diff: +6/-1 lines in _check_token function. Pre-existing M-005 fix (0d97179) preserved on same branch.",
+  "next_suggestion": [
+    "Merge opt-relay-bridge-1783342228 to main (contains both M-005 CSWSH fix + PA-POST-L-001 token-empty guard)",
+    "After merge, mark PA-POST-L-001 status=merged in audit-cycle-state → triggers cycle-complete (no other pending fixes remain)",
+    "Next full audit: all workspace projects audited ≥1×; consider meta-audit on audit-cycle-state integrity or wait for post-audit commits"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "scripts/ecs_relay/relay_bridge.py",
+      "line": 87,
+      "severity": "low",
+      "finding": "PA-POST-L-001: RELAY_TOKEN empty makes _check_token always return True, 403 path bypassed. Silent open-relay risk when .env missing in prod.",
+      "remediation": "Fail closed: log warning and return False when RELAY_TOKEN unconfigured. Operator must explicitly enable via env var.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-08-044",
+  "audit_depth": "shallow"
+}

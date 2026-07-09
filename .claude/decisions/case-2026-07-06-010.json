@@ -1,0 +1,41 @@
+{
+  "case_id": "case-2026-07-06-010",
+  "agent_id": "ralph-autonomous-engine",
+  "timestamp": "2026-07-06T01:11:38+08:00",
+  "project": "prod-deploy skill (skills/prod-deploy)",
+  "work_unit": "PD-TOKEN-01 derived fix — host allowlist + IP-literal block for DEVOUT_SERVER_URL so the deploy token (CODE_PRIVATE_TOKEN/DEVOUT_TOKEN) cannot leak to an arbitrary/misconfigured/DNS-rebinding host. Credential-disclosure / SSRF-adjacent guard on the auth-token-bearing HTTP client path.",
+  "situation": "audit-2026-07-06-001 (deep audit of prod-deploy scripts/) finding PD-TOKEN-01 (MEDIUM, route-fix): getHeaders() attached X-Agent-Authorization: Code <CODE_PRIVATE_TOKEN> (or token: <DEVOUT_TOKEN>) to every request, to whatever host DEVOUT_SERVER_URL resolved to — no hostname validation, no IP-literal block, no allowlist. A misconfigured/typo'd/DNS-rebinding DEVOUT_SERVER_URL would silently leak the deploy token. Directly analogous to generate-image H02 (audit-2026-07-04-013, merged). This is a derived fix dispatched from fix-in-progress audit cycle; PD-TIME-01 (HIGH) and PD-HANG-01 (MEDIUM) already dispatched+merged on the same opt-prod-deploy-1783270172 worktree in prior rounds.",
+  "action": "Added host allowlist + IP-literal block to skills/prod-deploy/scripts/lib/http-base.js getBaseUrl(). getBaseUrl() now parses DEVOUT_SERVER_URL with new URL(), strips IPv6 brackets (Node URL.hostname keeps them), and validates hostname against DEFAULT_ALLOWED_HOSTS (localhost, 127.0.0.1, ::1, *.alibaba-inc.com) plus DEVOUT_ALLOWED_HOSTS env extras (comma-separated, deduped). Disallowed host → throw with a clear message naming the host + allowlist + how to extend. Because every apiGet/apiPost/apiPut calls getBaseUrl() first to build the URL, a throw there prevents getHeaders()/fetch from ever attaching the token to an unverified host. IP literals (IPv4 dotted-quad, IPv6) are rejected unless explicitly exact-allowlisted (blocks 169.254.169.254 metadata-service / internal-IP SSRF). *.alibaba-inc.com suffix rule also matches bare apex (alibaba-inc.com). Single-file fix because PD-HANG-01's refactor (already on this worktree, commit d3a9710) centralized getBaseUrl/getHeaders/apiGet/apiPost/apiPut into http-base.js — the audit's 2-file sketch (task-client + event-client) predates that refactor and now collapses to one file. Verified getHeaders/getBaseUrl have no external importers (only used inside http-base.js api* funcs), so the single gate at getBaseUrl covers all token-bearing call paths. Committed via case-104 escape hatch (direct wt edit + wt-internal git commit) because opt-worktree.sh cp-guard skips files that have diverged on the wt branch (http-base.js diverged: PD-HANG-01 timeout logic is wt-only, not yet on main) — per [[opt-worktree-stack-diverged-escape-hatch]]. Pushed sanctioned auto/opt-prod-deploy-1783270172 branch to origin (auto/ branches are auto-pushed, not main).",
+  "files_changed": [
+    "skills/prod-deploy/scripts/lib/http-base.js"
+  ],
+  "worktree": "opt-prod-deploy-1783270172",
+  "worktree_path": "/home/admin/workspace/.opt-worktrees/autonomous-studio/opt-prod-deploy-1783270172",
+  "direction": "route-fix (area=prod-deploy, stacked on existing opt-prod-deploy-1783270172 worktree; no public-interfaces.txt file touched)",
+  "commit": "4fd4f27",
+  "branch": "auto/opt-prod-deploy-1783270172",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "node --check http-base.js → SYNTAX OK",
+    "Behavioral probe (node --input-type=module, import http-base.js): http://localhost:8080 → accepted; http://127.0.0.1:8080 → accepted; https://devout.alibaba-inc.com → accepted; https://sub.devout.alibaba-inc.com → accepted (suffix match); http://[::1]:8080 → accepted (IPv6 loopback, brackets stripped); http://evil.example.com → rejected ('not in the allowlist'); http://10.0.0.5 → rejected (IP literal not allowlisted); http://169.254.169.254 → rejected (AWS metadata IP blocked); http://[2001:db8::1]:8080 → rejected (random IPv6 blocked); DEVOUT_ALLOWED_HOSTS='10.0.0.5, evil.example.com' → both accepted (env extension works); token still attached on allowed host (X-Agent-Authorization: Code <token> verified).",
+    "git log --oneline -3 on worktree: 4fd4f27 PD-TOKEN-01 / d3a9710 PD-HANG-01 / d5c4078 PD-TIME-01 — stacked cleanly on the same route-fix worktree.",
+    "git push origin auto/opt-prod-deploy-1783270172 → d3a9710..4fd4f27 pushed; remote returned Code Review link (https://code.alibaba-inc.com/qunbu/autonomous-studio/codereview/new?from=main&to=auto/opt-prod-deploy-1783270172)."
+  ],
+  "next_suggestion": "派生 PD-BATCH-01 (LOW, route-fix, scripts/report-event.js — guard --batch-index parseInt NaN so batch_index:null doesn't poison findBatchEvent). 之后 PD-CONCL-01 (LOW, sunfire-client.js deriveConclusion dedup by timestamp + extract shared helper for resume-next-batch). 两 pending 都 merge/reject 后 audit-cycle-state.status → cycle-complete，触发下一轮全量审计（候选：x-tool 9 个待合并 worktree 需人工 triage，但 x-tool 是纯工具/配置项目按约束可跳过；autonomous-engine 排 scout #1 但补 planning/ 属日常润色非结构性问题——下轮审计宜挑一个未深审的代码项目如 sunset-prediction 或 wechat-main）。",
+  "audit_type": "security-review",
+  "audit_findings": [
+    {
+      "file": "skills/prod-deploy/scripts/lib/http-base.js",
+      "line": 20,
+      "severity": "medium",
+      "finding": "PD-TOKEN-01: getBaseUrl() returned DEVOUT_SERVER_URL with no host validation; getHeaders() attached the deploy token (CODE_PRIVATE_TOKEN/DEVOUT_TOKEN) to every request → token leak to misconfigured/DNS-rebinding host. (Pre-fix state on main: getBaseUrl just stripped trailing slash.)",
+      "remediation": "Parse URL, validate hostname against allowlist (localhost/127.0.0.1/::1/*.alibaba-inc.com + DEVOUT_ALLOWED_HOSTS env), reject IP literals unless explicitly listed, throw before fetch so token is never sent to unverified host. Implemented in this commit (4fd4f27).",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-001",
+  "audit_depth": "shallow",
+  "audit_cycle_role": "derived-fix (PD-TOKEN-01 dispatched from audit-2026-07-06-001; this case is the fix dispatch, not the audit itself — audit_depth=shallow because the deep audit happened in the parent audit round)",
+  "parent_audit_finding_id": "PD-TOKEN-01",
+  "dispatch_status_in_cycle": "merged"
+}

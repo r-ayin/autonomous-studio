@@ -1,0 +1,32 @@
+{
+  "case_id": "case-2026-07-07-089",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-07T21:45:00+08:00",
+  "project": "moni-master",
+  "work_unit": "frontend:vite-allowed-hosts",
+  "situation": "audit-2026-07-07-030 FE-M-001: Vite dev server binds 0.0.0.0 without allowedHosts — LAN-wide access to trading API proxy via IP (vite.config.ts:14)",
+  "action": "Add server.allowedHosts=['localhost','127.0.0.1'] to restrict Host header; LAN devices using IP directly get rejected by Vite. Keeps host=0.0.0.0 for container dev but closes LAN attack surface.",
+  "files_changed": ["frontend/vite.config.ts"],
+  "worktree": "opt-frontend-1783366395",
+  "direction": "frontend:vite-allowed-hosts",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit c3c323d on auto/opt-frontend-1783366395, pushed to origin. Diff adds 3 lines (comment + allowedHosts array). Vite 5.4 supports this option (introduced 5.1).",
+  "next_suggestion": [
+    "派生 FE-M-002 (CSP header) → 下一个 route-fix",
+    "FE-M-003 localStorage plaintext key 需要 aiStore.ts 改动，可能 direction-shift",
+    "等用户 merge opt-frontend-1783366395 后再派后续 fix"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "frontend/vite.config.ts",
+      "line": 14,
+      "severity": "medium",
+      "finding": "Vite dev server host=0.0.0.0 without allowedHosts exposes trading API proxy to entire LAN",
+      "remediation": "Add server.allowedHosts=['localhost','127.0.0.1']",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-030",
+  "audit_depth": "shallow"
+}

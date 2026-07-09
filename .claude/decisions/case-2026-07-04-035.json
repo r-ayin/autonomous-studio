@@ -1,0 +1,33 @@
+{
+  "case_id": "case-2026-07-04-035",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-04T23:55:00Z",
+  "project": "moni-master",
+  "work_unit": "MM-M011: can_match blocks Limit buy/sell at limit_up/down contradicting risk.rs contract",
+  "situation": "engine.rs L796-803 can_match returned false for ALL buys when last_price >= limit_up, regardless of order type. risk.rs validate_buy (L83-92) explicitly permits Limit buy AT limit_up (rejects only reference_price > limit_up for Limit). Symmetric issue on sell side with limit_down. Result: valid Limit orders at the boundary price could never fill despite passing risk check — silent order stranding.",
+  "action": "Refactored can_match Buy/Sell arms to gate the limit-up/limit-down block on Market order type only. Limit orders rely on existing price comparison (order.price < last_price for Buy, > for Sell) which naturally handles the boundary correctly per A-share matching rules. Added inline comment citing risk.rs contract to prevent future regression.",
+  "files_changed": [
+    "moni-rs/crates/moni-engine/src/engine.rs"
+  ],
+  "worktree": "opt-moni-master-1783105913",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "cargo check -p moni-engine passed (Finished dev profile in 2.82s). Commit 76129f4 pushed to origin/auto/opt-moni-master-1783105913. Reuses existing worktree from prior MM-H001/MM-M006/MM-M007 fixes (same engine area).",
+  "next_suggestion": [
+    "派生下一个 pending finding: MM-L001 (engine.rs L599-600 unwrap_or defaults mask corrupted order side/type)",
+    "继续消化 audit-2026-07-04-002 剩余 8 条 pending findings"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "moni-rs/crates/moni-engine/src/engine.rs",
+      "line": "796-813",
+      "severity": "medium",
+      "finding": "can_match blocked ALL buys at limit_up and ALL sells at limit_down without distinguishing Limit vs Market order type. Contradicts risk.rs validate_buy/validate_sell which allow Limit orders AT the boundary price. Causes valid Limit orders to be permanently stranded after passing risk check.",
+      "remediation": "Gate limit_up/limit_down block on Market order type only; let Limit orders flow through to price comparison which correctly handles boundary per A-share matching rules.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-04-002",
+  "audit_depth": "shallow"
+}

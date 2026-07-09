@@ -1,0 +1,36 @@
+{
+  "case_id": "case-2026-07-06-036",
+  "agent_id": "ralph-main-loop",
+  "timestamp": "2026-07-06T13:10:00+08:00",
+  "project": "x-tool/一件重启脚本/remote_control",
+  "work_unit": "派生 audit-2026-07-06-004 finding RC-XSS-01 (HIGH 存储型 XSS) + RC-ATOMIC-02 (LOW save_presets 非原子+无上限) —— audit plan step 4 同 presets 区块 stack 一个 commit",
+  "situation": "audit-2026-07-06-004 (x-tool/remote_control 首次独立深审) 派生 15 route-fix，前 3 轮 (case-033/034/035) 已 stack 3 commit 在 opt-remote-control-1783283520 (RC-SEC-01+RC-LEAK-01 / RC-SEC-02 / RC-SEC-03+RC-CTIME-01+RC-LOG-01, HEAD=163f202 base=85bd9e1=master FF-clean)。本轮派发 priority 4 (RC-XSS-01 HIGH) + priority 15 (RC-ATOMIC-02 LOW)，audit plan step 4 明示两者同 presets_html / save_presets 区块 stack。pending_count 派发前=12（含 RC-XSS-01/RC-ATOMIC-02），派发后=10。",
+  "action": "在 worktree opt-remote-control-1783283520 内直编 server.py（cp-guard 因 server.py 已与 main 分叉跳过 opt-worktree.sh cmd_commit，走 [[opt-worktree-stack-diverged-escape-hatch]] 直编 wt+wt 内 commit 通道，case-104/case-147 precedent）: (1) 顶部加 `import html`; (2) RC-XSS-01: `<span class=\"preset-name\">{p['name']}</span>` → `{html.escape(p['name'])}`，并把 `safe_json = json.dumps(p_public).replace('\"','&quot;')` 改为 `html.escape(json.dumps(p_public))`（覆盖 & < > 不只 \"，更稳）; (3) RC-ATOMIC-02: save_presets 改原子写 tmp+os.replace + `if len(presets)>100: presets=presets[-100:]` maxlen 防磁盘 DoS。py_compile 通过；行为测试用 audit 原始 payload `<img src=x onerror=fetch('/restart?pin=1234')>` 与 `<script>fetch('/update_config'...)</script>` 验证 html.escape 中和（无裸 < >）。wt 内 git commit (非 main, gate 不拦) → 3299f27 stack on 163f202。origin push 403 (r-ayin/x-tool 外部 fork, [[x-tool-external-fork-push-403]] precedent, 预期) → disk+local-ref 保留待人工 merge。",
+  "files_changed": ["一件重启脚本/remote_control/server.py"],
+  "worktree": "opt-remote-control-1783283520",
+  "direction": "remote-control:xss-atomic (route-fix, 复用同 area wt, 第 4 个 stack commit)",
+  "outcome": "succeeded",
+  "outcome_evidence": "git log --oneline: 3299f27 opt(remote-control:sec): RC-XSS-01+RC-ATOMIC-02 ... (stack on 163f202→f3bcff2→550baaf, base=85bd9e1=master). `git merge-base --is-ancestor 85bd9e1 HEAD` → FF_CLEAN_YES. `python3 -m py_compile server.py` → COMPILE_OK (line 684 `E:\\openclaw` SyntaxWarning 系 pre-existing RC-PATH-01/SD-RC-01 structural debt, 非本轮改动). assert 检查 ALL_CHECKS_PASS: html.escape(p['name']) / html.escape(json.dumps(p_public)) / os.replace(tmp_path,PRESETS_PATH) / len(presets)>100 / import html 均在文件中. 行为测试 XSS_NEUTRALIZED_OK: `<img src=x onerror=...>` escape 后 `&lt;img src=x onerror=fetch(&#x27;/restart?pin=1234&#x27;)&gt;` 无裸 <. `git push origin auto/opt-remote-control-1783283520` → remote: git push is not allowed / 403 (r-ayin/x-tool 外部 fork, 预期, 非 failure). diff: 1 file changed, 13 insertions(+), 3 deletions(-).",
+  "next_suggestion": "下轮继续派发 audit-2026-07-06-004 剩余 pending: priority 5 RC-CFG-01 (MED baseUrl SSRF 凭证盗取, server.py:510-525 validate_base_url) 或按 audit plan step 5 把 RC-CFG-01+RC-ATOMIC-01+RC-ROBUST-01+RC-BUG-01+RC-PIN-01+RC-PROXY-01 分 2-3 commit stack。建议下轮先做 RC-CFG-01（MED，影响仅次 HIGH，且与 RC-ATOMIC-01 同 /update_config 区块可 stack）。pending 派完后 status→cycle-complete 触发下一轮全量审计（autonomous-engine 已审、wechat-main/personal-assistant/sunset-prediction/remote_control 已审，下个未审项目候选：1BfrYW9R deep / browser-use pending 18 / stagehand pending 6 / open-design pending 15 / kaoqin pending 7 等 deadlock-archive 类，或挑全新未审项目）。owner 动作提醒（不可由引擎代劳）: (a) yunyi.cfd 轮换 AH7ZKSSM-.../K33EP67S-... 两 key (RC-SEC-01); (b) set REMOTE_CONTROL_PIN env 否则每次重启随机 PIN (RC-SEC-03); (c) 人工 merge opt-remote-control-1783283520 4-commit stack (550baaf→f3bcff2→163f202→3299f27) FF-clean base=85bd9e1。",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "一件重启脚本/remote_control/server.py",
+      "line": "259 (orig 203-211)",
+      "severity": "high",
+      "finding": "RC-XSS-01 存储型 XSS: preset name 原样拼进 <span class=\"preset-name\">{p['name']}</span> 无 html.escape; /add_preset 接受任意 name (PIN='1234' 公网可猜), 攻击者设 name=\"<img src=x onerror=fetch('/restart?pin=1234')>\" 或 <script>fetch('/update_config'...)</script> 命中 owner 浏览器即可驱动全部 PIN 保护端点 (改 baseUrl 盗 apiKey / 远程重启).",
+      "remediation": "import html; <span class=\"preset-name\">{html.escape(p['name'])}</span>; safe_json 改 html.escape(json.dumps(p_public)) 覆盖 & < > 不只 \". 已实施.",
+      "kind": "route-fix"
+    },
+    {
+      "file": "一件重启脚本/remote_control/server.py",
+      "line": "208-214 (orig 158-164)",
+      "severity": "low",
+      "finding": "RC-ATOMIC-02 save_presets 非原子写 (json.dump 直接覆写 presets.json, 写中途崩溃致截断损坏) + 无数量上限 (PIN 被攻破后可刷入海量 preset 撑爆磁盘 DoS).",
+      "remediation": "原子写 tmp+os.replace; if len(presets)>100: presets=presets[-100:] maxlen. 已实施.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-004",
+  "audit_depth": "shallow"
+}

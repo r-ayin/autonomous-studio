@@ -7,8 +7,11 @@
 setup() 时自动通过 tools/list 探测类型。
 """
 
+import itertools
 import json
+import os
 import re
+import tempfile
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs
 
@@ -22,6 +25,10 @@ _SKILL_DIR = Path(__file__).resolve().parent.parent
 CONFIG_PATH = _SKILL_DIR / "config" / "servers.json"
 MCP_PROTOCOL_VERSION = "2024-11-05"
 _CLIENT_INFO = {"name": "devix-dingtalk-skill", "version": "0.2.0"}
+
+# 模块级 JSON-RPC request_id 生成器：每次 _mcp_call 拿一个唯一递增 id，
+# 避免重试 / initialize+tools/call 多阶段调用共享同一 id 导致服务端响应匹配错乱。
+_REQUEST_ID_COUNTER = itertools.count(1)
 
 # 工具指纹: 出现这些 tool 名即可认定为对应类型
 _TOOL_FINGERPRINTS = {
@@ -132,9 +139,25 @@ def _load_config():
 
 
 def _save_config(servers):
+    """原子写入 servers.json：先写临时文件再 os.replace，避免崩溃/并发导致配置截断。"""
     CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with open(CONFIG_PATH, "w", encoding="utf-8") as f:
-        json.dump({"mcp_servers": servers}, f, ensure_ascii=False, indent=2)
+    payload = json.dumps({"mcp_servers": servers}, ensure_ascii=False, indent=2)
+    fd, tmp_path = tempfile.mkstemp(
+        prefix=".servers-", suffix=".tmp", dir=str(CONFIG_PATH.parent)
+    )
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            f.write(payload)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp_path, CONFIG_PATH)
+    except BaseException:
+        # 任何异常（含 KeyboardInterrupt）都清理临时文件，避免残留
+        try:
+            os.unlink(tmp_path)
+        except OSError:
+            pass
+        raise
 
 
 def _mask(s):
@@ -156,8 +179,13 @@ def _headers():
     return {"Content-Type": "application/json", "Accept": "application/json"}
 
 
-def _mcp_call(server, method, params, request_id=1, timeout=60):
-    """向指定 MCP 服务器发送 JSON-RPC 请求。"""
+def _mcp_call(server, method, params, request_id=None, timeout=60):
+    """向指定 MCP 服务器发送 JSON-RPC 请求。
+
+    request_id 缺省时自动从模块级计数器取唯一递增 id；显式传入仅用于测试/重放。
+    """
+    if request_id is None:
+        request_id = next(_REQUEST_ID_COUNTER)
     url = f"{server['base_url']}?key={server['key']}"
     payload = {"jsonrpc": "2.0", "id": request_id, "method": method, "params": params}
     response = requests.post(url, headers=_headers(), json=payload, timeout=timeout)

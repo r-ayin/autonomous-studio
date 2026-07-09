@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-02-042",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-01T19:05:28Z",
+  "project": "autonomous-studio",
+  "work_unit": "AS-EC-008 fix: opt-worktree.sh cmd_commit orphaned files on commit failure",
+  "situation": "audit-2026-07-02-002 finding AS-EC-008 (priority 8): cmd_commit step ② does cd $target then git add+commit. Under set -euo pipefail, if git commit fails (e.g. nothing to commit after .opt-direction removal), script aborts with cwd=$target. Files already cp'd in step ① remain as orphans in target worktree; main working tree never gets restored (step ③ skipped).",
+  "action": "Added ERR trap around the critical commit section (cd $target → git add → git commit). On failure: reset HEAD, checkout tracked files, clean untracked (preserving .opt-direction), cd back to PROJECT. Trap cleared immediately after successful commit so later assertion/restore failures don't trigger commit cleanup.",
+  "files_changed": ["scripts/opt-worktree.sh"],
+  "worktree": "opt-worktree-shift-1782932717",
+  "direction": "worktree:commit-orphan-cleanup",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh commit succeeded, branch auto/opt-worktree-shift-1782932717 pushed to origin. Diff adds _commit_err_cleanup function + trap ERR before cd $target, trap - ERR after git commit succeeds. Covers git add -A, git rm --cached .opt-direction, _assert_no_collateral_revert, and git commit — all commands between trap set and trap clear.",
+  "next_suggestion": "Continue audit-2026-07-02-002 derived_fixes queue: next pending is AS-EC-009 (opt-worktree.sh cmd_commit no worktree-level locking, priority 9)",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-002",
+  "audit_depth": "shallow"
+}

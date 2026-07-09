@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-01-617",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-01T12:45:00Z",
+  "project": "shizi",
+  "work_unit": "SH-M-004 saveHistoryItem 降级处理",
+  "situation": "audit-2026-07-01-005 发现 SH-M-004：background/index.ts runPipeline handler 中 saveHistoryItem 在 try 块内，storage 写入失败会让整个 pipeline 返回 success:false，用户丢失已成功的识别结果。派生 fix。",
+  "action": "把 saveHistoryItem 移出主 try/catch，独立 try/catch + console.warn 降级，不阻塞 success response。route-fix 复用 opt-shizi-1782906261 worktree。",
+  "files_changed": ["src/background/index.ts"],
+  "worktree": "auto/opt-shizi-1782906261",
+  "direction": "shizi:background-save-history-degrade",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 656efa3 on auto/opt-shizi-1782906261; push 成功；worktree HEAD 确认含 SH-M-004 try/catch wrap",
+  "next_suggestion": "继续派生 SH-M-002+SH-M-003 (priority 5, case-614 pending) 或 SH-M-005 (priority 6)",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-01-005",
+  "audit_depth": "shallow"
+}

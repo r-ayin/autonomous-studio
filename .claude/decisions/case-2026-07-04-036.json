@@ -1,0 +1,44 @@
+{
+  "case_id": "case-2026-07-04-036",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-05T00:15:00Z",
+  "project": "moni-master",
+  "work_unit": "MM-L001: engine.rs unwrap_or defaults mask corrupted order side/type",
+  "situation": "audit-2026-07-04-002 finding MM-L001 (priority 15). attempt_match L599-600 used unwrap_or(OrderSide::Buy)/unwrap_or(OrderType::Market); L641 repeated the same unwrap_or for side. When order.side or order.order_type is corrupted/unparseable, silent fallback runs risk revalidation and fee calculation with wrong params, potentially allowing fills that should be rejected.",
+  "action": "Replace unwrap_or with match + early cancel: invalid side/type sets order.status=Cancelled, error_message explains the corruption, release_order_resources frees frozen cash/position, save_order persists, EngineEvent 'order_cancelled_by_engine' published, function returns Err(reason). Removed duplicate side binding at L641 (side already validated above). cargo check -p moni-engine passes.",
+  "files_changed": ["moni-rs/crates/moni-engine/src/engine.rs"],
+  "worktree": "opt-moni-engine-1782949388",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit fec2de2 on auto/opt-moni-engine-1782949388; pushed to origin; cargo check -p moni-engine clean; diff +36/-3 lines replacing 2 unwrap_or calls with explicit match+cancel paths and removing 1 redundant binding.",
+  "next_suggestion": "派生 fix MM-L002 (engine.rs L919-926 weighted_average_price f64 drift) — 下一个 pending finding，同文件可继续在 opt-moni-engine-1782949388 上堆叠。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "moni-rs/crates/moni-engine/src/engine.rs",
+      "line": 599,
+      "severity": "low",
+      "finding": "unwrap_or(OrderSide::Buy) masks corrupted order.side; risk revalidation runs with wrong side param",
+      "remediation": "match + early cancel with error_message + EngineEvent notification (applied in this case)",
+      "kind": "route-fix"
+    },
+    {
+      "file": "moni-rs/crates/moni-engine/src/engine.rs",
+      "line": 600,
+      "severity": "low",
+      "finding": "unwrap_or(OrderType::Market) masks corrupted order.order_type; same risk as above",
+      "remediation": "match + early cancel with error_message + EventEvent notification (applied in this case)",
+      "kind": "route-fix"
+    },
+    {
+      "file": "moni-rs/crates/moni-engine/src/engine.rs",
+      "line": 641,
+      "severity": "low",
+      "finding": "Duplicate side binding with unwrap_or after risk reval already used side; redundant + same silent-fallback risk",
+      "remediation": "Remove duplicate binding; reuse validated side from above (applied in this case)",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-04-002",
+  "audit_depth": "shallow"
+}

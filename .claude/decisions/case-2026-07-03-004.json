@@ -1,0 +1,31 @@
+{
+  "case_id": "case-2026-07-03-004",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-03T12:00:00Z",
+  "project": "personal-assistant",
+  "work_unit": "audit-2026-07-03-009/W-005 derived fix triage",
+  "situation": "fix-in-progress cycle, pending finding W-005 (Babel Standalone runtime compilation → precompiled JSX). Audit remediation stated 'change to build-time precompile (Vite/esbuild)'. On inspection: all 14 JSX files load via <script type='text/babel' src='...'> with window.XxxPage global mount pattern; no existing bundler. Implementing precompile requires introducing Vite/esbuild toolchain, rewriting all 14 script tags to ESM imports, changing global mount to module exports — far exceeds route-fix 1-3 file constraint.",
+  "action": "Reclassified W-005 from route-fix to structural debt. Added SD-012 entry to .claude/structural-debt.md documenting full scope (14+ JSX files + package.json + toolchain introduction). Marked W-005 as rejected in audit-cycle-state.derived_fixes with reason 'remediation exceeds route-fix scope'. No code changes committed.",
+  "files_changed": [
+    ".claude/structural-debt.md",
+    ".claude/audit-cycle-state.json"
+  ],
+  "worktree": null,
+  "direction": "route-fix-rejected-reclassified-as-structural",
+  "outcome": "succeeded",
+  "outcome_evidence": "structural-debt.md now contains SD-012 row for W-005; audit-cycle-state.json W-005 entry status=rejected with _reject_reason field; pending_count decremented 9→8; no opt-worktree commit created (correctly, since no source code was modified)",
+  "next_suggestion": "Next fix轮 should derive W-006 (InboxPage doUpload bypass api.js wrapper). W-006 remediation is scoped to web/InboxPage.jsx lines 15-22 — genuine 1-file route-fix. After W-006, continue W-007/W-008/W-009/W-010 in order; W-011 is direction-shift (window.PA_BASE freeze) and should open new worktree automatically via opt-worktree.sh judge_direction_kind.",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "web/index.html",
+      "line": "132-188",
+      "severity": "medium",
+      "finding": "W-005 remediation misclassified as route-fix: actual fix requires Vite/esbuild toolchain introduction + 14 JSX file rewrites + global mount pattern change. Exceeds 1-3 file constraint by 5x+.",
+      "remediation": "Reclassified as structural debt SD-012. User must explicitly authorize direction-shift worktree to tackle this.",
+      "kind": "structural"
+    }
+  ],
+  "audit_id": "audit-2026-07-03-009",
+  "audit_depth": "shallow"
+}

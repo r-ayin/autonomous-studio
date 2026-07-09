@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-04-149",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-04T20:55:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "engine-core/autonomous-loop.sh: remove dead model-fallback branch + subshell state loss (audit-2026-07-04-016 H01)",
+  "situation": "audit-2026-07-04-016 finding H01 (priority 1/7): autonomous-loop.sh L99-179 model fallback/probe logic is dead code under current config (PRIMARY=FALLBACK=qwen3.7-max, STICKY_FAIL_THRESHOLD=9999). Additionally, the outer while loop body runs in a subshell (...) for cwd isolation (AS-H-001 fix), so all state variable mutations (STICKY_FALLBACK/GLM_FAIL_STREAK/PROBE_COUNTDOWN) never propagate back to parent — sticky fallback was broken across iterations even if multi-model strategy were re-enabled.",
+  "action": "Delete entire if/else fallback+probe branch (L148-179) and unused state variables (FALLBACK_MODEL/STICKY_FAIL_THRESHOLD/PROBE_EVERY/STICKY_FALLBACK/GLM_FAIL_STREAK/PROBE_COUNTDOWN). Replace with single `run_round \"$PRIMARY_MODEL\" || true` call. Add comment documenting restoration path (move state out of subshell or externalize to .model-state.json) for future multi-model re-enablement.",
+  "files_changed": ["scripts/autonomous-loop.sh"],
+  "worktree": "opt-autonomous-studio-shift-1783167421",
+  "direction": "autonomous-studio:engine-core",
+  "outcome": "succeeded",
+  "outcome_evidence": "bash -n syntax OK; git diff --stat shows -41/+10 net deletion; opt-worktree.sh committed + pushed to origin/auto/opt-autonomous-studio-shift-1783167421; no other files modified.",
+  "next_suggestion": "派生 audit-2026-07-04-016 H02 (watchdog.sh pgrep 误匹配，priority 2) — 同为 route-fix，改 watchdog.sh 的进程检测为 cwd 锚定或 pidfile。",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-04-016",
+  "audit_depth": "shallow"
+}

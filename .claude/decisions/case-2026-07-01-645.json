@@ -1,0 +1,33 @@
+{
+  "case_id": "case-2026-07-01-645",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-01T14:10:00Z",
+  "project": "x-tool",
+  "work_unit": "XT-H-002 decision-observer.py handle_stop 反向读日志 off-by-one + chunk 拼接错误",
+  "situation": "audit-cycle-state status=fix-in-progress, 5 pending derived_fixes。按 priority 取 #1 pending：XT-H-002（High severity）。handle_stop 用固定 4096B chunk 反向读 LOG_FILE，跨 chunk 边界的 JSONL 行被截断 → json.loads 抛异常被 except-continue 吞掉 → active_project fallback 到 'unknown'，自主上下文注入错配项目。lines_found 计数也跨 chunk 重复/漏计。",
+  "action": "重写为正向流式读取 + collections.deque(maxlen=20)。seek 到 max(0, size-2MB)，若从文件中间开始则丢弃首个不完整行；之后逐行 decode 入 deque。彻底消除 chunk 边界问题、off-by-one、双计数；保留 <200ms SLA（典型日志 <5MB，2MB 尾部覆盖最近 20 条 user_input 足够）。",
+  "files_changed": [
+    ".claude/hooks/decision-observer.py"
+  ],
+  "worktree": "opt-hooks-1782914295",
+  "direction": "hooks:decision-observer",
+  "outcome": "succeeded",
+  "outcome_evidence": "worktree opt-hooks-1782914295 commit 68cf537；python3 -c ast.parse OK；5 个边界场景 smoke test 全过（missing file / well-formed tail / all-unknown hints / malformed interleaved line / 8KB single-line record）；main checkout 文件被外部还原但 worktree 内修复完整，merge 时以 worktree 为准。",
+  "next_suggestion": [
+    "继续派生 XT-M-001 (priority 3): save-checkpoint.py 硬编码 ~/.claude/audit/audit.jsonl 不存在时 recent_activity 永远空",
+    "XT-H-001 (case-2026-07-01-644) 仍 pending merge，提醒用户审 diff"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": ".claude/hooks/decision-observer.py",
+      "line": 271,
+      "severity": "high",
+      "finding": "handle_stop 反向分块读 LOG_FILE 在 chunk 边界处截断 JSONL 行，json.loads 失败被静默吞掉，导致 active_project 检测失效、Stop hook 注入上下文错配项目",
+      "remediation": "改用正向流式读取 + deque(maxlen=N)，seek 到 max(0, size-TAIL_MAX) 后逐行完整读入；丢弃首段不完整行保证行完整性",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-01-008",
+  "audit_depth": "shallow"
+}

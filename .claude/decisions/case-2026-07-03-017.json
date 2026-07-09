@@ -1,0 +1,27 @@
+{
+  "case_id": "case-2026-07-03-017",
+  "agent_id": "ralph-wiggum-cycle-78",
+  "timestamp": "2026-07-03T20:15:00Z",
+  "project": "engine-skills-extracted",
+  "work_unit": "AC-F002 backport safe-stage to extracted auto-commit (audit-2026-07-03-010 derived fix)",
+  "situation": "audit-2026-07-03-010 finding AC-F002 (HIGH): extracted auto-commit.py line 313 uses `git add -A` which bypasses EXCLUDED_PREFIXES filter → credential leakage risk. Live version at autonomous-studio/.claude/hooks/auto-commit.py already fixed (lines 394-412 explicit stage list). Extracted copy out-of-sync.",
+  "action": "Backported safe-stage logic from live to extracted: replaced `git add -A` with explicit `git add -- <filtered changes + PROGRESS.md>`. Fail-safe: if git add fails, abort commit rather than fall back to -A. File edited in-place at /home/admin/workspace/engine-skills-extracted/自动提交/scripts/auto-commit.py.",
+  "files_changed": [
+    "/home/admin/workspace/engine-skills-extracted/自动提交/scripts/auto-commit.py"
+  ],
+  "worktree": null,
+  "direction": "auto-commit:ac-f002-safe-stage",
+  "outcome": "failed",
+  "outcome_evidence": "engine-skills-extracted is a packaging artifact directory (no .git), not a git repository. opt-worktree.sh requires PROJECT to be a git repo (ensure_main_wt calls git). Fix applied to working tree but cannot be committed via standard worktree flow. Needs either: (a) init as git repo + integrate into skill distribution pipeline, or (b) apply equivalent sync check to live version's CI to prevent future drift.",
+  "next_suggestion": "Next cycle: pick next pending finding (MBP-F001 HIGH gate bypass). MBP-F001~F005 all target autonomous-commit-gate.py in extracted — same non-git problem. Recommend pivoting to a structural fix: add CI/sync-check that validates extracted skills match live versions, OR convert engine-skills-extracted to a proper git-managed skill registry. Until then,派生 fixes targeting this dir will keep failing.",
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-03-010",
+  "audit_depth": "shallow",
+  "_derived_fix_sync": {
+    "finding_id": "AC-F002",
+    "previous_status": "pending",
+    "new_status": "rejected",
+    "rejection_reason": "target-not-git-repo-cannot-commit-via-worktree"
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "case_id": "case-2026-07-05-009",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-05T19:10:00Z",
+  "project": "wechat-main",
+  "work_unit": "WM-GATE-02 派生 fix：pipeline-gate.sh 在 gate 入口校验 TOPIC 为 slug 字符集，拒绝 glob 元字符注入 find -name",
+  "situation": "audit-2026-07-05-001 (wechat-main deep audit) 派生 16 finding，其中 WM-GATE-02 (scripts/pipeline-gate.sh:46,50,54,58,63) 仍 pending 未派生。TOPIC 直接插值进 resolve_checkpoint 各 case 的 find -name glob（${TOPIC}_competitor-style_*.md / _brief_ / _analysis_ / _*.md / _qa_report*.json / _QA_*.md）。TOPIC 来自 agent/用户输入；pipeline.py 调 gate 前会 _slugify，但 gate 脚本可被其他 agent/人直接调用。TOPIC 含 * ? [ ] 时拓宽匹配——strict 模式下 ${TOPIC}_*.md 变 *_*.md 全匹配，导致跨 topic 误判/checkpoint 串读。audit-cycle-state.status=fix-in-progress，case-008 已确立 opt-worktree.sh L639 sanctioned 的 direct-edit-wt fallback 模式（cp-guard 拦截 standard flow 时直编 opt-wt 版本后 wt 内提交），剩余 6 未派生 finding 可同模式逐个 stacked 派生，无需等人工 merge。",
+  "action": "选 WM-GATE-02 派生（route-fix，1 文件 scripts/pipeline-gate.sh，非公共接口文件→route-fix 复用同 area wt）。在 gate 入口（arg 解析后、mkdir 前）加 GATE-10 校验：非空 TOPIC 命中 [^a-zA-Z0-9_-] 则 echo 错误到 stderr + exit 1。空 TOPIC 仍合法（status/loose 模式用）。先在 main checkout 直编验证（bash -n + 拒 evil*topic/foo[bar + 合法 slug 通过），再 git checkout -- 还原 main；opt-worktree.sh commit standard flow 被 cp-guard 拦（wt 有 9 个未合并 stacked 提交，pipeline-gate.sh 在 wt 与 main HEAD 不同）→ 走 case-008 sanctioned 的 direct-edit-wt fallback：在 opt-wechat-main-1783130541 的 pipeline-gate.sh 副本施加同一 edit，wt 内 git add+commit 73599c0，push origin auto/opt-wechat-main-1783130541（ef2c1ca..73599c0，第 7 个 stacked commit）。DO B：pipeline-gate.sh 是 input-validation gate 脚本，不在 DO B 敏感路径清单（auth/PII/credential/外部调用/deploy/批量删除）内，未补 audit-log 埋点。",
+  "files_changed": ["scripts/pipeline-gate.sh"],
+  "worktree": "opt-wechat-main-1783130541",
+  "direction": "wechat-main:gate-input-validation",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "wt 内 commit 73599c0: 'fix(gate): WM-GATE-02 TOPIC glob 注入校验'，1 file changed, 9 insertions(+)",
+    "push origin 成功: ef2c1ca..73599c0 auto/opt-wechat-main-1783130541 -> auto/opt-wechat-main-1783130541（code review 链接已生成）",
+    "bash -n scripts/pipeline-gate.sh 语法通过",
+    "行为验证（wt 副本逻辑同 main 验证）：status '' 'evil*topic' → '❌ GATE-10: 非法 TOPIC 字符...' exit=1；status '' 'foo[bar' → exit=1；verify 3 'youth-learned-helplessness' 合法 slug 正常进入 verify 逻辑（未被 GATE-10 拦）",
+    "main checkout scripts/pipeline-gate.sh 已 git checkout -- 还原，main 保持 clean（fix 仅存于 opt-wt branch）"
+  ],
+  "next_suggestion": "剩余 5 未派生 pending finding 可继续用同一 direct-edit-wt fallback 模式逐轮 stacked 派生到 opt-wechat-main-1783130541（无需等人工 merge）：WM-PIP-03 (pipeline.py:348-354 cmd_tool 冗余 dangerous 过滤——删或补全+注释)、WM-FC-02 (fact_checker.py:563 _estimate_source_count return len(domains) 不 max(1,...))、WM-FC-03 (fact_checker.py:507 _check_corroboration 无实体时返回 False)、WM-VER-03 (verifier.py:448 merge_retry_report 重命名或累积 attempts)、WM-QQ-02 (qq_push.py:35 默认 .env 迁移，direction-shift——此条触及跨项目默认值，开新 wt 而非复用)。⚠ 仍建议人工 merge opt-wechat-main-1783130541（现 7 commit，将持续 stacked 至 12），sanctioned squash merge 后 cycle-complete 触发下一未深审项目全量审计。下轮优先派生 WM-FC-02（与 WM-FC-03 同文件 fact_checker.py，可合并为单 fix case 减少 wt churn）。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "scripts/pipeline-gate.sh",
+      "line": "46,50,54,58,63",
+      "severity": "medium",
+      "finding": "WM-GATE-02: TOPIC 直接插值进 find -name 的 glob（resolve_checkpoint 各 case）。TOPIC 来自 agent/用户输入；含 glob 元字符 * ? [ ] 时拓宽匹配，strict 模式下 ${TOPIC}_*.md 变 *_*.md 全匹配，导致跨 topic 误判/checkpoint 串读。pipeline.py 调 gate 前 _slugify，但 gate 可被其他 agent 直接调用绕过 slugify。",
+      "remediation": "gate 入口校验非空 TOPIC 仅含 [a-zA-Z0-9_-]，命中 [^a-zA-Z0-9_-] 则 exit 1。空 TOPIC 仍合法（status/loose 模式）。",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-001",
+  "audit_depth": "shallow",
+  "_derived_fix_finding_id": "WM-GATE-02",
+  "_dispatch_method": "direct-edit-wt fallback (opt-worktree.sh L639 sanctioned; cp-guard blocked standard flow due to 9 unmerged stacked commits on opt-wechat-main-1783130541)",
+  "_commit": "73599c0",
+  "_stack_position": "7th stacked commit on opt-wechat-main-1783130541 (ef2c1ca..73599c0)"
+}

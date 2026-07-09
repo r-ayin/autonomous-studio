@@ -1,0 +1,38 @@
+{
+  "case_id": "case-2026-07-07-030",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-07T20:45:00+08:00",
+  "project": "moni-master",
+  "work_unit": "deep-audit frontend/ (Vite+React+TS AI trading dashboard)",
+  "situation": "audit-cycle-state was cycle-complete after audit-2026-07-07-029 (Python backend) fixes all merged. All git repos in workspace previously audited; moni-master had 3 prior passes (local_simulator+factors, Rust crates, Python api.py) but frontend/ never deep-audited. Selected for 4th pass.",
+  "action": "Deep audit of moni-master/frontend/. Read 12 files: vite.config.ts, api.ts, ws.ts, toolDispatcher.ts, chatLoop.ts, AiSettings.tsx, ChatPanel.tsx, aiStore.ts, queryClient.ts, CogAlpha.tsx, DataConfig.tsx, router.tsx. Identified 11 findings (2H/4M/3L/2I). Wrote audit report audit-2026-07-07-030.md. Updated audit-cycle-state.json to fix-in-progress with 9 pending route-fixes + 2 structural debts (SD-016 no frontend auth, SD-017 AI trust boundary redesign). No opt-worktree commit this round (audit-only).",
+  "files_changed": [
+    ".claude/audits/audit-2026-07-07-030.md",
+    ".claude/audit-cycle-state.json"
+  ],
+  "worktree": null,
+  "direction": "audit",
+  "outcome": "succeeded",
+  "outcome_evidence": "audit-2026-07-07-030.md written (11 findings, 2H/4M/3L/2I); audit-cycle-state.json status=fix-in-progress pending_count=9; SD-016/SD-017 added to structural-debt queue; no worktree created (audit-only round per constraints).",
+  "next_suggestion": [
+    "派生 FE-H-001 fix：frontend/src/components/ai/AiSettings.tsx + chatLoop.ts 加 URL scheme/host allowlist（route-fix，复用 opt-frontend-* worktree）",
+    "派生 FE-H-002 fix：frontend/src/stores/aiStore.ts DEFAULT_PERMISSIONS.allowMediumWithoutConfirm 改 false + systemPrompt 加 immutable-rules tag",
+    "派生 FE-M-001 fix：vite.config.ts host 改 127.0.0.1",
+    "下下轮继续派生 M-002/M-003/M-004/L-001/L-002/L-003",
+    "SD-016/SD-017 等待后端 auth 落地后再处理"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {"file": "src/components/ai/chatLoop.ts", "line": 62, "severity": "high", "finding": "SSRF via user-controlled LLM base_url in provider_override persisted to localStorage without scheme/host validation", "remediation": "Add URL scheme allowlist (https only) + hostname blocklist (localhost/private ranges) in AiSettings.handleSave and chatLoop pre-send check", "kind": "route-fix"},
+    {"file": "src/components/ai/chatLoop.ts", "line": 110, "severity": "high", "finding": "Prompt injection bypasses medium-risk tool confirm; DEFAULT_PERMISSIONS.allowMediumWithoutConfirm=true lets AI silently execute 6 side-effect tools", "remediation": "Default allowMediumWithoutConfirm=false; add rate-limit/budget cap; wrap systemPrompt immutable rules in XML tag and concatenate programmatically", "kind": "route-fix"},
+    {"file": "vite.config.ts", "line": 14, "severity": "medium", "finding": "Dev server binds 0.0.0.0 without allowedHosts — LAN-wide access to trading API proxy", "remediation": "Change host to 127.0.0.1 or configure explicit allowedHosts list", "kind": "route-fix"},
+    {"file": "vite.config.ts", "line": 31, "severity": "medium", "finding": "No Content-Security-Policy header/meta configured", "remediation": "Add CSP meta tag in index.html; enforce via nginx/FastAPI in production", "kind": "route-fix"},
+    {"file": "src/stores/aiStore.ts", "line": 149, "severity": "medium", "finding": "localStorage stores API key + permissions in plaintext via zustand persist; no reset mechanism", "remediation": "Remove localApiKey from persist partialize; add permissions staleness reset; add reset-to-defaults button", "kind": "route-fix"},
+    {"file": "src/pages/DataConfig.tsx", "line": 182, "severity": "medium", "finding": "Runtime config JSON editor accepts arbitrary structure with no schema validation/diff/undo", "remediation": "Add JSON Schema whitelist for top-level keys; show diff preview; add undo button", "kind": "route-fix"},
+    {"file": "src/router.tsx", "line": 31, "severity": "low", "finding": "Route splat wildcard silently redirects typos to / without 404 feedback", "remediation": "Replace with NotFoundPage showing path-not-found message + similar route suggestions", "kind": "route-fix"},
+    {"file": "src/lib/ws.ts", "line": 90, "severity": "low", "finding": "WebSocket reconnect has no max retry cap — infinite 30s loop on permanent backend outage", "remediation": "Add MAX_RETRIES (e.g. 50); emit _ws_status_gave_up event; show manual reconnect button", "kind": "route-fix"},
+    {"file": "src/components/ai/chatLoop.ts", "line": 180, "severity": "low", "finding": "Tool result truncation at 6000 chars via string slice may corrupt UTF-16 surrogate pairs or JSON", "remediation": "Use safe truncation ([...str].slice or TextEncoder) with ellipsis suffix", "kind": "route-fix"}
+  ],
+  "audit_id": "audit-2026-07-07-030",
+  "audit_depth": "deep"
+}

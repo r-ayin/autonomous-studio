@@ -1,41 +1,259 @@
 {
-  "_schema": "audit-cycle-state v1.0",
-  "_description": "追踪当前全量审计周期状态。全量审计事件驱动：上次派生的 fix 全部 merge/reject 落定后才触发下一次全量审计。引擎每轮 step 0 读这个文件决定本轮是审计轮还是瞭望轮。",
-  "current_audit_id": "audit-2026-07-02-002",
-  "current_audit_started_at": "2026-07-02T10:00:00Z",
-  "current_audit_project": "dingtalk-auto",
-  "current_audit_module": "full-project",
+  "_schema": "audit-cycle-state v1.1",
+  "_description": "追踪当前全量审计周期状态。全量审计事件驱动：上次派生的 fix 全部 merge/reject 落定后才触发下一次全量审计。2026-07-08 加 researching 状态：每 research_every 个周期触发一次前沿研究调研（见 constraints 指令 E）。引擎每轮 step 0 读这个文件决定本轮是审计轮/研究轮/瞭望轮。",
+  "current_audit_id": "audit-2026-07-07-020",
+  "current_audit_started_at": "2026-07-07T19:55:00Z",
+  "current_audit_project": "personal-assistant",
+  "current_audit_module": "backend-core (auth/api/config/storage/memory/llm/web/ws_manager/ingest/xiaozhi/chat/transcript/verify/proactive/distill/cli/asr)",
   "derived_fixes": [
-    {"fix_case_id": "case-2026-07-02-129", "audit_id": "audit-2026-07-02-002", "finding_id": "H-001", "status": "pending", "priority": 1, "kind": "route-fix", "_note": "Dashboard无认证鉴权 — 需添加token auth中间件"},
-    {"fix_case_id": "case-2026-07-02-130", "audit_id": "audit-2026-07-02-002", "finding_id": "M-001", "status": "pending", "priority": 2, "kind": "route-fix", "_note": "/api/env明文返回secret值 — _read_env只返回masked (worktree opt-dingtalk-auto-1782948136, pending merge)"},
-    {"fix_case_id": "case-2026-07-02-131", "audit_id": "audit-2026-07-02-002", "finding_id": "M-002-part1", "status": "pending", "priority": 3, "kind": "route-fix", "_note": "命令/消息无速率限制与权限校验 — part1 权限分级已提交 (worktree opt-dingtalk-auto-1782948136, pending merge)"},
-    {"fix_case_id": "case-2026-07-02-134", "audit_id": "audit-2026-07-02-002", "finding_id": "M-002-part2", "status": "pending", "priority": 3, "kind": "route-fix", "_note": "per-sender速率限制滑动窗口 (worktree opt-dingtalk-auto-1782948136, commit 7390bd0, pending merge)"},
-    {"fix_case_id": "case-2026-07-02-132", "audit_id": "audit-2026-07-02-002", "finding_id": "M-003", "status": "pending", "priority": 4, "kind": "route-fix", "_note": "load_config env替换不安全 — 先yaml.safe_load再递归替换 (worktree opt-dingtalk-auto-1782948136, commit 6069272, pending merge)"},
-    {"fix_case_id": null, "audit_id": "audit-2026-07-02-002", "finding_id": "L-001", "status": "rejected", "priority": 5, "kind": "route-fix", "_note": "文档模板format_map无转义 — 实测defaultdict(str)已兜底KeyError,format_map不做二次替换;实际severity从LOW降为INFO,不派生代码fix"}
+    {
+      "fix_case_id": "case-2026-07-07-150",
+      "audit_id": "audit-2026-07-07-020",
+      "finding_id": "H-001",
+      "status": "merged",
+      "kind": "route-fix",
+      "description": "CORS allow_origins=['*'] → restrict to actual frontend origins or configurable whitelist; set allow_credentials=False"
+    },
+    {
+      "fix_case_id": "case-2026-07-07-146",
+      "audit_id": "audit-2026-07-07-020",
+      "finding_id": "H-002",
+      "status": "merged",
+      "kind": "route-fix",
+      "description": "POST /settings/llm api_key write requires re-auth or disallow API-based key changes; reduce TTL or encrypt at rest"
+    },
+    {
+      "fix_case_id": "case-2026-07-07-151",
+      "audit_id": "audit-2026-07-07-020",
+      "finding_id": "H-003",
+      "status": "merged",
+      "kind": "route-fix",
+      "description": "POST /settings/llm base_url validation: allowlist of known LLM provider URLs or block RFC1918/loopback/link-local"
+    },
+    {
+      "fix_case_id": "case-2026-07-08-111",
+      "audit_id": "audit-2026-07-07-020",
+      "finding_id": "H-004",
+      "status": "merged",
+      "kind": "direction-shift",
+      "description": "Dev-mode auth bypass: require explicit PA_DEV_MODE=1 env var + startup warning; refuse start without PA_API_TOKEN in production"
+    },
+    {
+      "fix_case_id": "case-2026-07-07-147",
+      "audit_id": "audit-2026-07-07-020",
+      "finding_id": "M-001",
+      "status": "merged",
+      "kind": "route-fix",
+      "description": "Remove /ws/ from _EXEMPT_PREFIXES in auth.py; middleware now checks WS upgrade query token for defense-in-depth"
+    },
+    {
+      "fix_case_id": "case-2026-07-08-112",
+      "audit_id": "audit-2026-07-07-020",
+      "finding_id": "M-002",
+      "status": "merged",
+      "kind": "route-fix",
+      "description": "web.py scraper User-Agent: use proper bot UA or switch to official search APIs"
+    },
+    {
+      "fix_case_id": null,
+      "audit_id": "audit-2026-07-07-020",
+      "finding_id": "M-003",
+      "status": "pending",
+      "kind": "route-fix",
+      "description": "ApiWebSearcher._generic() base_url validation: scheme=https only, hostname not internal/private IP"
+    },
+    {
+      "fix_case_id": null,
+      "audit_id": "audit-2026-07-07-020",
+      "finding_id": "M-004",
+      "status": "pending",
+      "kind": "route-fix",
+      "description": "Add per-IP/per-token rate limiting on /chat /ingest /distill /triggers endpoints"
+    },
+    {
+      "fix_case_id": null,
+      "audit_id": "audit-2026-07-07-020",
+      "finding_id": "M-005",
+      "status": "pending",
+      "kind": "route-fix",
+      "description": "PII disclosure to external LLM: add consent mechanism or PII filter before sending persona+memories"
+    },
+    {
+      "fix_case_id": null,
+      "audit_id": "audit-2026-07-07-020",
+      "finding_id": "M-006",
+      "status": "pending",
+      "kind": "route-fix",
+      "description": "xiaozhi_server.py WS auth: refactor to use auth.verify_ws_token() instead of duplicated logic"
+    },
+    {
+      "fix_case_id": null,
+      "audit_id": "audit-2026-07-07-020",
+      "finding_id": "M-009",
+      "status": "pending",
+      "kind": "route-fix",
+      "description": "ws_manager.broadcast(): acquire lock before iterating active connections or snapshot under lock"
+    },
+    {
+      "fix_case_id": null,
+      "audit_id": "audit-2026-07-07-020",
+      "finding_id": "M-010",
+      "status": "pending",
+      "kind": "route-fix",
+      "description": "llm.py: enforce https:// for non-localhost base_url to prevent cleartext API key transmission"
+    },
+    {
+      "fix_case_id": null,
+      "audit_id": "audit-2026-07-07-020",
+      "finding_id": "M-011",
+      "status": "pending",
+      "kind": "route-fix",
+      "description": "DELETE /chat-log: add soft-delete or confirmation parameter; consider admin-only role for destructive ops"
+    },
+    {
+      "fix_case_id": null,
+      "audit_id": "audit-2026-07-07-020",
+      "finding_id": "L-001",
+      "status": "pending",
+      "kind": "route-fix",
+      "description": "asr.py: fix indentation of scan_once()/run_loop() — move from query_habits() body to IngestionPipeline class"
+    },
+    {
+      "fix_case_id": null,
+      "audit_id": "audit-2026-07-07-020",
+      "finding_id": "L-002",
+      "status": "pending",
+      "kind": "route-fix",
+      "description": "proactive.py CLINotifier: add log rotation (RotatingFileHandler or size check)"
+    },
+    {
+      "fix_case_id": null,
+      "audit_id": "audit-2026-07-07-020",
+      "finding_id": "L-004",
+      "status": "pending",
+      "kind": "route-fix",
+      "description": "cli.py cmd_serve: default --host to 127.0.0.1 instead of 0.0.0.0"
+    },
+    {
+      "fix_case_id": null,
+      "audit_id": "audit-2026-07-07-020",
+      "finding_id": "L-005",
+      "status": "pending",
+      "kind": "route-fix",
+      "description": "distill.py: cap memories sent to LLM (e.g. most recent 100) or batch across multiple calls"
+    },
+    {
+      "fix_case_id": null,
+      "audit_id": "audit-2026-07-07-020",
+      "finding_id": "I-001",
+      "status": "pending",
+      "kind": "route-fix",
+      "description": "config.py: add PA_CONFIG_PATH env var support for custom config file path"
+    },
+    {
+      "fix_case_id": null,
+      "audit_id": "audit-2026-07-07-020",
+      "finding_id": "I-003",
+      "status": "pending",
+      "kind": "route-fix",
+      "description": "xiaozhi_server.py: log temp WAV unlink failures instead of silent pass"
+    },
+    {
+      "fix_case_id": null,
+      "audit_id": "research-2026-07-07-001",
+      "finding_id": "RF-001",
+      "status": "pending",
+      "kind": "research-informed",
+      "description": "SenseVoice 替换 faster-whisper：单次前向获得 ASR+情绪+语种+音频事件多维信号，补 asr.py 缺失的情绪维度",
+      "source": {"type": "oss", "name": "SenseVoice", "url": "https://github.com/FunAudioLLM/SenseVoice", "reference_idea": "single-forward multi-task ASR+SER+LID"}
+    },
+    {
+      "fix_case_id": null,
+      "audit_id": "research-2026-07-07-001",
+      "finding_id": "RF-002",
+      "status": "pending",
+      "kind": "research-informed",
+      "description": "引入分层记忆架构（Letta/MemGPT 风格 working/long_term/episodic 三层 + agent 自编辑）替代 memory.py 全量塞 prompt",
+      "source": {"type": "oss", "name": "Letta", "url": "https://github.com/letta-ai/letta", "reference_idea": "tiered self-editing memory with agent-controlled paging"}
+    },
+    {
+      "fix_case_id": null,
+      "audit_id": "research-2026-07-07-001",
+      "finding_id": "RF-003",
+      "status": "pending",
+      "kind": "research-informed",
+      "description": "接入真实向量检索（sqlite-vss/chromadb）替代 HashingEmbedder，实现语义记忆召回",
+      "source": {"type": "oss", "name": "Mem0", "url": "https://github.com/mem0ai/mem0", "reference_idea": "automatic fact extraction + vector retrieval for conversational memory"}
+    }
   ],
-  "pending_count": 5,
+  "pending_count": 16,
   "status": "fix-in-progress",
-  "_last_scout_at": "2026-07-02T01:20:00Z",
-  "_last_scout_case_id": "case-2026-07-02-150",
-  "_last_scout_summary": "scout snapshot #121 (14th consecutive blocked round): cross-project worktree backlog inventory. 14 projects have non-empty opt-worktree dirs. dingtalk-auto still BLOCKED on user merge (opt-dingtalk-auto-1782948136 + opt-dashboard-auth-1782947814). fa_agent (scout #1) also blocked on opt-fa_agent-1782949878 merge. Identified 3 stale/orphan worktrees for cleanup: opt-tests-1782904286 (rejected-archive but dir exists), opt-engine-shift-1782901796 and opt-runtime-listeners-1782902553 (not in active tracking). No code change; observation-only.",
-  "_status_note": "audit-2026-07-02-002 (dingtalk-auto full-project) deep audit completed. 6 findings (1H/3M/1L/1I). All 5 code-fix derived cases dispatched and pending merge. L-001 rejected. 1 structural (I-001 audit-log) in structural-debt.md. BLOCKED since case-2026-07-02-137 (14+ consecutive scouts): waiting for user to merge opt-dingtalk-auto-1782948136 + opt-dashboard-auth-1782947814 before cycle can complete. Case-150 added cross-project worktree inventory — identified orphan worktrees needing cleanup.",
-  "_status_enum": "idle | auditing | fix-in-progress | cycle-complete",
-  "last_audit_completed_at": "2026-07-02T10:30:00Z",
-  "last_audit_id": "audit-2026-07-02-002",
+  "_last_scout_at": "2026-07-07T19:55:00Z",
+  "_last_scout_case_id": null,
+  "_last_scout_summary": "Deep audit on personal-assistant backend-core. 22 findings (4H/11M/5L/3I). 19 route-fix/direction-shift pending dispatch; 3 structural debts queued.",
+  "_status_note": "2026-07-08 case-112: M-002 web.py bot UA fix merged (88ec20e on opt-web-1782977902)。原 14 audit pending - 1 merged = 13；+ 3 research-informed = 16 pending。status 仍 fix-in-progress。",
+  "_status_enum": "idle | auditing | fix-in-progress | cycle-complete | researching",
+  "last_audit_completed_at": "2026-07-07T20:05:00Z",
+  "last_audit_id": "audit-2026-07-07-020",
   "next_audit_trigger_reason": "pending-fixes-cleared",
   "_next_audit_trigger_reason_enum": "pending-fixes-cleared | manual-trigger | first-run",
   "history": [
+    {
+      "audit_id": "audit-2026-07-07-020",
+      "project": "personal-assistant",
+      "module": "backend-core (auth/api/config/storage/memory/llm/web/ws_manager/ingest/xiaozhi/chat/transcript/verify/proactive/distill/cli/asr)",
+      "completed_at": "2026-07-07T20:05:00Z",
+      "findings_total": 22,
+      "findings_by_severity": {
+        "high": 4,
+        "medium": 11,
+        "low": 5,
+        "info": 3
+      },
+      "derived_route_fixes": 17,
+      "derived_direction_shifts": 2,
+      "derived_structural_debts": 3,
+      "fixes_merged_at": null,
+      "fixes_merged_commits": [],
+      "_note": "Deep audit on personal-assistant (first time). H-001 CORS wildcard, H-002 api_key injection, H-003 SSRF base_url, H-004 dev-mode auth bypass. M-007 hash ID collisions + L-003 SCHEMA DDL overhead + I-002 positive verify.py design → structural-debt.md. 19 route-fix/direction-shift pending dispatch."
+    },
+    {
+      "audit_id": "audit-2026-07-06-019",
+      "project": "FinanceTracker",
+      "module": "全栈（core/security 加密+生物识别 / core/data Room DB / feature/import-export CSV / app 入口 / 构建配置）",
+      "completed_at": "2026-07-06T03:40:00Z",
+      "findings_total": 15,
+      "findings_by_severity": {
+        "high": 5,
+        "medium": 4,
+        "low": 4,
+        "info": 2
+      },
+      "derived_route_fixes": 8,
+      "derived_structural_debts": 2,
+      "fixes_merged_at": "drift-repair-archive",
+      "fixes_merged_commits": [],
+      "_note": "Drift repair case-2026-07-07-146: FinanceTracker project absent from workspace. All 8 derived_fixes archived rejected. Cycle-complete 2026-07-07."
+    },
     {
       "audit_id": "audit-2026-07-01-001",
       "project": "autonomous-studio-aone",
       "module": "hooks",
       "completed_at": "2026-07-01T11:10:00Z",
       "findings_total": 19,
-      "findings_by_severity": {"high": 2, "medium": 7, "low": 6, "info": 4},
+      "findings_by_severity": {
+        "high": 2,
+        "medium": 7,
+        "low": 6,
+        "info": 4
+      },
       "derived_route_fixes": 2,
       "derived_structural_debts": 0,
       "fixes_merged_at": "2026-07-01T12:30:00Z",
-      "fixes_merged_commits": ["900a3cc", "b1d072d"]
+      "fixes_merged_commits": [
+        "900a3cc",
+        "b1d072d"
+      ]
     },
     {
       "audit_id": "audit-2026-07-01-002",
@@ -43,11 +261,27 @@
       "module": "scripts",
       "completed_at": "2026-07-01T03:55:00Z",
       "findings_total": 9,
-      "findings_by_severity": {"high": 2, "medium": 4, "low": 3, "info": 0},
+      "findings_by_severity": {
+        "high": 2,
+        "medium": 4,
+        "low": 3,
+        "info": 0
+      },
       "derived_route_fixes": 9,
       "derived_structural_debts": 0,
       "fixes_merged_at": "2026-07-01T18:20:00Z",
-      "fixes_merged_commits": ["92792fe", "25a104a", "cea1871", "d818533", "40cbdd2", "a78f30b", "7e47c1e", "6a5b984", "7b6b66a", "79f2e6c"]
+      "fixes_merged_commits": [
+        "92792fe",
+        "25a104a",
+        "cea1871",
+        "d818533",
+        "40cbdd2",
+        "a78f30b",
+        "7e47c1e",
+        "6a5b66a",
+        "7b6b66a",
+        "79f2e6c"
+      ]
     },
     {
       "audit_id": "audit-2026-07-01-003",
@@ -55,12 +289,22 @@
       "module": "runtime-listeners",
       "completed_at": "2026-07-01T19:00:00Z",
       "findings_total": 7,
-      "findings_by_severity": {"high": 1, "medium": 3, "low": 2, "info": 1},
+      "findings_by_severity": {
+        "high": 1,
+        "medium": 3,
+        "low": 2,
+        "info": 1
+      },
       "derived_route_fixes": 4,
       "derived_direction_shifts": 1,
       "derived_structural_debts": 0,
       "fixes_merged_at": "2026-07-01T19:05:00Z",
-      "fixes_merged_commits": ["16bcfbf", "390d2f7", "3449e8d", "0056380"]
+      "fixes_merged_commits": [
+        "16bcfbf",
+        "390d2f7",
+        "3449e8d",
+        "0056380"
+      ]
     },
     {
       "audit_id": "audit-2026-07-01-004",
@@ -68,13 +312,18 @@
       "module": "tests",
       "completed_at": "2026-07-01T20:30:00Z",
       "findings_total": 7,
-      "findings_by_severity": {"high": 1, "medium": 3, "low": 2, "info": 1},
+      "findings_by_severity": {
+        "high": 1,
+        "medium": 3,
+        "low": 2,
+        "info": 1
+      },
       "derived_route_fixes": 5,
       "derived_direction_shifts": 0,
       "derived_structural_debts": 2,
       "fixes_merged_at": "rejected-archive",
       "fixes_merged_commits": [],
-      "_note": "case-2026-07-02-149 drift repair: derived fixes (case-579~583) archived unmerged 2026-07-02; worktree opt-tests-1782904286 still exists but content stale. Marked terminal to prevent future audit cycles from misinterpreting as incomplete. Original structural debts remain in structural-debt.md."
+      "_note": "case-2026-07-02-149 drift repair: derived fixes archived unmerged 2026-07-02; worktree opt-tests-1782904286 stale."
     },
     {
       "audit_id": "audit-2026-07-02-001",
@@ -82,12 +331,19 @@
       "module": ".claude/hooks/",
       "completed_at": "2026-07-02T02:48:00Z",
       "findings_total": 5,
-      "findings_by_severity": {"high": 1, "medium": 2, "low": 1, "info": 1},
+      "findings_by_severity": {
+        "high": 1,
+        "medium": 2,
+        "low": 1,
+        "info": 1
+      },
       "derived_route_fixes": 4,
       "derived_direction_shifts": 0,
       "derived_structural_debts": 1,
       "fixes_merged_at": "2026-07-02T09:00:00Z",
-      "fixes_merged_commits": ["7ebfc60"]
+      "fixes_merged_commits": [
+        "7ebfc60"
+      ]
     },
     {
       "audit_id": "audit-2026-07-02-002",
@@ -95,12 +351,338 @@
       "module": "full-project",
       "completed_at": "2026-07-02T10:30:00Z",
       "findings_total": 6,
-      "findings_by_severity": {"high": 1, "medium": 3, "low": 1, "info": 1},
+      "findings_by_severity": {
+        "high": 1,
+        "medium": 3,
+        "low": 1,
+        "info": 1
+      },
+      "derived_route_fixes": 5,
+      "derived_direction_shifts": 0,
+      "derived_structural_debts": 1,
+      "fixes_merged_at": "deadlock-archive",
+      "fixes_merged_commits": [],
+      "_note": "BLOCKED 35+ consecutive scout rounds. Deadlock protection triggered."
+    },
+    {
+      "audit_id": "audit-2026-07-02-003",
+      "project": "agentfw",
+      "module": "core-security+daemon-proxy+store",
+      "completed_at": "2026-07-02T15:30:00Z",
+      "findings_total": 6,
+      "findings_by_severity": {
+        "high": 1,
+        "medium": 3,
+        "low": 1,
+        "info": 1
+      },
+      "derived_route_fixes": 5,
+      "derived_direction_shifts": 0,
+      "derived_structural_debts": 1,
+      "fixes_merged_at": "rejected-archive",
+      "fixes_merged_commits": [],
+      "_note": "case-2026-07-02-179 drift repair: worktree cleaned up without merge."
+    },
+    {
+      "audit_id": "audit-2026-07-02-004",
+      "project": "fusion-server",
+      "module": "full-project",
+      "completed_at": "2026-07-02T16:30:00Z",
+      "findings_total": 7,
+      "findings_by_severity": {
+        "high": 2,
+        "medium": 3,
+        "low": 1,
+        "info": 1
+      },
+      "derived_route_fixes": 6,
+      "derived_direction_shifts": 0,
+      "derived_structural_debts": 1,
+      "fixes_merged_at": "rejected-archive",
+      "fixes_merged_commits": [],
+      "_note": "case-2026-07-02-188 drift repair: worktrees missing, 4 fixes rejected-archive, cycle-complete."
+    },
+    {
+      "audit_id": "audit-2026-07-02-005",
+      "project": "fa_agent",
+      "module": "server-full",
+      "completed_at": "2026-07-02T18:45:00Z",
+      "findings_total": 9,
+      "findings_by_severity": {
+        "high": 3,
+        "medium": 4,
+        "low": 1,
+        "info": 1
+      },
+      "derived_route_fixes": 7,
+      "derived_direction_shifts": 1,
+      "derived_structural_debts": 1,
+      "fixes_merged_at": "rejected-archive",
+      "fixes_merged_commits": [],
+      "_note": "Drift repair implied: worktrees gone without merge (parallel to agentfw/fusion-server pattern)."
+    },
+    {
+      "audit_id": "audit-2026-07-02-006",
+      "project": "pc_agent",
+      "module": "server+prompt-optimizer",
+      "completed_at": "2026-07-02T23:58:00Z",
+      "findings_total": 6,
+      "findings_by_severity": {
+        "high": 1,
+        "medium": 3,
+        "low": 1,
+        "info": 1
+      },
       "derived_route_fixes": 5,
       "derived_direction_shifts": 0,
       "derived_structural_debts": 1,
       "fixes_merged_at": null,
-      "fixes_merged_commits": []
+      "fixes_merged_commits": [],
+      "_note": "Deep audit on pc_agent. H-001 vm sandbox escape in SAGE diagnostic code exec. Derived fix case-2026-07-02-200 dispatched → opt-pc_agent-1782972172."
+    },
+    {
+      "audit_id": "audit-2026-07-02-007",
+      "project": "agent-dashboard",
+      "module": "backend-full",
+      "completed_at": "2026-07-02T07:54:45Z",
+      "findings_total": 9,
+      "findings_by_severity": {
+        "high": 3,
+        "medium": 4,
+        "low": 1,
+        "info": 1
+      },
+      "derived_route_fixes": 7,
+      "derived_direction_shifts": 0,
+      "derived_structural_debts": 2,
+      "fixes_merged_at": "rejected-archive",
+      "fixes_merged_commits": [],
+      "_note": "case-2026-07-03-006 drift repair: worktree cleaned up without merge. All 7 derived fixes archived unmerged."
+    },
+    {
+      "audit_id": "audit-2026-07-02-008",
+      "project": "huiyis",
+      "module": "scripts-full",
+      "completed_at": "2026-07-02T12:00:00Z",
+      "findings_total": 9,
+      "findings_by_severity": {
+        "high": 3,
+        "medium": 4,
+        "low": 1,
+        "info": 1
+      },
+      "derived_route_fixes": 8,
+      "derived_direction_shifts": 0,
+      "derived_structural_debts": 1,
+      "fixes_merged_at": "rejected-archive",
+      "fixes_merged_commits": [],
+      "_note": "case-2026-07-03-020 drift repair: worktrees opt-huiyis-1782979617 + opt-scheduler-security-1782980957 missing from disk/git/origin; all 7 unique derived fixes archived unmerged; cycle-complete."
+    },
+    {
+      "audit_id": "audit-2026-07-02-009",
+      "project": "stagehand-analysis",
+      "module": "packages/core/lib/v3 (agent tools, launch, handlers, mcp)",
+      "completed_at": "2026-07-02T09:51:00Z",
+      "findings_total": 7,
+      "findings_by_severity": {
+        "high": 2,
+        "medium": 3,
+        "low": 1,
+        "info": 1
+      },
+      "derived_route_fixes": 6,
+      "derived_direction_shifts": 0,
+      "derived_structural_debts": 1,
+      "fixes_merged_at": "rejected-archive",
+      "fixes_merged_commits": [],
+      "_note": "Drift repair case-2026-07-03-028: M-001/M-003/L-001 archived rejected-archive after 2+ scout rounds with no human merge (push 403 external fork). H-001/H-002/M-002 merged earlier. Cycle-complete."
+    },
+    {
+      "audit_id": "audit-2026-07-02-010",
+      "project": "browser-use",
+      "module": "MCP server + SecurityWatchdog + DownloadsWatchdog + Agent action chain",
+      "completed_at": "2026-07-02T16:45:00Z",
+      "findings_total": 28,
+      "findings_by_severity": {
+        "high": 9,
+        "medium": 10,
+        "low": 6,
+        "info": 3
+      },
+      "derived_route_fixes": 18,
+      "derived_direction_shifts": 0,
+      "derived_structural_debts": 6,
+      "fixes_merged_at": null,
+      "fixes_merged_commits": [],
+      "_note": "Deep audit on browser-use. Highest finding count so far — reflects large attack surface of LLM-driven browser automation. 18 route-fixes pending dispatch; 6 structural debts queued."
+    },
+    {
+      "audit_id": "audit-2026-07-03-011",
+      "project": "shizi",
+      "module": "background scripts + manifest + popup uploader + shared storage",
+      "completed_at": "2026-07-03T01:25:00Z",
+      "findings_total": 9,
+      "findings_by_severity": {
+        "high": 1,
+        "medium": 2,
+        "low": 3,
+        "info": 3
+      },
+      "derived_route_fixes": 6,
+      "derived_direction_shifts": 0,
+      "derived_structural_debts": 0,
+      "fixes_merged_at": "2026-07-02T17:53:09Z",
+      "fixes_merged_commits": [
+        "7163dd3",
+        "4ccf238",
+        "bfb8a38",
+        "9bcada9",
+        "7d235da"
+      ],
+      "_note": "Deep audit on shizi Chrome extension. 5/6 route-fixes merged. Cycle-complete 2026-07-02."
+    },
+    {
+      "audit_id": "audit-2026-07-03-012",
+      "project": "open-design",
+      "module": "apps/daemon/src (server entry, auth, origin, MCP, routes, plugins)",
+      "completed_at": "2026-07-03T02:25:00Z",
+      "findings_total": 27,
+      "findings_by_severity": {
+        "high": 6,
+        "medium": 13,
+        "low": 8,
+        "info": 0
+      },
+      "derived_route_fixes": 15,
+      "derived_direction_shifts": 1,
+      "derived_structural_debts": 11,
+      "fixes_merged_at": "drift-repair-archive",
+      "fixes_merged_commits": [],
+      "_note": "Drift repair case-2026-07-03-073: 13 pending fixes archived rejected-archive. Cycle-complete 2026-07-02."
+    },
+    {
+      "audit_id": "audit-2026-07-03-013",
+      "project": "kaoqin",
+      "module": "full-project",
+      "completed_at": "2026-07-03T05:28:00Z",
+      "findings_total": 10,
+      "findings_by_severity": {
+        "high": 2,
+        "medium": 4,
+        "low": 2,
+        "info": 2
+      },
+      "derived_route_fixes": 7,
+      "derived_direction_shifts": 1,
+      "derived_structural_debts": 2,
+      "fixes_merged_at": "drift-repair-archive",
+      "fixes_merged_commits": [],
+      "_note": "Drift repair case-2026-07-03-085: all 8 derived_fixes archived rejected-archive. Cycle-complete 2026-07-03."
+    },
+    {
+      "audit_id": "audit-2026-07-03-014",
+      "project": "1BfrYn9G",
+      "module": "server+storage+auth",
+      "completed_at": "2026-07-02T21:35:00Z",
+      "findings_total": 9,
+      "findings_by_severity": {
+        "high": 3,
+        "medium": 4,
+        "low": 1,
+        "info": 1
+      },
+      "derived_route_fixes": 7,
+      "derived_direction_shifts": 0,
+      "derived_structural_debts": 1,
+      "fixes_merged_at": null,
+      "fixes_merged_commits": [],
+      "_note": "Deep audit on 1BfrYn9G. H-001 SSRF proxy, H-002 weak JWT secret, H-003 unauthenticated sync-all."
+    },
+    {
+      "audit_id": "audit-2026-07-03-015",
+      "project": "quanzhan",
+      "module": "full-project (server+src+webpack+public)",
+      "completed_at": "2026-07-03T06:36:00Z",
+      "findings_total": 7,
+      "findings_by_severity": {
+        "high": 0,
+        "medium": 2,
+        "low": 2,
+        "info": 3
+      },
+      "derived_route_fixes": 0,
+      "derived_direction_shifts": 0,
+      "derived_structural_debts": 0,
+      "fixes_merged_at": "skipped-low-roi",
+      "fixes_merged_commits": [],
+      "_note": "Pure static learning-roadmap site. No fix dispatched. Cycle stays cycle-complete."
+    },
+    {
+      "audit_id": "audit-2026-07-03-016",
+      "project": "x-tool",
+      "module": "monorepo-full (moni+remote_control+pachong+juhe+wanxia+pdd+ota)",
+      "completed_at": "2026-07-03T10:15:00Z",
+      "findings_total": 72,
+      "findings_by_severity": {
+        "high": 16,
+        "medium": 25,
+        "low": 24,
+        "info": 7
+      },
+      "derived_route_fixes": 13,
+      "derived_direction_shifts": 4,
+      "derived_structural_debts": 6,
+      "fixes_merged_at": "drift-repair-archive",
+      "fixes_merged_commits": [],
+      "_note": "Drift repair case-2026-07-03-105: 6 remaining pending fixes archived. 7/13 merged earlier. Cycle-complete 2026-07-03."
+    },
+    {
+      "audit_id": "audit-2026-07-03-017",
+      "project": "autonomous-studio",
+      "module": "hooks+scripts control plane",
+      "completed_at": "2026-07-03T11:45:00Z",
+      "findings_total": 52,
+      "findings_by_severity": {
+        "high": 4,
+        "medium": 14,
+        "low": 18,
+        "info": 16
+      },
+      "derived_route_fixes": 6,
+      "derived_direction_shifts": 2,
+      "derived_structural_debts": 0,
+      "fixes_merged_at": null,
+      "fixes_merged_commits": [],
+      "_note": "Deep audit on autonomous-studio hooks+scripts. 8 priority derived_fixes pending dispatch."
+    },
+    {
+      "audit_id": "audit-2026-07-06-018",
+      "project": "oneday-auto-fix",
+      "module": "full-project (auto-fix loop + keepalive proxy + cookie conversion + probes)",
+      "completed_at": "2026-07-06T03:10:00Z",
+      "findings_total": 17,
+      "findings_by_severity": {
+        "high": 4,
+        "medium": 6,
+        "low": 4,
+        "info": 3
+      },
+      "derived_route_fixes": 8,
+      "derived_direction_shifts": 1,
+      "derived_structural_debts": 0,
+      "fixes_merged_at": null,
+      "fixes_merged_commits": [],
+      "_note": "Deep audit on oneday-auto-fix (first time). 9 derived fixes pending dispatch."
     }
-  ]
+  ],
+  "research_cadence": {
+    "cycles_since_last_research": 0,
+    "research_every": 2,
+    "_note": "每完成 research_every 个审计周期触发 1 次研究轮；cycle-complete 时检查"
+  },
+  "current_research_topic": "personal-assistant 本地优先语音数字分身的 ASR+说话人区分+LLM 调度+记忆闭环——对比开源同类项目（Mallimo/Leon/home-assistant voice pipeline/Coqui 等）的端到端实现方案，找出本项目可借鉴的架构优化",
+  "last_research_id": "research-2026-07-07-001",
+  "last_research_completed_at": "2026-07-07T23:55:00Z",
+  "last_research_topic": "personal-assistant 本地优先语音数字分身的 ASR+说话人区分+LLM 调度+记忆闭环——对比开源同类项目",
+  "_derived_fix_kind_enum": "route-fix | direction-shift | structural | research-informed"
 }

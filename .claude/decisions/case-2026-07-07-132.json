@@ -1,0 +1,32 @@
+{
+  "case_id": "case-2026-07-07-132",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-07T13:10:00+08:00",
+  "project": "shizi",
+  "work_unit": "full deep audit — background/sidepanel/popup/shared/build modules",
+  "situation": "audit-cycle-state was cycle-complete (sunset-prediction fixes all resolved). Triggered new full deep audit. Selected shizi (never audited, PROGRESS stale 8.1 days, #2 scout recommendation). Shizi is a Chrome browser extension for OCR text counting on e-commerce images.",
+  "action": "Ran Workflow with 4 parallel sonnet sub-agents auditing background (6 files), sidepanel (3 files), popup (6 files), shared+build (5+config files). Workflow crashed during adversarial verify phase (TypeError on undefined v.original.severity) after 64 agents completed. Extracted raw findings from module audit agent transcripts via jsonl parsing. Synthesized 61-findings report via sonnet sub-agent.",
+  "files_changed": [],
+  "worktree": null,
+  "direction": "deep-audit",
+  "outcome": "succeeded",
+  "outcome_evidence": "Wrote .claude/audits/audit-2026-07-07-047.md (543 lines). Updated audit-cycle-state.json: status=fix-in-progress, 57 route-fixes pending, 2 structural debts queued, 2 direction-shifts deferred. Findings span 8H/25M/26L/2I across all 4 modules.",
+  "next_suggestion": [
+    "派生 SZ-BG-H-001 fix: message handler input validation (highest security impact)",
+    "派生 SZ-PP-H-001 fix: image upload file size limit (memory bomb prevention)",
+    "派生 SZ-SH-H-001 fix: reduce host_permissions from <all_urls> to specific origins"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {"file": "src/background/index.ts", "line": "42,53-58,64,73", "severity": "high", "finding": "Message handler trusts unvalidated fields from chrome.runtime messages — settings injection vector", "remediation": "Validate all incoming message fields against whitelist schema before processing", "kind": "route-fix"},
+    {"file": "src/background/ocr-internal.ts", "line": "multiple", "severity": "high", "finding": "blobToBase64 uses O(n²) string concatenation for large binary data", "remediation": "Replace with Blob → ArrayBuffer → Uint8Array → btoa chain or FileReader.readAsDataURL", "kind": "route-fix"},
+    {"file": "src/background/orchestrator.ts", "line": "tile-ownership", "severity": "high", "finding": "Tile ownership quadrant check drops valid results near tile boundaries", "remediation": "Use overlap-based assignment instead of strict quadrant check", "kind": "route-fix"},
+    {"file": "src/sidepanel/SidePanelApp.tsx", "line": "containerRef", "severity": "high", "finding": "containerRef assigned to two different DOM elements causing erratic layout", "remediation": "Use separate refs for each element or conditional ref assignment", "kind": "route-fix"},
+    {"file": "src/sidepanel/SidePanelApp.tsx", "line": "drag-handler", "severity": "high", "finding": "Drag always moves region[0] regardless of which region was clicked", "remediation": "Track dragged region index in state, use it in mousemove handler", "kind": "route-fix"},
+    {"file": "src/popup/ImageUploader.tsx", "line": "upload", "severity": "high", "finding": "No file size limit on image upload — memory bomb via large file base64 encoding", "remediation": "Add MAX_FILE_SIZE check (e.g., 10MB) before FileReader.readAsDataURL", "kind": "route-fix"},
+    {"file": "manifest.json", "line": "host_permissions", "severity": "high", "finding": "host_permissions grants <all_urls> but extension never uses tab/scripting APIs", "remediation": "Remove host_permissions entirely or restrict to specific API domains used", "kind": "route-fix"},
+    {"file": "tests/filter-region.test.ts", "line": "all", "severity": "high", "finding": "filterByRegion test duplicates source code — tests verify copy, not actual implementation", "remediation": "Import actual filterByRegion from source; restructure test to exercise real code path", "kind": "structural"}
+  ],
+  "audit_id": "audit-2026-07-07-047",
+  "audit_depth": "deep"
+}

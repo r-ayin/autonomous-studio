@@ -1,0 +1,5 @@
+# paper-explainers — 用户口输入（去重后，2 条 / 原始 3 条）
+# 由 distill-user-style.py Step1 生成，供 BUSINESS-INTENT 提炼 + 引擎阶段①CONTEXTUALIZE 读
+
+[2026-06-24] tl是什么意思？
+[2026-06-24] 详细具体的说说那两篇论文具体应用到了哪个代码哪个结构哪个功能里？按照优化流程顺序来说

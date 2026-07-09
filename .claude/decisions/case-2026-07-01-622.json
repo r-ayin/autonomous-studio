@@ -1,0 +1,42 @@
+{
+  "case_id": "case-2026-07-01-622",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-01T13:20:00Z",
+  "project": "personal-assistant",
+  "work_unit": "deep-audit core-python (api/storage/memory/config/llm/ingest/chat/proactive/distill/verify/asr/reminders/calendar/speaker/transcript + web/api.js)",
+  "situation": "audit-cycle-state.status=cycle-complete 触发新一轮全量审计。已审过 autonomous-studio-aone/hooks+scripts、sunset-prediction、wechat-main、shizi；本轮选未审过的 personal-assistant 核心 Python 栈（跳过 android/data/.pipeline/tests，遵守 constraints 不碰 .env）。",
+  "action": "深度读 14 个源文件，追跨模块数据流（ingest→storage→memory→distill→chat；外部 HTTP llm.py；敏感路径 api.py/inbox_upload/settings_llm），产出独立审计报告 audit-2026-07-01-006.md，登记 8 pending route-fix + 1 direction-shift (CORS) + 1 structural debt (config singleton)。",
+  "files_changed": [
+    ".claude/audits/audit-2026-07-01-006.md",
+    ".claude/audit-cycle-state.json",
+    ".claude/structural-debt.md"
+  ],
+  "worktree": null,
+  "direction": "audit-only (no code change this round)",
+  "outcome": "succeeded",
+  "outcome_evidence": "audit-2026-07-01-006.md written (14 findings: 3H/5M/4L/2I); audit-cycle-state.json status=fix-in-progress with 8 derived_fixes pending; structural-debt.md created with SD-001. No source code modified.",
+  "next_suggestion": [
+    "派生 PA-H-002 fix：personal-assistant api.py inbox_upload 路径穿越+大小限制（route-fix，opt-worktree 复用）",
+    "派生 PA-H-003 fix：personal-assistant asr.py scan_once/run_loop 缩进修复（route-fix）",
+    "后续按 priority 3-8 逐个派生；PA-H-001 CORS 白名单化需 direction-shift 新 worktree（触 public interface）"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {"file": "personal_assistant/api.py", "line": 15, "severity": "high", "finding": "CORS allow_origins=['*'] 配合无鉴权写端点，任意网页可 CSRF /inbox/upload + /settings/llm", "remediation": "改 origin 白名单 + 写端点加 CSRF/Bearer gate", "kind": "direction-shift"},
+    {"file": "personal_assistant/api.py", "line": 185, "severity": "high", "finding": "/inbox/upload filename query param 未剥路径分量，../../x.txt 可写任意位置；body 无大小上限", "remediation": "Path.name + is_relative_to 校验 + 50MB 限长", "kind": "route-fix"},
+    {"file": "personal_assistant/asr.py", "line": 208, "severity": "high", "finding": "scan_once/run_loop 误嵌套在 query_habits() 内成 dead code，IngestionPipeline 缺这两个方法", "remediation": "回退一级缩进恢复为类方法", "kind": "route-fix"},
+    {"file": "personal_assistant/api.py", "line": 75, "severity": "medium", "finding": "/chat /chat-log /memories /profile 无鉴权暴露 PII，配合 CORS * 可被跨域读取", "remediation": "加最小 Bearer token gate", "kind": "route-fix"},
+    {"file": "personal_assistant/llm.py", "line": 297, "severity": "medium", "finding": "_post_json timeout 不一致 (60 vs 90)；HTTPError 体原文泄漏到异常", "remediation": "统一 timeout 走 config；错误体截断脱敏", "kind": "route-fix"},
+    {"file": "personal_assistant/storage.py", "line": 86, "severity": "medium", "finding": "add_memory embedding 未校验 dtype/shape，切换 embedder 维度会 vstack 失败或算错相似度", "remediation": "assert float32 + dim 匹配", "kind": "route-fix"},
+    {"file": "personal_assistant/ingest.py", "line": 20, "severity": "medium", "finding": "DuckDB analytics 在 ingest+asr 两处各自建表/视图，schema 漂移风险", "remediation": "抽 storage.analytics_init 集中初始化", "kind": "route-fix"},
+    {"file": "personal_assistant/config.py", "line": 73, "severity": "medium", "finding": "CONFIG 模块级单例 + _RUNTIME 全局 dict 无线程锁，并发 race；测试难 reset", "remediation": "重构 Config class + RLock + reload()", "kind": "structural"},
+    {"file": "personal_assistant/storage.py", "line": 87, "severity": "low", "finding": "ID 生成用 abs(hash)%10**12，PYTHONHASHSEED 随机化破坏幂等性，40bit 空间碰撞风险", "remediation": "改 uuid4 或 sha256[:16]", "kind": "route-fix"},
+    {"file": "personal_assistant/llm.py", "line": 352, "severity": "low", "finding": "mask_key 显示前4后4字符，provider 固定前缀+后缀足以缩小爆破空间", "remediation": "仅显示 prefix+'***'+suffix 各 2 字符或布尔态", "kind": "route-fix"},
+    {"file": "personal_assistant/verify.py", "line": 106, "severity": "low", "finding": "bigram 溯源只要任一命中即通过，短 content 易误判", "remediation": "要求 ≥min(3,len) bigram 命中或命中率 ≥30%", "kind": "route-fix"},
+    {"file": "web/api.js", "line": 11, "severity": "low", "finding": "fetch catch 一律 return null，前端无法区分 5xx/网络断/超时", "remediation": "console.warn + LIVE.errors 暴露", "kind": "route-fix"},
+    {"file": "personal_assistant/proactive.py", "line": 44, "severity": "info", "finding": "interventions.log append-only 无 rotation，长期运行无限增长", "remediation": "RotatingFileHandler 或按日切分", "kind": "route-fix"},
+    {"file": "personal_assistant/distill.py", "line": 54, "severity": "info", "finding": "min_segments_for_distill=5 冷启动期 persona 长期不生成", "remediation": "文档提示可调阈值", "kind": "route-fix"}
+  ],
+  "audit_id": "audit-2026-07-01-006",
+  "audit_depth": "deep"
+}

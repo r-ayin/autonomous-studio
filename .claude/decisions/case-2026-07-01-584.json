@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-07-01-584",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-01T10:15:00Z",
+  "project": "wechat-main",
+  "work_unit": "pipeline._run_gate subprocess.run timeout + TimeoutExpired catch (WM-M-001)",
+  "situation": "audit-2026-07-01-004 finding WM-M-001 (priority=15, kind=route-fix): pipeline._run_gate 调 subprocess.run 无 timeout，pipeline-gate.sh 卡死会挂住整条管线。派生 fix。",
+  "action": "在 _run_gate 内 try/except subprocess.run 加 timeout=120s；超时返回 exit_code=124（与 GNU timeout 一致）+ 描述性消息含 action/phase/slug + partial stdout/stderr。直编 opt-wt 版本后 wt 内 commit（case-104 engine 自指文件路径）。",
+  "files_changed": ["scripts/pipeline.py"],
+  "worktree": "auto/opt-scripts-1782899218",
+  "direction": "scripts:pipeline-gate-timeout",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 6e96af1 pushed to origin/auto/opt-scripts-1782899218; git merge-tree --write-tree origin/main auto/opt-scripts-1782899218 returned tree hash 11be8e3 exit 0 (clean); diff shows +14/-2 lines adding try/except TimeoutExpired with timeout=120.",
+  "next_suggestion": [
+    "下轮派生 WM-M-003 (priority=16): steps.py outline_check 提取为独立脚本 scripts/check_outline.py，argv 传参替代 python -c。同 area route-fix 复用 opt-scripts-1782899218。"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-01-004",
+  "audit_depth": "shallow"
+}

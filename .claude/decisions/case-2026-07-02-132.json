@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-02-132",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-02T09:46:09Z",
+  "project": "personal-assistant",
+  "work_unit": "H-001 .env credential exposure verification (audit-derived)",
+  "situation": "Audit audit-2026-07-02-008 finding H-001 flagged .env with plaintext DEEPSEEK_API_KEY and ANTHROPIC_AUTH_TOKEN as tracked in git repo (P0 credential exposure). Dispatched route-fix to remove from index. On pre-fix verification, discovered .env is NOT in git ls-files output and IS matched by .gitignore:6 — finding was based on stale/historical state, not current HEAD.",
+  "action": "Verified personal-assistant repo state: (1) git ls-files | grep -iE env returned empty; (2) git check-ignore -v .env returned '.gitignore:6:.env .env' exit=0 confirming ignore rule active; (3) git status --short .env clean. Concluded no code change needed. Rejected spurious worktree opt-credential-hygiene-1782985488 (contained only empty .opt-lock marker). Updated audit-cycle-state.json: H-001 status pending→rejected with evidence note.",
+  "files_changed": [],
+  "worktree": "opt-credential-hygiene-1782985488 (created then rejected/deleted — no merge)",
+  "direction": "credential-hygiene (route-fix, new area — but reverted due to false positive)",
+  "outcome": "superseded",
+  "outcome_evidence": "git ls-files (personal-assistant) grep env = empty; git check-ignore -v .env = .gitignore:6:.env exit=0; worktree opt-credential-hygiene-1782985488 deleted via opt-worktree.sh reject; audit-cycle-state.json H-001.status=rejected at 2026-07-02T09:46Z",
+  "next_suggestion": "Next pending fix by priority: H-002 (wildcard CORS allow_origins=[*] + zero auth on all endpoints, P0 security, route-fix in web.py). After that H-003 (POST /settings/llm unauthenticated, direction-shift adding auth layer). User-side key rotation for credentials exposed in git history still recommended out-of-band even though current HEAD is clean.",
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": ".env",
+      "line": null,
+      "severity": "info",
+      "finding": "Original H-001 finding (plaintext API keys in tracked .env) is false positive on current HEAD — file already untracked and ignored. Audit snapshot may have been taken against older commit or misread cross-repo state. Residual risk: credentials were historically committed and remain in git object store; key rotation required out-of-band.",
+      "remediation": "No code change. User should rotate DEEPSEEK_API_KEY and ANTHROPIC_AUTH_TOKEN via provider dashboards since they exist in git history even if removed from HEAD. Consider git-filter-repo if full purge needed.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-02-008",
+  "audit_depth": "deep"
+}

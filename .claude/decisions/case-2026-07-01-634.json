@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-01-634",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-01T22:35:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "派生 fix AS-M-003: scout-scan.py git diff E2BIG 风险修复",
+  "situation": "audit-2026-07-01-007 finding AS-M-003 [MEDIUM]：count_pending_worktrees L417-434 用 `git diff --exit-code main HEAD -- *touched` 一次性展开所有改动文件为命令行参数，当 touched>100 时超 ARG_MAX (E2BIG)；同时 exit-code 不区分内容相同与空白差异。priority 4，前序 AS-M-001/AS-H-001/AS-M-002 已派生或合并。",
+  "action": "改 L423-427 单次 subprocess.run 为 BATCH=50 分批循环：每批最多 50 个文件（≈4KB，远低于 Linux ARG_MAX 128KB），任一批 returncode!=0 即 all_eq=False 跳出；全 0 → superseded=True。保留原注释上下文，不改变 case_only 判定逻辑。验证 python3 scripts/scout-scan.py --workspace /home/admin/workspace 无 Traceback。opt-worktree.sh 自动判 direction-shift（scout-scan.py 在 .claude/public-interfaces.txt？实际触发新 worktree opt-scout-scan-shift-1782911951）。",
+  "files_changed": ["scripts/scout-scan.py"],
+  "worktree": "opt-scout-scan-shift-1782911951",
+  "direction": "scout-scan:batch-diff-e2big",
+  "outcome": "succeeded",
+  "outcome_evidence": "bash scripts/opt-worktree.sh ... commit 输出 '✓ 提交到 opt-scout-scan-shift-1782911951' + '[push] * [new branch] HEAD -> auto/opt-scout-scan-shift-1782911951'；修改后跑 scout-scan.py 无 ERROR/Traceback，正常产出推荐工作单位列表。",
+  "next_suggestion": "继续派生 AS-L-001 (priority 5, studio-progress-check.sh heredoc 变量注入) → optimization worktree 复用；然后 AS-L-002 (priority 6)。两者完成后 derived_fixes 全 merged/rejected → audit-cycle-state.status=cycle-complete → 下轮触发新一轮全量审计（候选项目：autonomous-engine / skills / sunset-prediction 等未深审模块）。",
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-01-007",
+  "audit_depth": "shallow"
+}

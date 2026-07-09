@@ -1,0 +1,23 @@
+{
+  "case_id": "case-2026-07-01-664",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-01T15:20:26Z",
+  "project": "workspace-wide",
+  "work_unit": "scout-snapshot-fix-in-progress-pending-merge",
+  "situation": "audit-cycle-state.status=fix-in-progress。audit-2026-07-01-010 (moni-master) 派生 6 条 derived_fixes：5 条 route-fix 已 succeeded 落在 4 个 worktree（opt-docs-1782917996 / optimization / opt-moni-data-1782919076 / opt-config-1782918452）待人工 merge；1 条 structural MH-002（factors/ 路径硬编码跨 9+ 文件）pending 不可拆最小单位。无新 pending route-fix/direction-shift 可派。scout-scan #1/#2 推荐 skills/autonomous-engine 但均为'等合并 PROGRESS.md'已在 worktree，不能重做。",
+  "action": "纯瞭望轮：跑 scout-scan.py 拿健康快照，确认无可派 fix，写 case 提醒用户 merge 现有 worktree + 决策 MH-002 structural debt。不改源码、不开新 worktree。",
+  "files_changed": [],
+  "worktree": null,
+  "direction": "none",
+  "outcome": "succeeded",
+  "outcome_evidence": "scout-scan.py 成功返回 10 项目健康快照；audit-cycle-state.json 显示 derived_fixes 5/6 succeeded + 1 structural pending；无新 worktree 创建；case JSON 落盘 .claude/decisions/case-2026-07-01-664.json",
+  "next_suggestion": [
+    "用户人工 merge 4 个 moni-master worktree（opt-docs-1782917996/optimization/opt-moni-data-1782919076/opt-config-1782918452）→ 5 条 route-fix 状态变 merged",
+    "用户决策 MH-002 structural debt：要么授权建 market_lake_common.py 公共模块（direction-shift），要么标 wontfix → audit-cycle-state.status 改 cycle-complete 触发下一轮全量审计",
+    "merge 完成后下轮自动进入新一轮全量审计（挑未审过的项目，目前 history 已覆盖 autonomous-studio-aone/sunset-prediction/wechat-main/shizi/personal-assistant/autonomous-studio/x-tool/autonomous-engine/moni-master；剩余未深审：1BfrYW9R/skills）"
+  ],
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": null,
+  "audit_depth": "shallow"
+}

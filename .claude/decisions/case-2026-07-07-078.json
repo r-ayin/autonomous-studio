@@ -1,0 +1,30 @@
+{
+  "case_id": "case-2026-07-07-078",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-07T18:15:00+08:00",
+  "project": "moni-master",
+  "work_unit": "cogalpha:prompt-injection-sanitize",
+  "situation": "COGALPHA-03 (audit-2026-07-07-028): Agent::build_prompt interpolates user/external-controlled context fields (universe, factor_stats, seed_expressions) directly into LLM prompt with no sanitization. Attacker controlling context JSON can inject system-level instructions to manipulate factor generation.",
+  "action": "Add sanitize_context_field() helper that strips ASCII control characters and caps length per field. Restructure build_prompt output with explicit [SYSTEM INSTRUCTIONS — TRUSTED] / [USER DATA — UNTRUSTED CONTEXT] boundary markers so the model can distinguish trusted instructions from untrusted data. Cap universe at 200 chars, factor_stats at 2000, each seed_expression at 200 (max 10 seeds). Added 2 new tests validating control-char stripping and length capping.",
+  "files_changed": [
+    "moni-rs/crates/moni-cogalpha/src/agents.rs"
+  ],
+  "worktree": "opt-cogalpha-1783357989",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "cargo test -p moni-cogalpha -- agents::tests: 6/6 passed (including 2 new tests build_prompt_strips_control_chars_and_caps_length + build_prompt_includes_seed_expressions with boundary marker assertions). Committed e5339c0 on auto/opt-cogalpha-1783357989, pushed to origin.",
+  "next_suggestion": "Dispatch next pending derived_fix: COGALPHA-04 (silent fallback to MockLlmClient masks production misconfiguration, llm.rs:163, medium direction-shift)",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "moni-rs/crates/moni-cogalpha/src/agents.rs",
+      "line": 41,
+      "severity": "medium",
+      "finding": "Prompt injection via user-controlled context fields in Agent::build_prompt — unsanitized interpolation of universe/factor_stats/seed_expressions allows injected system-level instructions",
+      "remediation": "sanitize_context_field() helper strips control chars + caps length; structured prompt with [SYSTEM INSTRUCTIONS — TRUSTED] / [USER DATA — UNTRUSTED CONTEXT] boundary markers",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-028",
+  "audit_depth": "shallow"
+}

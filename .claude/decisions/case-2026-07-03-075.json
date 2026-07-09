@@ -1,0 +1,43 @@
+{
+  "case_id": "case-2026-07-03-075",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-03T11:30:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "scripts/studio-precheck.sh — bare except + shell-interpolated path in python -c (SCRIPTS-L02)",
+  "situation": "audit-2026-07-03-012 finding SCRIPTS-L02 (priority 4, pending): studio-precheck.sh L24 and L48 use bare `except:` clauses around json.load, which swallow IOError, KeyboardInterrupt, SystemExit, and MemoryError alongside the intended ValueError/KeyError. Same file also uses `$CAL_FILE`/`$STATUS_FILE` bash-interpolated into python -c source strings (same anti-pattern as SCRIPTS-L01 fixed in case-2026-07-03-074). Precheck runs every autonomous heartbeat; a stuck keyboard-interrupt or IO error would silently report proceed/skip with wrong semantics.",
+  "action": "Narrow both except clauses to `(ValueError, KeyError, TypeError)` (covers malformed JSON, missing keys, and type mismatches from .get() chains). Simultaneously switch to sys.argv[1] form for path passing, mirroring verify-pattern.sh convention post-L01 fix. Two edits, single file.",
+  "files_changed": [
+    "scripts/studio-precheck.sh"
+  ],
+  "worktree": "opt-scripts-shift-1783078267",
+  "direction": "scripts:precheck-narrow-except",
+  "outcome": "succeeded",
+  "outcome_evidence": "Worktree opt-scripts-shift-1783078267 created (direction-shift triggered by public-interface touch), commit pushed to origin/auto/opt-scripts-shift-1783078267. Worktree copy of scripts/studio-precheck.sh verified: L22 uses open(sys.argv[1]) with except (ValueError, KeyError, TypeError); L46 same. Smoke test against /nonexistent path exits cleanly at gate-1 (skip:no-prompt-file) with no python syntax errors. Main copy reverted by linter as expected; fix lives only in worktree awaiting merge.",
+  "next_suggestion": [
+    "派生 fix #3: SCRIPTS-L03 (autonomous-loop.sh PROMPT single-quote fragility)",
+    "派生 fix #4: SCRIPTS-L04 (distill-patterns.py load_json_robust bare Exception catch)",
+    "人工 review opt-scripts-shift-1783078267（含 SCRIPTS-L02），merge 后 derived_fixes SCRIPTS-L02 status→merged",
+    "待 merge 积压：opt-scripts-shift-1783076032 (M01+L01)、opt-scripts-shift-1783076394 (M02)、opt-scripts-shift-1783078267 (L02)"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "scripts/studio-precheck.sh",
+      "line": 24,
+      "severity": "low",
+      "finding": "Bare except: clause swallows IOError/KeyboardInterrupt/SystemExit/MemoryError alongside intended ValueError/KeyError. Silent miscalibration on disk/permission failures.",
+      "remediation": "Narrow to except (ValueError, KeyError, TypeError). Pass path via sys.argv[1] instead of $CAL_FILE interpolation.",
+      "kind": "route-fix"
+    },
+    {
+      "file": "scripts/studio-precheck.sh",
+      "line": 48,
+      "severity": "low",
+      "finding": "Same bare except: pattern on autoAdvance check. IOError on status.json read masked as 'true', potentially advancing when user intended pause.",
+      "remediation": "Narrow to except (ValueError, KeyError, TypeError). Pass path via sys.argv[1].",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-03-012",
+  "audit_depth": "shallow"
+}

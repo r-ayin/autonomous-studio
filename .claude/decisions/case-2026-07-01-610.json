@@ -1,0 +1,49 @@
+{
+  "case_id": "case-2026-07-01-610",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-01T11:40:19Z",
+  "project": "shizi",
+  "work_unit": "SH-H-001 vision-adapter API error body 脱敏（audit-005 派生 fix #1/9）",
+  "situation": "audit-005 shizi 全量深审发现 SH-H-001：vision-adapter.ts callAnthropicApi/callOpenAiApi 两处裸 throw 把整个 response.text() 塞进 Error message，未走 parseApiError；parseApiError 自身虽已截断到 200 chars 但未剥敏感字段（token/api-key/request-id）。错误冒泡到 SidePanel UI / service worker console.log 时可能泄漏 IdeaLab 内部 token 或上游 request-id。",
+  "action": "新增 sanitizeErrorBody() 正则剥离 Bearer/token/api-key/request-id/authorization/password/secret 等模式 → 在 parseApiError 入口先脱敏再截断；callAnthropicApi (line 127) 与 callOpenAiApi (line 176) 的裸 throw 改走 parseApiError(status, body) 统一出口。单文件改动，route-fix（不触 public-interfaces.txt）。",
+  "files_changed": [
+    "/home/admin/workspace/shizi/src/background/vision-adapter.ts"
+  ],
+  "worktree": "auto/opt-vision-adapter-error-sanitize-1782906005",
+  "direction": "vision-adapter-error-sanitize",
+  "outcome": "succeeded",
+  "outcome_evidence": "npx tsc --noEmit 无 vision-adapter 相关错误；opt-worktree.sh commit 成功 push 到 origin/auto/opt-vision-adapter-error-sanitize-1782906005；CodeReview URL https://code.alibaba-inc.com/qunbu/shizi/codereview/new?from=main&to=auto/opt-vision-adapter-error-sanitize-1782906005",
+  "next_suggestion": [
+    "下轮派生 SH-H-002：orchestrator.ts vl_text 三路并行 .catch(() => []) 吞错 → 收集 errors 透传 debugInfo.error",
+    "人工 review opt-vision-adapter-error-sanitize-1782906005 diff，merge/reject 后回写本 case status + audit-cycle-state.derived_fixes[SH-H-001].status"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "src/background/vision-adapter.ts",
+      "line": 127,
+      "severity": "high",
+      "finding": "callAnthropicApi 裸 throw 把 response.text() 全文塞入 Error message，绕过 parseApiError 脱敏",
+      "remediation": "throw new Error(parseApiError(response.status, errText)) — 已修",
+      "kind": "route-fix"
+    },
+    {
+      "file": "src/background/vision-adapter.ts",
+      "line": 176,
+      "severity": "high",
+      "finding": "callOpenAiApi 同上裸 throw，泄漏路径相同",
+      "remediation": "throw new Error(parseApiError(response.status, errText)) — 已修",
+      "kind": "route-fix"
+    },
+    {
+      "file": "src/background/vision-adapter.ts",
+      "line": 618,
+      "severity": "medium",
+      "finding": "parseApiError 仅 slice(0,200) 截断，未剥 Bearer/token/api-key/request-id 等敏感模式",
+      "remediation": "前置 sanitizeErrorBody() 正则替换 — 已修",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-01-005",
+  "audit_depth": "shallow"
+}

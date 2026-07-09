@@ -1,0 +1,23 @@
+{
+  "case_id": "case-2026-07-03-030",
+  "agent_id": "ralph-wiggum-cycle-93",
+  "timestamp": "2026-07-03T22:20:00Z",
+  "project": "workspace-scout",
+  "work_unit": "瞭望快照 + audit-2026-07-03-011 MV-006 merge 提醒",
+  "situation": "audit-cycle-state.status=fix-in-progress, pending_count=1 (MV-006 → case-2026-07-03-029, worktree opt-wechat-1783029724 commit d6cab22)。远端分支 origin/auto/opt-wechat-1783029724 存在、diff 干净（仅改 topic-pool/hot-scanner.py L778-L806 consume 回退分支），但本地 worktree 已被清理、未进 main。需用户手动 merge 才能关闭 cycle-011 触发下一轮全量审计。scout #1 autonomous-engine 缺 planning/，#2 skills 有 5 TODO marker 待 triage 检查。",
+  "action": "不派新 fix（约束：pending fix 等 merge 期间走瞭望路径）。记录快照 + 在下轮建议里推用户 merge MV-006。autonomous-engine planning/ 补建作为下轮可选工作单位（非审计周期依赖，可独立做）。",
+  "files_changed": [],
+  "worktree": null,
+  "direction": null,
+  "outcome": "succeeded",
+  "outcome_evidence": "scout-scan 文本报告生成 @ 2026-07-02T22:18:57Z；10 项目扫描完成；git branch -r 确认 origin/auto/opt-wechat-1783029724 存在；git diff main..origin/auto/opt-wechat-1783029724 -- topic-pool/hot-scanner.py 输出 29 行 diff 仅含 MV-006 修复；git log main | grep d6cab22 无匹配 → 确认未 merge。",
+  "next_suggestion": [
+    "【优先】merge opt-wechat-1783029724 (MV-006 hot-scanner consume 回退路径) → derived_fixes 全 cleared → audit-cycle-state.status=cycle-complete → 下轮自动触发新一轮全量审计（挑未审项目如 shizi/sunset-prediction/1BfrYW9R/x-tool）",
+    "autonomous-engine 补 planning/ 目录（scout #1，score=1.0，纯文档补建，1-2 文件小单位）",
+    "skills 检查 opt-skills-1782926185 worktree log 确认 TODO marker 是否已 triage，避免重复劳动（scout #2）"
+  ],
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": null,
+  "audit_depth": "shallow"
+}

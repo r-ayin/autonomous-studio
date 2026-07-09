@@ -14,6 +14,24 @@ PY="$(command -v python3 || command -v python || echo python)"
 # 详见 phases/phase-dev.md ④ 并发构建模式。
 set -euo pipefail
 
+# validate_task_id: 仅允许 [A-Za-z0-9_-]，防止路径遍历 / shell 注入 / git 分支名非法
+validate_task_id() {
+  local id="$1"
+  if [[ -z "$id" ]]; then
+    echo "❌ TASK_ID 为空，跳过" >&2
+    return 1
+  fi
+  if [[ ${#id} -gt 64 ]]; then
+    echo "❌ TASK_ID 过长 (${#id}>64)，跳过: $id" >&2
+    return 1
+  fi
+  if [[ ! "$id" =~ ^[A-Za-z0-9_-]+$ ]]; then
+    echo "❌ TASK_ID 含非法字符（仅允许 [A-Za-z0-9_-]），跳过: $id" >&2
+    return 1
+  fi
+  return 0
+}
+
 PROJECT_DIR="${1:-.}"
 WAVE="${2:-1}"
 SPAWN="${3:-}"
@@ -51,9 +69,13 @@ mkdir -p "$WORKTREE_BASE"
 echo "=== Wave $WAVE: $(echo "$TASKS_JSON" | "$PY" -c 'import json,sys; print(len(json.load(sys.stdin)))') 个 task, 并发上限 $MAX_CONCURRENCY ==="
 
 # 为每个 task 建 worktree + 分支 + 写 prompt
+# AS-PERSIST-M03: NUL-delimited read to prevent word-split on task IDs with spaces/special chars; validate ID format.
 PIDS=()
 SPAWN_COUNT=0
-for TASK_ID in $(echo "$TASKS_JSON" | "$PY" -c 'import json,sys; [print(t) for t in json.load(sys.stdin)]'); do
+while IFS= read -r -d '' TASK_ID; do
+  if ! validate_task_id "$TASK_ID"; then
+    continue
+  fi
   BRANCH="parallel/${TASK_ID}"
   WT_DIR="${WORKTREE_BASE}/${TASK_ID}"
 
@@ -112,7 +134,7 @@ PROMPT
       echo "  ⚠️ claude CLI 不可用，无法 --spawn。请控制器用 Agent 工具按本清单并发 spawn。"
     fi
   fi
-done
+done < <(echo "$TASKS_JSON" | "$PY" -c 'import json,sys; ids=json.load(sys.stdin); sys.stdout.buffer.write(b"\0".join(t["id"].encode() if isinstance(t,dict) else t.encode() for t in ids)+b"\0" if ids else b"")')
 
 echo ""
 echo "=== Wave $WAVE 分发完成 ==="

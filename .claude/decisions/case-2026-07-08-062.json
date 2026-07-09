@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-08-062",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-07T19:22:00+08:00",
+  "project": "shizi",
+  "work_unit": "SZ-SH-L-003: remove unused mode parameter from vite.config.ts",
+  "situation": "audit-2026-07-07-047 derived fix SZ-SH-L-003 (low): vite.config.ts defineConfig callback destructures { mode } but never references it. Misleading API surface — suggests env-aware config where none exists.",
+  "action": "Replace defineConfig(({ mode }) => { return {...}; }) with defineConfig({...}) static form. Single-file route-fix on existing opt-shared worktree.",
+  "files_changed": ["vite.config.ts"],
+  "worktree": "opt-shared-1783413612",
+  "direction": "shared:vite-config-cleanup",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit f1125be pushed to origin/auto/opt-shared-1783413612; defineConfig no longer receives unused mode parameter",
+  "next_suggestion": "Continue shizi audit fix dispatch. Next pending: SZ-SH-L-004 (symbolCount hardcoded 0), SZ-SH-L-005 (ONNX externalization regex), or reject SZ-PP-L-006/SZ-BG-I-001/SZ-PP-I-001 as non-issues.",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "vite.config.ts",
+      "line": 6,
+      "severity": "low",
+      "finding": "defineConfig callback destructures { mode } parameter but never uses it — misleading API surface suggesting environment-aware configuration where none exists",
+      "remediation": "Replace callback form with static defineConfig({...}) object",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-047",
+  "audit_depth": "shallow"
+}

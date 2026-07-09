@@ -1,0 +1,33 @@
+{
+  "case_id": "case-2026-07-05-115",
+  "agent_id": "ralph-wiggum-loop",
+  "timestamp": "2026-07-05T18:10:56+08:00",
+  "project": "x-tool",
+  "work_unit": "聚合ai客服开发/ApiServer CSRF hardening (OMNICS-API-01)",
+  "situation": "audit-2026-07-05-013 finding OMNICS-API-01 (HIGH): ApiServer.ts CORS origin:true + host 0.0.0.0 + onRequest Token 校验注释掉 → 任意网站经浏览器 fetch http://127.0.0.1:12345 可 POST /shops/:id/send 发任意客服话术(钓鱼/诈骗) + 投毒/删知识库 + 读聊天历史. 派生 fix #1 of 11 pending.",
+  "action": "最小修复 ApiServer.ts 单文件: (1) CORS origin:true→false (禁跨域, Electron renderer 走 file:///IPC 不走此 HTTP API); (2) onRequest hook 取消注释并强制 Bearer token 校验(包括 localhost), 移除 127.0.0.1/::1 豁免; (3) listen host '0.0.0.0'→'127.0.0.1' (仅回环). opt-worktree.sh 判 direction_kind=route-fix (ApiServer.ts 不在 public-interfaces.txt), 新 area 'omnics' 开新 worktree opt-omnics-1783246236.",
+  "files_changed": [
+    "x-tool/聚合ai客服开发/src/main/core/server/ApiServer.ts"
+  ],
+  "worktree": "opt-omnics-1783246236",
+  "direction": "omnics:api-csrf",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 357a7ed on auto/opt-omnics-1783246236 (base=85bd9e1=master HEAD, FF-clean); git show --stat confirms 1 file / 38+/41- lines; x-tool external-fork push 403 precedent → stack preserved on disk+origin awaiting human merge to master.",
+  "next_suggestion": "下一轮派生 OMNICS-SIDECAR-01 (HIGH, qianfan_driver.py FastAPI 全端点无鉴权, priority #2); 然后 OMNICS-LLM-01 (MED prompt injection), OMNICS-LLM-02 (MED deceptive systemPrompt). 全 11 pending 派完等 3 轮 wait timeout 或人工 merge.",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "x-tool/聚合ai客服开发/src/main/core/server/ApiServer.ts",
+      "line": "23-43,49",
+      "severity": "high",
+      "finding": "OMNICS-API-01: CORS origin:true + host 0.0.0.0 + Token 校验注释掉 → 浏览器 CSRF 到 localhost:12345 可发任意客服话术/投毒KB/读历史",
+      "remediation": "CORS origin:false + 强制 Bearer token (含 localhost) + bind 127.0.0.1",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-05-013",
+  "audit_depth": "shallow",
+  "_parent_finding_id": "OMNICS-API-01",
+  "_dispatch_worktree_head": "357a7ed",
+  "_dispatch_branch": "auto/opt-omnics-1783246236"
+}

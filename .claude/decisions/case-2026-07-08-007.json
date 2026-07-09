@@ -1,0 +1,32 @@
+{
+  "case_id": "case-2026-07-08-007",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-08T00:45:00+08:00",
+  "project": "personal-assistant",
+  "work_unit": "deep-audit: proactive+xiaozhi+asr+speaker+transcript (post-audit-021 new modules)",
+  "situation": "audit-cycle-state=cycle-complete after audit-041 wechat-main fixes all merged. All workspace projects audited ≥1×. personal-assistant had 3 post-audit-021 feature commits (proactive push loop, xiaozhi protocol, audio relay) never deep-audited. Triggered full audit on these modules.",
+  "action": "Deep-read 5 source files (proactive.py, xiaozhi_server.py, asr.py, speaker.py, transcript.py). Found 8 findings (2H/4M/2L). Wrote audit-2026-07-08-042.md. Registered 8 derived_fixes in audit-cycle-state.json as pending. No opt-worktree commit this round (audit-only).",
+  "files_changed": [".claude/audits/audit-2026-07-08-042.md", ".claude/audit-cycle-state.json"],
+  "worktree": null,
+  "direction": "audit",
+  "outcome": "succeeded",
+  "outcome_evidence": "audit-2026-07-08-042.md written with 8 findings; H-001 confirmed via runtime dir(IngestionPipeline) check showing scan_once/run_loop absent; H-002 confirmed via code path analysis of _on_audio→_pcm_buf→_asr write chain; M-001 confirmed via frame_size=59999999 calculation with sample_rate=999999999.",
+  "next_suggestion": [
+    "Dispatch PA-AUD-H-001 (asr.py indentation fix) — route-fix, 1 file, highest priority",
+    "Dispatch PA-AUD-H-002 (xiaozhi wav size guard) — route-fix, 1 file",
+    "Then M-001..M-004 in severity order"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {"file": "personal_assistant/asr.py", "line": 186, "severity": "high", "finding": "scan_once/run_loop orphaned outside IngestionPipeline class — ingestion main loop unreachable", "remediation": "Re-indent lines 186-202 inside class body", "kind": "route-fix"},
+    {"file": "personal_assistant/xiaozhi_server.py", "line": 171, "severity": "high", "finding": "_asr() no size guard on wav_bytes — malicious device disk-fill DoS", "remediation": "Add MAX_UTTERANCE_BYTES cap in _on_audio and _asr", "kind": "route-fix"},
+    {"file": "personal_assistant/xiaozhi_server.py", "line": 88, "severity": "medium", "finding": "audio_params unsanitized — sample_rate=999999999 → 120MB opus alloc DoS", "remediation": "Clamp sample_rate/channels/frame_duration to valid ranges", "kind": "route-fix"},
+    {"file": "personal_assistant/xiaozhi_server.py", "line": 141, "severity": "medium", "finding": "Discard threshold uses module SAMPLE_RATE not session-negotiated rate", "remediation": "Use self.sample_rate instead of SAMPLE_RATE", "kind": "route-fix"},
+    {"file": "personal_assistant/proactive.py", "line": 49, "severity": "medium", "finding": "CLINotifier log injection via LLM-generated message/evidence", "remediation": "Sanitize newlines/special chars in log interpolation", "kind": "route-fix"},
+    {"file": "personal_assistant/asr.py", "line": 52, "severity": "medium", "finding": "StubTranscriber unbounded read_text — OOM on large inbox .txt", "remediation": "Add MAX_TXT_BYTES size guard before read", "kind": "route-fix"},
+    {"file": "personal_assistant/xiaozhi_server.py", "line": 234, "severity": "low", "finding": "JSON parse error silently continues — diagnostic blind spot", "remediation": "Add log.debug before continue", "kind": "route-fix"},
+    {"file": "personal_assistant/transcript.py", "line": 34, "severity": "low", "finding": "parse() unbounded read_text — defense-in-depth gap", "remediation": "Add size guard before read", "kind": "route-fix"}
+  ],
+  "audit_id": "audit-2026-07-08-042",
+  "audit_depth": "deep"
+}

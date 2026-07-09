@@ -1,0 +1,26 @@
+{
+  "case_id": "case-2026-07-05-071",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-05T23:55:00+08:00",
+  "project": "x-tool",
+  "work_unit": "ota_workflow: OTA-L-001 hermes_runtime.py DEFAULT_HERMES_ENV_PATH 硬编码 WSL Ubuntu root 路径 — 非 Ubuntu/non-root WSL/Linux 静默返 None → Hermes API key not found. Fix: env HERMES_ENV_PATH 优先 + ~/.hermes/.env cross-platform 兜底 + Windows 追加 WSL 路径作末位候选; 同时删 load_hermes_api_key 的 os.name=='nt' gate 使 Linux 也能读 .env fallback.",
+  "situation": "audit-2026-07-05-008 derived fix #11 (priority 9, severity low, kind=route-fix, finding_id OTA-L-001). hermes_runtime.py 第 13 行 DEFAULT_HERMES_ENV_PATH = Path(r'\\\\wsl$\\Ubuntu\\root\\.hermes\\.env') 写死 WSL Ubuntu root 路径. 第 34-40 load_hermes_api_key 仅在 os.name=='nt' 时调 _read_env_file_var(DEFAULT_HERMES_ENV_PATH, 'API_SERVER_KEY')，Linux 直接 return None. 后果: (a) Linux 同机部署 (hermes gateway 与 ota_workflow 同 WSL/同 Linux 机) 完全无法用 .env fallback 取 API_SERVER_KEY, 只能依赖 HERMES_API_KEY env, 否则 API 鉴权失败; (b) Windows 但 WSL 发行版非 Ubuntu 或 non-root 用户 (如 Debian/rootless Ubuntu) 该 UNC 路径不存在, _read_env_file_var 返 None, 静默吞掉 missing key. _load_api_server_host/_load_api_server_port 第 73/77 行虽全平台调, 但 WSL 路径在 Linux 不存在 → 同样静默返 None 走默认 127.0.0.1:8642 (host/port 影响小, key 影响大). 与 OTA-L-004 (storage 非原子写) 同 area route-fix 但不同文件, 独立 commit 可同 stack.",
+  "action": "改 hermes_runtime.py: (1) 把 DEFAULT_HERMES_ENV_PATH 重命名为 DEFAULT_HERMES_ENV_PATH_WSL (仅作 Windows 末位候选, 保留语义不破坏 WSL Ubuntu root 场景), 加 4 行注释说明跨平台解析动机; (2) 新增 _hermes_env_paths() -> list[Path]: 优先 os.getenv('HERMES_ENV_PATH'), 兜底 Path.home()/'.hermes'/'.env' (cross-platform, Linux/macOS/Windows 均有效), Windows (os.name=='nt') 追加 WSL Ubuntu root UNC 路径作末位, dedupe 保序; (3) _read_env_file_var 签名从 (path, key) 改为 (key), 内部遍历 _hermes_env_paths() 全候选, 任一存在且含 key= 即返; (4) load_hermes_api_key 删 os.name=='nt' gate, 改 return _read_env_file_var('API_SERVER_KEY') 全平台生效 (Linux 也能读 ~/.hermes/.env); (5) _load_api_server_host/_load_api_server_port 调用点去掉 DEFAULT_HERMES_ENV_PATH 实参 (签名变了). route-fix 同 area → opt-worktree.sh 判定复用 opt-ota_workflow-1783171357 (HEAD=2b71b75), stacked 第 8 commit.",
+  "files_changed": [
+    "/home/admin/workspace/x-tool/ota美团运营/ota_workflow/hermes_runtime.py"
+  ],
+  "worktree": "opt-ota_workflow-1783171357",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh (PROJECT=/home/admin/workspace/x-tool) reported '→ 复用同 area worktree (route-fix): opt-ota_workflow-1783171357' and '✓ 提交到 opt-ota_workflow-1783171357 方向=ota_workflow:l001-hermes-env-path-cross-platform'. git -C .opt-worktrees/x-tool/opt-ota_workflow-1783171357 log --oneline shows new HEAD 530c13b 'opt(ota_workflow:l001-hermes-env-path-cross-platform): L01: hermes_runtime.py 跨平台 .env 路径解析...' stacked directly on 2b71b75 (OTA-M-005) on 42c4a30 (OTA-M-003) on 1ed036b (OTA-M-002+OTA-L-002) on 124853a (OTA-M-001+OTA-L-003) on 9bfff05 (OTA-H-001c+M-004) on 9424759 (OTA-H-001b) on 0ca59a6 (OTA-H-001a). git diff HEAD~1 -- hermes_runtime.py: 重命名 DEFAULT_HERMES_ENV_PATH→DEFAULT_HERMES_ENV_PATH_WSL + 新增 _hermes_env_paths() 27行 (env 优先/home 兜底/nt 追加 WSL/dedupe) + _read_env_file_var 签名 (path,key)→(key) 遍历候选 + load_hermes_api_key 删 nt gate + 2 个 _load_api_server_* 调用点去实参 (4 hunk, +35/-7). python3 -c ast.parse: 'syntax OK'. grep 残留 DEFAULT_HERMES_ENV_PATH\\b (旧名不带 _WSL): 0 命中. Main checkout restored to pre-edit baseline by opt-worktree cp/restore (expected; fix lives on branch auto/opt-ota_workflow-1783171357 HEAD=530c13b, auto-pushed to origin by cmd_commit per constraints — origin auth not reachable from this env but branch is local+remote ready for human merge).",
+  "next_suggestion": "下轮派生 OTA-L-004 (priority 12, severity low, kind=route-fix, finding_id OTA-L-004): storage.py:27 FileTaskStore.save 直接 write_text 非原子 — confirm_task:169 最终 save 崩溃即 task 文件截断 → 任务状态丢失 (已生效改价无记录/可能重试). Fix: temp file + os.replace 原子写 (同 OTA-M-003 monitor_state 模式). 同 area route-fix 复用 opt-ota_workflow-1783171357 stack (HEAD=530c13b). 派生后 pending_count 1→0, audit-cycle-state.status → cycle-complete → 下轮触发新一轮全量审计 (全工作区项目均已审过一轮+部分 re-audit, 下轮选最大未深审模块或对已修复积压项目做 re-audit 验证).",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-05-008",
+  "audit_depth": "shallow",
+  "_derived_fix_ids": ["OTA-L-001"],
+  "_derived_fix_status_transition": "OTA-L-001 pending → merged (dispatched to worktree stack commit 530c13b)",
+  "_parent_audit_kind": "route-fix",
+  "_stacked_on_commit": "2b71b75",
+  "_new_head_commit": "530c13b"
+}

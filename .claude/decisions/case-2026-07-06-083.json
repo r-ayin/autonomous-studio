@@ -1,0 +1,40 @@
+{
+  "case_id": "case-2026-07-06-083",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-06T23:45:00+08:00",
+  "project": "wechat-main",
+  "work_unit": "style_evolution.py flock + atomic write (M-014 + M-015)",
+  "situation": "audit-2026-07-06-022 derived_fixes pending: M-014 (line 74 JSONL append without flock) and M-015 (line 372 non-atomic evolve_suggestion.json write). Both in same file, combined into single minimal fix.",
+  "action": "Added fcntl import + tempfile import. Wrapped JSONL append at line 74 with fcntl.flock(LOCK_EX)/LOCK_UN around write+flush. Replaced direct open-write at line 372 with tempfile.mkstemp + os.fdopen + fsync + os.replace atomic pattern, with cleanup on exception. Committed via opt-worktree.sh to isolated branch.",
+  "files_changed": ["scripts/style_evolution.py"],
+  "worktree": "opt-style-evolution-1783348724",
+  "direction": "style-evolution:flock-atomic",
+  "outcome": "succeeded",
+  "outcome_evidence": "python3 -c ast.parse OK; opt-worktree.sh commit succeeded; branch auto/opt-style-evolution-1783348724 pushed to origin",
+  "next_suggestion": [
+    "Dispatch M-016 (daily_report.py:432 --output not validated + non-atomic)",
+    "Then M-017 (hot-scanner.py:738 topic pool merge TOCTOU + no schema)",
+    "After all 4 pending cleared, audit-cycle-state → cycle-complete → next full audit"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "scripts/style_evolution.py",
+      "line": 74,
+      "severity": "medium",
+      "finding": "JSONL append without flock — concurrent record writers can interleave partial lines causing torn reads",
+      "remediation": "fcntl.flock(LOCK_EX) around write+flush, LOCK_UN in finally",
+      "kind": "route-fix"
+    },
+    {
+      "file": "scripts/style_evolution.py",
+      "line": 372,
+      "severity": "medium",
+      "finding": "Non-atomic write to evolve_suggestion.json — crash mid-write leaves truncated/corrupt file",
+      "remediation": "tempfile.mkstemp + os.fdopen + fsync + os.replace atomic pattern",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-022",
+  "audit_depth": "shallow"
+}

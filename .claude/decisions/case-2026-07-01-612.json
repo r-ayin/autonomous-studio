@@ -1,0 +1,33 @@
+{
+  "case_id": "case-2026-07-01-612",
+  "agent_id": "ralph-wiggum-autonomous",
+  "timestamp": "2026-07-01T11:48:00Z",
+  "project": "shizi",
+  "work_unit": "storage.ts loadSettings 浅合并→三层 nested merge (SH-M-001)",
+  "situation": "audit-2026-07-01-005 finding SH-M-001：loadSettings 用 {...DEFAULT_SETTINGS, ...stored} 浅合并 AppSettings。AppSettings 含 vision/counter/detectionParams 三个嵌套对象，若 chrome.storage.local 里只存了部分字段（如仅 vision.apiKey），浅合并会用存储里的整个 vision 对象覆盖默认值，丢失 baseUrl/model/disableThinking 等未存字段。用户升级版本新增字段时尤为明显。",
+  "action": "新增 deepMergeSettings 辅助函数：顶层 spread DEFAULT_SETTINGS + stored，再对 vision/counter/detectionParams 三个已知嵌套对象分别做二层 spread 合并；其他顶层标量字段（detectionMethod/segmentationModel）保持覆盖语义。改动限于 src/shared/storage.ts 单文件，类型检查通过（npx tsc --noEmit 无错）。",
+  "files_changed": [
+    "/home/admin/workspace/shizi/src/shared/storage.ts"
+  ],
+  "worktree": "auto/opt-shizi-1782906261",
+  "direction": "shizi:storage-deep-merge",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 5ae7516 pushed to origin/auto/opt-shizi-1782906261; npx tsc --noEmit 在 shizi 项目根无 storage.ts 相关报错；opt-worktree.sh 复用同 area worktree (route-fix)，未触发 direction-shift（storage.ts 不在 .claude/public-interfaces.txt）。",
+  "next_suggestion": [
+    "派生 SH-M-004 (priority 4): background/index.ts runPipeline handler saveHistoryItem try/catch 降级 console.warn",
+    "派生 SH-M-002+SH-M-003 (priority 5): ocr-internal.ts callOcr + segmentation.ts getModelBuffer fetch timeout+retry"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "src/shared/storage.ts",
+      "line": 16,
+      "severity": "medium",
+      "finding": "loadSettings 浅合并 AppSettings，嵌套对象（vision/counter/detectionParams）被整体覆盖，新增字段或旧存储缺字段时丢默认值",
+      "remediation": "deepMergeSettings 对三个已知嵌套对象做二层 spread 合并",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-01-005",
+  "audit_depth": "shallow"
+}

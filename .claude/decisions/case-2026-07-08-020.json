@@ -1,0 +1,32 @@
+{
+  "case_id": "case-2026-07-08-020",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-07T14:30:00+08:00",
+  "project": "shizi",
+  "work_unit": "SZ-SH-H-001: remove excess <all_urls> host_permissions",
+  "situation": "audit-2026-07-07-047 finding SZ-SH-H-001 (severity=high, kind=route-fix): manifest.json grants host_permissions=['<all_urls>'] but extension has zero content_scripts, zero executeScript/insertCSS calls, and all fetch() targets are external APIs (Anthropic Vision, OCR upload) which MV3 service workers can reach without host_permissions. Only chrome.tabs.query usage is in popup for active tab — requires no host permission. Excess <all_urls> violates Chrome Web Store minimum-privilege policy and expands attack surface if any future code path leaks.",
+  "action": "Removed 'host_permissions' field entirely from shizi/manifest.json. Verified no content_scripts, executeScript, insertCSS, or webRequest usage in src/. Confirmed chrome.tabs.query({active:true,currentWindow:true}) needs only 'activeTab' permission (already listed). Committed via opt-worktree.sh to auto/opt-shizi-1783404582 (route-fix reuse of existing shizi:permissions worktree). Pushed to origin.",
+  "files_changed": ["manifest.json"],
+  "worktree": "auto/opt-shizi-1783404582",
+  "direction": "shizi:permissions",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit ddef10f on auto/opt-shizi-1783404582 pushed to origin/auto/opt-shizi-1783404582. git diff shows host_permissions line removed. No other files touched.",
+  "next_suggestion": [
+    "SZ-BG-M-003: compressFallback/preprocessForVL O(n²) base64 concat — same pattern as merged SZ-BG-H-002, apply ArrayBuffer fix",
+    "SZ-BG-M-005: mergeMultiSourceResults lacks skipFuzzy perf guard — O(n²) editDistance on large region sets",
+    "SZ-BG-M-007: Vision API fetch calls have no timeout — can hang indefinitely"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "manifest.json",
+      "line": 7,
+      "severity": "high",
+      "finding": "host_permissions grants <all_urls> but extension never uses tab/scripting APIs requiring it",
+      "remediation": "Remove host_permissions field entirely; activeTab permission suffices for chrome.tabs.query",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-047",
+  "audit_depth": "shallow"
+}

@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-07-02-052",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-01T19:54:10Z",
+  "project": "autonomous-studio",
+  "work_unit": "AS-EC-013+014 porcelain -z rename/copy NUL双record mishandling fix",
+  "situation": "audit-2026-07-02-002 derived_fixes AS-EC-013 (judge_direction_kind) + AS-EC-014 (cmd_commit no-files fallback + restore loop) 三处 while IFS= read -r -d '' 循环消费 git status --porcelain -z 输出时，未处理 rename/copy (XY[0] ∈ {R,C}) 的双 NUL record 格式（'XY newpath\\0oldpath\\0'）。原代码只剥前缀不消费 oldpath → 下一轮 read 把 oldpath 当独立 record 读入，${p#???} 截断后混入 files 数组。judge_direction_kind 中致 grep 拿垃圾值匹配 public-interfaces.txt → direction-shift 静默降级为 route-fix（与 audit-2026-07-01-002 M-003 同症但不同根因）；cmd_commit cp/restore 循环中致误拷或 rm 作用于截断路径。",
+  "action": "在三处 while 循环里加 XY 首字符检测：case \"$_xy\" in R?|C?) local _oldpath; IFS= read -r -d '' _oldpath || true ;; esac，消费并丢弃 oldpath record。删除旧的 case \"*\" -> \"*\" 分支（对 -z 格式无效，rename 新路径已由 ${p#???} 正确提取）。保留 line ~702 非 -z porcelain 的 -> 处理（单行格式，逻辑正确）。bash -n 语法校验通过。",
+  "files_changed": ["scripts/opt-worktree.sh"],
+  "worktree": "opt-scripts-shift-1782935637",
+  "direction": "scripts:porcelain-z-rename-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "bash -n syntax OK; opt-worktree.sh commit 成功创建 worktree opt-scripts-shift-1782935637 并 push 到 origin/auto/opt-scripts-shift-1782935637; direction-shift 自动判定生效（opt-worktree.sh 在 public-interfaces.txt）",
+  "next_suggestion": [
+    "派生 AS-EC-015 fix（studio-progress-check.sh one-way stage advancement with blocked tasks）— priority 15，下一个 pending finding",
+    "merge opt-scripts-shift-1782935637 后更新 audit-cycle-state derived_fixes AS-EC-013+014 status=merged"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-002",
+  "audit_depth": "shallow"
+}

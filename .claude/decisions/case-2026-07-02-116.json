@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-07-02-116",
+  "agent_id": "autonomous-loop",
+  "timestamp": "2026-07-02T07:05:00Z",
+  "project": "autonomous-engine",
+  "work_unit": "resume-checkpoint stale Windows path validation",
+  "situation": "audit-2026-07-02-007 finding AE2-H-001: latest.json checkpoint hardcoded /mnt/e/x-tool (Windows WSL path). On Linux native, resume-checkpoint.py would inject recovery directives pointing to non-existent paths, breaking the recovery chain. should_resume() only checked age < 24h, not cwd/platform match.",
+  "action": "Added is_cross_platform_stale() validator to resume-checkpoint.py. Checks checkpoint.cwd and checkpoint.project against current PROJECT_DIR (normalized). Mismatch → should_resume returns False → only firmware injected, no broken recovery directive. Route-fix per audit kind.",
+  "files_changed": [
+    ".claude/hooks/resume-checkpoint.py"
+  ],
+  "worktree": "opt-autonomous-engine-1782975771",
+  "direction": "autonomous-engine:checkpoint-recovery",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit pushed to origin/auto/opt-autonomous-engine-1782975771. Worktree file contains is_cross_platform_stale() function + should_resume() integration verified via grep.",
+  "next_suggestion": "Next pending fix: AE2-H-002 (L2 heartbeat interval inconsistency across docs — direction-shift, touches SKILL.md public interface)",
+  "audit_type": "deep-audit",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-007",
+  "audit_depth": "shallow"
+}

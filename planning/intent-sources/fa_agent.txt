@@ -1,0 +1,5 @@
+# fa_agent — 用户口输入（去重后，2 条 / 原始 3 条）
+# 由 distill-user-style.py Step1 生成，供 BUSINESS-INTENT 提炼 + 引擎阶段①CONTEXTUALIZE 读
+
+[2026-07-01] [Image: original 1280x28647, displayed at 89x2000. Multiply coordinates by 14.38 to map to original image.]
+[2026-07-01] [Request interrupted by user for tool use]

@@ -1,0 +1,34 @@
+{
+  "case_id": "case-2026-07-03-074",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-03T11:25:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "scripts/verify-pattern.sh — shell-interpolated $CAL in python -c string (SCRIPTS-L01)",
+  "situation": "audit-2026-07-03-012 finding SCRIPTS-L01 (priority 3, pending): verify-pattern.sh L21 used `python3 -c \"import json,sys; json.load(open('$CAL'))\"` which interpolates the bash variable directly into Python source. If the project path ever contained a single quote or other shell-special character, this would either break syntax (benign) or allow shell injection (if attacker-controlled path). Same anti-pattern was already fixed in the heredoc block at L28-30 via sys.argv; GATE-0 check was the lone holdout.",
+  "action": "Replace interpolated form with `python3 -c 'import json,sys; json.load(open(sys.argv[1]))' \"$CAL\"`, passing the path as argv[1]. Mirrors existing heredoc convention in same file. Smoke-tested against live calibration.json: all 4 gates pass.",
+  "files_changed": [
+    "scripts/verify-pattern.sh"
+  ],
+  "worktree": "opt-scripts-shift-1783076032",
+  "direction": "scripts:verify-pattern",
+  "outcome": "succeeded",
+  "outcome_evidence": "First commit attempt pushed 800214e to auto/opt-scripts-shift-1783076032 (verified in worktree: L21 now uses sys.argv[1]). Re-commit after linter reverted main correctly blocked by cp-guard ('worktree 与 main HEAD 不同，跳过以避免覆盖') — confirms fix lives in worktree awaiting merge. Main unchanged; smoke test ran all 4 gates successfully against /home/admin/workspace/autonomous-studio/.claude/decisions/calibration.json.",
+  "next_suggestion": [
+    "派生 fix #2: SCRIPTS-L02 (studio-precheck.sh bare except → narrow exception types)",
+    "派生 fix #3: SCRIPTS-L03 (autonomous-loop.sh PROMPT single-quote fragility)",
+    "人工 review opt-scripts-shift-1783076032（含 SCRIPTS-M01 + SCRIPTS-L01 两个 fix），merge 后 derived_fixes SCRIPTS-M01/L01 status→merged"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "scripts/verify-pattern.sh",
+      "line": 21,
+      "severity": "low",
+      "finding": "$CAL bash-interpolated into python -c source string. Path containing ' or shell metacharacters breaks syntax; attacker-controlled path enables code injection.",
+      "remediation": "Pass path via sys.argv: python3 -c 'import json,sys; json.load(open(sys.argv[1]))' \"$CAL\"",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-03-012",
+  "audit_depth": "shallow"
+}

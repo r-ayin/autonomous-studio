@@ -1,0 +1,5 @@
+# huiyis — 用户口输入（去重后，2 条 / 原始 2 条）
+# 由 distill-user-style.py Step1 生成，供 BUSINESS-INTENT 提炼 + 引擎阶段①CONTEXTUALIZE 读
+
+[2026-06-30] 看一下，以及能不能在这里启动
+[2026-06-30] 停止自动决策引擎，手动模式

@@ -1,0 +1,48 @@
+{
+  "case_id": "case-2026-07-05-108",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-05T17:08:09+08:00",
+  "project": "x-tool (pdd监测)",
+  "work_unit": "派生 audit-2026-07-05-012 PDD-SANDBOX-01 (MEDIUM, 优先级3)：pdd_advanced_collector.py launch_new_browser fallback 改用独立 user-data-dir (C:\\temp\\chrome_debug, 与 chrome_debug_setup 文档隔离 profile 一致) 替代 --profile-directory=Default, 并移除 --no-sandbox, 避免接管/污染用户真实 Default profile 已登录会话",
+  "situation": "audit-cycle-state.status=fix-in-progress (audit-012 deep audit 完成, 5 route-fix derived_fixes: PDD-LEAK-01 case-106 待人工 merge, PDD-AUTH-01 case-107 待人工 merge, 余 3 pending)。本轮按优先级派 PDD-SANDBOX-01 (优先级3, MED)。audit-012 发现 pdd_advanced_collector.py:37-51 launch_new_browser fallback (CDP 连不上 9222 时走的新实例路径) 用 --no-sandbox + --profile-directory=Default, 与项目设计 (chrome_debug_setup.py 文档 line 297: chrome.exe --remote-debugging-port=9222 --user-data-dir=\"C:\\temp\\chrome_debug\" 隔离 profile) 冲突: fallback 会驱动用户真实 Default profile (含日常已登录所有站点 cookie/会话), 把采集脚本副作用 (导航/截图/自动化操作) 写入用户日常 profile, 且 --no-sandbox 在 Windows 桌面场景无必要地绕过 Chrome 沙箱。pre-check: x-tool 既有 opt-pdd-1783240875 worktree 存在 (3-commit stack b09970e+4c16e26+e5ae071, FF-clean on master 85bd9e1, PDD-SANDBOX-01 fix_case_id=null 未派生, 遵 [[fix-already-committed-check]]); grep 确认 launch_new_browser 仅 pdd_advanced_collector.py:28 connect_to_existing_browser_via_cdp 内 fallback 调用无外部 import; x-tool 无 .claude/public-interfaces.txt, pdd_advanced_collector.py 非公共接口 → route-fix 非 direction-shift; 选 C:\\temp\\chrome_debug 与文档/chrome_debug_setup 同路径保持一致 (而非 tempfile.gettempdir 跨平台路径) 因项目明确 Windows 桌面 + winreg/chrome.exe 强绑定。",
+  "action": "派生 fix 走 opt-worktree route-fix, 同 area 'pdd' 复用 opt-pdd-1783240875 worktree (第 4 commit 堆叠)。单文件编辑 pdd_advanced_collector.py launch_new_browser (原 :37-51, 净 +11/-5):\n1) docstring 扩写说明: 用独立 user-data-dir (与 chrome_debug_setup 隔离 profile 一致), 不复用 Default profile 避免接管已登录会话/污染日常 profile; 不传 --no-sandbox (仅 root 容器需, Windows 桌面禁以免绕过 Chrome 沙箱)。\n2) args 列表: 删 '--no-sandbox' 行 + 删 '--profile-directory=Default' 行; 新增 isolated_user_data_dir = r'C:\\temp\\chrome_debug' 局部变量 (raw string 防 \\t \\c 转义) + '--user-data-dir=' + isolated_user_data_dir。\n3) 保留 --start-maximized/--disable-dev-shm-usage/--disable-blink-features=AutomationControlled/--disable-extensions 不变。\n绝对路径调 opt-worktree.sh /home/admin/workspace/x-tool commit 'pdd:sandbox-isolation' '<msg>' /home/admin/workspace/x-tool/pdd监测/pdd_advanced_collector.py (遵 [[opt-worktree-absolute-file-path]] — 首次试相对路径 'pdd监测/...' 被 realpath 解析到 engine cwd 致 M-002 '..' 拒绝, 改绝对路径通过)。→ 复用 opt-pdd-1783240875 (route-fix), 提交 4fd27c0, main 工作副本 restore 至 HEAD (干净)。python3 -m py_compile 通过。git push origin HEAD → 403 (x-tool 外部 fork, 同 audit-008/010/011/PDD-LEAK-01/AUTH-01 precedent)。",
+  "files_changed": [
+    "x-tool/pdd监测/pdd_advanced_collector.py (worktree opt-pdd-1783240875 提交 4fd27c0; launch_new_browser :37-62 扩 docstring + 删 --no-sandbox + 删 --profile-directory=Default + 加 isolated_user_data_dir r'C:\\temp\\chrome_debug' + --user-data-dir= 拼接; main 已 restore 干净)"
+  ],
+  "worktree": "opt-pdd-1783240875 (path: /home/admin/workspace/.opt-worktrees/x-tool/opt-pdd-1783240875, branch: auto/opt-pdd-1783240875, base: 85bd9e1=master, HEAD: 4fd27c0, 4-commit stack: b09970e .gitignore 规则 + 4c16e26 git rm --cached 4 JSON + e5ae071 PDD-AUTH-01 auth guard + 4fd27c0 PDD-SANDBOX-01 sandbox isolation, FF-clean)",
+  "direction": "pdd:sandbox-isolation (route-fix; pdd_advanced_collector.py 不在 public-interfaces.txt → 非 direction-shift, opt-worktree judge_direction_kind 自动判定 route-fix 复用同 area opt-pdd-1783240875)",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "git -C opt-pdd-1783240875 log --oneline -5: 4fd27c0 (PDD-SANDBOX-01 sandbox isolation) → e5ae071 (PDD-AUTH-01) → 4c16e26 (git rm --cached) → b09970e (.gitignore 规则) → 85bd9e1 (master base), 4-commit stack FF-clean",
+    "git -C opt-pdd-1783240875 status -s: 空 (clean) — sandbox isolation 提交已落, 无连带 revert",
+    "git -C opt-pdd-1783240875 show --stat HEAD: 'pdd监测/pdd_advanced_collector.py | 16 +++++++++++----- 1 file changed, 11 insertions(+), 5 deletions(-)' — 仅目标 1 文件, 无 scope 蔓延",
+    "grep -nE 'no-sandbox|profile-directory=Default' worktree/pdd_advanced_collector.py: 无匹配 — 两危险 flag 已移除",
+    "grep -n \"user-data-dir=\" worktree/pdd_advanced_collector.py: :51 '--user-data-dir=' + isolated_user_data_dir — 隔离 profile 就位",
+    "grep -n 'isolated_user_data_dir' worktree/pdd_advanced_collector.py: :47 r'C:\\\\temp\\\\chrome_debug' + :51 拼接 — 与文档 line 297 + chrome_debug_setup 同路径",
+    "python3 -m py_compile worktree/pdd_advanced_collector.py: SYNTAX_OK (守卫不破编译)",
+    "git push origin auto/opt-pdd-1783240875: 'remote: git push is not allowed' + 403 — x-tool 外部 fork push 被拒 (同 audit-008/010/011/PDD-LEAK-01/AUTH-01 precedent 'x-tool origin push 403 外部 fork'); worktree+4-commit stack 完整保留 disk 待人工 merge to master",
+    "opt-worktree.sh 复用提示: '→ 复用同 area worktree (route-fix): opt-pdd-1783240875' + '✓ 提交到 opt-pdd-1783240875 方向=pdd:sandbox-isolation' — 未开新 wt, 正确堆叠",
+    "pre-check grep: launch_new_browser 仅 pdd_advanced_collector.py:28 (connect_to_existing_browser_via_cdp fallback) + :37 (def) 内引用, 无外部 import — 改 args 不破跨模块"
+  ],
+  "next_suggestion": [
+    "下轮 status 仍 fix-in-progress: 派生 PDD-PSH-01 (优先级4, LOW, chrome_debug_setup.py:57-67 winreg fallback 返回值未 os.path.exists 校验, App Paths 注册表被篡改可注入 PowerShell -Command, 同步 chrome_setup/chrome_debug_setup.py 副本见 PDD-DUP-01)。同 area 'pdd' → opt-worktree 复用 opt-pdd-1783240875, 第 5 commit 堆叠",
+    "之后派生 PDD-DUMP-01 (优先级5, LOW, pdd_monitor.py 失败时 detailed_ui_dump/product_data_debug/operation_data_debug/price_data_debug.txt 写项目根固定名+不清理+未 gitignore, 改 tempfile/.debug/ + .gitignore 规则, 触及 x-tool/.gitignore + pdd_monitor.py), 全堆叠 opt-pdd-1783240875",
+    "5 fix 全派生后走 3 连续 wait 轮 (同 audit-008/010/011 deadlock precedent, x-tool origin push 403 外部 fork 常态) → 预期全 rejected-archive, worktree+commit stack 保留 disk 待人工 merge. cycle-complete 后触发下一轮全量审计",
+    "提醒用户: opt-pdd-1783240875 现堆 4 commit (b09970e+4c16e26+e5ae071+4fd27c0) FF-clean on master 85bd9e1, 可一次性 git merge --ff-only auto/opt-pdd-1783240875 落地 PDD-LEAK-01+PDD-AUTH-01+PDD-SANDBOX-01 三 finding。x-tool master 历史仍含 4 个 pdd_*.json 商家数据 (PDD-LEAK-01 只 untrack 不清历史), 若仓库曾 push 远端则历史泄露已成, 需 git filter-repo 清历史 (需人工授权)"
+  ],
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-05-012",
+  "audit_depth": "shallow",
+  "_derived_fix_dispatch": {
+    "finding_id": "PDD-SANDBOX-01",
+    "audit_id": "audit-2026-07-05-012",
+    "kind": "route-fix",
+    "worktree": "opt-pdd-1783240875",
+    "branch": "auto/opt-pdd-1783240875",
+    "commits": ["4fd27c0"],
+    "base": "e5ae071 (PDD-AUTH-01 stack top)",
+    "push_status": "403 (x-tool 外部 fork, 同 audit-008/010/011/PDD-LEAK-01/PDD-AUTH-01 precedent)",
+    "awaiting_human_merge": true
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "case_id": "case-2026-07-03-021",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-03T20:06:05Z",
+  "project": "wechat-main",
+  "work_unit": "HV-002 fact_checker.py data_year recency 时区统一 UTC",
+  "situation": "audit-cycle-state fix-in-progress, pending_count=8. Next pending finding HV-002 (HIGH): script-verifier/fact_checker.py line 378 used date.today().year (local timezone) to compute data age for QAH-05 recency note, while verified_at (line 192), generated_at (line 622/647) all use datetime.now(timezone.utc). Cross-timezone deploys around New Year would produce ±1 year discrepancy in recency warnings.",
+  "action": "Replaced 'from datetime import date; age = date.today().year - int(data_year)' with 'age = datetime.now(timezone.utc).year - int(data_year)' reusing already-imported datetime+timezone. Added inline comment referencing HV-002 and alignment rationale. Single-file route-fix committed via opt-worktree.sh to existing wechat area worktree opt-wechat-1783021994 (same area as prior HV-001 fix case-2026-07-03-020). Push to origin failed on auth but commit landed locally per script's non-blocking policy.",
+  "files_changed": [
+    "script-verifier/fact_checker.py"
+  ],
+  "worktree": "opt-wechat-1783021994",
+  "direction": "wechat:fact-checker",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh stdout: '✓ 提交到 opt-wechat-1783021994 方向=wechat:fact-checker'. Local commit created; push failed on remote auth (non-blocking per script design). diff: replaced date.today() with datetime.now(timezone.utc) at line 378, removed redundant inner import of date.",
+  "next_suggestion": [
+    "Next pending finding HV-003: topic-pool/hot-scanner.py event-scan --output safe merge (route-fix)",
+    "Then MV-001: claim_extractor.py 百家姓扩充",
+    "After all 8 pending cleared, audit-cycle-state flips to cycle-complete triggering next full audit"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "script-verifier/fact_checker.py",
+      "line": 378,
+      "severity": "high",
+      "finding": "data_year recency computation used local-timezone date.today() while rest of module uses UTC — cross-timezone deploy risk",
+      "remediation": "Replace with datetime.now(timezone.utc).year to align with verified_at/generated_at",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-03-011",
+  "audit_depth": "shallow",
+  "_derived_from_finding_id": "HV-002",
+  "_parent_audit_id": "audit-2026-07-03-011"
+}

@@ -40,10 +40,44 @@ _READONLY_PREFIXES = re.compile(
     re.IGNORECASE,
 )
 
+# 写操作关键词：WITH 前缀的 CTE 可承载写语句（`WITH x AS (...) INSERT INTO t ...`），
+# 故 WITH 前缀需额外扫描 body 是否含写关键词，含则归为写、走两阶段确认门禁。
+_WRITE_KEYWORDS = re.compile(
+    r"\b(INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|TRUNCATE|MERGE)\b",
+    re.IGNORECASE,
+)
+
+# 字符串字面量 / 引号标识符 / 注释 —— 剥离后再扫关键词，避免误命中数据或注释里的词
+_SQL_NOISE = re.compile(
+    r"'(?:[^']|'')*'"      # 单引号字符串（'' 转义）
+    r'|"(?:[^"]|"")*"'     # 双引号标识符
+    r"|--[^\n]*"           # 行注释
+    r"|/\*.*?\*/",         # 块注释
+    re.DOTALL,
+)
+
+
+def _strip_sql_noise(sql):
+    """剥离字符串字面量与注释，返回可安全扫描关键词的 SQL 骨架"""
+    return _SQL_NOISE.sub(" ", sql)
+
 
 def _is_readonly_sql(sql):
-    """判断 SQL 是否为只读语句"""
-    return bool(_READONLY_PREFIXES.match(sql))
+    """判断 SQL 是否为只读语句
+
+    SELECT/SHOW/DESCRIBE/DESC/EXPLAIN 前缀直接视为只读。WITH 前缀的 CTE 可作为
+    INSERT/UPDATE/DELETE/MERGE 等写语句的载体（例：``WITH x AS (SELECT 1)
+    INSERT INTO t SELECT * FROM x``），仅靠前缀会把这类写语句误判为只读、绕过
+    写操作两阶段确认门禁。故 WITH 前缀需扫描 body（引号外）是否含写关键词，
+    含则归为写语句。参见 audit-2026-07-06-005 SQLEXE-01。
+    """
+    m = _READONLY_PREFIXES.match(sql)
+    if not m:
+        return False
+    if m.group(1).upper() == "WITH":
+        if _WRITE_KEYWORDS.search(_strip_sql_noise(sql)):
+            return False
+    return True
 
 
 # ─── 参数推断 ──────────────────────────────────────────────────────

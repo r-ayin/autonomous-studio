@@ -1,0 +1,45 @@
+{
+  "case_id": "case-2026-07-06-013",
+  "agent_id": "ralph-autonomous-engine",
+  "timestamp": "2026-07-06T07:30:00+08:00",
+  "project": "prod-deploy skill (LIVE copy: .claude/skills/prod-deploy/)",
+  "work_unit": "PD-CONCL-01: deriveConclusion + resume-next-batch dedup by insightRule must use timestamp sort, not array order (Sunfire order is unspecified)",
+  "situation": "audit-2026-07-06-001 PD-CONCL-01 (low, route-fix, last pending derived fix). deriveConclusion (sunfire-client.js) and the duplicated inline dedup in resume-next-batch.js (failed-rule listing) both deduped checks by insightRule keeping the LAST array occurrence as 'newest status'. Sunfire's getDeployInsightResults API does not guarantee array order reflects recency. Depending on response order, a still-WARNING rule could be masked by a stale RECOVER (unsafe miss → deploy proceeds with active HIGH anomaly → observation gate false-negative) or a recovered rule still reported failed (false hold). This round dispatches the final pending fix of the cycle; with it all 6 derived fixes are dispatched+pushed → cycle-complete.",
+  "action": "Extracted a shared dedupByRuleNewest(checks) helper into sunfire-client.js. The helper sorts checks by timestamp ASCENDING (numeric, oldest first) before Map dedup, so the newest entry per insightRule is written to the Map last and wins — independent of Sunfire's array order. Missing/invalid timestamp (Number() NaN) sorts to the front via -Infinity (treated as oldest, so timestamped entries win); a stable idx tiebreaker preserves input order on ties. Preserves the prior fall-back: when NO check carries an insightRule, the full (timestamp-sorted) list is returned unchanged. Refactored deriveConclusion to call the helper (replacing its inline Map dedup). In resume-next-batch.js, imported dedupByRuleNewest and replaced the 7-line inline failed-rule dedup with a single helper call (removes duplication, guarantees the failed-rule list uses the same newest-status semantics as the conclusion). Files are LIVE .claude/skills/prod-deploy/ copies (per [[prod-deploy-dual-divergent-copies]]). Files were already diverged in opt-prod-deploy-1783270172 (PD-HANG-01 touched sunfire-client.js, PD-TIME-01 touched resume-next-batch.js, neither merged to main) → opt-worktree cmd_commit cp-guard would skip → per [[opt-worktree-stack-diverged-escape-hatch]] + [[opt-worktree-absolute-file-path]] went direct-edit-in-worktree + commit-in-worktree + manual push channel.",
+  "files_changed": [
+    ".claude/skills/prod-deploy/scripts/lib/sunfire-client.js",
+    ".claude/skills/prod-deploy/scripts/resume-next-batch.js"
+  ],
+  "worktree": "opt-prod-deploy-1783270172 (branch auto/opt-prod-deploy-1783270172)",
+  "direction": "prod-deploy:conclusion-dedup (route-fix; files not in .claude/public-interfaces.txt)",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "commit a9aa5d4 on auto/opt-prod-deploy-1783270172, 2 files changed, 47 insertions(+), 15 deletions(-), pushed to origin (remote returned 7398713..a9aa5d4 auto/opt-prod-deploy-1783270172)",
+    "node --check sunfire-client.js -> OK; node --check resume-next-batch.js -> OK (no syntax errors)",
+    "behavioral test (node --input-type=module, LIVE worktree files): S1 stale-RECOVER-after-WARNING-in-array (ts 200 WARNING, ts 100 RECOVER) -> dedup=[WARNING] -> failed (OLD code would have returned RECOVER/passed = unsafe miss); S2 recovered (ts 100 WARNING, ts 200 RECOVER) -> dedup=[RECOVER] -> passed; S3 no-rule fall-back -> both kept, LOW WARNING -> warning; S4 multi-rule mixed (R1 newest=WARNING/HIGH ts500, R2 newest=RECOVER/LOW ts900) -> failed; S5 empty -> passed; S6 null -> passed; S7 numeric (non-string) timestamp 100/200 -> WARNING wins -> failed. All 7 scenarios pass.",
+    "FF-clean verified: git merge-base --is-ancestor main auto/opt-prod-deploy-1783270172 -> YES; wt is 6 commits ahead of main (d5c4078 PD-TIME-01 + d3a9710 PD-HANG-01 + 4fd4f27 PD-TOKEN-01 + 6cf2ab3 PD-BATCH-01 + 7398713 PD-TOKEN-01-LIVE + a9aa5d4 PD-CONCL-01), all pushed, awaiting human merge to main via opt-worktree.sh . merge opt-prod-deploy-1783270172",
+    "during implementation caught + fixed a self-introduced comparator bug: initial sort returned nb-na (descending, newest-first) which under Map last-write-wins semantics kept the OLDEST status — inverted from intent; corrected to na-nb (ascending, oldest-first) so newest wins. Behavioral test S1/S2 caught it before commit."
+  ],
+  "next_suggestion": "All 6 audit-2026-07-06-001 derived fixes now dispatched+pushed (PD-TIME-01/HANG-01/TOKEN-01/BATCH-01/TOKEN-01-LIVE/CONCL-01) → audit-cycle-state.status=cycle-complete. NEXT ROUND step-0 reads cycle-complete → triggers a fresh deep audit on an unaudited project. Candidates (per audit-cycle-state.history, not yet deep-audited): run scout-scan.py to get health-rank #1 unaudited code project; sunset-prediction (~114 files, large surface) and wechat-main (~306 files, but base infra + godtier-deep-research skill already audited — remaining modules exist) are code projects with unaudited modules. ⚠ opt-prod-deploy-1783270172 now carries a 6-commit stack awaiting human merge to main (opt-worktree.sh . merge opt-prod-deploy-1783270172). ⚠ structural hazard still open: prod-deploy dual-copy drift (.claude/skills/prod-deploy 4-file LIVE vs skills/prod-deploy 6-file stale refactor) was root cause of PD-TOKEN-01 + PD-TOKEN-01-LIVE regression — recommend user authorize either deleting stale skills/ copy or re-grafting LIVE→skills to collapse the hazard (structural-debt candidate).",
+  "audit_type": "none",
+  "audit_findings": [
+    {
+      "file": ".claude/skills/prod-deploy/scripts/lib/sunfire-client.js",
+      "line": 181,
+      "severity": "low",
+      "finding": "PD-CONCL-01: deriveConclusion deduped by insightRule keeping last array occurrence as 'newest status', but Sunfire getDeployInsightResults array order is unspecified — could mask a still-WARNING rule with a stale RECOVER (unsafe miss, deploy proceeds with active HIGH anomaly) or false-hold a recovered rule.",
+      "remediation": "Extract dedupByRuleNewest(checks) helper: sort checks by timestamp ascending (numeric, oldest first, missing→-Infinity, stable tiebreaker) before Map dedup so newest per rule wins; deriveConclusion calls helper. DONE this case.",
+      "kind": "route-fix"
+    },
+    {
+      "file": ".claude/skills/prod-deploy/scripts/resume-next-batch.js",
+      "line": 77,
+      "severity": "low",
+      "finding": "PD-CONCL-01: duplicated inline dedup (byRule Map, last-occurrence) for the failed-rule listing — same array-order assumption bug as deriveConclusion, and a maintenance duplicate.",
+      "remediation": "Replace inline dedup with shared dedupByRuleNewest() call from sunfire-client.js (single source of truth, same newest-status semantics). DONE this case.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-001",
+  "audit_depth": "shallow"
+}

@@ -26,14 +26,17 @@ Ducky 是内部统一的模型调用网关，Go 代码中 gpt_image.go 通过 ll
   - 无需安装第三方库（仅使用标准库）
 
 环境变量：
-  - DUCKY_PRIVATE_TOKEN   : (可选) Ducky 服务的认证 Token，默认取 ANTHROPIC_AUTH_TOKEN
+  - DUCKY_PRIVATE_TOKEN   : (必需) Ducky 服务的认证 Token（请勿复用其他服务凭证，避免跨服务泄漏）
   - DUCKY_BASE_URL        : (可选) Ducky API 地址，默认 https://ducky.code.alibaba-inc.com/v1/chat
+  - DUCKY_SKIP_TLS_VERIFY : (可选) 设为 "1" 禁用 TLS 证书验证（仅内部自签场景 opt-in）
+  - DUCKY_ALLOWED_IMAGE_HOSTS : (可选) 逗号分隔的额外图片下载白名单主机名
   - GPT_IMAGE_MODEL       : (可选) 模型名称，默认 gpt-image-1
   - IMAGE_OUTPUT_DIR      : (可选) 图片保存目录，默认为当前目录下的 .image_process 目录
 """
 
 import argparse
 import base64
+import ipaddress
 import json
 import os
 import ssl
@@ -51,15 +54,39 @@ from urllib.error import HTTPError, URLError
 DEFAULT_MODEL = "web-agent/gpt-image-2-0421-global"
 DEFAULT_DUCKY_URL = "https://ducky.code.alibaba-inc.com/v1/chat"
 DEFAULT_OUTPUT_DIR = ".image_process"
+# L02 audit fix: download_image 默认大小上限（50 MB）。
+# 环境变量 DUCKY_IMAGE_MAX_BYTES 可覆盖；设为 0 表示禁用检查（不推荐）。
+DEFAULT_IMAGE_MAX_BYTES = int(os.environ.get("DUCKY_IMAGE_MAX_BYTES", str(50 * 1024 * 1024)))
 
+# download_image URL 白名单（H02 audit fix）。
+# 仅允许这些 hostname 的图片下载；IP 字面量一律拒绝（防 SSRF）。
+# 环境变量 DUCKY_ALLOWED_IMAGE_HOSTS 可追加逗号分隔的额外主机名。
+_DEFAULT_ALLOWED_IMAGE_HOSTS = (
+    "ducky.code.alibaba-inc.com",
+    "pre-ducky.code.alibaba-inc.com",
+)
 
-# ──────────────────────────── 工具函数 ────────────────────────────
+def _get_allowed_image_hosts() -> set:
+    """返回允许下载图片的 hostname 集合（内置 + 环境变量扩展）。"""
+    hosts = set(_DEFAULT_ALLOWED_IMAGE_HOSTS)
+    extra = os.environ.get("DUCKY_ALLOWED_IMAGE_HOSTS", "").strip()
+    if extra:
+        for h in extra.split(","):
+            h = h.strip().lower()
+            if h:
+                hosts.add(h)
+    return hosts
+
 
 def _create_ssl_context() -> ssl.SSLContext:
-    """创建一个不验证证书的 SSL 上下文（内部服务场景）。"""
+    """
+    创建 SSL 上下文。默认使用系统 CA 验证（安全基线）。
+    仅在显式设置 DUCKY_SKIP_TLS_VERIFY=1 时禁用验证（内部自签场景 opt-in）。
+    """
     ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
+    if os.environ.get("DUCKY_SKIP_TLS_VERIFY", "").strip() == "1":
+        ctx.check_hostname = False
+        ctx.verify_mode = ssl.CERT_NONE
     return ctx
 
 
@@ -85,17 +112,80 @@ def generate_output_path(output_dir: str, prefix: str = "gpt") -> str:
     return os.path.join(output_dir, filename)
 
 
-def download_image(url: str, save_path: str, timeout: int = 120) -> str:
-    """从 URL 下载图片并保存到指定路径（对应 Go 代码 DownloadURLToProcessedPath）。"""
+def download_image(
+    url: str,
+    save_path: str,
+    timeout: int = 120,
+    max_bytes: int | None = None,
+) -> str:
+    """
+    从 URL 下载图片并保存到指定路径（对应 Go 代码 DownloadURLToProcessedPath）。
+
+    H02 audit fix: 仅允许白名单 hostname，拒绝 IP 字面量与非 http(s) scheme。
+    L02 audit fix: 大小上限（默认 50 MB）。优先用 Content-Length 预检；无 header 时
+    边下载边累计，超限立即中止并清理半成品文件。
+    """
+    if max_bytes is None:
+        max_bytes = DEFAULT_IMAGE_MAX_BYTES
+    parsed = urlparse(url)
+    if parsed.scheme not in ("http", "https"):
+        raise ValueError(f"download_image: disallowed scheme {parsed.scheme!r} in URL: {url}")
+    hostname = (parsed.hostname or "").lower()
+    if not hostname:
+        raise ValueError(f"download_image: empty hostname in URL: {url}")
+    # 拒绝 IP 字面量（IPv4 / IPv6 / bracketed）— 防 SSRF
+    try:
+        ipaddress.ip_address(hostname.strip("[]"))
+        raise ValueError(f"download_image: IP literal not allowed: {hostname}")
+    except ValueError as e:
+        if "IP literal" in str(e):
+            raise
+        # 不是 IP → 正常 hostname，继续
+    allowed = _get_allowed_image_hosts()
+    if hostname not in allowed:
+        raise ValueError(
+            f"download_image: hostname {hostname!r} not in allowlist. "
+            f"Allowed: {sorted(allowed)}. Set DUCKY_ALLOWED_IMAGE_HOSTS to extend."
+        )
     req = Request(url)
     ctx = _create_ssl_context()
     with urlopen(req, timeout=timeout, context=ctx) as resp:
-        with open(save_path, "wb") as f:
-            while True:
-                chunk = resp.read(8192)
-                if not chunk:
-                    break
-                f.write(chunk)
+        # L02: Content-Length 预检（服务端提供时可在写盘前快速失败）
+        cl = resp.headers.get("Content-Length") if resp.headers else None
+        if max_bytes and cl is not None:
+            try:
+                declared = int(cl)
+                if declared > max_bytes:
+                    raise ValueError(
+                        f"download_image: Content-Length {declared} exceeds max_bytes "
+                        f"{max_bytes} for URL: {url}"
+                    )
+            except (TypeError, ValueError) as e:
+                if "exceeds max_bytes" in str(e):
+                    raise
+                # 非数字 Content-Length → 忽略预检，走流式累计
+        written = 0
+        try:
+            with open(save_path, "wb") as f:
+                while True:
+                    chunk = resp.read(8192)
+                    if not chunk:
+                        break
+                    written += len(chunk)
+                    if max_bytes and written > max_bytes:
+                        raise ValueError(
+                            f"download_image: received {written} bytes exceeds max_bytes "
+                            f"{max_bytes} for URL: {url}"
+                        )
+                    f.write(chunk)
+        except BaseException:
+            # 超限时清理半成品文件，避免下游误读截断数据
+            try:
+                if os.path.exists(save_path):
+                    os.remove(save_path)
+            except OSError:
+                pass
+            raise
     return save_path
 
 
@@ -219,11 +309,12 @@ def generate_image(
         ValueError: 缺少必填参数
         HTTPError: API 调用失败
     """
-    # 参数解析：优先 DUCKY_PRIVATE_TOKEN，回退到 ANTHROPIC_AUTH_TOKEN
-    token = token or os.environ.get("DUCKY_PRIVATE_TOKEN") or os.environ.get("ANTHROPIC_AUTH_TOKEN", "")
+    # 参数解析：仅接受 DUCKY_PRIVATE_TOKEN，禁止回退到其他服务凭证（防跨服务泄漏）
+    token = token or os.environ.get("DUCKY_PRIVATE_TOKEN", "")
     if not token:
         raise ValueError(
-            "Ducky Token 未提供。请设置 DUCKY_PRIVATE_TOKEN 或 ANTHROPIC_AUTH_TOKEN 环境变量，或通过 --token 参数传入。"
+            "Ducky Token 未提供。请设置 DUCKY_PRIVATE_TOKEN 环境变量，或通过 --token 参数传入。"
+            "请勿复用 ANTHROPIC_AUTH_TOKEN 等其他服务凭证，避免跨服务误用与泄漏。"
         )
 
     ducky_url = ducky_url or os.environ.get("DUCKY_BASE_URL", DEFAULT_DUCKY_URL)
@@ -297,7 +388,7 @@ def main():
     parser.add_argument(
         "--token",
         default=None,
-        help="Ducky 认证 Token (也可通过 DUCKY_PRIVATE_TOKEN 环境变量设置)",
+        help="Ducky 认证 Token (也可通过 DUCKY_PRIVATE_TOKEN 环境变量设置；请勿复用其他服务凭证)",
     )
     parser.add_argument(
         "--ducky-url",

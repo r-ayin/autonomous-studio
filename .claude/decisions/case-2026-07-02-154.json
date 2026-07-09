@@ -1,0 +1,24 @@
+{
+  "case_id": "case-2026-07-02-154",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-02T12:05:00Z",
+  "project": "autonomous-studio",
+  "work_unit": "audit-cycle-state-recovery:prod-deploy-fixes-already-in-worktree",
+  "situation": "fix-in-progress 阶段，6 条 pending derived_fixes (PD-H001+H002/H003/M001~M004/L001~L003) 指向 audit-2026-07-02-006。本轮按优先级 #1 派生 PD-H001+H002 timeout fix 时，发现 opt-prod-deploy-1782970212 worktree 已含 8 commits/13 files，覆盖全部 6 条 finding（4333ff2 timeout、de71b00 audit-log、1c8449c observation-skipped、6dbd5e4 checkpoint-recovery、ccb3481 json-parse、e56c909 cache-persist、c1e74a4 http-base-refactor、bbf30dd SKILL.md）。cp-guard 阻止重复提交。状态与实现脱节：代码已在 worktree，但 derived_fixes 仍 pending。",
+  "action": "不回滚 worktree 也不重做 fix。回收状态：把 6 条 derived_fixes 标 merged_ready（实际是 'in-worktree-pending-human-merge'），写本 case 记录脱节事实，更新 audit-cycle-state.json + autonomous-state.md。下轮起人工 merge 后改 status=merged；若 reject 则回退到 pending 重派。",
+  "files_changed": [],
+  "worktree": "opt-prod-deploy-1782970212",
+  "direction": "prod-deploy:http-timeout",
+  "outcome": "succeeded",
+  "outcome_evidence": "bash scripts/opt-worktree.sh . show opt-prod-deploy-1782970212 显示 8 commits 覆盖 H-001/H-002/H-003/M-001/M-002/M-003/M-004/L-001/L-002/L-003 全部 finding；cp-guard 提示 3 文件在 worktree 与 main HEAD 不同证实未合并；git checkout -- <files> 后本地干净无残留。",
+  "next_suggestion": [
+    "人工审 opt-prod-deploy-1782970212 diff（bash scripts/opt-worktree.sh . show opt-prod-deploy-1782970212）→ merge/reject",
+    "merge 后跑 bash scripts/opt-worktree.sh . merge opt-prod-deploy-1782970212，并把 audit-cycle-state.derived_fixes[].status 改 merged",
+    "reject 则 bash scripts/opt-worktree.sh . reject opt-prod-deploy-1782970212，derived_fixes 保持 pending 触发下轮重派"
+  ],
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-006",
+  "audit_depth": "shallow",
+  "_note": "本 case 不产生新代码改动，仅回收状态。6 条 derived_fixes 的 fix_case_id 字段仍 null（前轮未登记），本轮补登此 case_id 作为聚合引用。"
+}

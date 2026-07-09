@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-08-055",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-08T20:15:00+08:00",
+  "project": "shizi",
+  "work_unit": "SZ-SH-M-006: remove unused @crxjs/vite-plugin beta dependency",
+  "situation": "audit-2026-07-07-047 finding SZ-SH-M-006: @crxjs/vite-plugin ^2.0.0-beta.33 listed in devDependencies but never imported in any source file or vite.config.ts. Build pipeline uses custom build.mjs with esbuild, not crxjs. Unused beta dependency adds install bloat and potential security surface.",
+  "action": "Removed @crxjs/vite-plugin line from shizi/package.json devDependencies. Verified no imports via grep across all .ts/.js/.mjs files (excluding node_modules) — zero references. vite.config.ts uses only @vitejs/plugin-react and @tailwindcss/vite.",
+  "files_changed": ["package.json"],
+  "worktree": "opt-shared-1783413612",
+  "direction": "shared:deps",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 0f44055 on auto/opt-shared-1783413612 pushed to origin. package.json diff: removed '@crxjs/vite-plugin': '^2.0.0-beta.33' line from devDependencies. No other files affected.",
+  "next_suggestion": "Continue shizi pending fixes: SZ-BG-L-001 (IndexedDB connection leak), SZ-BG-L-002 (hardcoded media_type image/png), or SZ-BG-L-003 (redundant setPanelBehavior call).",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "package.json",
+      "line": 22,
+      "severity": "medium",
+      "finding": "@crxjs/vite-plugin beta dependency declared but never used in source or build config",
+      "remediation": "Remove from devDependencies; build pipeline uses custom esbuild via build.mjs",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-047",
+  "audit_depth": "shallow"
+}

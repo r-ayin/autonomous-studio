@@ -1,0 +1,31 @@
+{
+  "case_id": "case-2026-07-06-063",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-06T21:15:00+08:00",
+  "project": "sunset-prediction",
+  "work_unit": "L-002 container-detect gate for --no-sandbox in social-scraper.js",
+  "situation": "audit-2026-07-06-020 derived_fix L-002 pending. src/social-scraper.js:52 unconditionally passes --no-sandbox to Playwright chromium.launch, weakening Chrome sandbox isolation on bare-metal/VM hosts where it provides meaningful security benefit.",
+  "action": "Added IN_CONTAINER detection (/.dockerenv + /proc/1/cgroup regex for docker/containerd/kubepods/lxc). Only appends --no-sandbox/--disable-setuid-sandbox/--disable-dev-shm-usage when running inside a container. cp-guard triggered (wt diverged from M-001 fix), used case-104 escape hatch: edited directly in worktree + committed in-wt.",
+  "files_changed": ["src/social-scraper.js"],
+  "worktree": "opt-social-scraper-1783336121",
+  "direction": "social-scraper:no-sandbox-gate",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit e31cb9a on auto/opt-social-scraper-1783336121 pushed to origin. Container-detect IIFE returns boolean; launchArgs conditionally built. Main working copy synced via cp.",
+  "next_suggestion": [
+    "L-002 was last pending derived_fix from audit-2026-07-06-020 → status should transition to cycle-complete next round, triggering new full audit",
+    "scripts/xhs-screenshot.js:13 and scripts/test-xhs-playwright.js:51 also have unconditional --no-sandbox — candidate for follow-up if user wants consistency across all launch sites"
+  ],
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "src/social-scraper.js",
+      "line": 52,
+      "severity": "low",
+      "finding": "--no-sandbox unconditionally disables Chrome sandbox even on non-container hosts where it provides meaningful process isolation",
+      "remediation": "Container-detect gate (/.dockerenv + cgroup regex) before appending sandbox-disabling flags",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-06-020",
+  "audit_depth": "shallow"
+}

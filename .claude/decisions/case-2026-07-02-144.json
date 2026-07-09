@@ -1,0 +1,19 @@
+{
+  "case_id": "case-2026-07-02-144",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-02T20:30:00Z",
+  "project": "personal-assistant",
+  "work_unit": "L-001 web.py _fetch() rate limit + honest UA prefix",
+  "situation": "audit-2026-07-02-008 derived_fixes 4 pending (L-001/L-002/L-004/L-005)。按 priority 取 L-001：web.py _fetch() uses hardcoded Chrome UA for Bing/Baidu HTML scraping with no rate limiting — ToS violation risk + IP ban risk. Module-level _last_fetch_ts tracking absent.",
+  "action": "Add module-level _FETCH_MIN_INTERVAL=2.0s + _last_fetch_ts monotonic clock guard to _fetch(). Sleep if elapsed < interval. Prepend 'personal-assistant/0.3 (research bot; ...)' to UA string for honest identification while retaining Chrome compatibility tokens needed for HTML parsing. Single file change, zero caller impact.",
+  "files_changed": ["personal_assistant/web.py"],
+  "worktree": "opt-web-1782977902",
+  "direction": "web:rate-limit",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh commit output '✓ 提交到 opt-web-1782977902' + push succeeded to origin/auto/opt-web-1782977902 (commit 5ac510d). Route-fix reused existing web area worktree (no direction-shift).",
+  "next_suggestion": "派生 audit-2026-07-02-008 next pending fix L-002 (priority 13): config.py .env parser can't handle # in values or escaped quotes. Route-fix, 1 file personal_assistant/config.py.",
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-008",
+  "audit_depth": "shallow"
+}

@@ -1,0 +1,38 @@
+{
+  "case_id": "case-2026-07-03-082",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-03T13:05:17Z",
+  "project": "scripts",
+  "work_unit": "SCRIPTS-L01 verify-pattern.sh CAL/MD sys.argv hardening",
+  "situation": "audit-2026-07-03-012 SCRIPTS-L01 (priority 3, route-fix) pending. verify-pattern.sh heredoc block derived CAL/MD paths via f-string from P, contradicting GATE-0's sys.argv pattern and re-introducing shell-variable coupling inside a quoted PY block. Root /home/admin/workspace/scripts copy was partially fixed; autonomous-studio/scripts copy (the actual git-tracked file) still had both the $CAL interpolation in GATE-0 python -c string AND the f-string derivation in the heredoc.",
+  "action": "Applied full remediation to autonomous-studio/scripts/verify-pattern.sh: (1) GATE-0 now uses sys.argv[1] instead of open('$CAL') interpolation; (2) heredoc invocation passes CAL and MD as positional args $5/$6; (3) Python block reads CAL, MD = sys.argv[5], sys.argv[6] instead of f-string derivation. Smoke-tested against autonomous-studio project — all 4 gates pass. Committed via opt-worktree.sh to existing route-fix worktree opt-scripts-l04-1783082107 (area match, no public-interface touch → direction_kind=route-fix, reused). Pushed to origin/auto/opt-scripts-l04-1783082107.",
+  "files_changed": [
+    "scripts/verify-pattern.sh"
+  ],
+  "worktree": "opt-scripts-l04-1783082107",
+  "direction": "scripts:verify-pattern-l01",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit e2ce8c8 on auto/opt-scripts-l04-1783082107 pushed to origin. Smoke test '[verify-pattern] ✅ 全部门禁通过' against /home/admin/workspace/autonomous-studio after fix. GATE-0 now uses sys.argv[1]; heredoc passes CAL MD as $5 $6; Python reads sys.argv[5]/[6]. No f-string path derivation remains.",
+  "next_suggestion": "Next round: dispatch SCRIPTS-L02 (studio-precheck.sh bare except + $VAR interpolation) from audit-2026-07-03-012. Then SCRIPTS-L03 (autonomous-loop.sh PROMPT heredoc), SCRIPTS-L04 already merged via case-2026-07-03-077. After all 4 remaining pending fixes merge/reject, audit-cycle-state transitions to cycle-complete and next round triggers new deep audit on an unaudited module.",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "scripts/verify-pattern.sh",
+      "line": 21,
+      "severity": "low",
+      "finding": "GATE-0 python -c interpolated $CAL directly into single-quoted string; paths containing apostrophes or shell metacharacters would break parsing or execute unintended code. Also inconsistent with the already-fixed /home/admin/workspace/scripts copy.",
+      "remediation": "Use sys.argv to pass CAL path: python3 -c 'import json,sys; json.load(open(sys.argv[1]))' \"$CAL\"",
+      "kind": "route-fix"
+    },
+    {
+      "file": "scripts/verify-pattern.sh",
+      "line": 31,
+      "severity": "low",
+      "finding": "Python heredoc derived CAL and MD via f\"{P}/...\" from sys.argv[1] instead of receiving them as explicit args. Redundant derivation creates two sources of truth for the same path and defeats the injection-hardening goal of the quoted heredoc.",
+      "remediation": "Pass CAL and MD as $5 and $6 on the python3 invocation; read via sys.argv[5], sys.argv[6] inside the heredoc.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-03-012",
+  "audit_depth": "shallow"
+}

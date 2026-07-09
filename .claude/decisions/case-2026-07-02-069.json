@@ -1,0 +1,38 @@
+{
+  "case_id": "case-2026-07-02-069",
+  "agent_id": "autonomous-loop",
+  "timestamp": "2026-07-02T06:50:00Z",
+  "project": "skills",
+  "work_unit": "runner-exec/scripts/pull.js — PowerShell single-quote path injection (SK-RE-005)",
+  "situation": "audit-2026-07-02-003 finding SK-RE-005: pull.js line 41 and 65 interpolate winDir/winPath directly into PowerShell single-quoted strings without escaping. A Windows path containing single-quote (e.g. C:\\Users\\O'Brien) would break the command or allow injection.",
+  "action": "Imported escapePSSingleQuote from write-file.js (already exported after SK-RE-002/003 fix). Applied to winDir before Get-ChildItem -Path interpolation (line 41) and to winPath before Get-Content -Path interpolation (line 65). Committed to existing opt-runner-exec-1782940040 worktree (same area, route-fix reuse).",
+  "files_changed": [
+    "runner-exec/scripts/pull.js"
+  ],
+  "worktree": "opt-runner-exec-1782940040",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit a2373fc on auto/opt-runner-exec-1782940040 branch; git diff shows +5/-2 lines adding import and two escape calls; cp-guard bypassed because edit was done directly in worktree file (not via opt-worktree.sh cp which would overwrite prior unmerged SK-RE-004 commit)",
+  "next_suggestion": "Next pending fix: SK-RE-006 (creds.js:11 secret file read without permission check — add fs.statSync mode & 0o077 guard). Still 10 pending fixes from audit-2026-07-02-003 awaiting dispatch.",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "runner-exec/scripts/pull.js",
+      "line": 41,
+      "severity": "high",
+      "finding": "PowerShell single-quote path injection: winDir interpolated directly into Get-ChildItem -Path '${winDir}' without escaping",
+      "remediation": "Apply escapePSSingleQuote(winDir) before interpolation",
+      "kind": "route-fix"
+    },
+    {
+      "file": "runner-exec/scripts/pull.js",
+      "line": 65,
+      "severity": "high",
+      "finding": "PowerShell single-quote path injection: winPath interpolated directly into Get-Content -Path '${winPath}' without escaping",
+      "remediation": "Apply escapePSSingleQuote(winPath) before interpolation",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-02-003",
+  "audit_depth": "shallow"
+}

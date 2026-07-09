@@ -1,0 +1,30 @@
+{
+  "case_id": "case-2026-07-07-127",
+  "agent_id": "ralph-wiggum-autonomous-loop",
+  "timestamp": "2026-07-07T11:54:00+08:00",
+  "project": "sunset-prediction",
+  "work_unit": "scripts/xhs_keepalive.py atomic .env rewrite (SP-SCR-H-002)",
+  "situation": "audit-2026-07-08-046 finding SP-SCR-H-002 (high): xhs_keepalive.py update_env_cookie uses ENV_FILE.write_text() non-atomically. Concurrent cron invocations can observe a truncated/partially-written .env, corrupting credentials. Derived fix from deep audit cycle.",
+  "action": "Replace direct write_text with tempfile.mkstemp + os.fdopen + fsync + os.replace pattern in same directory. Ensures readers always see either old or new complete content; tmp file cleaned up on any failure including KeyboardInterrupt. Added import os, tempfile at module top.",
+  "files_changed": [
+    "scripts/xhs_keepalive.py"
+  ],
+  "worktree": "opt-scripts-1783396445",
+  "direction": "scripts:xhs-keepalive-atomic",
+  "outcome": "succeeded",
+  "outcome_evidence": "opt-worktree.sh cmd_commit output: '✓ 提交到 opt-scripts-1783396445 方向=scripts:xhs-keepalive-atomic'; branch auto/opt-scripts-1783396445 pushed to origin (verified in push output). Main worktree file restored by cp-flow as expected.",
+  "next_suggestion": "Continue dispatching audit-2026-07-08-046 pending route-fixes. Next high-severity candidate: SP-SRV-M-002 (routes.js cache thundering herd) or SP-SRV-M-005 (routes.js 502 err.message leak). After all pending cleared, status flips to cycle-complete → triggers next full audit.",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "scripts/xhs_keepalive.py",
+      "line": 56,
+      "severity": "high",
+      "finding": "ENV_FILE.write_text(new_content) is non-atomic. Concurrent cron executions of xhs_keepalive.py can race: process A opens .env for write (truncates), process B reads mid-write and gets partial/corrupt content. Credential truncation risk under concurrent scheduling.",
+      "remediation": "Use tempfile.mkstemp in same dir + os.replace for atomic rename. fsync before rename to ensure durability. Cleanup tmp on any exception.",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-08-046",
+  "audit_depth": "shallow"
+}

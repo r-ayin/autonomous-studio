@@ -1,0 +1,58 @@
+From 534098397854a9a51b108fcaaeb10c7618f0e115 Mon Sep 17 00:00:00 2001
+From: autonomous-studio <syp02536326@taobao.com>
+Date: Wed, 1 Jul 2026 21:15:06 +0800
+Subject: [PATCH] =?UTF-8?q?opt(engine:distill-llm-status):=20AS-M-002=20fi?=
+ =?UTF-8?q?x:=20distill-patterns.py=20step2=5Fllm=5Fdistill=20=E5=8C=BA?=
+ =?UTF-8?q?=E5=88=86=20timeout/empty=5Fresponse/nonzero=5Fexit/exception?=
+ =?UTF-8?q?=EF=BC=8Cproposals=20=E5=8A=A0=20llm=5Fstatus=20=E5=AD=97?=
+ =?UTF-8?q?=E6=AE=B5=E9=81=BF=E5=85=8D=20op=3DNone=20=E9=9D=99=E9=BB=98?=
+ =?UTF-8?q?=E5=90=9E=E9=94=99=20(audit-2026-07-01-007)?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+[auto-optimization on worktree optimization — 待人工审合并]
+---
+ scripts/distill-patterns.py | 19 +++++++++++++++++--
+ 1 file changed, 17 insertions(+), 2 deletions(-)
+
+diff --git a/scripts/distill-patterns.py b/scripts/distill-patterns.py
+index ea25017..3d0dd19 100755
+--- a/scripts/distill-patterns.py
++++ b/scripts/distill-patterns.py
+@@ -335,15 +335,30 @@ def step2_llm_distill(cal, pat_cases, cases, project_dir):
+         )
+         # 优先 claude -p（复用已配置的 GLM 鉴权）
+         op = None
++        llm_status = "skipped"
+         if subprocess.run(["which", "claude"], capture_output=True).returncode == 0:
+             try:
+                 r = subprocess.run(
+                     ["claude", "-p", prompt, "--permission-mode", "plan"],
+                     cwd=project_dir, capture_output=True, text=True, timeout=120)
+                 op = r.stdout.strip()
+-            except Exception:
++                if op:
++                    llm_status = "ok"
++                else:
++                    # claude 返回空响应：鉴权/模型拒答/无输出，区别于超时
++                    llm_status = "empty_response"
++                    if r.stderr.strip():
++                        llm_status = f"empty_response:stderr={r.stderr.strip()[:120]}"
++            except subprocess.TimeoutExpired:
+                 op = None
+-        proposals.append({"pattern": key, "prompt": prompt, "llm_output": op})
++                llm_status = "timeout"
++            except subprocess.CalledProcessError as e:
++                op = None
++                llm_status = f"nonzero_exit:{e.returncode}"
++            except Exception as e:
++                op = None
++                llm_status = f"exception:{type(e).__name__}:{str(e)[:80]}"
++        proposals.append({"pattern": key, "prompt": prompt, "llm_output": op, "llm_status": llm_status})
+     if proposals:
+         # 写提案文件（即使 LLM 没跑也留档供 agent 审）
+         prop_path = os.path.join(project_dir, ".claude", "decisions", "distillation-proposals.json")
+-- 
+2.43.0
+

@@ -1,0 +1,28 @@
+{
+  "case_id": "case-2026-07-08-021",
+  "agent_id": "autonomous-engine",
+  "timestamp": "2026-07-07T15:04:00+08:00",
+  "project": "shizi",
+  "work_unit": "SZ-BG-M-008: Non-PNG images skip all scaling/tiling/enhancement",
+  "situation": "ocr-internal.ts uses parsePngSize() which only handles PNG header format. JPEG/WebP images get null → recognizeWithInternalApi falls through to basic upload-only OCR (no upscale, no tiling, no contrast enhancement). ocrRegion also returns empty for non-PNG. This means JPEG screenshots and WebP product photos get significantly worse recognition quality.",
+  "action": "Replaced local parsePngSize with imported parseImageSize from vision-adapter.ts which handles both PNG (IHDR header) and JPEG (SOF0/SOF2 marker scan). Removed dead parsePngSize function. Added clarifying comment at fallback path for truly unrecognized formats (WebP etc.).",
+  "files_changed": ["src/background/ocr-internal.ts"],
+  "worktree": "auto/opt-background-1783213292",
+  "direction": "background:non-png-ocr-support",
+  "outcome": "succeeded",
+  "outcome_evidence": "Commit 322f5e0 on auto/opt-background-1783213292. parseImageSize imported and used at both call sites (recognizeWithInternalApi line 539, ocrRegion line 590). parsePngSize removed. Pushed to origin.",
+  "next_suggestion": "Next pending fix: SZ-SP-M-001 (Draw mode replaces all regions instead of appending) in sidepanel",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "src/background/ocr-internal.ts",
+      "line": 539,
+      "severity": "medium",
+      "finding": "parsePngSize only parses PNG IHDR; JPEG/WebP images return null causing all upscale/tile/enhance paths to be skipped",
+      "remediation": "Replace with parseImageSize from vision-adapter.ts which handles PNG + JPEG SOF markers",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-047",
+  "audit_depth": "shallow"
+}

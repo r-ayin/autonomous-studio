@@ -1,0 +1,30 @@
+{
+  "case_id": "case-2026-07-07-093",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-07T21:30:00+08:00",
+  "project": "moni-master",
+  "work_unit": "frontend/ai/chatLoop FE-L-003 codepoint-safe tool result truncation",
+  "situation": "audit-2026-07-07-030 derived_fixes 中最后一条 pending route-fix (FE-L-003, low severity): chatLoop.ts:180 JSON.stringify(result).slice(0, 6000) 在 UTF-16 surrogate pair 中间截断产生非法字符串，下游 LLM 解析失败；且 JSON 结构被静默破坏无任何标记。opt-frontend-1783366395 worktree 已有前轮 FE-H/M fixes 未合并，cp-guard 跳过 → 走 case-104 escape hatch 直编 wt + wt 内 commit。",
+  "action": "在 opt-frontend-1783366395 worktree 内新增 safeTruncateJson() helper：Array.from(raw) 按真实 codepoint 切片避免劈开 surrogate pair；发生截断时追加 '…[truncated]' marker 让 LLM 知道内容不全（优于静默损坏）。替换 chatLoop.ts:211 的 JSON.stringify(result).slice(0, 6000) 调用。wt 内 git commit 3a661ab。origin push 403 (moni-master 同源 x-tool external fork auth issue)，本地 commit 已落盘等人工 merge。",
+  "files_changed": [
+    "frontend/src/components/ai/chatLoop.ts"
+  ],
+  "worktree": "opt-frontend-1783366395",
+  "direction": "frontend:chatloop-truncation",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 3a661ab on auto/opt-frontend-1783366395; diff +16/-1 line in frontend/src/components/ai/chatLoop.ts adding safeTruncateJson helper + call-site replacement. Push 403 expected per x-tool external fork pattern.",
+  "next_suggestion": "audit-cycle-state.derived_fixes 全部 merged → 下轮改 cycle-complete → 触发新一轮全量审计。可选未审过项目：browser-use (audit-2026-07-02-010 had 18 pending fixes never dispatched), oneday-auto-fix (audit-2026-07-06-018 had 9 pending), personal-assistant (audit-2026-07-06-021 had 10 pending), wanxia-edit drift-repaired but non-git so skip, 1BfrYn9G (audit-2026-07-03-014 had 7 pending). 优先 browser-use 或 1BfrYn9G（高 finding count + 未真正落地 fix）。",
+  "audit_type": "code-review",
+  "audit_findings": [
+    {
+      "file": "frontend/src/components/ai/chatLoop.ts",
+      "line": 211,
+      "severity": "low",
+      "finding": "JSON.stringify(result).slice(0, 6000) splits UTF-16 surrogate pairs producing illegal strings; silent JSON structure corruption with no truncation marker",
+      "remediation": "Replace with Array.from()-based codepoint-aware slice + append '…[truncated]' marker when truncated",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-07-030",
+  "audit_depth": "shallow"
+}

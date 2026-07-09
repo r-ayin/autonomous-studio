@@ -1,0 +1,21 @@
+{
+  "case_id": "case-2026-07-02-076",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-02T08:00:00Z",
+  "project": "skills",
+  "work_unit": "runner-exec/session-timeout-reject",
+  "situation": "SK-RE-011 (audit-2026-07-02-003): session.js:38 exec() timeout silently resolves with truncated buffer. Callers treating partial output as complete can corrupt downstream shell state or misparse command results. Priority 9 pending fix without case_id.",
+  "action": "Changed exec() Promise from resolve-only to resolve/reject. Timeout handler now rejects with Error carrying code='EXEC_TIMEOUT' and partialOutput property for caller inspection. Fail-fast semantics prevent silent data corruption in push.js/pull.js/connect() callers.",
+  "files_changed": [
+    "runner-exec/scripts/session.js"
+  ],
+  "worktree": "opt-runner-exec-1782940040",
+  "direction": "runner-exec:session-timeout-reject",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit 3296a4f on auto/opt-runner-exec-1782940040 pushed to origin; precommit guard passed silently; git diff shows +8/-3 lines replacing resolve(result) with reject(err) carrying EXEC_TIMEOUT code and partialOutput attachment",
+  "next_suggestion": "派生 SK-RE-012 (pull.js:60 path traversal via ../ in remote rel path, priority 10) — 同 worktree opt-runner-exec-1782940040 可复用；或处理 SK-RE-015/017 等剩余无 case_id pending findings",
+  "audit_type": "code-review",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-02-003",
+  "audit_depth": "shallow"
+}

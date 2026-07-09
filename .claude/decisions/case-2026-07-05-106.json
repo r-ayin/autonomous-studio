@@ -1,0 +1,51 @@
+{
+  "case_id": "case-2026-07-05-106",
+  "agent_id": "autonomous-engine-ralph",
+  "timestamp": "2026-07-05T16:43:32+08:00",
+  "project": "x-tool (pdd监测)",
+  "work_unit": "派生 audit-2026-07-05-012 PDD-LEAK-01 (HIGH data-leak, 优先级1)：x-tool/.gitignore 追加 pdd_*.json 规则 + git rm --cached 4 个误入库的真实商家运营数据 JSON",
+  "situation": "audit-cycle-state.status=fix-in-progress (audit-012 deep audit 完成, 5 route-fix derived_fixes 全 pending 待派生)。按优先级先派 PDD-LEAK-01 (HIGH, 数据泄露在册)。CLAUDE.md 规则3 明确禁止 pdd 采集结果入公开仓库,但 x-tool/.gitignore 全文无 pdd_*.json 规则,4 个 pdd_*.json 被 git ls-files 确认追踪入库(含真实 PDD 商家后台运营字段)。记忆教训 [[opt-worktree-absolute-file-path]] 提示 opt-worktree commit 文件参数必须绝对路径; [[fix-already-committed-check]] 提示派生前查 worktree list + 已有 case 防重复。pre-check: x-tool 无既有 pdd worktree(git worktree list 仅 opt-browser/notification/ota_workflow/prompt-injection/security/tasks/optimization,均 audit-008/011 残留), x-tool/.gitignore 不在 .claude/public-interfaces.txt(无 x-tool 条目)→ route-fix 非 direction-shift。",
+  "action": "派生 fix 走 opt-worktree route-fix, 新 area 'pdd'。两步提交(因 opt-worktree cmd_commit 走 cp+git add-A 同步机制, 不能同步 git rm --cached 的索引级删除——文件留盘时 _cp_guard 把 main 工作区版本 cp 到 worktree, 与 target HEAD 同内容 → git add-A 不产 deletion diff, 4 文件在 worktree 仍 tracked。故分两步): 步1 用 opt-worktree commit 提 .gitignore 规则(建 worktree+首提交+restore main); 步2 cd 进 worktree 直跑 git rm --cached + commit + push。\n步1: Edit x-tool/.gitignore 在 '# 数据库' 段后追加 '# PDD 商家运营数据' 段, 6 条规则(pdd_*.json / pdd_*_数据*.json / pdd_all_data_summary_*.json / pdd_clipboard_data.json / pdd_manual_data.json / pdd_data.json, 对齐 audit 报告 remediation)。opt-worktree.sh /home/admin/workspace/x-tool commit 'pdd:gitignore-leak' '<msg>' /home/admin/workspace/x-tool/.gitignore (绝对路径, 遵 [[opt-worktree-absolute-file-path]]) → 创建 opt-pdd-1783240875, 提交 b09970e, main .gitignore 还原 HEAD(干净)。\n步2: cd opt-pdd-1783240875, git rm --cached 4 文件(pdd_all_data_summary_20260206_014924.json / pdd_pyppeteer_data.json / pdd_商品推广_20260206_014841.json / pdd_商品数据_20260206_014857.json) → 4 staged deletion D; 文件仍留盘(ls 确认 4 个 .json 在); git status 否则干净(.gitignore 规则已忽略 untracked pdd 文件); opt-worktree precommit 守卫通过(无连带 revert); git commit 4c16e26 (4 files changed, 4734 deletions); git push origin HEAD → 403 (x-tool 是 ghp-ro.alibaba-inc.com → github.com/r-ayin/x-tool 外部 fork, push 不允许, 同 audit-008/010/011 precedent)。",
+  "files_changed": [
+    "x-tool/.gitignore (追加 '# PDD 商家运营数据' 段 6 条规则, 在 worktree opt-pdd-1783240875 提交 b09970e; main 已 restore 干净)",
+    "x-tool/pdd监测/pdd_all_data_summary_20260206_014924.json (git rm --cached, worktree 提交 4c16e26; 文件留盘)",
+    "x-tool/pdd监测/pdd_pyppeteer_data.json (同上)",
+    "x-tool/pdd监测/pdd_商品推广_20260206_014841.json (同上)",
+    "x-tool/pdd监测/pdd_商品数据_20260206_014857.json (同上)"
+  ],
+  "worktree": "opt-pdd-1783240875 (path: /home/admin/workspace/.opt-worktrees/x-tool/opt-pdd-1783240875, branch: auto/opt-pdd-1783240875, base: 85bd9e1=master, HEAD: 4c16e26, 2-commit stack: b09970e .gitignore 规则 + 4c16e26 git rm --cached 4 文件)",
+  "direction": "pdd:gitignore-leak (route-fix; x-tool/.gitignore 不在 public-interfaces.txt → 非 direction-shift, opt-worktree judge_direction_kind 自动判定 route-fix 新 area 开 wt)",
+  "outcome": "succeeded",
+  "outcome_evidence": [
+    "git -C opt-pdd-1783240875 log --oneline -3: 4c16e26 (git rm --cached) → b09970e (.gitignore 规则) → 85bd9e1 (master base), 2-commit stack FF-clean",
+    "git -C opt-pdd-1783240875 status -s: 空(clean) — 4 个 deletion 已提交, .gitignore 规则忽略留盘的 untracked pdd 文件",
+    "git -C opt-pdd-1783240875 ls-files | grep -c 'pdd监测/pdd_.*\\.json': 0 — 4 文件成功 untrack",
+    "ls pdd监测/pdd_*.json | wc -l: 4 — 文件留盘未删(工作副本保留)",
+    "git -C x-tool(main) ls-files | grep -c 'pdd监测/pdd_.*\\.json': 4 — main master 未受影响, fix 隔离在 worktree 分支",
+    "git commit 输出: '[auto/opt-pdd-1783240875 4c16e26] ... 4 files changed, 4734 deletions(-) delete mode 100644 ...' 4 文件全 delete mode",
+    "git push origin HEAD: remote 'git push is not allowed' + 403 — x-tool 外部 fork push 被拒(同 audit-008/010/011 precedent 'x-tool origin push 403 外部 fork'); worktree+2-commit stack 完整保留 disk 待人工 merge to master",
+    "opt-worktree.sh /home/admin/workspace/x-tool precommit: 无输出(通过, 无连带 revert)",
+    "b09970e 提交: .gitignore 追加 6 条 pdd 规则(对齐 audit remediation: pdd_*.json / pdd_*_数据*.json / pdd_all_data_summary_*.json / pdd_clipboard_data.json / pdd_manual_data.json / pdd_data.json)"
+  ],
+  "next_suggestion": [
+    "下轮 status 仍 fix-in-progress: 派生 PDD-AUTH-01 (优先级2, MED, pdd_web_automation.py 删账密登录路径或加 RuntimeError 守卫, 违反 CLAUDE.md 规则2)。同 area 'pdd' → opt-worktree 复用 opt-pdd-1783240875 worktree, 第 3 commit 堆叠",
+    "之后逐个派生 PDD-SANDBOX-01 (pdd_advanced_collector.py fallback --no-sandbox+Default profile) → PDD-PSH-01 (chrome_debug_setup.py winreg os.path.exists 校验, 同步 chrome_setup/ 副本) → PDD-DUMP-01 (pdd_monitor.py dump 改 tempfile/.debug/ + .gitignore 规则), 全堆叠 opt-pdd-1783240875",
+    "x-tool origin push 403 (外部 fork) 是已知常态: 5 fix 全派生后走 3 连续 wait 轮(同 audit-008/010/011 deadlock precedent)→ 预期全 rejected-archive, worktree+commit stack 保留 disk 待人工 merge. cycle-complete 后触发下一轮全量审计(候选: 聚合ai客服开发 子模块, 2987 py 太大需分段)",
+    "提醒用户: x-tool master 历史仍含 4 个 pdd_*.json 商家数据(本 fix 只 untrack 不清历史); 若仓库曾 push 远端则历史泄露已成, 需 git filter-repo 清历史(需人工授权, 不属最小 fix 范围)。记忆备份/session-backup-*/pinduoduo-data/pdd_full_extract_*.json 3 文件同属商家数据泄露类但未在 PDD-LEAK-01 finding 范围内, .gitignore 规则 pdd_*.json 已覆盖防再 add, 但已追踪的需另起 finding 处理"
+  ],
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-05-012",
+  "audit_depth": "shallow",
+  "_derived_fix_dispatch": {
+    "finding_id": "PDD-LEAK-01",
+    "audit_id": "audit-2026-07-05-012",
+    "kind": "route-fix",
+    "worktree": "opt-pdd-1783240875",
+    "branch": "auto/opt-pdd-1783240875",
+    "commits": ["b09970e", "4c16e26"],
+    "base": "85bd9e1 (master)",
+    "push_status": "403 (x-tool 外部 fork, 同 audit-008/010/011 precedent)",
+    "awaiting_human_merge": true
+  }
+}

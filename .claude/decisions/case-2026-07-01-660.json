@@ -1,0 +1,34 @@
+{
+  "case_id": "case-2026-07-01-660",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-01T18:45:00Z",
+  "project": "moni-master",
+  "work_unit": "MM-003 route-fix: config.rs canonicalize 错误传播 + is_file 校验",
+  "situation": "audit-2026-07-01-010 deep audit 发现 moni-rs/crates/moni-core/src/config.rs:339 `path.canonicalize().unwrap_or_else(|_| path.to_path_buf())` 静默 fallback 掩盖缺失配置。当 config.yaml 不存在或路径无效时回退到原始（可能相对）路径，base_dir 计算错误导致 storage 路径解析失败；传入目录而非文件时 canonicalize 成功但 read_to_string 给出 confusing 'Is a directory' 错误。派生 fix priority #5 (route-fix)。",
+  "action": "改 load_config：(1) 移除 unwrap_or_else，让 canonicalize 错误向上传播为 ConfigError::Read；(2) canonicalize 成功后加 is_file 校验，非文件返回 InvalidInput 错误；(3) read_to_string 改用 abs 路径（避免相对路径二次解析）。cargo check -p moni-core 通过。opt-worktree.sh commit 触发方向分歧（engine→config），自动开新 worktree opt-config-1782918452。",
+  "files_changed": [
+    "/home/admin/workspace/moni-master/moni-rs/crates/moni-core/src/config.rs"
+  ],
+  "worktree": "opt-config-1782918452",
+  "direction": "config:mm-003-canonicalize-error-propagation",
+  "outcome": "succeeded",
+  "outcome_evidence": "commit to auto/opt-config-1782918452; push success new branch origin/auto/opt-config-1782918452; cargo check -p moni-core Finished dev profile without errors; diff: load_config 函数体改写 canonicalize+is_file+abs read_to_string (1 file changed).",
+  "next_suggestion": [
+    "派生 MM-004 (priority 6): engine.rs:298 删除恒等 map_err — route-fix",
+    "MH-002/MM-002 structural findings 已记入 structural-debt.md（若尚未写入，下轮补写）",
+    "提醒用户 merge opt-docs-1782917996 (MH-001)、optimization (MM-001)、opt-config-1782918452 (MM-003) 到 master，以推进 audit cycle 至 cycle-complete"
+  ],
+  "audit_type": "deep-audit",
+  "audit_findings": [
+    {
+      "file": "/home/admin/workspace/moni-master/moni-rs/crates/moni-core/src/config.rs",
+      "line": 339,
+      "severity": "medium",
+      "finding": "canonicalize unwrap_or_else 静默 fallback 掩盖缺失配置；base_dir 基于可能无效路径计算致 storage 解析错；传目录给 confusing Is a directory 错误",
+      "remediation": "canonicalize 错误传播 + is_file 校验 + read_to_string 用 abs",
+      "kind": "route-fix"
+    }
+  ],
+  "audit_id": "audit-2026-07-01-010",
+  "audit_depth": "deep"
+}

@@ -1,0 +1,22 @@
+{
+  "case_id": "case-2026-07-07-110",
+  "agent_id": "ralph-wiggum",
+  "timestamp": "2026-07-07T17:40:00+08:00",
+  "project": "shizi",
+  "work_unit": "background:upload-retry-stages",
+  "situation": "SZ-BG-L-005 (low): uploadImage retry chain (original → compress-2500-q0.8 → compress-1500-q0.7) throws final error with only last result.data.message, losing how many compression stages were attempted. Debuggers cannot distinguish 'failed on original' from 'failed after all 3 compression fallbacks'.",
+  "action": "Added stages[] tracker initialized to ['original']; each compression fallback pushes its label before attempting tryUpload. Final error message now reads `图片上传失败 (original → compress-2500-q0.8 → compress-1500-q0.7): <detail>` so callers see the full retry path.",
+  "files_changed": ["src/background/ocr-internal.ts"],
+  "worktree": "auto/opt-background-1783213292",
+  "direction": "route-fix",
+  "outcome": "succeeded",
+  "outcome_evidence": "git commit 37a1ff8 on auto/opt-background-1783213292; pushed to origin; diff +7/-1 lines adding stages array and updating throw message at line 92-94.",
+  "next_suggestion": [
+    "SZ-BG-L-006: filterByRegion expandRatio threshold calibration bias (low, route-fix)",
+    "SZ-BG-L-007: maskToBoundingBox discards large detections while VL shrinks them — inconsistent (low, route-fix)"
+  ],
+  "audit_type": "none",
+  "audit_findings": [],
+  "audit_id": "audit-2026-07-07-047",
+  "audit_depth": "shallow"
+}
